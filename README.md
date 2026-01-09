@@ -31,9 +31,10 @@ Clone the repository:
 Bash: git clone https://github.com/AshantiC22/Headzup-Barbershop-Website.git
 Open index.html in your browser (or use a Live Server extension).
 
-Upcoming Milestones
-[ ] Database Integration: Implementing a Python-based backend to manage user bookings.
-
-[ ] User Accounts: Adding secure login/signup functionality.
-
-[ ] Advanced 3D Textures: Enhancing visual fidelity with custom shaders.
+ Upcoming Milestones
+ Backend Development: Building a Python API (FastAPI) to bridge the 3D frontend with a database.
+  Database Integration (PostgreSQL): I am currently learning **PostgreSQL** to implement a robust relational schema for:
+  * Secure User Authentication
+  * Barber availability and appointment scheduling
+  * Persistence of user booking history
+*Deployment: Moving from local development to a cloud-hosted environment (e.g., Render or Railway).
