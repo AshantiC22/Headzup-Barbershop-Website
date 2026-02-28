@@ -1,4 +1,5 @@
 from pathlib import Path
+import os
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -96,12 +97,11 @@ CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
 ]
 
-STRIPE_SECRET_KEY = "sk_test_51T3FdPAEbcJzkCnLqqDPkplxGaFYiqfPHSeACg2qi3AFEGeQBUe0ejNyULWPP4xpZWS9WWh9sn7YWR0iDXYPu1Kn00CI1MzvTk"
-STRIPE_PUBLISHABLE_KEY = "pk_test_51T3FdPAEbcJzkCnLiJXOuOGcTCrLXKx3XunK3d8gDnClsKExCnuBsAOP3OLmXXlzmwzgYcZikyXabP9vu2bSGUx300AgDvDcv1"
 
-# ── Add these to your Django settings.py ─────────────────────────────────────
-# For development — prints emails to the console instead of sending them
-# EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+STRIPE_SECRET_KEY = os.environ.get("STRIPE_SECRET_KEY", "")
+STRIPE_PUBLISHABLE_KEY = os.environ.get("STRIPE_PUBLISHABLE_KEY", "")
+
+
 
 # For production — Gmail SMTP
 # 1. Enable 2FA on your Gmail account
