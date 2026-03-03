@@ -1,7 +1,11 @@
 import axios from "axios";
 
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL
+  ? `${process.env.NEXT_PUBLIC_API_URL}/api/`
+  : "http://127.0.0.1:8000/api/";
+
 const API = axios.create({
-  baseURL: "http://127.0.0.1:8000/api/",
+  baseURL: BASE_URL,
 });
 
 // ── Attach access token to every request ─────────────────────────────────────
@@ -47,10 +51,7 @@ API.interceptors.response.use(
       }
 
       try {
-        const res = await axios.post(
-          "http://127.0.0.1:8000/api/token/refresh/",
-          { refresh },
-        );
+        const res = await axios.post(`${BASE_URL}token/refresh/`, { refresh });
         const newAccess = res.data.access;
         localStorage.setItem("access", newAccess);
         originalRequest.headers.Authorization = `Bearer ${newAccess}`;
