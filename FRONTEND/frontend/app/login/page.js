@@ -329,37 +329,30 @@ function SubmitBtn({
   );
 }
 
-export default function LoginPage() {
+function LoginPage() {
   const router = useRouter();
   const canvasRef = useRef(null);
   const [pageReady, setPageReady] = useState(false);
-  const [mode, setMode] = useState("login"); // login | register | forgot
+  const [mode, setMode] = useState("login");
 
-  // Session expired banner — shown when api.js redirects with ?expired=true
   const searchParams = useSearchParams();
   const [sessionExpired, setSessionExpired] = useState(false);
   useEffect(() => {
     if (searchParams.get("expired") === "true") {
       setSessionExpired(true);
-      // Clean URL without reload
       window.history.replaceState({}, "", "/login");
     }
   }, [searchParams]);
 
-  // Login
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [showPw, setShowPw] = useState(false);
-
-  // Register
   const [regName, setRegName] = useState("");
   const [regEmail, setRegEmail] = useState("");
   const [regPw, setRegPw] = useState("");
   const [regConfirm, setRegConfirm] = useState("");
   const [showRegPw, setShowRegPw] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
-
-  // Forgot
   const [forgotInput, setForgotInput] = useState("");
   const [forgotStep, setForgotStep] = useState(1);
   const [forgotToken, setForgotToken] = useState("");
@@ -367,19 +360,16 @@ export default function LoginPage() {
   const [confirmNewPw, setConfirmNewPw] = useState("");
   const [showNewPw, setShowNewPw] = useState(false);
   const [showConfirmNew, setShowConfirmNew] = useState(false);
-
-  // Shared
   const [fieldErrors, setFieldErrors] = useState({});
   const [apiError, setApiError] = useState("");
   const [apiSuccess, setApiSuccess] = useState("");
   const [loading, setLoading] = useState(false);
-  const [loginErrType, setLoginErrType] = useState(null); // "username" | "password" | null
+  const [loginErrType, setLoginErrType] = useState(null);
 
   const sf = { fontFamily: "'Syncopate', sans-serif" };
   const { isMobile } = useBreakpoint();
   const strength = getStrength(regPw);
 
-  // Particles
   useEffect(() => {
     if (!pageReady) return;
     const container = canvasRef.current;
@@ -473,7 +463,6 @@ export default function LoginPage() {
     });
   const onEnter = (fn) => (e) => e.key === "Enter" && fn();
 
-  // ── LOGIN ──────────────────────────────────────────────────────────────────
   const handleLogin = async () => {
     const errs = {};
     if (!username.trim()) errs.username = "Username is required";
@@ -493,7 +482,6 @@ export default function LoginPage() {
       });
       localStorage.setItem("access", res.data.access);
       localStorage.setItem("refresh", res.data.refresh);
-      // Check if staff — redirect to admin schedule, otherwise book page
       try {
         const dash = await API.get("dashboard/");
         const dest = dash.data.is_staff ? "/barber-dashboard" : "/book";
@@ -545,7 +533,6 @@ export default function LoginPage() {
     }
   };
 
-  // ── REGISTER ───────────────────────────────────────────────────────────────
   const validateRegister = () => {
     const errs = {};
     if (!regName.trim()) errs.regName = "Username is required";
@@ -610,7 +597,6 @@ export default function LoginPage() {
     }
   };
 
-  // ── FORGOT — step 1 ────────────────────────────────────────────────────────
   const handleForgotLookup = async () => {
     if (!forgotInput.trim()) {
       setFieldErrors({ forgotInput: "Enter your username or email" });
@@ -638,7 +624,6 @@ export default function LoginPage() {
     }
   };
 
-  // ── FORGOT — step 2 ────────────────────────────────────────────────────────
   const handlePasswordReset = async () => {
     const errs = {};
     if (!newPw) errs.newPw = "New password is required";
@@ -914,7 +899,6 @@ export default function LoginPage() {
                 </p>
               </div>
 
-              {/* Session expired banner */}
               {sessionExpired && (
                 <div
                   style={{
@@ -1535,6 +1519,7 @@ export default function LoginPage() {
     </>
   );
 }
+
 export default function LoginPageWrapper() {
   return (
     <Suspense fallback={null}>
