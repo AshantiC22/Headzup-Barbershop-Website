@@ -1,5 +1,6 @@
 "use client";
 
+import { Suspense } from "react";
 import { useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { gsap } from "gsap";
@@ -103,7 +104,7 @@ function ScissorIcon({ size = 32, color = "#f59e0b" }) {
   );
 }
 
-export default function PaymentSuccessPage() {
+function PaymentSuccessPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const sessionId = searchParams.get("session_id");
@@ -963,5 +964,13 @@ export default function PaymentSuccessPage() {
         </div>
       </div>
     </>
+  );
+}
+
+export default function PaymentSuccessPageWrapper() {
+  return (
+    <Suspense fallback={null}>
+      <PaymentSuccessPage />
+    </Suspense>
   );
 }
