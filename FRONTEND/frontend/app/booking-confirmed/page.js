@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { gsap } from "gsap";
 import API from "@/lib/api";
 import useBreakpoint from "@/lib/useBreakpoint";
+export const dynamic = "force-dynamic";
 
 // ── Confetti — runs forever ───────────────────────────────────────────────────
 function Confetti() {
