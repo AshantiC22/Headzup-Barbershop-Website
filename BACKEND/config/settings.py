@@ -110,16 +110,21 @@ STRIPE_PUBLISHABLE_KEY = os.environ.get("STRIPE_PUBLISHABLE_KEY", "")
 
 
 
-# For production — Gmail SMTP
-# 1. Enable 2FA on your Gmail account
-# 2. Go to Google Account → Security → App Passwords
-# 3. Generate a password for "Mail" + "Other (custom name)"
-# 4. Paste it as EMAIL_HOST_PASSWORD below
+# ── URLs (used in email links and Stripe redirects) ──────────────────────────
+FRONTEND_URL = os.environ.get("FRONTEND_URL", "https://headzup-barbershop-website.vercel.app")
+BACKEND_URL  = os.environ.get("BACKEND_URL",  "https://headzup-barbershop-website-production.up.railway.app")
 
-EMAIL_BACKEND      = "django.core.mail.backends.smtp.EmailBackend"
-EMAIL_HOST         = "smtp.gmail.com"
-EMAIL_PORT         = 587
-EMAIL_USE_TLS      = True
-EMAIL_HOST_USER    = "your-gmail@gmail.com"       # ← change this
-EMAIL_HOST_PASSWORD= "your-app-password-here"     # ← 16-char app password from Google
-DEFAULT_FROM_EMAIL = "HEADZ UP <your-gmail@gmail.com>"  # ← change this
+# ── Email — SendGrid ──────────────────────────────────────────────────────────
+EMAIL_BACKEND   = "django.core.mail.backends.smtp.EmailBackend"
+EMAIL_HOST      = "smtp.sendgrid.net"
+EMAIL_PORT      = 587
+EMAIL_USE_TLS   = True
+EMAIL_HOST_USER = "apikey"                                    # always "apikey" for SendGrid
+EMAIL_HOST_PASSWORD = os.environ.get("SENDGRID_API_KEY", "") # set this in Railway
+DEFAULT_FROM_EMAIL  = os.environ.get("DEFAULT_FROM_EMAIL", "HEADZ UP <your-gmail@gmail.com>")
+
+# ── VAPID keys for Web Push notifications ─────────────────────────────────────
+
+VAPID_PUBLIC_KEY   = os.environ.get("VAPID_PUBLIC_KEY", "8tzDVWarkeSBePoAcGO4UT2Sm-xgkO_BrgdYBHDg15c")
+VAPID_PRIVATE_KEY  = os.environ.get("VAPID_PRIVATE_KEY", "BGKDMi2ZQii3ue33L5GSqT5BgQ1cNKpjDYtyeruq3_i-eF27z3ugWVB9aU6hpV4sy2I_WS02-bvu-5p8AJp_PBQ")
+VAPID_CLAIM_EMAIL  = os.environ.get("VAPID_CLAIM_EMAIL", "cocrofta22@gmail.com")
