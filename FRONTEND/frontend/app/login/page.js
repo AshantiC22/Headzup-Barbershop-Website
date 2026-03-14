@@ -9,6 +9,7 @@ import API from "@/lib/api";
 import LoadingScreen from "@/lib/LoadingScreen";
 import useBreakpoint from "@/lib/useBreakpoint";
 
+// ── Password strength ────────────────────────────────────────────────────────
 function getStrength(pw) {
   if (!pw) return { score: 0, label: "", color: "transparent" };
   let s = 0;
@@ -22,6 +23,33 @@ function getStrength(pw) {
   return { score: s, label: "Strong", color: "#4ade80" };
 }
 
+// ── Validation ───────────────────────────────────────────────────────────────
+// Username: 3–30 chars, any character except whitespace
+function validateUsername(v) {
+  if (!v.trim()) return "Username is required";
+  if (v.trim().length < 3) return "At least 3 characters";
+  if (v.trim().length > 30) return "Max 30 characters";
+  if (/\s/.test(v)) return "No spaces allowed";
+  return null;
+}
+
+// Email: must have @ and a dot after it — allows dummy emails like x@x.com
+function validateEmail(v) {
+  if (!v.trim()) return "Email is required";
+  const re = /^[^\s@]+@[^\s@]+\.[^\s@]{1,}$/;
+  if (!re.test(v.trim())) return "Enter a valid email (e.g. name@example.com)";
+  return null;
+}
+
+// Password: min 6 chars, any character
+function validatePassword(v, label = "Password") {
+  if (!v) return `${label} is required`;
+  if (v.length < 6) return "Minimum 6 characters";
+  if (v.length > 128) return "Max 128 characters";
+  return null;
+}
+
+// ── Icons ────────────────────────────────────────────────────────────────────
 const EyeOpen = () => (
   <svg
     width="16"
@@ -52,10 +80,25 @@ const EyeClosed = () => (
     <line x1="1" y1="1" x2="23" y2="23" />
   </svg>
 );
+const CheckIcon = () => (
+  <svg
+    width="12"
+    height="12"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="3"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <polyline points="20 6 9 17 4 12" />
+  </svg>
+);
 
+// ── Field component ───────────────────────────────────────────────────────────
 function Field({
   label,
-  type,
+  type = "text",
   value,
   onChange,
   onKeyDown,
@@ -65,9 +108,20 @@ function Field({
   showToggle,
   onToggle,
   showPassword,
+  autoComplete,
+  maxLength,
+  children,
 }) {
-  const sf = { fontFamily: "'Syncopate', sans-serif" };
+  const [focused, setFocused] = useState(false);
   const inputType = showToggle ? (showPassword ? "text" : "password") : type;
+  const sf = { fontFamily: "'Syncopate', sans-serif" };
+  const hasError = !!error;
+  const borderColor = hasError
+    ? "rgba(248,113,113,0.6)"
+    : focused
+      ? "#f59e0b"
+      : "rgba(255,255,255,0.1)";
+
   return (
     <div
       className="form-field"
@@ -85,8 +139,9 @@ function Field({
             ...sf,
             fontSize: 8,
             letterSpacing: "0.3em",
-            color: error ? "#f87171" : "#a1a1aa",
+            color: hasError ? "#f87171" : focused ? "#f59e0b" : "#71717a",
             textTransform: "uppercase",
+            transition: "color 0.2s",
           }}
         >
           {label}
@@ -103,32 +158,30 @@ function Field({
           value={value}
           onChange={onChange}
           onKeyDown={onKeyDown}
+          onFocus={() => setFocused(true)}
+          onBlur={() => setFocused(false)}
           placeholder={placeholder}
+          autoComplete={autoComplete}
+          maxLength={maxLength}
           style={{
             width: "100%",
-            background: "#0a0a0a",
-            padding: showToggle ? "14px 48px 14px 16px" : "14px 16px",
-            border: `1px solid ${error ? "rgba(248,113,113,0.5)" : "rgba(255,255,255,0.1)"}`,
+            background: focused ? "rgba(255,255,255,0.03)" : "#0a0a0a",
+            padding: showToggle ? "15px 48px 15px 16px" : "15px 16px",
+            border: `1px solid ${borderColor}`,
             color: "white",
-            fontSize: 14,
+            fontSize: 16,
             outline: "none",
-            fontFamily: "Inter, sans-serif",
-            transition: "border-color 0.2s",
+            fontFamily: "'DM Mono', monospace",
+            transition: "border-color 0.2s, background 0.2s",
             borderRadius: 0,
+            letterSpacing: "0.02em",
           }}
-          onFocus={(e) =>
-            (e.target.style.borderColor = error ? "#f87171" : "#f59e0b")
-          }
-          onBlur={(e) =>
-            (e.target.style.borderColor = error
-              ? "rgba(248,113,113,0.5)"
-              : "rgba(255,255,255,0.1)")
-          }
         />
         {showToggle && (
           <button
             type="button"
             onClick={onToggle}
+            tabIndex={-1}
             style={{
               position: "absolute",
               right: 14,
@@ -140,7 +193,7 @@ function Field({
               color: "#52525b",
               display: "flex",
               alignItems: "center",
-              padding: 0,
+              padding: 4,
               transition: "color 0.2s",
             }}
             onMouseEnter={(e) => (e.currentTarget.style.color = "#f59e0b")}
@@ -155,45 +208,109 @@ function Field({
           style={{
             fontSize: 11,
             color: "#f87171",
-            fontStyle: "italic",
             margin: 0,
+            display: "flex",
+            alignItems: "center",
+            gap: 5,
+            fontFamily: "'DM Mono', monospace",
           }}
         >
-          {error}
+          <span style={{ fontSize: 9 }}>⚠</span> {error}
         </p>
       )}
+      {children}
     </div>
   );
 }
 
+// ── Password strength bar ─────────────────────────────────────────────────────
+function StrengthBar({ password }) {
+  const s = getStrength(password);
+  if (!password) return null;
+  return (
+    <div style={{ marginTop: 8 }}>
+      <div style={{ display: "flex", gap: 3, marginBottom: 5 }}>
+        {[1, 2, 3, 4, 5].map((i) => (
+          <div
+            key={i}
+            style={{
+              flex: 1,
+              height: 3,
+              background: i <= s.score ? s.color : "rgba(255,255,255,0.07)",
+              transition: "background 0.3s",
+              borderRadius: 2,
+            }}
+          />
+        ))}
+      </div>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+        }}
+      >
+        <p
+          style={{
+            fontFamily: "'Syncopate', sans-serif",
+            fontSize: 7,
+            letterSpacing: "0.2em",
+            color: s.color,
+            textTransform: "uppercase",
+            margin: 0,
+          }}
+        >
+          {s.label}
+        </p>
+        {s.score >= 4 && (
+          <span
+            style={{
+              color: "#4ade80",
+              fontSize: 10,
+              display: "flex",
+              alignItems: "center",
+              gap: 3,
+            }}
+          >
+            <CheckIcon /> Strong password
+          </span>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── Alert boxes ───────────────────────────────────────────────────────────────
 function ErrorBox({ message, action, actionLabel }) {
   const sf = { fontFamily: "'Syncopate', sans-serif" };
   if (!message) return null;
   return (
     <div
       style={{
-        padding: "14px 16px",
-        background: "rgba(248,113,113,0.08)",
-        border: "1px solid rgba(248,113,113,0.3)",
+        padding: "13px 16px",
+        background: "rgba(248,113,113,0.06)",
+        border: "1px solid rgba(248,113,113,0.25)",
         display: "flex",
         justifyContent: "space-between",
         alignItems: "center",
         gap: 12,
       }}
     >
-      <p
-        style={{
-          ...sf,
-          fontSize: 8,
-          color: "#f87171",
-          textTransform: "uppercase",
-          letterSpacing: "0.15em",
-          margin: 0,
-          flex: 1,
-        }}
-      >
-        {message}
-      </p>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, flex: 1 }}>
+        <span style={{ color: "#f87171", fontSize: 14, flexShrink: 0 }}>✕</span>
+        <p
+          style={{
+            ...sf,
+            fontSize: 8,
+            color: "#f87171",
+            textTransform: "uppercase",
+            letterSpacing: "0.12em",
+            margin: 0,
+          }}
+        >
+          {message}
+        </p>
+      </div>
       {action && (
         <button
           onClick={action}
@@ -202,7 +319,7 @@ function ErrorBox({ message, action, actionLabel }) {
             fontSize: 7,
             color: "#f59e0b",
             background: "none",
-            border: "1px solid rgba(245,158,11,0.4)",
+            border: "1px solid rgba(245,158,11,0.35)",
             padding: "6px 12px",
             cursor: "pointer",
             textTransform: "uppercase",
@@ -217,7 +334,7 @@ function ErrorBox({ message, action, actionLabel }) {
           }}
           onMouseLeave={(e) => {
             e.currentTarget.style.background = "none";
-            e.currentTarget.style.borderColor = "rgba(245,158,11,0.4)";
+            e.currentTarget.style.borderColor = "rgba(245,158,11,0.35)";
           }}
         >
           {actionLabel}
@@ -233,9 +350,9 @@ function SuccessBox({ message }) {
   return (
     <div
       style={{
-        padding: "14px 16px",
-        background: "rgba(74,222,128,0.08)",
-        border: "1px solid rgba(74,222,128,0.25)",
+        padding: "13px 16px",
+        background: "rgba(74,222,128,0.06)",
+        border: "1px solid rgba(74,222,128,0.2)",
         display: "flex",
         alignItems: "center",
         gap: 10,
@@ -243,8 +360,8 @@ function SuccessBox({ message }) {
     >
       <div
         style={{
-          width: 8,
-          height: 8,
+          width: 7,
+          height: 7,
           background: "#4ade80",
           borderRadius: "50%",
           flexShrink: 0,
@@ -267,6 +384,7 @@ function SuccessBox({ message }) {
   );
 }
 
+// ── Submit button ─────────────────────────────────────────────────────────────
 function SubmitBtn({
   onClick,
   loading,
@@ -285,36 +403,44 @@ function SubmitBtn({
       style={{
         width: "100%",
         padding: "18px",
-        background: isDisabled ? "#3f3f46" : bg,
-        color: isDisabled ? "#71717a" : color,
+        background: isDisabled ? "#27272a" : bg,
+        color: isDisabled ? "#52525b" : color,
         ...sf,
         fontSize: 10,
         fontWeight: 700,
-        letterSpacing: "0.2em",
+        letterSpacing: "0.25em",
         textTransform: "uppercase",
         border: "none",
         cursor: isDisabled ? "not-allowed" : "pointer",
-        transition: "all 0.3s",
+        transition: "all 0.25s",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
         gap: 10,
+        position: "relative",
+        overflow: "hidden",
       }}
       onMouseEnter={(e) => {
-        if (!isDisabled) e.currentTarget.style.background = "#f59e0b";
+        if (!isDisabled) {
+          e.currentTarget.style.background = "#f59e0b";
+          e.currentTarget.style.letterSpacing = "0.3em";
+        }
       }}
       onMouseLeave={(e) => {
-        if (!isDisabled) e.currentTarget.style.background = bg;
+        if (!isDisabled) {
+          e.currentTarget.style.background = bg;
+          e.currentTarget.style.letterSpacing = "0.25em";
+        }
       }}
     >
       {loading ? (
         <>
           <span
             style={{
-              width: 14,
-              height: 14,
-              border: "2px solid #71717a",
-              borderTopColor: "transparent",
+              width: 13,
+              height: 13,
+              border: "2px solid #52525b",
+              borderTopColor: "#a1a1aa",
               borderRadius: "50%",
               display: "inline-block",
               animation: "spin 0.7s linear infinite",
@@ -329,6 +455,41 @@ function SubmitBtn({
   );
 }
 
+// ── Requirements checklist (registration) ────────────────────────────────────
+function Requirement({ met, text }) {
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+      <div
+        style={{
+          width: 14,
+          height: 14,
+          borderRadius: "50%",
+          background: met ? "rgba(74,222,128,0.15)" : "rgba(255,255,255,0.05)",
+          border: `1px solid ${met ? "#4ade80" : "rgba(255,255,255,0.1)"}`,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          flexShrink: 0,
+          transition: "all 0.3s",
+        }}
+      >
+        {met && <CheckIcon />}
+      </div>
+      <span
+        style={{
+          fontSize: 11,
+          color: met ? "#a1a1aa" : "#52525b",
+          transition: "color 0.3s",
+          fontFamily: "'DM Mono', monospace",
+        }}
+      >
+        {text}
+      </span>
+    </div>
+  );
+}
+
+// ── Main page ─────────────────────────────────────────────────────────────────
 function LoginPage() {
   const router = useRouter();
   const canvasRef = useRef(null);
@@ -344,15 +505,21 @@ function LoginPage() {
     }
   }, [searchParams]);
 
+  // Login fields
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [showPw, setShowPw] = useState(false);
+
+  // Register fields
   const [regName, setRegName] = useState("");
   const [regEmail, setRegEmail] = useState("");
   const [regPw, setRegPw] = useState("");
   const [regConfirm, setRegConfirm] = useState("");
   const [showRegPw, setShowRegPw] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
+
+  // Forgot password fields
   const [forgotInput, setForgotInput] = useState("");
   const [forgotStep, setForgotStep] = useState(1);
   const [forgotToken, setForgotToken] = useState("");
@@ -360,6 +527,8 @@ function LoginPage() {
   const [confirmNewPw, setConfirmNewPw] = useState("");
   const [showNewPw, setShowNewPw] = useState(false);
   const [showConfirmNew, setShowConfirmNew] = useState(false);
+
+  // State
   const [fieldErrors, setFieldErrors] = useState({});
   const [apiError, setApiError] = useState("");
   const [apiSuccess, setApiSuccess] = useState("");
@@ -368,8 +537,8 @@ function LoginPage() {
 
   const sf = { fontFamily: "'Syncopate', sans-serif" };
   const { isMobile } = useBreakpoint();
-  const strength = getStrength(regPw);
 
+  // ── Three.js background ──
   useEffect(() => {
     if (!pageReady) return;
     const container = canvasRef.current;
@@ -386,7 +555,7 @@ function LoginPage() {
     renderer.setSize(window.innerWidth, window.innerHeight);
     container.appendChild(renderer.domElement);
     const verts = [];
-    for (let i = 0; i < 1400; i++) {
+    for (let i = 0; i < 1200; i++) {
       verts.push(THREE.MathUtils.randFloatSpread(10));
       verts.push(THREE.MathUtils.randFloatSpread(10));
       verts.push(THREE.MathUtils.randFloatSpread(10));
@@ -394,10 +563,10 @@ function LoginPage() {
     const geo = new THREE.BufferGeometry();
     geo.setAttribute("position", new THREE.Float32BufferAttribute(verts, 3));
     const mat = new THREE.PointsMaterial({
-      size: 0.006,
+      size: 0.005,
       color: 0xf59e0b,
       transparent: true,
-      opacity: 0.22,
+      opacity: 0.18,
     });
     const points = new THREE.Points(geo, mat);
     scene.add(points);
@@ -405,7 +574,7 @@ function LoginPage() {
     let raf;
     const tick = () => {
       raf = requestAnimationFrame(tick);
-      points.rotation.y += 0.0005;
+      points.rotation.y += 0.0004;
       points.rotation.x += 0.0002;
       renderer.render(scene, camera);
     };
@@ -425,6 +594,7 @@ function LoginPage() {
     };
   }, [pageReady]);
 
+  // ── Entry animations ──
   useEffect(() => {
     if (!pageReady) return;
     gsap.from(".auth-logo", {
@@ -436,12 +606,13 @@ function LoginPage() {
     gsap.from(".auth-panel", {
       y: 50,
       opacity: 0,
-      duration: 1.3,
+      duration: 1.2,
       ease: "expo.out",
       delay: 0.1,
     });
   }, [pageReady]);
 
+  // ── Mode switch animations ──
   useEffect(() => {
     setApiError("");
     setApiSuccess("");
@@ -450,19 +621,20 @@ function LoginPage() {
     if (pageReady)
       gsap.fromTo(
         ".form-field",
-        { y: 12, opacity: 0 },
-        { y: 0, opacity: 1, duration: 0.45, stagger: 0.07, ease: "expo.out" },
+        { y: 10, opacity: 0 },
+        { y: 0, opacity: 1, duration: 0.4, stagger: 0.06, ease: "expo.out" },
       );
   }, [mode, pageReady]);
 
   const shake = () =>
     gsap.to(".auth-panel", {
       x: [-8, 8, -6, 6, -3, 3, 0],
-      duration: 0.5,
+      duration: 0.45,
       ease: "power2.out",
     });
   const onEnter = (fn) => (e) => e.key === "Enter" && fn();
 
+  // ── Login ──────────────────────────────────────────────────────────────────
   const handleLogin = async () => {
     const errs = {};
     if (!username.trim()) errs.username = "Username is required";
@@ -488,7 +660,7 @@ function LoginPage() {
         gsap.to(".auth-panel", {
           y: -40,
           opacity: 0,
-          duration: 0.6,
+          duration: 0.5,
           ease: "expo.in",
           onComplete: () => router.push(dest),
         });
@@ -496,7 +668,7 @@ function LoginPage() {
         gsap.to(".auth-panel", {
           y: -40,
           opacity: 0,
-          duration: 0.6,
+          duration: 0.5,
           ease: "expo.in",
           onComplete: () => router.push("/book"),
         });
@@ -533,18 +705,18 @@ function LoginPage() {
     }
   };
 
+  // ── Register ───────────────────────────────────────────────────────────────
   const validateRegister = () => {
     const errs = {};
-    if (!regName.trim()) errs.regName = "Username is required";
-    else if (regName.length < 3) errs.regName = "At least 3 characters";
-    else if (/\s/.test(regName)) errs.regName = "No spaces allowed";
-    if (!regEmail.trim()) errs.regEmail = "Email is required";
-    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(regEmail))
-      errs.regEmail = "Enter a valid email";
-    if (!regPw) errs.regPw = "Password is required";
-    else if (regPw.length < 6) errs.regPw = "Minimum 6 characters";
+    const unErr = validateUsername(regName);
+    if (unErr) errs.regName = unErr;
+    const emErr = validateEmail(regEmail);
+    if (emErr) errs.regEmail = emErr;
+    const pwErr = validatePassword(regPw);
+    if (pwErr) errs.regPw = pwErr;
     if (!regConfirm) errs.regConfirm = "Please confirm your password";
     else if (regPw !== regConfirm) errs.regConfirm = "Passwords don't match";
+    if (!agreedToTerms) errs.terms = "You must agree to continue";
     return errs;
   };
 
@@ -570,7 +742,7 @@ function LoginPage() {
       });
       localStorage.setItem("access", res.data.access);
       localStorage.setItem("refresh", res.data.refresh);
-      setTimeout(() => router.push("/book"), 1200);
+      setTimeout(() => router.push("/book"), 1400);
     } catch (err) {
       const data = err.response?.data;
       const newErrs = {};
@@ -589,7 +761,8 @@ function LoginPage() {
       if (Object.keys(newErrs).length) setFieldErrors(newErrs);
       else
         setApiError(
-          data?.detail || "Registration failed. Please check your info.",
+          data?.detail ||
+            "Registration failed. Please check your info and try again.",
         );
       shake();
     } finally {
@@ -597,6 +770,7 @@ function LoginPage() {
     }
   };
 
+  // ── Forgot password ────────────────────────────────────────────────────────
   const handleForgotLookup = async () => {
     if (!forgotInput.trim()) {
       setFieldErrors({ forgotInput: "Enter your username or email" });
@@ -626,8 +800,8 @@ function LoginPage() {
 
   const handlePasswordReset = async () => {
     const errs = {};
-    if (!newPw) errs.newPw = "New password is required";
-    else if (newPw.length < 6) errs.newPw = "Minimum 6 characters";
+    const pwErr = validatePassword(newPw, "New password");
+    if (pwErr) errs.newPw = pwErr;
     if (!confirmNewPw) errs.confirmNewPw = "Please confirm your password";
     else if (newPw !== confirmNewPw)
       errs.confirmNewPw = "Passwords don't match";
@@ -645,14 +819,13 @@ function LoginPage() {
         password: newPw,
       });
       setApiSuccess("Password updated! Signing you in...");
-      const loginField = forgotInput.includes("@") ? null : forgotInput.trim();
       const res = await API.post("token/", {
-        username: loginField || forgotInput.trim(),
+        username: forgotInput.trim(),
         password: newPw,
       });
       localStorage.setItem("access", res.data.access);
       localStorage.setItem("refresh", res.data.refresh);
-      setTimeout(() => router.push("/book"), 1200);
+      setTimeout(() => router.push("/book"), 1400);
     } catch {
       setApiError("Could not reset password. Please start over.");
       shake();
@@ -670,17 +843,17 @@ function LoginPage() {
     setForgotToken("");
   };
 
+  // ── Render ─────────────────────────────────────────────────────────────────
   return (
     <>
       <style jsx global>{`
-        @import url("https://fonts.googleapis.com/css2?family=Syncopate:wght@400;700&family=Inter:wght@300;400;700;900&display=swap");
+        @import url("https://fonts.googleapis.com/css2?family=Syncopate:wght@400;700&family=DM+Mono:wght@400;500&display=swap");
         html,
         body {
           background: #050505 !important;
           margin: 0;
           padding: 0;
           color: white;
-          font-family: "Inter", sans-serif;
         }
         *,
         *::before,
@@ -697,7 +870,7 @@ function LoginPage() {
         }
         .page-root {
           opacity: 0;
-          animation: pageIn 0.5s ease forwards;
+          animation: pageIn 0.45s ease forwards;
         }
         @keyframes pageIn {
           to {
@@ -722,7 +895,7 @@ function LoginPage() {
         .mode-tab {
           position: relative;
           cursor: pointer;
-          transition: all 0.3s;
+          transition: all 0.25s;
         }
         .mode-tab::after {
           content: "";
@@ -733,10 +906,29 @@ function LoginPage() {
           height: 2px;
           background: #f59e0b;
           transform: scaleX(0);
-          transition: transform 0.3s ease;
+          transition: transform 0.25s ease;
         }
         .mode-tab.active::after {
           transform: scaleX(1);
+        }
+        .checkbox-custom {
+          width: 18px;
+          height: 18px;
+          border: 1px solid rgba(255, 255, 255, 0.15);
+          background: transparent;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          cursor: pointer;
+          flex-shrink: 0;
+          transition: all 0.2s;
+        }
+        .checkbox-custom.checked {
+          background: rgba(245, 158, 11, 0.15);
+          border-color: #f59e0b;
+        }
+        input[type="checkbox"] {
+          display: none;
         }
       `}</style>
 
@@ -759,7 +951,7 @@ function LoginPage() {
               inset: 0,
               zIndex: 1,
               pointerEvents: "none",
-              opacity: 0.04,
+              opacity: 0.03,
               backgroundImage:
                 "url('https://grainy-gradients.vercel.app/noise.svg')",
             }}
@@ -770,15 +962,16 @@ function LoginPage() {
               top: "40%",
               left: "50%",
               transform: "translate(-50%,-50%)",
-              width: 700,
-              height: 700,
+              width: 600,
+              height: 600,
               zIndex: 1,
               pointerEvents: "none",
               background:
-                "radial-gradient(circle, rgba(245,158,11,0.05) 0%, transparent 65%)",
+                "radial-gradient(circle, rgba(245,158,11,0.04) 0%, transparent 65%)",
             }}
           />
 
+          {/* Nav */}
           <div
             style={{
               position: "fixed",
@@ -786,12 +979,12 @@ function LoginPage() {
               left: 0,
               right: 0,
               zIndex: 50,
-              padding: "24px 32px",
+              padding: "20px 28px",
               display: "flex",
               justifyContent: "space-between",
               alignItems: "center",
-              background: "rgba(5,5,5,0.8)",
-              backdropFilter: "blur(12px)",
+              background: "rgba(5,5,5,0.85)",
+              backdropFilter: "blur(16px)",
               borderBottom: "1px solid rgba(255,255,255,0.04)",
             }}
           >
@@ -800,14 +993,14 @@ function LoginPage() {
               style={{
                 ...sf,
                 fontSize: 8,
-                letterSpacing: "0.25em",
+                letterSpacing: "0.2em",
                 textTransform: "uppercase",
-                color: "#71717a",
+                color: "#52525b",
                 textDecoration: "none",
                 transition: "color 0.2s",
               }}
               onMouseEnter={(e) => (e.target.style.color = "#f59e0b")}
-              onMouseLeave={(e) => (e.target.style.color = "#71717a")}
+              onMouseLeave={(e) => (e.target.style.color = "#52525b")}
             >
               ← Home
             </a>
@@ -825,42 +1018,44 @@ function LoginPage() {
             </div>
           </div>
 
+          {/* Main */}
           <div
             className="login-scroll"
             style={{
               position: "relative",
               zIndex: 10,
-              padding: isMobile ? "72px 14px 40px" : "80px 24px 40px",
+              padding: isMobile ? "72px 16px 40px" : "80px 24px 40px",
             }}
           >
             <div
               className="auth-panel"
-              style={{ width: "100%", maxWidth: 500 }}
+              style={{ width: "100%", maxWidth: 480 }}
             >
-              <div style={{ textAlign: "center", marginBottom: 36 }}>
+              {/* Header */}
+              <div style={{ textAlign: "center", marginBottom: 32 }}>
                 <p
                   style={{
                     ...sf,
                     fontSize: 8,
                     letterSpacing: "0.5em",
-                    color: "#71717a",
+                    color: "#52525b",
                     textTransform: "uppercase",
-                    marginBottom: 12,
+                    marginBottom: 10,
                   }}
                 >
                   {mode === "login"
                     ? "Welcome Back"
                     : mode === "register"
-                      ? "Create Your Account"
+                      ? "Join The Roster"
                       : "Account Recovery"}
                 </p>
                 <h1
                   style={{
                     ...sf,
-                    fontSize: "clamp(1.6rem, 5vw, 2.6rem)",
+                    fontSize: "clamp(1.8rem, 6vw, 2.8rem)",
                     fontWeight: 900,
                     textTransform: "uppercase",
-                    lineHeight: 1,
+                    lineHeight: 0.95,
                     color: "white",
                     margin: 0,
                   }}
@@ -890,21 +1085,29 @@ function LoginPage() {
                     </>
                   )}
                 </h1>
-                <p style={{ color: "#52525b", fontSize: 12, marginTop: 10 }}>
+                <p
+                  style={{
+                    color: "#3f3f46",
+                    fontSize: 12,
+                    marginTop: 10,
+                    fontFamily: "'DM Mono', monospace",
+                  }}
+                >
                   {mode === "login" && "Access your bookings and account"}
                   {mode === "register" &&
-                    "Takes 30 seconds — no credit card required"}
+                    "Create your account — takes under a minute"}
                   {mode === "forgot" &&
-                    "Enter your username or email to recover your account"}
+                    "We'll verify your account and let you set a new password"}
                 </p>
               </div>
 
+              {/* Session expired banner */}
               {sessionExpired && (
                 <div
                   style={{
                     padding: "12px 16px",
-                    background: "rgba(245,158,11,0.08)",
-                    border: "1px solid rgba(245,158,11,0.25)",
+                    background: "rgba(245,158,11,0.06)",
+                    border: "1px solid rgba(245,158,11,0.2)",
                     display: "flex",
                     justifyContent: "space-between",
                     alignItems: "center",
@@ -914,15 +1117,15 @@ function LoginPage() {
                 >
                   <p
                     style={{
-                      fontFamily: "'Syncopate',sans-serif",
+                      ...sf,
                       fontSize: 8,
                       color: "#f59e0b",
                       textTransform: "uppercase",
-                      letterSpacing: "0.15em",
+                      letterSpacing: "0.12em",
                       margin: 0,
                     }}
                   >
-                    Your session expired — please sign in again
+                    Session expired — please sign in again
                   </p>
                   <button
                     onClick={() => setSessionExpired(false)}
@@ -931,7 +1134,7 @@ function LoginPage() {
                       border: "none",
                       color: "#52525b",
                       cursor: "pointer",
-                      fontSize: 12,
+                      fontSize: 14,
                       padding: 0,
                       lineHeight: 1,
                     }}
@@ -941,12 +1144,13 @@ function LoginPage() {
                 </div>
               )}
 
+              {/* Mode tabs */}
               {mode !== "forgot" && (
                 <div
                   style={{
                     display: "flex",
-                    marginBottom: 32,
-                    borderBottom: "1px solid rgba(255,255,255,0.07)",
+                    marginBottom: 28,
+                    borderBottom: "1px solid rgba(255,255,255,0.06)",
                   }}
                 >
                   {[
@@ -963,7 +1167,7 @@ function LoginPage() {
                       className={`mode-tab${mode === key ? " active" : ""}`}
                       style={{
                         flex: 1,
-                        padding: "14px 12px",
+                        padding: "13px 12px",
                         background: "transparent",
                         border: "none",
                         cursor: "pointer",
@@ -975,10 +1179,10 @@ function LoginPage() {
                           ...sf,
                           fontSize: 9,
                           fontWeight: 700,
-                          letterSpacing: "0.15em",
+                          letterSpacing: "0.12em",
                           textTransform: "uppercase",
-                          color: mode === key ? "white" : "#52525b",
-                          transition: "color 0.3s",
+                          color: mode === key ? "white" : "#3f3f46",
+                          transition: "color 0.25s",
                         }}
                       >
                         {label}
@@ -986,9 +1190,10 @@ function LoginPage() {
                       <div
                         style={{
                           fontSize: 10,
-                          color: mode === key ? "#71717a" : "#3f3f46",
+                          color: mode === key ? "#52525b" : "#27272a",
                           marginTop: 2,
-                          transition: "color 0.3s",
+                          transition: "color 0.25s",
+                          fontFamily: "'DM Mono', monospace",
                         }}
                       >
                         {sub}
@@ -998,13 +1203,14 @@ function LoginPage() {
                 </div>
               )}
 
+              {/* Back button for forgot */}
               {mode === "forgot" && (
                 <button
                   onClick={resetForgot}
                   style={{
                     ...sf,
                     fontSize: 8,
-                    color: "#71717a",
+                    color: "#52525b",
                     background: "none",
                     border: "none",
                     cursor: "pointer",
@@ -1021,37 +1227,39 @@ function LoginPage() {
                     (e.currentTarget.style.color = "#f59e0b")
                   }
                   onMouseLeave={(e) =>
-                    (e.currentTarget.style.color = "#71717a")
+                    (e.currentTarget.style.color = "#52525b")
                   }
                 >
                   ← Back to Sign In
                 </button>
               )}
 
+              {/* Form panel */}
               <div
                 style={{
-                  background: "rgba(255,255,255,0.02)",
-                  border: "1px solid rgba(255,255,255,0.07)",
-                  padding: isMobile ? "24px 18px" : "36px 32px",
+                  background: "rgba(255,255,255,0.015)",
+                  border: "1px solid rgba(255,255,255,0.06)",
+                  padding: isMobile ? "24px 18px" : "32px 28px",
                 }}
               >
-                {/* LOGIN */}
+                {/* ── LOGIN ── */}
                 {mode === "login" && (
                   <div
                     style={{
                       display: "flex",
                       flexDirection: "column",
-                      gap: 20,
+                      gap: 18,
                     }}
                   >
                     <Field
                       label="Username"
-                      type="text"
                       value={username}
                       onChange={(e) => setUsername(e.target.value)}
                       onKeyDown={onEnter(handleLogin)}
                       placeholder="your_username"
                       error={fieldErrors.username}
+                      autoComplete="username"
+                      maxLength={30}
                     />
                     <Field
                       label="Password"
@@ -1064,6 +1272,7 @@ function LoginPage() {
                       showToggle
                       showPassword={showPw}
                       onToggle={() => setShowPw(!showPw)}
+                      autoComplete="current-password"
                     />
                     <ErrorBox
                       message={apiError}
@@ -1093,8 +1302,8 @@ function LoginPage() {
                         textAlign: "center",
                         ...sf,
                         fontSize: 8,
-                        color: "#52525b",
-                        letterSpacing: "0.2em",
+                        color: "#3f3f46",
+                        letterSpacing: "0.15em",
                         textTransform: "uppercase",
                         margin: 0,
                       }}
@@ -1109,7 +1318,7 @@ function LoginPage() {
                           cursor: "pointer",
                           ...sf,
                           fontSize: 8,
-                          letterSpacing: "0.2em",
+                          letterSpacing: "0.15em",
                           textDecoration: "underline",
                           textTransform: "uppercase",
                           padding: 0,
@@ -1121,7 +1330,7 @@ function LoginPage() {
                   </div>
                 )}
 
-                {/* REGISTER */}
+                {/* ── REGISTER ── */}
                 {mode === "register" && (
                   <div
                     style={{
@@ -1130,81 +1339,98 @@ function LoginPage() {
                       gap: 18,
                     }}
                   >
-                    <div
-                      style={{
-                        display: "grid",
-                        gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr",
-                        gap: 14,
-                      }}
+                    {/* Username */}
+                    <Field
+                      label="Username"
+                      value={regName}
+                      onChange={(e) => setRegName(e.target.value)}
+                      onKeyDown={onEnter(handleRegister)}
+                      placeholder="your_username"
+                      error={fieldErrors.regName}
+                      autoComplete="username"
+                      maxLength={30}
+                      hint={
+                        regName.trim().length > 0
+                          ? `${regName.trim().length}/30`
+                          : "3–30 chars"
+                      }
                     >
-                      <Field
-                        label="Username"
-                        type="text"
-                        value={regName}
-                        onChange={(e) => setRegName(e.target.value)}
-                        onKeyDown={onEnter(handleRegister)}
-                        placeholder="no_spaces"
-                        error={fieldErrors.regName}
-                        hint="3+ chars"
-                      />
-                      <Field
-                        label="Email"
-                        type="email"
-                        value={regEmail}
-                        onChange={(e) => setRegEmail(e.target.value)}
-                        onKeyDown={onEnter(handleRegister)}
-                        placeholder="you@email.com"
-                        error={fieldErrors.regEmail}
-                      />
-                    </div>
-                    <div>
-                      <Field
-                        label="Password"
-                        type="password"
-                        value={regPw}
-                        onChange={(e) => setRegPw(e.target.value)}
-                        onKeyDown={onEnter(handleRegister)}
-                        placeholder="min. 6 characters"
-                        error={fieldErrors.regPw}
-                        showToggle
-                        showPassword={showRegPw}
-                        onToggle={() => setShowRegPw(!showRegPw)}
-                      />
-                      {regPw && (
-                        <div style={{ marginTop: 8 }}>
-                          <div
-                            style={{ display: "flex", gap: 4, marginBottom: 4 }}
-                          >
-                            {[1, 2, 3, 4, 5].map((i) => (
-                              <div
-                                key={i}
-                                style={{
-                                  flex: 1,
-                                  height: 2,
-                                  background:
-                                    i <= strength.score
-                                      ? strength.color
-                                      : "rgba(255,255,255,0.08)",
-                                  transition: "background 0.3s",
-                                }}
-                              />
-                            ))}
-                          </div>
-                          <p
-                            style={{
-                              ...sf,
-                              fontSize: 7,
-                              letterSpacing: "0.2em",
-                              color: strength.color,
-                              textTransform: "uppercase",
-                              margin: 0,
-                            }}
-                          >
-                            {strength.label}
-                          </p>
+                      {/* Live requirements */}
+                      {regName.length > 0 && (
+                        <div
+                          style={{
+                            display: "flex",
+                            flexDirection: "column",
+                            gap: 4,
+                            marginTop: 4,
+                          }}
+                        >
+                          <Requirement
+                            met={regName.trim().length >= 3}
+                            text="At least 3 characters"
+                          />
+                          <Requirement
+                            met={!/\s/.test(regName)}
+                            text="No spaces"
+                          />
+                          <Requirement
+                            met={regName.trim().length <= 30}
+                            text="Under 30 characters"
+                          />
                         </div>
                       )}
-                    </div>
+                    </Field>
+
+                    {/* Email */}
+                    <Field
+                      label="Email Address"
+                      type="email"
+                      value={regEmail}
+                      onChange={(e) => setRegEmail(e.target.value)}
+                      onKeyDown={onEnter(handleRegister)}
+                      placeholder="you@example.com"
+                      error={fieldErrors.regEmail}
+                      autoComplete="email"
+                      hint="Used for booking confirmations"
+                    />
+
+                    {/* Password */}
+                    <Field
+                      label="Password"
+                      type="password"
+                      value={regPw}
+                      onChange={(e) => setRegPw(e.target.value)}
+                      onKeyDown={onEnter(handleRegister)}
+                      placeholder="Min. 6 characters"
+                      error={fieldErrors.regPw}
+                      showToggle
+                      showPassword={showRegPw}
+                      onToggle={() => setShowRegPw(!showRegPw)}
+                      autoComplete="new-password"
+                    >
+                      <StrengthBar password={regPw} />
+                      {regPw.length > 0 && (
+                        <div
+                          style={{
+                            display: "flex",
+                            flexDirection: "column",
+                            gap: 4,
+                            marginTop: 6,
+                          }}
+                        >
+                          <Requirement
+                            met={regPw.length >= 6}
+                            text="At least 6 characters"
+                          />
+                          <Requirement
+                            met={regPw.length <= 128}
+                            text="Under 128 characters"
+                          />
+                        </div>
+                      )}
+                    </Field>
+
+                    {/* Confirm password */}
                     <Field
                       label="Confirm Password"
                       type="password"
@@ -1216,29 +1442,77 @@ function LoginPage() {
                       showToggle
                       showPassword={showConfirm}
                       onToggle={() => setShowConfirm(!showConfirm)}
-                    />
-                    <p
+                      autoComplete="new-password"
+                    >
+                      {regConfirm.length > 0 && regPw.length > 0 && (
+                        <div style={{ marginTop: 4 }}>
+                          <Requirement
+                            met={regPw === regConfirm}
+                            text={
+                              regPw === regConfirm
+                                ? "Passwords match"
+                                : "Passwords don't match yet"
+                            }
+                          />
+                        </div>
+                      )}
+                    </Field>
+
+                    {/* Terms */}
+                    <div
                       style={{
-                        fontSize: 11,
-                        color: "#3f3f46",
-                        lineHeight: 1.6,
-                        margin: 0,
+                        display: "flex",
+                        alignItems: "flex-start",
+                        gap: 12,
                       }}
                     >
-                      By creating an account you agree to our{" "}
-                      <a
-                        href="/terms"
-                        target="_blank"
-                        rel="noopener noreferrer"
+                      <div
+                        className={`checkbox-custom${agreedToTerms ? " checked" : ""}`}
+                        onClick={() => setAgreedToTerms(!agreedToTerms)}
+                        style={{ marginTop: 2 }}
+                      >
+                        {agreedToTerms && <CheckIcon />}
+                      </div>
+                      <p
                         style={{
-                          color: "#f59e0b",
-                          textDecoration: "underline",
+                          fontSize: 11,
+                          color: "#52525b",
+                          lineHeight: 1.7,
+                          margin: 0,
+                          fontFamily: "'DM Mono', monospace",
+                          cursor: "pointer",
+                        }}
+                        onClick={() => setAgreedToTerms(!agreedToTerms)}
+                      >
+                        I agree to the{" "}
+                        <a
+                          href="/terms"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={(e) => e.stopPropagation()}
+                          style={{
+                            color: "#f59e0b",
+                            textDecoration: "underline",
+                          }}
+                        >
+                          Terms of Service & Privacy Policy
+                        </a>{" "}
+                        and consent to receiving booking confirmation emails.
+                      </p>
+                    </div>
+                    {fieldErrors.terms && (
+                      <p
+                        style={{
+                          fontSize: 11,
+                          color: "#f87171",
+                          margin: "0",
+                          fontFamily: "'DM Mono', monospace",
                         }}
                       >
-                        Terms & Privacy Policy
-                      </a>{" "}
-                      and to receive appointment confirmation emails.
-                    </p>
+                        ⚠ {fieldErrors.terms}
+                      </p>
+                    )}
+
                     <ErrorBox message={apiError} />
                     <SuccessBox message={apiSuccess} />
                     <SubmitBtn
@@ -1249,13 +1523,14 @@ function LoginPage() {
                       loadingLabel="Creating Account..."
                       bg="#f59e0b"
                     />
+
                     <p
                       style={{
                         textAlign: "center",
                         ...sf,
                         fontSize: 8,
-                        color: "#52525b",
-                        letterSpacing: "0.2em",
+                        color: "#3f3f46",
+                        letterSpacing: "0.15em",
                         textTransform: "uppercase",
                         margin: 0,
                       }}
@@ -1270,28 +1545,29 @@ function LoginPage() {
                           cursor: "pointer",
                           ...sf,
                           fontSize: 8,
-                          letterSpacing: "0.2em",
+                          letterSpacing: "0.15em",
                           textDecoration: "underline",
                           textTransform: "uppercase",
                           padding: 0,
                         }}
                       >
-                        Sign in
+                        Sign In
                       </button>
                     </p>
                   </div>
                 )}
 
-                {/* FORGOT */}
+                {/* ── FORGOT PASSWORD ── */}
                 {mode === "forgot" && (
                   <div
                     style={{
                       display: "flex",
                       flexDirection: "column",
-                      gap: 20,
+                      gap: 18,
                     }}
                   >
-                    <div style={{ display: "flex", gap: 8 }}>
+                    {/* Step indicator */}
+                    <div style={{ display: "flex", gap: 6 }}>
                       {[1, 2].map((n) => (
                         <div
                           key={n}
@@ -1301,7 +1577,7 @@ function LoginPage() {
                             background:
                               forgotStep >= n
                                 ? "#f59e0b"
-                                : "rgba(255,255,255,0.08)",
+                                : "rgba(255,255,255,0.07)",
                             transition: "background 0.4s",
                             borderRadius: 2,
                           }}
@@ -1328,35 +1604,33 @@ function LoginPage() {
                       <>
                         <Field
                           label="Username or Email"
-                          type="text"
                           value={forgotInput}
                           onChange={(e) => setForgotInput(e.target.value)}
                           onKeyDown={onEnter(handleForgotLookup)}
-                          placeholder="your_username or email@example.com"
+                          placeholder="your_username or you@example.com"
                           error={fieldErrors.forgotInput}
+                          autoComplete="username"
                         />
                         <div
                           style={{
-                            padding: "12px 16px",
-                            background: "rgba(245,158,11,0.05)",
-                            border: "1px solid rgba(245,158,11,0.15)",
+                            padding: "12px 14px",
+                            background: "rgba(245,158,11,0.04)",
+                            border: "1px solid rgba(245,158,11,0.12)",
                           }}
                         >
                           <p
                             style={{
                               fontSize: 11,
-                              color: "#a1a1aa",
+                              color: "#71717a",
                               margin: 0,
-                              lineHeight: 1.6,
+                              lineHeight: 1.7,
+                              fontFamily: "'DM Mono', monospace",
                             }}
                           >
                             Enter your{" "}
                             <span style={{ color: "white" }}>username</span> or{" "}
-                            <span style={{ color: "white" }}>
-                              email address
-                            </span>
-                            . We'll verify your account so you can set a new
-                            password.
+                            <span style={{ color: "white" }}>email</span>. We'll
+                            verify your account so you can set a new password.
                           </p>
                         </div>
                         <ErrorBox message={apiError} />
@@ -1373,9 +1647,9 @@ function LoginPage() {
                       <>
                         <div
                           style={{
-                            padding: "12px 16px",
-                            background: "rgba(74,222,128,0.05)",
-                            border: "1px solid rgba(74,222,128,0.2)",
+                            padding: "12px 14px",
+                            background: "rgba(74,222,128,0.04)",
+                            border: "1px solid rgba(74,222,128,0.15)",
                             display: "flex",
                             alignItems: "center",
                             gap: 10,
@@ -1393,8 +1667,9 @@ function LoginPage() {
                           <p
                             style={{
                               fontSize: 11,
-                              color: "#a1a1aa",
+                              color: "#71717a",
                               margin: 0,
+                              fontFamily: "'DM Mono', monospace",
                             }}
                           >
                             Account verified for{" "}
@@ -1403,43 +1678,21 @@ function LoginPage() {
                             </span>
                           </p>
                         </div>
-                        <div>
-                          <Field
-                            label="New Password"
-                            type="password"
-                            value={newPw}
-                            onChange={(e) => setNewPw(e.target.value)}
-                            onKeyDown={onEnter(handlePasswordReset)}
-                            placeholder="min. 6 characters"
-                            error={fieldErrors.newPw}
-                            showToggle
-                            showPassword={showNewPw}
-                            onToggle={() => setShowNewPw(!showNewPw)}
-                          />
-                          {newPw && (
-                            <div style={{ marginTop: 8 }}>
-                              <div style={{ display: "flex", gap: 4 }}>
-                                {[1, 2, 3, 4, 5].map((i) => {
-                                  const s = getStrength(newPw);
-                                  return (
-                                    <div
-                                      key={i}
-                                      style={{
-                                        flex: 1,
-                                        height: 2,
-                                        background:
-                                          i <= s.score
-                                            ? s.color
-                                            : "rgba(255,255,255,0.08)",
-                                        transition: "background 0.3s",
-                                      }}
-                                    />
-                                  );
-                                })}
-                              </div>
-                            </div>
-                          )}
-                        </div>
+                        <Field
+                          label="New Password"
+                          type="password"
+                          value={newPw}
+                          onChange={(e) => setNewPw(e.target.value)}
+                          onKeyDown={onEnter(handlePasswordReset)}
+                          placeholder="Min. 6 characters"
+                          error={fieldErrors.newPw}
+                          showToggle
+                          showPassword={showNewPw}
+                          onToggle={() => setShowNewPw(!showNewPw)}
+                          autoComplete="new-password"
+                        >
+                          <StrengthBar password={newPw} />
+                        </Field>
                         <Field
                           label="Confirm New Password"
                           type="password"
@@ -1451,6 +1704,7 @@ function LoginPage() {
                           showToggle
                           showPassword={showConfirmNew}
                           onToggle={() => setShowConfirmNew(!showConfirmNew)}
+                          autoComplete="new-password"
                         />
                         <ErrorBox message={apiError} />
                         <SuccessBox message={apiSuccess} />
@@ -1469,8 +1723,8 @@ function LoginPage() {
                         textAlign: "center",
                         ...sf,
                         fontSize: 8,
-                        color: "#52525b",
-                        letterSpacing: "0.2em",
+                        color: "#3f3f46",
+                        letterSpacing: "0.15em",
                         textTransform: "uppercase",
                         margin: 0,
                       }}
@@ -1485,7 +1739,7 @@ function LoginPage() {
                           cursor: "pointer",
                           ...sf,
                           fontSize: 8,
-                          letterSpacing: "0.2em",
+                          letterSpacing: "0.15em",
                           textDecoration: "underline",
                           textTransform: "uppercase",
                           padding: 0,
@@ -1504,7 +1758,7 @@ function LoginPage() {
                   marginTop: 24,
                   ...sf,
                   fontSize: 7,
-                  color: "#27272a",
+                  color: "#1c1c1c",
                   letterSpacing: "0.5em",
                   textTransform: "uppercase",
                 }}
@@ -1513,7 +1767,6 @@ function LoginPage() {
               </p>
             </div>
           </div>
-          <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
         </div>
       )}
     </>
