@@ -385,26 +385,44 @@ class BarberScheduleView(APIView):
     def get(self, request):
         if not request.user.is_staff:
             return Response({"error": "Admin access required"}, status=403)
+
         date      = request.query_params.get("date")
         barber_id = request.query_params.get("barber")
-        queryset  = Appointment.objects.select_related("user", "service", "barber").order_by("date", "time")
-        if date:
-            queryset = queryset.filter(date=date)
+        month_view = request.query_params.get("month") == "true"
+
+        queryset = Appointment.objects.select_related("user", "service", "barber").order_by("date", "time")
+
         if barber_id:
             queryset = queryset.filter(barber_id=barber_id)
 
+        # Month view — return entire month for calendar dot indicators
+        if month_view and date:
+            try:
+                from datetime import date as date_type
+                parsed = date_type.fromisoformat(date)
+                import calendar
+                _, days_in_month = calendar.monthrange(parsed.year, parsed.month)
+                month_start = date_type(parsed.year, parsed.month, 1)
+                month_end   = date_type(parsed.year, parsed.month, days_in_month)
+                queryset = queryset.filter(date__gte=month_start, date__lte=month_end)
+            except Exception:
+                pass
+        elif date:
+            queryset = queryset.filter(date=date)
+
         data = [{
-            "id":             appt.id,
-            "client":         appt.user.username,
-            "client_email":   appt.user.email,
-            "service":        appt.service.name if appt.service else "",
-            "service_price":  str(appt.service.price) if appt.service else "",
-            "barber":         appt.barber.name if appt.barber else "",
-            "barber_id":      appt.barber.id if appt.barber else None,
-            "date":           str(appt.date),
-            "time":           str(appt.time),
-            "payment_method": appt.payment_method,
-            "status":         appt.status,
+            "id":               appt.id,
+            "client":           appt.user.username,
+            "client_email":     appt.user.email,
+            "service":          appt.service.name if appt.service else "",
+            "service_price":    str(appt.service.price) if appt.service else "",
+            "service_duration": appt.service.duration_minutes if appt.service else 30,
+            "barber":           appt.barber.name if appt.barber else "",
+            "barber_id":        appt.barber.id if appt.barber else None,
+            "date":             str(appt.date),
+            "time":             str(appt.time),
+            "payment_method":   appt.payment_method,
+            "status":           appt.status,
         } for appt in queryset]
 
         total   = queryset.count()
