@@ -1,14 +1,31 @@
-import type { NextConfig } from "next";
-
+/** @type {import('next').NextConfig} */
 const nextConfig = {
-  async redirects() {
+  async headers() {
     return [
       {
-        source: "/",
-        destination: "/home",
-        permanent: false,
+        source: "/site.webmanifest",
+        headers: [
+          {
+            key: "Content-Type",
+            value: "application/manifest+json",
+          },
+        ],
+      },
+      {
+        source: "/sw.js",
+        headers: [
+          {
+            key: "Content-Type",
+            value: "application/javascript",
+          },
+          {
+            key: "Service-Worker-Allowed",
+            value: "/",
+          },
+        ],
       },
     ];
   },
 };
-export default nextConfig;
+
+module.exports = nextConfig;

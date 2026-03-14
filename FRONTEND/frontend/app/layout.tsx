@@ -1,85 +1,61 @@
 import type { Metadata, Viewport } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Syncopate } from "next/font/google";
 import "./globals.css";
-import PWAProvider from "@/lib/PWAProvider";
 
-const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+const syncopate = Syncopate({
+  weight: ["400", "700"],
   subsets: ["latin"],
+  variable: "--font-syncopate",
+  display: "swap",
 });
 
 export const viewport: Viewport = {
-  themeColor: "#040404",
   width: "device-width",
   initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  viewportFit: "cover", // critical for iPhone notch/home bar
+  themeColor: "#040404",
 };
 
 export const metadata: Metadata = {
-  title: {
-    default: "HEADZ UP Barbershop — Hattiesburg, MS",
-    template: "%s | HEADZ UP Barbershop",
-  },
-  description:
-    "Hattiesburg's highest-rated barbershop. Precision cuts, fades, beard trims, and straight razor shaves. Book online with Jarvis or Mr. J.",
-  keywords: [
-    "barbershop Hattiesburg MS",
-    "haircut Hattiesburg",
-    "fade haircut",
-    "beard trim",
-    "book barber online",
-    "HEADZ UP barbershop",
-    "Hattiesburg barber",
-  ],
-  authors: [{ name: "HEADZ UP Barbershop" }],
-  creator: "HEADZ UP Barbershop",
-  metadataBase: new URL("https://headzupbarbershop.com"),
-  openGraph: {
-    type: "website",
-    locale: "en_US",
-    url: "https://headzupbarbershop.com",
-    siteName: "HEADZ UP Barbershop",
-    title: "HEADZ UP Barbershop — Hattiesburg, MS",
-    description:
-      "Hattiesburg's highest-rated barbershop. Book your cut online.",
-    images: [
+  title: "HEADZ UP Barbershop",
+  description: "Book your haircut at HEADZ UP Barbershop in Hattiesburg, MS",
+  manifest: "/site.webmanifest",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent", // makes status bar transparent on iOS
+    title: "HEADZ UP",
+    startupImage: [
       {
-        url: "/og-image.jpg",
-        width: 1200,
-        height: 630,
-        alt: "HEADZ UP Barbershop — Hattiesburg, MS",
+        url: "/apple-touch-icon.png",
       },
     ],
   },
-  twitter: {
-    card: "summary_large_image",
-    title: "HEADZ UP Barbershop — Hattiesburg, MS",
-    description:
-      "Hattiesburg's highest-rated barbershop. Book your cut online.",
-    images: ["/og-image.jpg"],
-  },
-  robots: {
-    index: true,
-    follow: true,
-    googleBot: { index: true, follow: true },
-  },
   icons: {
-    icon: [
-      { url: "/favicon.svg", type: "image/svg+xml" },
-      { url: "/favicon.ico", sizes: "any" },
-    ],
     apple: "/apple-touch-icon.png",
-    shortcut: "/favicon.ico",
+    icon: [
+      { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icon-512.png", sizes: "512x512", type: "image/png" },
+    ],
   },
-  manifest: "/site.webmanifest",
+  other: {
+    "mobile-web-app-capable": "yes",
+    "apple-mobile-web-app-capable": "yes",
+    "apple-mobile-web-app-status-bar-style": "black-translucent",
+    "format-detection": "telephone=no",
+  },
 };
 
 export default function RootLayout({
   children,
-}: Readonly<{ children: React.ReactNode }>) {
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
   return (
-    <html lang="en">
+    <html lang="en" className={syncopate.variable}>
       <head>
+        {/* Preconnect to Google Fonts for faster load */}
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link
           rel="preconnect"
@@ -87,10 +63,7 @@ export default function RootLayout({
           crossOrigin="anonymous"
         />
       </head>
-      <body className={`${geistSans.variable} ${geistMono.variable}`}>
-        {children}
-        <PWAProvider />
-      </body>
+      <body>{children}</body>
     </html>
   );
 }

@@ -1,78 +1,187 @@
-/* ── Base reset ─────────────────────────────────────────────────────────────── */
+@import url("https://fonts.googleapis.com/css2?family=Syncopate:wght@400;700&family=DM+Serif+Display:ital,wght@0,400;1,400&family=DM+Mono:wght@400;500&display=swap");
+
+/* ── Reset & Base ──────────────────────────────────────────────────────────── */
 *,
 *::before,
 *::after {
   box-sizing: border-box;
   margin: 0;
   padding: 0;
+  -webkit-tap-highlight-color: transparent; /* removes blue flash on tap */
+  touch-action: manipulation; /* removes 300ms tap delay on mobile */
 }
 
 html {
   background: #040404;
+  color: white;
+  font-family: "DM Mono", monospace;
+  /* Prevent horizontal overflow — the #1 cause of sideways scrolling */
+  overflow-x: hidden;
+  max-width: 100vw;
+  /* Smooth scrolling */
   scroll-behavior: smooth;
-  -webkit-text-size-adjust: 100%;
+  /* iOS momentum scrolling */
+  -webkit-overflow-scrolling: touch;
 }
 
 body {
   background: #040404;
-  color: #ffffff;
-  margin: 0;
-  padding: 0;
+  color: white;
   overflow-x: hidden;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+  max-width: 100vw;
+  min-height: 100vh;
+  /* Safe area insets for iPhone notch and home bar */
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+  /* Prevent text size adjustment on orientation change */
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  /* Prevent rubber-band bounce on body (allow per-element) */
+  overscroll-behavior: none;
 }
 
-/* ── iOS zoom prevention ─────────────────────────────────────────────────────── */
+/* ── PWA Standalone mode — hide browser UI artifacts ──────────────────────── */
+@media (display-mode: standalone) {
+  body {
+    /* In standalone mode the status bar overlaps content — push content down */
+    padding-top: env(safe-area-inset-top);
+    /* Remove any default browser padding */
+    user-select: none; /* prevent accidental text selection on tap */
+  }
+
+  /* Hide scrollbars in standalone mode — pure app feel */
+  ::-webkit-scrollbar {
+    display: none;
+  }
+  * {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+}
+
+/* ── Scrollbar — hidden everywhere for app feel ────────────────────────────── */
+::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none;
+}
+* {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+/* ── App Shell — the root app container ───────────────────────────────────── */
+#app-root,
+[data-app-root] {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  min-height: 100dvh; /* dynamic viewport height — accounts for browser chrome on mobile */
+  overflow: hidden;
+  position: relative;
+}
+
+/* ── Page transitions ─────────────────────────────────────────────────────── */
+.page-root {
+  opacity: 0;
+  animation: pageIn 0.4s ease forwards;
+  will-change: opacity;
+}
+
+@keyframes pageIn {
+  to {
+    opacity: 1;
+  }
+}
+
+/* ── Bottom navigation safe area ─────────────────────────────────────────── */
+.bottom-nav {
+  padding-bottom: max(16px, env(safe-area-inset-bottom));
+}
+
+/* ── Typography ───────────────────────────────────────────────────────────── */
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: "Syncopate", sans-serif;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  text-transform: uppercase;
+}
+
+/* ── Inputs — prevent zoom on iOS (font-size must be >= 16px) ─────────────── */
 input,
 select,
 textarea {
-  font-size: 16px !important;
-}
-
-/* ── Minimum tap targets ────────────────────────────────────────────────────── */
-button,
-a {
-  min-height: 44px;
-  display: inline-flex;
-  align-items: center;
-}
-
-/* ── Scrollbar ──────────────────────────────────────────────────────────────── */
-::-webkit-scrollbar {
-  width: 4px;
-  height: 4px;
-}
-::-webkit-scrollbar-track {
-  background: #040404;
-}
-::-webkit-scrollbar-thumb {
-  background: #27272a;
-  border-radius: 2px;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: #3f3f46;
-}
-
-/* ── Selection ──────────────────────────────────────────────────────────────── */
-::selection {
-  background: rgba(245, 158, 11, 0.3);
+  font-size: 16px; /* critical: iOS zooms in if font-size < 16px */
+  border-radius: 0;
+  -webkit-appearance: none;
+  appearance: none;
+  background: #0a0a0a;
   color: white;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  outline: none;
+  width: 100%;
 }
 
-/* ── Tap highlight ──────────────────────────────────────────────────────────── */
-* {
+input:focus,
+select:focus,
+textarea:focus {
+  border-color: #f59e0b;
+}
+
+/* Autofill — prevent white background flash */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus {
+  -webkit-box-shadow: 0 0 0px 1000px #0a0a0a inset !important;
+  -webkit-text-fill-color: white !important;
+  caret-color: white;
+  transition: background-color 5000s;
+}
+
+/* ── Buttons ──────────────────────────────────────────────────────────────── */
+button {
+  cursor: pointer;
+  border: none;
+  background: none;
+  font-family: inherit;
+  color: inherit;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+button:active {
+  opacity: 0.85; /* native app-like press feedback */
+  transform: scale(0.98);
+  transition:
+    transform 0.1s ease,
+    opacity 0.1s ease;
+}
+
+/* ── Links ────────────────────────────────────────────────────────────────── */
+a {
+  color: inherit;
+  text-decoration: none;
   -webkit-tap-highlight-color: transparent;
 }
 
-/* ── Date input dark theme ──────────────────────────────────────────────────── */
-input[type="date"]::-webkit-calendar-picker-indicator,
-input[type="time"]::-webkit-calendar-picker-indicator {
-  filter: invert(1) opacity(0.4);
-  cursor: pointer;
+/* ── Images ───────────────────────────────────────────────────────────────── */
+img,
+video {
+  max-width: 100%;
+  height: auto;
+  display: block;
+  -webkit-user-drag: none;
+  user-drag: none;
 }
 
-/* ── Global animations ──────────────────────────────────────────────────────── */
+/* ── Animations ───────────────────────────────────────────────────────────── */
 @keyframes spin {
   from {
     transform: rotate(0deg);
@@ -82,36 +191,62 @@ input[type="time"]::-webkit-calendar-picker-indicator {
   }
 }
 
-@keyframes fadeUp {
+@keyframes fadeIn {
   from {
     opacity: 0;
-    transform: translateY(10px);
   }
   to {
     opacity: 1;
+  }
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+  to {
     transform: translateY(0);
-  }
-}
-
-@keyframes fadeSlide {
-  from {
-    opacity: 0;
-    transform: translateX(-8px);
-  }
-  to {
     opacity: 1;
-    transform: translateX(0);
   }
 }
 
-@keyframes pulse-ring {
-  0% {
-    box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7);
-  }
-  70% {
-    box-shadow: 0 0 0 8px rgba(34, 197, 94, 0);
-  }
+@keyframes pulse {
+  0%,
   100% {
-    box-shadow: 0 0 0 0 rgba(34, 197, 94, 0);
+    opacity: 1;
   }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+/* ── Utilities ────────────────────────────────────────────────────────────── */
+.truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* ── Fix: prevent content from going under notch/home bar in fullscreen ───── */
+.safe-top {
+  padding-top: env(safe-area-inset-top);
+}
+.safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+.safe-left {
+  padding-left: env(safe-area-inset-left);
+}
+.safe-right {
+  padding-right: env(safe-area-inset-right);
 }
