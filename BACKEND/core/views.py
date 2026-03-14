@@ -26,35 +26,52 @@ BACKEND_URL  = getattr(settings, "BACKEND_URL",  "https://headzup-barbershop-web
 
 # ── Email confirmation helper ────────────────────────────────────────────────
 def send_booking_confirmation(appointment):
-    from django.core.mail import send_mail
+    """
+    Fires confirmation email in a background thread.
+    NEVER blocks or crashes a booking — email is best-effort only.
+    """
+    import threading
 
+    # Read all values before spawning thread (avoid DB access in thread)
     try:
-        user    = appointment.user
-        service = appointment.service.name if appointment.service else "Appointment"
-        barber  = appointment.barber.name  if appointment.barber  else "Your barber"
-        date    = appointment.date.strftime("%A, %B %d, %Y")
-        time    = appointment.time.strftime("%I:%M %p").lstrip("0")
-        payment = "Paid online via Stripe" if appointment.payment_method == "online" else "Pay in shop (cash or card)"
+        user_email    = appointment.user.email
+        username      = appointment.user.username
+        service_name  = appointment.service.name if appointment.service else "Appointment"
+        barber_name   = appointment.barber.name  if appointment.barber  else "Your barber"
+        appt_date     = appointment.date.strftime("%A, %B %d, %Y")
+        appt_time     = appointment.time.strftime("%I:%M %p").lstrip("0")
+        payment_label = "Paid online via Stripe" if appointment.payment_method == "online" else "Pay in shop (cash or card)"
+    except Exception:
+        return  # appointment data unavailable — skip silently
 
-        subject = f"Booking Confirmed - {service} at HEADZ UP"
-        message = (
-            f"Hey {user.username},\n\n"
-            f"Your appointment is confirmed.\n\n"
-            f"Service:  {service}\n"
-            f"Barber:   {barber}\n"
-            f"Date:     {date}\n"
-            f"Time:     {time}\n"
-            f"Payment:  {payment}\n\n"
-            f"Please arrive 5 minutes early.\n\n"
-            f"HEADZ UP Barbershop\n4 Hub Dr, Hattiesburg, MS 39402"
-        )
+    def _send():
+        try:
+            from django.core.mail import send_mail
 
-        ticket_rows = ""
-        for label, value in [
-            ("Service", service), ("Barber", barber),
-            ("Date", date), ("Time", time), ("Payment", payment),
-        ]:
-            ticket_rows += f"""
+            # Skip if email is not configured yet
+            host_pw = getattr(settings, "EMAIL_HOST_PASSWORD", "")
+            if not host_pw or host_pw in ("your-app-password-here", ""):
+                return
+
+            subject = f"Booking Confirmed - {service_name} at HEADZ UP"
+            message = (
+                f"Hey {username},\n\n"
+                f"Your appointment is confirmed.\n\n"
+                f"Service:  {service_name}\n"
+                f"Barber:   {barber_name}\n"
+                f"Date:     {appt_date}\n"
+                f"Time:     {appt_time}\n"
+                f"Payment:  {payment_label}\n\n"
+                f"Please arrive 5 minutes early.\n\n"
+                f"HEADZ UP Barbershop\n4 Hub Dr, Hattiesburg, MS 39402"
+            )
+
+            ticket_rows = ""
+            for label, value in [
+                ("Service", service_name), ("Barber", barber_name),
+                ("Date", appt_date), ("Time", appt_time), ("Payment", payment_label),
+            ]:
+                ticket_rows += f"""
               <tr>
                 <td style="padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.05);">
                   <p style="font-family:'Courier New',monospace;font-size:9px;letter-spacing:0.3em;color:#52525b;text-transform:uppercase;margin:0 0 4px;">{label}</p>
@@ -62,7 +79,7 @@ def send_booking_confirmation(appointment):
                 </td>
               </tr>"""
 
-        html_message = f"""<!DOCTYPE html>
+            html_message = f"""<!DOCTYPE html>
 <html>
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
 <body style="margin:0;padding:0;background:#050505;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;color:#ffffff;">
@@ -85,7 +102,7 @@ def send_booking_confirmation(appointment):
           </h1>
         </td></tr>
         <tr><td style="padding-bottom:32px;">
-          <p style="color:#71717a;font-size:13px;margin:0;">Hey {user.username}, you're all set. See you soon.</p>
+          <p style="color:#71717a;font-size:13px;margin:0;">Hey {username}, you're all set. See you soon.</p>
         </td></tr>
         <tr><td style="background:#0a0a0a;border:1px solid rgba(255,255,255,0.1);padding:28px;">
           <table width="100%" cellpadding="0" cellspacing="0">{ticket_rows}</table>
@@ -112,16 +129,18 @@ def send_booking_confirmation(appointment):
 </body>
 </html>"""
 
-        send_mail(
-            subject        = subject,
-            message        = message,
-            from_email     = settings.DEFAULT_FROM_EMAIL,
-            recipient_list = [user.email],
-            html_message   = html_message,
-            fail_silently  = True,
-        )
-    except Exception:
-        pass
+            send_mail(
+                subject        = subject,
+                message        = message,
+                from_email     = settings.DEFAULT_FROM_EMAIL,
+                recipient_list = [user_email],
+                html_message   = html_message,
+                fail_silently  = True,
+            )
+        except Exception:
+            pass  # never crash — email is best-effort only
+
+    threading.Thread(target=_send, daemon=True).start()
 
 
 # ── Push notification helper ─────────────────────────────────────────────────
