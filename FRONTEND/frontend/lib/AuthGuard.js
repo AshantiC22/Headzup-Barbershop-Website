@@ -1,20 +1,41 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
+import API from "@/lib/api";
 
 export default function AuthGuard({ children }) {
   const router = useRouter();
+  const pathname = usePathname();
   const [checking, setChecking] = useState(true);
 
   useEffect(() => {
-    const token = localStorage.getItem("access");
-    if (!token) {
-      router.replace("/login");
-    } else {
-      setChecking(false);
-    }
-  }, [router]);
+    const verify = async () => {
+      const token = localStorage.getItem("access");
+
+      if (!token) {
+        router.replace(`/login?next=${encodeURIComponent(pathname)}`);
+        return;
+      }
+
+      try {
+        await API.get("dashboard/");
+        // Valid token — allow through regardless of role
+        setChecking(false);
+      } catch (err) {
+        if (err.response?.status === 401) {
+          localStorage.removeItem("access");
+          localStorage.removeItem("refresh");
+          router.replace("/login?expired=true");
+        } else {
+          // Network issue — let them through if token exists
+          setChecking(false);
+        }
+      }
+    };
+
+    verify();
+  }, []);
 
   if (checking) {
     return (

@@ -674,15 +674,19 @@ function LoginPage() {
   // ── Redirect if already logged in ──
   useEffect(() => {
     const token = localStorage.getItem("access");
-    if (token) {
-      API.get("dashboard/")
-        .then((res) => {
-          router.replace(res.data.is_staff ? "/barber-dashboard" : "/book");
-        })
-        .catch(() => {
-          // token invalid — stay on login
-        });
-    }
+    if (!token) return; // not logged in — stay on page
+    // Only auto-redirect if they landed here without intent (no ?next param)
+    const next = new URLSearchParams(window.location.search).get("next");
+    if (next) return; // they were sent here for a reason — let them re-auth
+    API.get("dashboard/")
+      .then((res) => {
+        router.replace(res.data.is_staff ? "/barber-dashboard" : "/dashboard");
+      })
+      .catch(() => {
+        // token invalid — clear it and stay on login
+        localStorage.removeItem("access");
+        localStorage.removeItem("refresh");
+      });
   }, []);
 
   // ── Login ──────────────────────────────────────────────────────────────────
