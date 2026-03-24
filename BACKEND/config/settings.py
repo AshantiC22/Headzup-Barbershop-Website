@@ -6,15 +6,22 @@ load_dotenv()
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-
-
 DEBUG = os.environ.get("DEBUG", "False") == "True"
-ALLOWED_HOSTS = os.environ.get("ALLOWED_HOSTS", "localhost").split(",")
+
+ALLOWED_HOSTS = os.environ.get("ALLOWED_HOSTS", "localhost,127.0.0.1").split(",")
+ALLOWED_HOSTS += [
+    "headzup-barbershop-website-production.up.railway.app",
+    ".railway.app",
+]
 
 CSRF_TRUSTED_ORIGINS = [
     "https://headzup-barbershop-website-production.up.railway.app",
     "https://headzup-barbershop-website.vercel.app",
+    "https://*.railway.app",
 ]
+
+CSRF_COOKIE_SECURE    = not DEBUG
+SESSION_COOKIE_SECURE = not DEBUG
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -73,9 +80,6 @@ REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
     ),
-    # Changed from IsAuthenticated to IsAuthenticatedOrReadOnly so that
-    # AllowAny on RegisterView actually works. Individual views that need
-    # full auth still declare permission_classes = [IsAuthenticated] themselves.
     'DEFAULT_PERMISSION_CLASSES': (
         'rest_framework.permissions.IsAuthenticatedOrReadOnly',
     ),
@@ -96,11 +100,15 @@ AUTH_PASSWORD_VALIDATORS = [
 ]
 
 LANGUAGE_CODE = 'en-us'
-TIME_ZONE = 'UTC'
-USE_I18N = True
-USE_TZ = True
+TIME_ZONE     = 'UTC'
+USE_I18N      = True
+USE_TZ        = True
 
-STATIC_URL = 'static/'
+STATIC_URL  = '/static/'
+STATIC_ROOT = BASE_DIR / 'staticfiles'
+MEDIA_URL   = '/media/'
+MEDIA_ROOT  = BASE_DIR / 'media'
+
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 CORS_ALLOWED_ORIGINS = [
@@ -108,28 +116,28 @@ CORS_ALLOWED_ORIGINS = [
     "https://headzup-barbershop-website.vercel.app",
 ]
 
-SECRET_KEY = os.environ.get("SECRET_KEY", "django-insecure-zpte96z#tw3!kyh458p7br=nlxhrj*mbx5ixqrf!yy3s5x%@rb")
+SECRET_KEY = os.environ.get(
+    "SECRET_KEY",
+    "django-insecure-zpte96z#tw3!kyh458p7br=nlxhrj*mbx5ixqrf!yy3s5x%@rb"
+)
 
-STRIPE_SECRET_KEY = os.environ.get("STRIPE_SECRET_KEY", "")
+STRIPE_SECRET_KEY      = os.environ.get("STRIPE_SECRET_KEY", "")
 STRIPE_PUBLISHABLE_KEY = os.environ.get("STRIPE_PUBLISHABLE_KEY", "")
 
-
-
-# ── URLs (used in email links and Stripe redirects) ──────────────────────────
+# ── URLs ──────────────────────────────────────────────────────────────────────
 FRONTEND_URL = os.environ.get("FRONTEND_URL", "https://headzup-barbershop-website.vercel.app")
 BACKEND_URL  = os.environ.get("BACKEND_URL",  "https://headzup-barbershop-website-production.up.railway.app")
 
 # ── Email — SendGrid ──────────────────────────────────────────────────────────
-EMAIL_BACKEND   = "django.core.mail.backends.smtp.EmailBackend"
-EMAIL_HOST      = "smtp.sendgrid.net"
-EMAIL_PORT      = 587
-EMAIL_USE_TLS   = True
-EMAIL_HOST_USER = "apikey"                                    # always "apikey" for SendGrid
-EMAIL_HOST_PASSWORD = os.environ.get("SENDGRID_API_KEY", "") # set this in Railway
-DEFAULT_FROM_EMAIL  = os.environ.get("DEFAULT_FROM_EMAIL", "HEADZ UP <your-gmail@gmail.com>")
+EMAIL_BACKEND       = "django.core.mail.backends.smtp.EmailBackend"
+EMAIL_HOST          = "smtp.sendgrid.net"
+EMAIL_PORT          = 587
+EMAIL_USE_TLS       = True
+EMAIL_HOST_USER     = "apikey"
+EMAIL_HOST_PASSWORD = os.environ.get("SENDGRID_API_KEY", "")
+DEFAULT_FROM_EMAIL  = os.environ.get("DEFAULT_FROM_EMAIL", "HEADZ UP <noreply@headzup.com>")
 
-# ── VAPID keys for Web Push notifications ─────────────────────────────────────
-
-VAPID_PUBLIC_KEY   = os.environ.get("VAPID_PUBLIC_KEY", "8tzDVWarkeSBePoAcGO4UT2Sm-xgkO_BrgdYBHDg15c")
-VAPID_PRIVATE_KEY  = os.environ.get("VAPID_PRIVATE_KEY", "BGKDMi2ZQii3ue33L5GSqT5BgQ1cNKpjDYtyeruq3_i-eF27z3ugWVB9aU6hpV4sy2I_WS02-bvu-5p8AJp_PBQ")
-VAPID_CLAIM_EMAIL  = os.environ.get("VAPID_CLAIM_EMAIL", "cocrofta22@gmail.com")
+# ── VAPID keys — set in Railway environment variables only ────────────────────
+VAPID_PUBLIC_KEY  = os.environ.get("VAPID_PUBLIC_KEY", "")
+VAPID_PRIVATE_KEY = os.environ.get("VAPID_PRIVATE_KEY", "")
+VAPID_CLAIM_EMAIL = os.environ.get("VAPID_CLAIM_EMAIL", "")
