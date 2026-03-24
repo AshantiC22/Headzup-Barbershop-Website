@@ -8,6 +8,7 @@ from core.views import (
     AppointmentViewSet,
     UserProfileViewSet,
     RegisterView,
+    BarberRegisterView,
     DashboardView,
     CreateCheckoutSessionView,
     PaymentSuccessView,
@@ -39,8 +40,9 @@ urlpatterns = [
     # Auth
     path("token/",         TokenObtainPairView.as_view(), name="token_obtain_pair"),
     path("token/refresh/", TokenRefreshView.as_view(),    name="token_refresh"),
-    path("register/",      RegisterView.as_view(),        name="register"),
-    path("dashboard/",     DashboardView.as_view(),       name="dashboard"),
+    path("register/",        RegisterView.as_view(),        name="register"),
+    path("barber/register/", BarberRegisterView.as_view(),  name="barber_register"),
+    path("dashboard/",       DashboardView.as_view(),       name="dashboard"),
 
     # Auth helpers
     path("check-username/",         CheckUsernameView.as_view(),        name="check_username"),

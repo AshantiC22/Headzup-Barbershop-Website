@@ -130,3 +130,6 @@ DEFAULT_FROM_EMAIL  = os.environ.get("DEFAULT_FROM_EMAIL", "HEADZ UP <noreply@he
 VAPID_PUBLIC_KEY  = os.environ.get("VAPID_PUBLIC_KEY", "")
 VAPID_PRIVATE_KEY = os.environ.get("VAPID_PRIVATE_KEY", "")
 VAPID_CLAIM_EMAIL = os.environ.get("VAPID_CLAIM_EMAIL", "")
+
+# ── Barber invite code (required to create a barber account) ─────────────────
+BARBER_INVITE_CODE = os.environ.get("BARBER_INVITE_CODE", "HEADZUP2026")

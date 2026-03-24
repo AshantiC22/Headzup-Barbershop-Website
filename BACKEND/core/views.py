@@ -227,6 +227,67 @@ class RegisterView(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
+class BarberRegisterView(APIView):
+    """
+    Barber self-registration with an invite code.
+    Creates a User, sets is_staff=True, and creates a linked Barber profile.
+    Requires BARBER_INVITE_CODE env variable to match.
+    """
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        from django.conf import settings as django_settings
+
+        # Validate invite code
+        invite_code = request.data.get("invite_code", "").strip()
+        valid_code  = getattr(django_settings, "BARBER_INVITE_CODE", "HEADZUP2026")
+        if invite_code != valid_code:
+            return Response({"invite_code": "Invalid invite code."}, status=status.HTTP_400_BAD_REQUEST)
+
+        username  = request.data.get("username", "").strip()
+        email     = request.data.get("email", "").strip()
+        password  = request.data.get("password", "")
+        full_name = request.data.get("full_name", "").strip()
+
+        # Validate fields
+        errors = {}
+        if not username:
+            errors["username"] = "Username is required."
+        elif User.objects.filter(username__iexact=username).exists():
+            errors["username"] = "That username is already taken."
+        if not email:
+            errors["email"] = "Email is required."
+        elif User.objects.filter(email__iexact=email).exists():
+            errors["email"] = "An account with that email already exists."
+        if not password or len(password) < 6:
+            errors["password"] = "Password must be at least 6 characters."
+        if not full_name:
+            errors["full_name"] = "Full name is required."
+        if errors:
+            return Response(errors, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            # Create user with staff access
+            user = User.objects.create_user(
+                username=username,
+                email=email,
+                password=password,
+            )
+            user.is_staff = True
+            user.save()
+
+            # Create linked Barber profile
+            Barber.objects.create(
+                name=full_name,
+                user=user,
+                bio="",
+            )
+
+            return Response({"message": "Barber account created successfully."}, status=status.HTTP_201_CREATED)
+        except Exception as e:
+            return Response({"detail": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
 class BarberViewSet(viewsets.ModelViewSet):
     queryset = Barber.objects.all()
     serializer_class = BarberSerializer
