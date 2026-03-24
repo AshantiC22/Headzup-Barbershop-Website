@@ -233,6 +233,7 @@ export default function HomePage() {
           margin: 0;
           padding: 0;
           overflow-x: hidden;
+          overflow-y: auto;
           color: white;
           font-family: "Inter", sans-serif;
         }
@@ -243,6 +244,16 @@ export default function HomePage() {
         }
         html {
           scroll-behavior: smooth;
+        }
+
+        /* Desktop only — hidden on mobile */
+        .desktop-only {
+          display: none;
+        }
+        @media (min-width: 640px) {
+          .desktop-only {
+            display: inline-block;
+          }
         }
 
         /* Custom cursor */
@@ -552,11 +563,8 @@ export default function HomePage() {
               <a
                 href="/book"
                 onClick={handleBookNow}
-                className="book-btn"
-                style={{
-                  padding: "14px 28px",
-                  display: window.innerWidth < 640 ? "none" : "inline-block",
-                }}
+                className="book-btn desktop-only"
+                style={{ padding: "14px 28px" }}
               >
                 <span>Book_Now</span>
               </a>
@@ -586,6 +594,34 @@ export default function HomePage() {
                   }}
                 >
                   Dashboard
+                </a>
+              )}
+              {!isLoggedIn && (
+                <a
+                  href="/barber-login"
+                  className="desktop-only"
+                  style={{
+                    ...sf,
+                    fontSize: 8,
+                    letterSpacing: "0.2em",
+                    textTransform: "uppercase",
+                    color: "#52525b",
+                    textDecoration: "none",
+                    border: "1px solid rgba(255,255,255,0.07)",
+                    padding: "10px 18px",
+                    transition: "all 0.2s",
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.color = "#f59e0b";
+                    e.currentTarget.style.borderColor = "rgba(245,158,11,0.3)";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.color = "#52525b";
+                    e.currentTarget.style.borderColor =
+                      "rgba(255,255,255,0.07)";
+                  }}
+                >
+                  Barber Login
                 </a>
               )}
 
@@ -715,7 +751,7 @@ export default function HomePage() {
               >
                 Book Now →
               </a>
-              {isStaff && (
+              {isStaff ? (
                 <a
                   href="/barber-dashboard"
                   onClick={(e) => {
@@ -733,10 +769,28 @@ export default function HomePage() {
                     border: "1px solid rgba(245,158,11,0.4)",
                     padding: "16px 40px",
                     textDecoration: "none",
-                    transition: "all 0.2s",
                   }}
                 >
                   My Dashboard →
+                </a>
+              ) : (
+                <a
+                  href="/barber-login"
+                  onClick={() => setMenuOpen(false)}
+                  style={{
+                    ...sf,
+                    fontSize: 10,
+                    fontWeight: 700,
+                    letterSpacing: "0.25em",
+                    textTransform: "uppercase",
+                    color: "#52525b",
+                    background: "transparent",
+                    border: "1px solid rgba(255,255,255,0.1)",
+                    padding: "16px 40px",
+                    textDecoration: "none",
+                  }}
+                >
+                  Barber Login →
                 </a>
               )}
             </div>
