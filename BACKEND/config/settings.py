@@ -6,22 +6,16 @@ load_dotenv()
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+SECRET_KEY = os.environ.get("SECRET_KEY", "django-insecure-zpte96z#tw3!kyh458p7br=nlxhrj*mbx5ixqrf!yy3s5x%@rb")
+
 DEBUG = os.environ.get("DEBUG", "False") == "True"
 
-ALLOWED_HOSTS = os.environ.get("ALLOWED_HOSTS", "localhost,127.0.0.1").split(",")
-ALLOWED_HOSTS += [
-    "headzup-barbershop-website-production.up.railway.app",
-    ".railway.app",
-]
+ALLOWED_HOSTS = ["*"]
 
 CSRF_TRUSTED_ORIGINS = [
     "https://headzup-barbershop-website-production.up.railway.app",
     "https://headzup-barbershop-website.vercel.app",
-    "https://*.railway.app",
 ]
-
-CSRF_COOKIE_SECURE    = False
-SESSION_COOKIE_SECURE = False
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -101,16 +95,16 @@ AUTH_PASSWORD_VALIDATORS = [
 ]
 
 LANGUAGE_CODE = 'en-us'
-TIME_ZONE     = 'UTC'
-USE_I18N      = True
-USE_TZ        = True
+TIME_ZONE = 'UTC'
+USE_I18N = True
+USE_TZ = True
 
-STATIC_URL  = '/static/'
-STATIC_ROOT = BASE_DIR / 'staticfiles'
+STATIC_URL = '/static/'
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
-MEDIA_URL  = '/media/'
-MEDIA_ROOT = BASE_DIR / 'media'
+MEDIA_URL = '/media/'
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
@@ -118,11 +112,6 @@ CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
     "https://headzup-barbershop-website.vercel.app",
 ]
-
-SECRET_KEY = os.environ.get(
-    "SECRET_KEY",
-    "django-insecure-zpte96z#tw3!kyh458p7br=nlxhrj*mbx5ixqrf!yy3s5x%@rb"
-)
 
 STRIPE_SECRET_KEY      = os.environ.get("STRIPE_SECRET_KEY", "")
 STRIPE_PUBLISHABLE_KEY = os.environ.get("STRIPE_PUBLISHABLE_KEY", "")
