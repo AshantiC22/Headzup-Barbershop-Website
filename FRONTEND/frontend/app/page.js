@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import * as THREE from "three";
 import { gsap } from "gsap";
@@ -68,11 +68,15 @@ export default function HomePage() {
   const [isStaff, setIsStaff] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
 
-  // Check login state on mount
-  useEffect(() => {
+  // Check login state — runs on mount and whenever window regains focus
+  const checkAuth = useCallback(() => {
     const token =
       typeof window !== "undefined" && localStorage.getItem("access");
-    if (!token) return;
+    if (!token) {
+      setIsLoggedIn(false);
+      setIsStaff(false);
+      return;
+    }
     setIsLoggedIn(true);
     import("@/lib/api").then(({ default: API }) => {
       API.get("dashboard/")
@@ -83,9 +87,22 @@ export default function HomePage() {
           localStorage.removeItem("access");
           localStorage.removeItem("refresh");
           setIsLoggedIn(false);
+          setIsStaff(false);
         });
     });
   }, []);
+
+  useEffect(() => {
+    checkAuth();
+    // Re-check when user switches back to this tab
+    window.addEventListener("focus", checkAuth);
+    document.addEventListener("visibilitychange", () => {
+      if (!document.hidden) checkAuth();
+    });
+    return () => {
+      window.removeEventListener("focus", checkAuth);
+    };
+  }, [checkAuth]);
 
   // Smart Book Now
   const handleBookNow = (e) => {
