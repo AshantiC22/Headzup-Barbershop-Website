@@ -38,8 +38,8 @@ body {
   /* Prevent text size adjustment on orientation change */
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
-  /* Prevent rubber-band bounce on body (allow per-element) */
-  overscroll-behavior: none;
+  /* Prevent rubber-band bounce on body horizontally only */
+  overscroll-behavior-x: none;
 }
 
 /* ── PWA Standalone mode — hide browser UI artifacts ──────────────────────── */
@@ -78,8 +78,8 @@ body {
   display: flex;
   flex-direction: column;
   min-height: 100vh;
-  min-height: 100dvh; /* dynamic viewport height — accounts for browser chrome on mobile */
-  overflow: hidden;
+  min-height: 100dvh;
+  overflow-x: hidden;
   position: relative;
 }
 
