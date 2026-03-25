@@ -238,11 +238,11 @@ class BarberRegisterView(APIView):
     def post(self, request):
         from django.conf import settings as django_settings
 
-        # Validate invite code
-        invite_code = request.data.get("invite_code", "").strip()
-        valid_code  = getattr(django_settings, "BARBER_INVITE_CODE", "HEADZUP2026")
+        # Validate invite code — case insensitive
+        invite_code = request.data.get("invite_code", "").strip().upper()
+        valid_code  = getattr(django_settings, "BARBER_INVITE_CODE", "HEADZUP2026").strip().upper()
         if invite_code != valid_code:
-            return Response({"invite_code": "Invalid invite code."}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"invite_code": "Invalid invite code. Contact the shop owner."}, status=status.HTTP_400_BAD_REQUEST)
 
         username  = request.data.get("username", "").strip()
         email     = request.data.get("email", "").strip()

@@ -295,25 +295,28 @@ export default function BarberLoginPage() {
       if (data.username)
         newErrs.regUsername = Array.isArray(data.username)
           ? data.username[0]
-          : data.username;
+          : String(data.username);
       if (data.email)
         newErrs.regEmail = Array.isArray(data.email)
           ? data.email[0]
-          : data.email;
+          : String(data.email);
       if (data.invite_code)
         newErrs.inviteCode = Array.isArray(data.invite_code)
           ? data.invite_code[0]
-          : data.invite_code;
+          : String(data.invite_code);
       if (data.full_name)
         newErrs.fullName = Array.isArray(data.full_name)
           ? data.full_name[0]
-          : data.full_name;
-      if (Object.keys(newErrs).length) setFieldErrors(newErrs);
-      else
-        setApiError(
-          data.detail ||
-            "Registration failed. Check your invite code and try again.",
-        );
+          : String(data.full_name);
+      if (data.password)
+        newErrs.regPw = Array.isArray(data.password)
+          ? data.password[0]
+          : String(data.password);
+      if (Object.keys(newErrs).length) {
+        setFieldErrors(newErrs);
+      } else {
+        setApiError(data.detail || "Registration failed. Please try again.");
+      }
       shake();
     } finally {
       setLoading(false);
@@ -336,6 +339,8 @@ export default function BarberLoginPage() {
           background: #050505;
           color: white;
           min-height: 100vh;
+          overflow-y: auto !important;
+          overflow-x: hidden;
         }
         input:-webkit-autofill,
         input:-webkit-autofill:hover,
@@ -463,7 +468,7 @@ export default function BarberLoginPage() {
         style={{
           minHeight: "100vh",
           display: "flex",
-          alignItems: "center",
+          alignItems: "flex-start",
           justifyContent: "center",
           padding: "80px 16px 48px",
           position: "relative",
