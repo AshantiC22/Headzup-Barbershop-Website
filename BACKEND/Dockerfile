@@ -9,8 +9,5 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy project
 COPY . .
 
-# Collect static files
-RUN python manage.py collectstatic --noinput
-
-# Start server
-CMD gunicorn config.wsgi:application --bind 0.0.0.0:$PORT
+# Start server — collectstatic runs at startup so env vars are available
+CMD python manage.py collectstatic --noinput && gunicorn config.wsgi:application --bind 0.0.0.0:$PORT
