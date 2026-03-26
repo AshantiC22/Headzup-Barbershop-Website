@@ -6,10 +6,22 @@ import { gsap } from "gsap";
 import API from "@/lib/api";
 import useBreakpoint from "@/lib/useBreakpoint";
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
+// ── Design tokens ─────────────────────────────────────────────────────────────
+const T = {
+  bg: "#040404",
+  surface: "rgba(255,255,255,0.025)",
+  border: "rgba(255,255,255,0.07)",
+  amber: "#F59E0B",
+  amberDim: "rgba(245,158,11,0.12)",
+  amberBorder: "rgba(245,158,11,0.3)",
+  muted: "#52525b",
+  dim: "#27272a",
+  deepDim: "#1c1c1e",
+};
 const sf = { fontFamily: "'Syncopate', sans-serif" };
 const mono = { fontFamily: "'DM Mono', monospace" };
 
+// ── Helpers ───────────────────────────────────────────────────────────────────
 function todayISO() {
   return new Date().toISOString().split("T")[0];
 }
@@ -22,7 +34,7 @@ function fmtTime(t) {
   if (!t) return "—";
   const [h, m] = t.split(":");
   const hr = parseInt(h);
-  return `${hr % 12 || 12}:${m} ${hr >= 12 ? "PM" : "AM"}`;
+  return `${hr % 12 || 12}:${m}${hr >= 12 ? "pm" : "am"}`;
 }
 function fmtDayFull(d) {
   return new Date(d + "T00:00:00").toLocaleDateString("en-US", {
@@ -65,13 +77,13 @@ const STATUS_CFG = {
     label: "Confirmed",
     color: "#4ade80",
     bg: "rgba(74,222,128,0.1)",
-    border: "rgba(74,222,128,0.25)",
+    border: "rgba(74,222,128,0.2)",
   },
   completed: {
     label: "Completed",
     color: "#a1a1aa",
     bg: "rgba(161,161,170,0.08)",
-    border: "rgba(161,161,170,0.2)",
+    border: "rgba(161,161,170,0.15)",
   },
   no_show: {
     label: "No Show",
@@ -82,46 +94,46 @@ const STATUS_CFG = {
   cancelled: {
     label: "Cancelled",
     color: "#52525b",
-    bg: "rgba(82,82,91,0.08)",
-    border: "rgba(82,82,91,0.2)",
+    bg: "rgba(82,82,91,0.06)",
+    border: "rgba(82,82,91,0.15)",
   },
 };
 const PAY_CFG = {
   online: {
-    label: "Paid",
-    color: "#fbbf24",
-    bg: "rgba(245,158,11,0.1)",
-    border: "rgba(245,158,11,0.25)",
+    label: "Online",
+    color: "#F59E0B",
+    bg: T.amberDim,
+    border: T.amberBorder,
   },
   shop: {
-    label: "Pay In Shop",
-    color: "#a1a1aa",
-    bg: "rgba(161,161,170,0.06)",
-    border: "rgba(161,161,170,0.15)",
+    label: "In Shop",
+    color: "#71717a",
+    bg: "rgba(113,113,122,0.06)",
+    border: "rgba(113,113,122,0.15)",
   },
 };
 
-function Badge({ cfg }) {
-  return (
-    <span
-      style={{
-        ...sf,
-        fontSize: 6,
-        letterSpacing: "0.1em",
-        textTransform: "uppercase",
-        padding: "3px 8px",
-        background: cfg.bg,
-        color: cfg.color,
-        border: `1px solid ${cfg.border}`,
-        whiteSpace: "nowrap",
-        flexShrink: 0,
-      }}
-    >
-      {cfg.label}
-    </span>
-  );
-}
+// ── Scissor SVG ───────────────────────────────────────────────────────────────
+const Scissors = ({ size = 16, color = T.amber }) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke={color}
+    strokeWidth="1.5"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <circle cx="6" cy="6" r="3" />
+    <circle cx="6" cy="18" r="3" />
+    <line x1="20" y1="4" x2="8.12" y2="15.88" />
+    <line x1="14.47" y1="14.48" x2="20" y2="20" />
+    <line x1="8.12" y1="8.12" x2="12" y2="12" />
+  </svg>
+);
 
+// ── Toast ─────────────────────────────────────────────────────────────────────
 function Toast({ toast }) {
   if (!toast) return null;
   const isErr = toast.type === "error";
@@ -133,18 +145,30 @@ function Toast({ toast }) {
         left: "50%",
         transform: "translateX(-50%)",
         zIndex: 9999,
-        padding: "12px 22px",
-        background: isErr ? "rgba(248,113,113,0.1)" : "rgba(74,222,128,0.1)",
+        padding: "12px 24px",
+        background: isErr ? "rgba(248,113,113,0.08)" : "rgba(74,222,128,0.08)",
         border: `1px solid ${isErr ? "rgba(248,113,113,0.3)" : "rgba(74,222,128,0.3)"}`,
-        backdropFilter: "blur(12px)",
-        animation: "fadeUp 0.25s ease",
+        backdropFilter: "blur(20px)",
+        animation: "toastIn 0.3s ease",
         whiteSpace: "nowrap",
+        display: "flex",
+        alignItems: "center",
+        gap: 10,
       }}
     >
+      <div
+        style={{
+          width: 6,
+          height: 6,
+          borderRadius: "50%",
+          background: isErr ? "#f87171" : "#4ade80",
+          flexShrink: 0,
+        }}
+      />
       <p
         style={{
           ...sf,
-          fontSize: 8,
+          fontSize: 7,
           color: isErr ? "#f87171" : "#4ade80",
           letterSpacing: "0.2em",
           textTransform: "uppercase",
@@ -152,6 +176,79 @@ function Toast({ toast }) {
         }}
       >
         {toast.msg}
+      </p>
+    </div>
+  );
+}
+
+// ── Stat card ─────────────────────────────────────────────────────────────────
+function StatCard({ label, value, accent, icon }) {
+  return (
+    <div
+      style={{
+        padding: "18px 16px",
+        background: accent ? T.amberDim : T.surface,
+        border: `1px solid ${accent ? T.amberBorder : T.border}`,
+        position: "relative",
+        overflow: "hidden",
+        transition: "all 0.25s",
+        cursor: "default",
+      }}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.borderColor = T.amber;
+        e.currentTarget.style.background = T.amberDim;
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.borderColor = accent ? T.amberBorder : T.border;
+        e.currentTarget.style.background = accent ? T.amberDim : T.surface;
+      }}
+    >
+      {/* Corner accent */}
+      <div
+        style={{
+          position: "absolute",
+          top: 0,
+          right: 0,
+          width: 40,
+          height: 40,
+          background: accent
+            ? "linear-gradient(225deg, rgba(245,158,11,0.2), transparent)"
+            : "linear-gradient(225deg, rgba(255,255,255,0.03), transparent)",
+        }}
+      />
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "flex-start",
+          marginBottom: 10,
+        }}
+      >
+        <p
+          style={{
+            ...sf,
+            fontSize: 6,
+            letterSpacing: "0.35em",
+            color: accent ? T.amber : T.muted,
+            textTransform: "uppercase",
+            margin: 0,
+          }}
+        >
+          {label}
+        </p>
+        {icon && <span style={{ fontSize: 12, opacity: 0.5 }}>{icon}</span>}
+      </div>
+      <p
+        style={{
+          ...sf,
+          fontSize: 26,
+          fontWeight: 900,
+          color: accent ? T.amber : "white",
+          lineHeight: 1,
+          margin: 0,
+        }}
+      >
+        {value}
       </p>
     </div>
   );
@@ -178,17 +275,18 @@ function MonthCalendar({
   return (
     <div
       style={{
-        background: "rgba(255,255,255,0.02)",
-        border: "1px solid rgba(255,255,255,0.07)",
-        padding: 16,
+        background: T.surface,
+        border: `1px solid ${T.border}`,
+        padding: "18px 16px",
       }}
     >
+      {/* Month header */}
       <div
         style={{
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
-          marginBottom: 12,
+          marginBottom: 16,
         }}
       >
         <button
@@ -197,22 +295,23 @@ function MonthCalendar({
             width: 28,
             height: 28,
             background: "transparent",
-            border: "1px solid rgba(255,255,255,0.1)",
-            color: "#71717a",
+            border: `1px solid ${T.border}`,
+            color: T.muted,
             cursor: "pointer",
             fontSize: 14,
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
             transition: "all 0.2s",
+            flexShrink: 0,
           }}
           onMouseEnter={(e) => {
-            e.currentTarget.style.borderColor = "#f59e0b";
-            e.currentTarget.style.color = "#f59e0b";
+            e.currentTarget.style.borderColor = T.amber;
+            e.currentTarget.style.color = T.amber;
           }}
           onMouseLeave={(e) => {
-            e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)";
-            e.currentTarget.style.color = "#71717a";
+            e.currentTarget.style.borderColor = T.border;
+            e.currentTarget.style.color = T.muted;
           }}
         >
           ‹
@@ -220,10 +319,10 @@ function MonthCalendar({
         <h3
           style={{
             ...sf,
-            fontSize: 9,
+            fontSize: 8,
             fontWeight: 700,
             textTransform: "uppercase",
-            letterSpacing: "0.15em",
+            letterSpacing: "0.2em",
             color: "white",
             margin: 0,
           }}
@@ -236,32 +335,35 @@ function MonthCalendar({
             width: 28,
             height: 28,
             background: "transparent",
-            border: "1px solid rgba(255,255,255,0.1)",
-            color: "#71717a",
+            border: `1px solid ${T.border}`,
+            color: T.muted,
             cursor: "pointer",
             fontSize: 14,
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
             transition: "all 0.2s",
+            flexShrink: 0,
           }}
           onMouseEnter={(e) => {
-            e.currentTarget.style.borderColor = "#f59e0b";
-            e.currentTarget.style.color = "#f59e0b";
+            e.currentTarget.style.borderColor = T.amber;
+            e.currentTarget.style.color = T.amber;
           }}
           onMouseLeave={(e) => {
-            e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)";
-            e.currentTarget.style.color = "#71717a";
+            e.currentTarget.style.borderColor = T.border;
+            e.currentTarget.style.color = T.muted;
           }}
         >
           ›
         </button>
       </div>
+
+      {/* Day labels */}
       <div
         style={{
           display: "grid",
           gridTemplateColumns: "repeat(7,1fr)",
-          marginBottom: 4,
+          marginBottom: 6,
         }}
       >
         {DAY_LABELS.map((d) => (
@@ -271,8 +373,8 @@ function MonthCalendar({
               ...sf,
               fontSize: 6,
               textAlign: "center",
-              color: "#27272a",
-              letterSpacing: "0.1em",
+              color: T.dim,
+              letterSpacing: "0.05em",
               padding: "2px 0",
             }}
           >
@@ -280,6 +382,8 @@ function MonthCalendar({
           </div>
         ))}
       </div>
+
+      {/* Date cells */}
       <div
         style={{
           display: "grid",
@@ -292,8 +396,9 @@ function MonthCalendar({
           const ds = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
           const isToday = ds === today;
           const isSelected = ds === selectedDate;
-          const hasAppts = (appointmentDates[ds] || 0) > 0;
+          const count = appointmentDates[ds] || 0;
           const isSun = new Date(ds + "T00:00:00").getDay() === 0;
+
           return (
             <button
               key={ds}
@@ -301,17 +406,17 @@ function MonthCalendar({
               style={{
                 aspectRatio: "1",
                 background: isSelected
-                  ? "#f59e0b"
+                  ? T.amber
                   : isToday
-                    ? "rgba(245,158,11,0.1)"
+                    ? T.amberDim
                     : "transparent",
-                border: `1px solid ${isSelected ? "#f59e0b" : isToday ? "rgba(245,158,11,0.4)" : "transparent"}`,
+                border: `1px solid ${isSelected ? T.amber : isToday ? T.amberBorder : "transparent"}`,
                 color: isSelected
                   ? "black"
                   : isSun
-                    ? "#27272a"
+                    ? T.deepDim
                     : isToday
-                      ? "#f59e0b"
+                      ? T.amber
                       : "white",
                 cursor: "pointer",
                 display: "flex",
@@ -321,20 +426,21 @@ function MonthCalendar({
                 gap: 1,
                 transition: "all 0.15s",
                 padding: 1,
+                borderRadius: 0,
               }}
               onMouseEnter={(e) => {
                 if (!isSelected) {
-                  e.currentTarget.style.background = "rgba(245,158,11,0.08)";
-                  e.currentTarget.style.borderColor = "rgba(245,158,11,0.3)";
+                  e.currentTarget.style.background = T.amberDim;
+                  e.currentTarget.style.borderColor = T.amberBorder;
                 }
               }}
               onMouseLeave={(e) => {
                 if (!isSelected) {
                   e.currentTarget.style.background = isToday
-                    ? "rgba(245,158,11,0.1)"
+                    ? T.amberDim
                     : "transparent";
                   e.currentTarget.style.borderColor = isToday
-                    ? "rgba(245,158,11,0.4)"
+                    ? T.amberBorder
                     : "transparent";
                 }
               }}
@@ -342,20 +448,20 @@ function MonthCalendar({
               <span
                 style={{
                   ...sf,
-                  fontSize: 10,
+                  fontSize: 9,
                   fontWeight: isToday || isSelected ? 900 : 400,
                   lineHeight: 1,
                 }}
               >
                 {day}
               </span>
-              {hasAppts && (
+              {count > 0 && (
                 <span
                   style={{
-                    width: 4,
-                    height: 4,
+                    width: 3,
+                    height: 3,
                     borderRadius: "50%",
-                    background: isSelected ? "rgba(0,0,0,0.4)" : "#f59e0b",
+                    background: isSelected ? "rgba(0,0,0,0.5)" : T.amber,
                     display: "block",
                   }}
                 />
@@ -364,35 +470,52 @@ function MonthCalendar({
           );
         })}
       </div>
+
+      {/* Legend */}
       <div
         style={{
+          marginTop: 14,
+          paddingTop: 12,
+          borderTop: `1px solid ${T.border}`,
           display: "flex",
-          gap: 12,
-          marginTop: 10,
-          paddingTop: 10,
-          borderTop: "1px solid rgba(255,255,255,0.05)",
+          gap: 14,
         }}
       >
-        <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
           <div
             style={{
-              width: 5,
-              height: 5,
+              width: 4,
+              height: 4,
               borderRadius: "50%",
-              background: "#f59e0b",
+              background: T.amber,
             }}
           />
-          <span style={{ fontSize: 9, color: "#3f3f46", ...mono }}>
-            Has bookings
-          </span>
+          <span style={{ ...mono, fontSize: 8, color: T.muted }}>Booked</span>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+          <div
+            style={{
+              width: 10,
+              height: 10,
+              border: `1px solid ${T.amberBorder}`,
+              background: T.amberDim,
+            }}
+          />
+          <span style={{ ...mono, fontSize: 8, color: T.muted }}>Today</span>
         </div>
       </div>
     </div>
   );
 }
 
-// ── Appointment Card ──────────────────────────────────────────────────────────
-function ApptCard({ appt, onStatusChange, onReschedule, onCancel, isMobile }) {
+// ── Appointment ticket card ───────────────────────────────────────────────────
+function ApptTicket({
+  appt,
+  onStatusChange,
+  onReschedule,
+  onCancel,
+  isMobile,
+}) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [status, setStatus] = useState(appt.status || "confirmed");
   const menuRef = useRef(null);
@@ -424,50 +547,55 @@ function ApptCard({ appt, onStatusChange, onReschedule, onCancel, isMobile }) {
     <div
       style={{
         display: "flex",
-        gap: isMobile ? 8 : 12,
-        padding: isMobile ? "12px 10px" : "14px 16px",
-        background: "rgba(255,255,255,0.025)",
-        border: "1px solid rgba(255,255,255,0.07)",
+        gap: 0,
+        background: T.surface,
+        border: `1px solid ${T.border}`,
         transition: "all 0.2s",
         position: "relative",
+        overflow: "hidden",
       }}
       onMouseEnter={(e) => {
         e.currentTarget.style.borderColor = "rgba(245,158,11,0.2)";
-        e.currentTarget.style.background = "rgba(245,158,11,0.02)";
+        e.currentTarget.style.background = "rgba(245,158,11,0.018)";
       }}
       onMouseLeave={(e) => {
-        e.currentTarget.style.borderColor = "rgba(255,255,255,0.07)";
-        e.currentTarget.style.background = "rgba(255,255,255,0.025)";
+        e.currentTarget.style.borderColor = T.border;
+        e.currentTarget.style.background = T.surface;
       }}
     >
-      {/* Status bar */}
+      {/* Left accent strip */}
       <div
         style={{
           width: 3,
           background: sCfg.color,
           flexShrink: 0,
-          borderRadius: 2,
-          opacity: 0.8,
+          opacity: 0.9,
         }}
       />
 
-      {/* Time */}
+      {/* Time block */}
       <div
         style={{
-          width: 52,
+          width: isMobile ? 52 : 64,
           flexShrink: 0,
+          padding: "14px 10px",
           display: "flex",
           flexDirection: "column",
           justifyContent: "center",
+          alignItems: "center",
+          background: "rgba(255,255,255,0.015)",
+          borderRight: `1px solid ${T.border}`,
         }}
       >
         <p
           style={{
             ...mono,
-            fontSize: 12,
-            color: "#f59e0b",
+            fontSize: isMobile ? 11 : 13,
+            color: T.amber,
             fontWeight: 500,
             margin: 0,
+            lineHeight: 1.1,
+            textAlign: "center",
           }}
         >
           {fmtTime(appt.time)}
@@ -476,9 +604,10 @@ function ApptCard({ appt, onStatusChange, onReschedule, onCancel, isMobile }) {
           <p
             style={{
               ...mono,
-              fontSize: 9,
-              color: "#3f3f46",
-              margin: "2px 0 0",
+              fontSize: 8,
+              color: T.muted,
+              margin: "4px 0 0",
+              textAlign: "center",
             }}
           >
             {appt.service_duration}m
@@ -486,45 +615,61 @@ function ApptCard({ appt, onStatusChange, onReschedule, onCancel, isMobile }) {
         )}
       </div>
 
+      {/* Main content */}
       <div
         style={{
-          width: 1,
-          background: "rgba(255,255,255,0.06)",
-          flexShrink: 0,
+          flex: 1,
+          padding: isMobile ? "12px 10px" : "12px 14px",
+          minWidth: 0,
         }}
-      />
-
-      {/* Info */}
-      <div style={{ flex: 1, minWidth: 0 }}>
+      >
         <div
           style={{
             display: "flex",
             alignItems: "center",
-            gap: 6,
-            marginBottom: 3,
+            gap: 8,
+            marginBottom: 5,
             flexWrap: "wrap",
           }}
         >
           <p
             style={{
               ...sf,
-              fontSize: 9,
+              fontSize: isMobile ? 8 : 9,
               fontWeight: 700,
               textTransform: "uppercase",
               color: "white",
               margin: 0,
+              letterSpacing: "0.05em",
             }}
           >
             {appt.client}
           </p>
-          <Badge cfg={pCfg} />
+          <span
+            style={{
+              ...sf,
+              fontSize: 6,
+              letterSpacing: "0.1em",
+              textTransform: "uppercase",
+              padding: "2px 7px",
+              background: pCfg.bg,
+              color: pCfg.color,
+              border: `1px solid ${pCfg.border}`,
+            }}
+          >
+            {pCfg.label}
+          </span>
         </div>
-        <p style={{ fontSize: 11, color: "#a1a1aa", margin: 0 }}>
+        <p style={{ ...mono, fontSize: 11, color: "#a1a1aa", margin: 0 }}>
           {appt.service}
-          {appt.service_price ? ` — $${appt.service_price}` : ""}
+          {appt.service_price ? (
+            <span style={{ color: T.muted }}> · ${appt.service_price}</span>
+          ) : (
+            ""
+          )}
         </p>
         {!isMobile && appt.client_email && (
-          <p style={{ fontSize: 10, color: "#27272a", marginTop: 2 }}>
+          <p style={{ ...mono, fontSize: 9, color: T.dim, marginTop: 4 }}>
             {appt.client_email}
           </p>
         )}
@@ -532,9 +677,15 @@ function ApptCard({ appt, onStatusChange, onReschedule, onCancel, isMobile }) {
 
       {/* Actions */}
       <div
-        style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 6,
+          padding: "0 10px",
+          flexShrink: 0,
+        }}
       >
-        {/* Status dropdown */}
+        {/* Status pill */}
         <div ref={menuRef} style={{ position: "relative" }}>
           <button
             onClick={() => setMenuOpen((o) => !o)}
@@ -551,9 +702,31 @@ function ApptCard({ appt, onStatusChange, onReschedule, onCancel, isMobile }) {
               color: sCfg.color,
               border: `1px solid ${sCfg.border}`,
               cursor: "pointer",
+              transition: "all 0.15s",
+              whiteSpace: "nowrap",
             }}
           >
-            {sCfg.label} <span style={{ fontSize: 7, opacity: 0.6 }}>▾</span>
+            <span
+              style={{
+                width: 5,
+                height: 5,
+                borderRadius: "50%",
+                background: sCfg.color,
+                flexShrink: 0,
+              }}
+            />
+            {!isMobile && sCfg.label}
+            <span
+              style={{
+                fontSize: 7,
+                opacity: 0.5,
+                transform: menuOpen ? "rotate(180deg)" : "none",
+                transition: "transform 0.2s",
+                display: "inline-block",
+              }}
+            >
+              ▾
+            </span>
           </button>
           {menuOpen && (
             <div
@@ -562,10 +735,10 @@ function ApptCard({ appt, onStatusChange, onReschedule, onCancel, isMobile }) {
                 top: "calc(100% + 4px)",
                 right: 0,
                 zIndex: 200,
-                background: "#0d0d0d",
-                border: "1px solid rgba(255,255,255,0.1)",
-                minWidth: 130,
-                boxShadow: "0 12px 40px rgba(0,0,0,0.7)",
+                background: "#0a0a0a",
+                border: `1px solid ${T.border}`,
+                minWidth: 140,
+                boxShadow: "0 20px 60px rgba(0,0,0,0.8)",
               }}
             >
               {Object.entries(STATUS_CFG).map(([key, cfg]) => (
@@ -576,18 +749,16 @@ function ApptCard({ appt, onStatusChange, onReschedule, onCancel, isMobile }) {
                     width: "100%",
                     display: "flex",
                     alignItems: "center",
-                    gap: 8,
-                    padding: "9px 12px",
-                    background:
-                      status === key ? "rgba(245,158,11,0.06)" : "transparent",
+                    gap: 10,
+                    padding: "10px 14px",
+                    background: status === key ? T.amberDim : "transparent",
                     border: "none",
                     cursor: "pointer",
                     transition: "background 0.15s",
                   }}
                   onMouseEnter={(e) => {
                     if (status !== key)
-                      e.currentTarget.style.background =
-                        "rgba(255,255,255,0.04)";
+                      e.currentTarget.style.background = T.surface;
                   }}
                   onMouseLeave={(e) => {
                     if (status !== key)
@@ -609,7 +780,7 @@ function ApptCard({ appt, onStatusChange, onReschedule, onCancel, isMobile }) {
                       fontSize: 7,
                       letterSpacing: "0.1em",
                       textTransform: "uppercase",
-                      color: status === key ? "#f59e0b" : "#a1a1aa",
+                      color: status === key ? T.amber : "#a1a1aa",
                     }}
                   >
                     {cfg.label}
@@ -618,8 +789,8 @@ function ApptCard({ appt, onStatusChange, onReschedule, onCancel, isMobile }) {
                     <span
                       style={{
                         marginLeft: "auto",
+                        color: T.amber,
                         fontSize: 9,
-                        color: "#f59e0b",
                       }}
                     >
                       ✓
@@ -639,18 +810,17 @@ function ApptCard({ appt, onStatusChange, onReschedule, onCancel, isMobile }) {
             width: 28,
             height: 28,
             background: "transparent",
-            border: "1px solid rgba(245,158,11,0.25)",
-            color: "#f59e0b",
+            border: `1px solid ${T.amberBorder}`,
+            color: T.amber,
             cursor: "pointer",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            fontSize: 12,
+            fontSize: 11,
             transition: "all 0.2s",
+            flexShrink: 0,
           }}
-          onMouseEnter={(e) =>
-            (e.currentTarget.style.background = "rgba(245,158,11,0.1)")
-          }
+          onMouseEnter={(e) => (e.currentTarget.style.background = T.amberDim)}
           onMouseLeave={(e) =>
             (e.currentTarget.style.background = "transparent")
           }
@@ -667,13 +837,14 @@ function ApptCard({ appt, onStatusChange, onReschedule, onCancel, isMobile }) {
             height: 28,
             background: "transparent",
             border: "1px solid rgba(248,113,113,0.2)",
-            color: "#3f3f46",
+            color: T.dim,
             cursor: "pointer",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            fontSize: 12,
+            fontSize: 11,
             transition: "all 0.2s",
+            flexShrink: 0,
           }}
           onMouseEnter={(e) => {
             e.currentTarget.style.borderColor = "#f87171";
@@ -682,7 +853,7 @@ function ApptCard({ appt, onStatusChange, onReschedule, onCancel, isMobile }) {
           }}
           onMouseLeave={(e) => {
             e.currentTarget.style.borderColor = "rgba(248,113,113,0.2)";
-            e.currentTarget.style.color = "#3f3f46";
+            e.currentTarget.style.color = T.dim;
             e.currentTarget.style.background = "transparent";
           }}
         >
@@ -700,7 +871,6 @@ function RescheduleModal({ appt, onClose, onDone }) {
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState("");
   const [done, setDone] = useState(false);
-
   const slots = HOURS.map((h) => {
     const [hr, mn] = h.split(":");
     const hour = parseInt(hr);
@@ -709,7 +879,7 @@ function RescheduleModal({ appt, onClose, onDone }) {
 
   const handle = async () => {
     if (!newDate || !newTime) {
-      setErr("Pick both a date and time.");
+      setErr("Pick a date and time.");
       return;
     }
     setSaving(true);
@@ -725,7 +895,7 @@ function RescheduleModal({ appt, onClose, onDone }) {
         onClose();
       }, 1400);
     } catch (e) {
-      setErr(e.response?.data?.error || "That slot may already be booked.");
+      setErr(e.response?.data?.error || "Slot may already be booked.");
     } finally {
       setSaving(false);
     }
@@ -737,8 +907,8 @@ function RescheduleModal({ appt, onClose, onDone }) {
         position: "fixed",
         inset: 0,
         zIndex: 300,
-        background: "rgba(0,0,0,0.88)",
-        backdropFilter: "blur(8px)",
+        background: "rgba(4,4,4,0.95)",
+        backdropFilter: "blur(12px)",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
@@ -748,31 +918,31 @@ function RescheduleModal({ appt, onClose, onDone }) {
       <div
         style={{
           width: "100%",
-          maxWidth: 440,
-          background: "#0a0a0a",
-          border: "1px solid rgba(255,255,255,0.1)",
+          maxWidth: 460,
+          background: "#060606",
+          border: `1px solid ${T.border}`,
           padding: "28px 24px",
           maxHeight: "90vh",
           overflowY: "auto",
         }}
       >
         {done ? (
-          <div style={{ textAlign: "center", padding: "28px 0" }}>
+          <div style={{ textAlign: "center", padding: "32px 0" }}>
             <div
               style={{
-                width: 48,
-                height: 48,
+                width: 52,
+                height: 52,
                 borderRadius: "50%",
                 background: "linear-gradient(135deg,#22c55e,#16a34a)",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                margin: "0 auto 14px",
+                margin: "0 auto 16px",
               }}
             >
               <svg
-                width="22"
-                height="22"
+                width="24"
+                height="24"
                 viewBox="0 0 24 24"
                 fill="none"
                 stroke="black"
@@ -786,42 +956,54 @@ function RescheduleModal({ appt, onClose, onDone }) {
             <p
               style={{
                 ...sf,
-                fontSize: 9,
+                fontSize: 8,
                 color: "#4ade80",
                 textTransform: "uppercase",
                 letterSpacing: "0.3em",
               }}
             >
-              Rescheduled!
+              Rescheduled
             </p>
           </div>
         ) : (
           <>
-            <p
+            <div
               style={{
-                ...sf,
-                fontSize: 7,
-                letterSpacing: "0.4em",
-                color: "#52525b",
-                textTransform: "uppercase",
-                marginBottom: 6,
-              }}
-            >
-              Reschedule
-            </p>
-            <h2
-              style={{
-                ...sf,
-                fontSize: 16,
-                fontWeight: 900,
-                textTransform: "uppercase",
-                color: "white",
+                display: "flex",
+                alignItems: "center",
+                gap: 12,
                 marginBottom: 20,
               }}
             >
-              {appt.client}
-              <span style={{ color: "#f59e0b" }}>_</span>
-            </h2>
+              <Scissors size={18} />
+              <div>
+                <p
+                  style={{
+                    ...sf,
+                    fontSize: 6,
+                    letterSpacing: "0.4em",
+                    color: T.muted,
+                    textTransform: "uppercase",
+                    margin: 0,
+                  }}
+                >
+                  Reschedule
+                </p>
+                <h2
+                  style={{
+                    ...sf,
+                    fontSize: 16,
+                    fontWeight: 900,
+                    textTransform: "uppercase",
+                    color: "white",
+                    margin: 0,
+                  }}
+                >
+                  {appt.client}
+                  <span style={{ color: T.amber }}>_</span>
+                </h2>
+              </div>
+            </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
               <div>
                 <label
@@ -829,7 +1011,7 @@ function RescheduleModal({ appt, onClose, onDone }) {
                     ...sf,
                     fontSize: 7,
                     letterSpacing: "0.3em",
-                    color: "#71717a",
+                    color: T.muted,
                     textTransform: "uppercase",
                     display: "block",
                     marginBottom: 8,
@@ -845,16 +1027,15 @@ function RescheduleModal({ appt, onClose, onDone }) {
                   style={{
                     width: "100%",
                     background: "#050505",
-                    border: "1px solid rgba(255,255,255,0.1)",
+                    border: `1px solid ${T.border}`,
                     padding: "12px 14px",
                     color: "white",
                     fontSize: 14,
                     outline: "none",
+                    fontFamily: "'DM Mono', monospace",
                   }}
-                  onFocus={(e) => (e.target.style.borderColor = "#f59e0b")}
-                  onBlur={(e) =>
-                    (e.target.style.borderColor = "rgba(255,255,255,0.1)")
-                  }
+                  onFocus={(e) => (e.target.style.borderColor = T.amber)}
+                  onBlur={(e) => (e.target.style.borderColor = T.border)}
                 />
               </div>
               <div>
@@ -863,7 +1044,7 @@ function RescheduleModal({ appt, onClose, onDone }) {
                     ...sf,
                     fontSize: 7,
                     letterSpacing: "0.3em",
-                    color: "#71717a",
+                    color: T.muted,
                     textTransform: "uppercase",
                     display: "block",
                     marginBottom: 8,
@@ -875,7 +1056,7 @@ function RescheduleModal({ appt, onClose, onDone }) {
                   style={{
                     display: "grid",
                     gridTemplateColumns: "repeat(4,1fr)",
-                    gap: 6,
+                    gap: 5,
                   }}
                 >
                   {slots.map((s) => (
@@ -883,17 +1064,14 @@ function RescheduleModal({ appt, onClose, onDone }) {
                       key={s}
                       onClick={() => setNewTime(s)}
                       style={{
-                        padding: "8px 2px",
+                        padding: "7px 2px",
                         ...sf,
-                        fontSize: 7,
+                        fontSize: 6,
                         letterSpacing: "0.05em",
                         textTransform: "uppercase",
-                        border: `1px solid ${newTime === s ? "#f59e0b" : "rgba(255,255,255,0.08)"}`,
-                        background:
-                          newTime === s
-                            ? "rgba(245,158,11,0.1)"
-                            : "transparent",
-                        color: newTime === s ? "#f59e0b" : "#71717a",
+                        border: `1px solid ${newTime === s ? T.amber : T.border}`,
+                        background: newTime === s ? T.amberDim : "transparent",
+                        color: newTime === s ? T.amber : T.muted,
                         cursor: "pointer",
                         transition: "all 0.15s",
                       }}
@@ -904,21 +1082,23 @@ function RescheduleModal({ appt, onClose, onDone }) {
                 </div>
               </div>
               {err && (
-                <p style={{ fontSize: 11, color: "#f87171", ...mono }}>
+                <p
+                  style={{ ...mono, fontSize: 11, color: "#f87171", margin: 0 }}
+                >
                   ⚠ {err}
                 </p>
               )}
-              <div style={{ display: "flex", gap: 10 }}>
+              <div style={{ display: "flex", gap: 10, paddingTop: 4 }}>
                 <button
                   onClick={onClose}
                   style={{
                     flex: 1,
                     padding: "12px",
                     background: "transparent",
-                    border: "1px solid rgba(255,255,255,0.1)",
-                    color: "#71717a",
+                    border: `1px solid ${T.border}`,
+                    color: T.muted,
                     ...sf,
-                    fontSize: 8,
+                    fontSize: 7,
                     textTransform: "uppercase",
                     letterSpacing: "0.15em",
                     cursor: "pointer",
@@ -929,8 +1109,8 @@ function RescheduleModal({ appt, onClose, onDone }) {
                     e.currentTarget.style.color = "white";
                   }}
                   onMouseLeave={(e) => {
-                    e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)";
-                    e.currentTarget.style.color = "#71717a";
+                    e.currentTarget.style.borderColor = T.border;
+                    e.currentTarget.style.color = T.muted;
                   }}
                 >
                   Cancel
@@ -942,13 +1122,13 @@ function RescheduleModal({ appt, onClose, onDone }) {
                     flex: 2,
                     padding: "12px",
                     background:
-                      !newDate || !newTime || saving ? "#1c1c1e" : "#f59e0b",
-                    color: !newDate || !newTime || saving ? "#3f3f46" : "black",
+                      !newDate || !newTime || saving ? T.deepDim : T.amber,
+                    color: !newDate || !newTime || saving ? T.dim : "black",
                     ...sf,
-                    fontSize: 8,
+                    fontSize: 7,
                     fontWeight: 700,
                     textTransform: "uppercase",
-                    letterSpacing: "0.15em",
+                    letterSpacing: "0.2em",
                     border: "none",
                     cursor:
                       !newDate || !newTime || saving
@@ -999,14 +1179,12 @@ export default function BarberDashboard() {
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState(null);
 
-  // Calendar state
   const today = todayISO();
   const [selectedDate, setSelectedDate] = useState(today);
   const [calYear, setCalYear] = useState(new Date().getFullYear());
   const [calMonth, setCalMonth] = useState(new Date().getMonth());
   const [apptDots, setApptDots] = useState({});
 
-  // Schedule
   const [schedule, setSchedule] = useState([]);
   const [summary, setSummary] = useState({
     total: 0,
@@ -1016,12 +1194,10 @@ export default function BarberDashboard() {
   });
   const [loadingSched, setLoadingSched] = useState(false);
 
-  // Modals
   const [rescheduleAppt, setRescheduleAppt] = useState(null);
   const [cancelTarget, setCancelTarget] = useState(null);
   const [cancelling, setCancelling] = useState(false);
 
-  // Availability
   const [availability, setAvailability] = useState([]);
   const [editingDay, setEditingDay] = useState(null);
   const [editStart, setEditStart] = useState("09:00");
@@ -1029,7 +1205,6 @@ export default function BarberDashboard() {
   const [editWorking, setEditWorking] = useState(true);
   const [savingAvail, setSavingAvail] = useState(false);
 
-  // Time off
   const [timeOff, setTimeOff] = useState([]);
   const [newTimeOffDate, setNewTimeOffDate] = useState("");
   const [newTimeOffReason, setNewTimeOffReason] = useState("");
@@ -1040,23 +1215,18 @@ export default function BarberDashboard() {
     setTimeout(() => setToast(null), 3500);
   };
 
-  // ── Auth ──
+  // Auth
   useEffect(() => {
-    const init = async () => {
-      try {
-        const res = await API.get("barber/me/");
-        setBarber(res.data);
-      } catch (e) {
+    API.get("barber/me/")
+      .then((res) => setBarber(res.data))
+      .catch((e) => {
         if (e.response?.status === 403 || e.response?.status === 401)
           router.push("/barber-login");
-      } finally {
-        setLoading(false);
-      }
-    };
-    init();
+      })
+      .finally(() => setLoading(false));
   }, []);
 
-  // ── Load schedule for selected date ──
+  // Schedule
   const loadSchedule = useCallback(async () => {
     if (!barber) return;
     setLoadingSched(true);
@@ -1077,12 +1247,11 @@ export default function BarberDashboard() {
       setLoadingSched(false);
     }
   }, [barber, selectedDate]);
-
   useEffect(() => {
     loadSchedule();
   }, [loadSchedule]);
 
-  // ── Load month dots ──
+  // Month dots
   const loadMonthDots = useCallback(async () => {
     if (!barber) return;
     try {
@@ -1095,12 +1264,11 @@ export default function BarberDashboard() {
       setApptDots(counts);
     } catch {}
   }, [barber, calYear, calMonth]);
-
   useEffect(() => {
     loadMonthDots();
   }, [loadMonthDots]);
 
-  // ── Load availability ──
+  // Availability
   const loadAvailability = useCallback(async () => {
     if (!barber) return;
     try {
@@ -1108,12 +1276,11 @@ export default function BarberDashboard() {
       setAvailability(res.data);
     } catch {}
   }, [barber]);
-
   useEffect(() => {
     loadAvailability();
   }, [loadAvailability]);
 
-  // ── Load time off ──
+  // Time off
   const loadTimeOff = useCallback(async () => {
     if (!barber) return;
     try {
@@ -1121,19 +1288,18 @@ export default function BarberDashboard() {
       setTimeOff(res.data);
     } catch {}
   }, [barber]);
-
   useEffect(() => {
     if (activeTab === "timeoff") loadTimeOff();
   }, [activeTab, loadTimeOff]);
 
-  // ── Entry animation ──
+  // Entry animation
   useEffect(() => {
     if (!loading && barber)
       gsap.from(".bd-enter", {
-        y: 24,
+        y: 20,
         opacity: 0,
-        duration: 0.9,
-        stagger: 0.07,
+        duration: 0.8,
+        stagger: 0.06,
         ease: "expo.out",
       });
   }, [loading, barber]);
@@ -1144,21 +1310,19 @@ export default function BarberDashboard() {
     router.push("/barber-login");
   };
 
-  // ── Status change ──
   const handleStatusChange = async (apptId, newStatus) => {
     try {
       await API.patch(`barber/appointments/${apptId}/`, { status: newStatus });
       setSchedule((prev) =>
         prev.map((a) => (a.id === apptId ? { ...a, status: newStatus } : a)),
       );
-      showToast(`Marked as ${STATUS_CFG[newStatus].label}`);
+      showToast(`Marked ${STATUS_CFG[newStatus].label}`);
     } catch {
-      showToast("Could not update status.", "error");
+      showToast("Could not update.", "error");
       throw new Error("failed");
     }
   };
 
-  // ── Cancel ──
   const handleCancel = async () => {
     if (!cancelTarget) return;
     setCancelling(true);
@@ -1179,7 +1343,6 @@ export default function BarberDashboard() {
     }
   };
 
-  // ── Reschedule done ──
   const handleRescheduleDone = (apptId, newDate, newTime) => {
     if (newDate === selectedDate)
       setSchedule((prev) =>
@@ -1191,7 +1354,6 @@ export default function BarberDashboard() {
     showToast("Rescheduled.");
   };
 
-  // ── Save availability ──
   const saveAvailability = async () => {
     if (editingDay === null) return;
     setSavingAvail(true);
@@ -1212,7 +1374,6 @@ export default function BarberDashboard() {
     }
   };
 
-  // ── Add time off ──
   const addTimeOff = async () => {
     if (!newTimeOffDate) return;
     setAddingTimeOff(true);
@@ -1242,7 +1403,6 @@ export default function BarberDashboard() {
     }
   };
 
-  // ── Calendar nav ──
   const prevMonth = () => {
     if (calMonth === 0) {
       setCalMonth(11);
@@ -1255,7 +1415,6 @@ export default function BarberDashboard() {
       setCalYear((y) => y + 1);
     } else setCalMonth((m) => m + 1);
   };
-
   const handleSelectDate = (ds) => {
     setSelectedDate(ds);
     const d = new Date(ds + "T00:00:00");
@@ -1268,7 +1427,7 @@ export default function BarberDashboard() {
     return (
       <div
         style={{
-          background: "#050505",
+          background: T.bg,
           minHeight: "100vh",
           display: "flex",
           alignItems: "center",
@@ -1278,9 +1437,8 @@ export default function BarberDashboard() {
         }}
       >
         <style jsx global>{`
-          @import url("https://fonts.googleapis.com/css2?family=Syncopate:wght@400;700&display=swap");
           body {
-            background: #050505;
+            background: ${T.bg};
             margin: 0;
           }
           @keyframes spin {
@@ -1292,12 +1450,20 @@ export default function BarberDashboard() {
             }
           }
         `}</style>
+        <Scissors size={28} />
         <div
           style={{
-            width: 28,
-            height: 28,
-            border: "2px solid rgba(245,158,11,0.3)",
-            borderTopColor: "#f59e0b",
+            width: 1,
+            height: 40,
+            background: `linear-gradient(to bottom, ${T.amber}, transparent)`,
+          }}
+        />
+        <div
+          style={{
+            width: 20,
+            height: 20,
+            border: `1.5px solid rgba(245,158,11,0.3)`,
+            borderTopColor: T.amber,
             borderRadius: "50%",
             animation: "spin 0.8s linear infinite",
           }}
@@ -1318,15 +1484,15 @@ export default function BarberDashboard() {
           margin: 0;
           padding: 0;
         }
+        html,
         body {
-          background: #050505;
+          background: ${T.bg};
           color: white;
-          font-family: "DM Mono", monospace;
           overflow-y: auto !important;
+          overflow-x: hidden;
         }
         ::-webkit-scrollbar {
           width: 0;
-          height: 0;
         }
         @keyframes spin {
           from {
@@ -1336,65 +1502,199 @@ export default function BarberDashboard() {
             transform: rotate(360deg);
           }
         }
-        @keyframes fadeUp {
+        @keyframes toastIn {
           from {
             opacity: 0;
-            transform: translateY(8px);
+            transform: translateX(-50%) translateY(8px);
+          }
+          to {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+          }
+        }
+        @keyframes pageIn {
+          from {
+            opacity: 0;
+            transform: translateY(6px);
           }
           to {
             opacity: 1;
             transform: translateY(0);
           }
         }
-        @keyframes pageIn {
-          from {
-            opacity: 0;
-          }
-          to {
-            opacity: 1;
-          }
-        }
         .bd-page {
-          opacity: 0;
-          animation: pageIn 0.4s ease forwards;
+          animation: pageIn 0.5s ease forwards;
         }
         input[type="date"]::-webkit-calendar-picker-indicator,
         input[type="time"]::-webkit-calendar-picker-indicator {
-          filter: invert(1) opacity(0.4);
+          filter: invert(1) opacity(0.35);
           cursor: pointer;
+        }
+        .tab-pill {
+          transition: all 0.2s;
+        }
+        .tab-pill:hover {
+          color: white !important;
+        }
+        @keyframes scanline {
+          0% {
+            top: -10%;
+          }
+          100% {
+            top: 110%;
+          }
+        }
+        @keyframes drift {
+          0%,
+          100% {
+            transform: translateY(0) rotate(0deg);
+          }
+          50% {
+            transform: translateY(-8px) rotate(2deg);
+          }
         }
       `}</style>
 
-      {/* Background */}
+      {/* Scanline sweep */}
       <div
         style={{
           position: "fixed",
           inset: 0,
           zIndex: 0,
           pointerEvents: "none",
-          opacity: 0.025,
-          backgroundImage:
-            "url('https://grainy-gradients.vercel.app/noise.svg')",
+          overflow: "hidden",
         }}
-      />
+      >
+        <div
+          style={{
+            position: "absolute",
+            left: 0,
+            right: 0,
+            height: 2,
+            background:
+              "linear-gradient(to bottom, transparent, rgba(245,158,11,0.03), transparent)",
+            animation: "scanline 12s linear infinite",
+          }}
+        />
+      </div>
+
+      {/* Grid lines */}
       <div
         style={{
           position: "fixed",
-          top: "20%",
-          left: "60%",
-          transform: "translate(-50%,-50%)",
-          width: 600,
-          height: 600,
+          inset: 0,
           zIndex: 0,
           pointerEvents: "none",
-          background:
-            "radial-gradient(circle, rgba(245,158,11,0.04) 0%, transparent 65%)",
+          backgroundImage:
+            "linear-gradient(rgba(255,255,255,0.012) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.012) 1px, transparent 1px)",
+          backgroundSize: "64px 64px",
         }}
       />
+      {/* Amber glow top-right */}
+      <div
+        style={{
+          position: "fixed",
+          top: 0,
+          right: 0,
+          width: 500,
+          height: 500,
+          background:
+            "radial-gradient(circle, rgba(245,158,11,0.04) 0%, transparent 60%)",
+          pointerEvents: "none",
+          zIndex: 0,
+        }}
+      />
+      {/* Amber glow bottom-left */}
+      <div
+        style={{
+          position: "fixed",
+          bottom: 0,
+          left: 0,
+          width: 400,
+          height: 400,
+          background:
+            "radial-gradient(circle, rgba(245,158,11,0.025) 0%, transparent 60%)",
+          pointerEvents: "none",
+          zIndex: 0,
+        }}
+      />
+      {/* Grain */}
+      <div
+        style={{
+          position: "fixed",
+          inset: 0,
+          opacity: 0.028,
+          backgroundImage:
+            "url('https://grainy-gradients.vercel.app/noise.svg')",
+          pointerEvents: "none",
+          zIndex: 0,
+        }}
+      />
+      {/* Corner marks */}
+      {[
+        { top: 68, left: 16 },
+        { top: 68, right: 16 },
+        { bottom: 16, left: 16 },
+        { bottom: 16, right: 16 },
+      ].map((pos, i) => (
+        <div
+          key={i}
+          style={{
+            position: "fixed",
+            ...pos,
+            zIndex: 1,
+            pointerEvents: "none",
+            width: 16,
+            height: 16,
+            opacity: 0.12,
+          }}
+        >
+          <div
+            style={{
+              position: "absolute",
+              top: 0,
+              left: 0,
+              width: 7,
+              height: 1,
+              background: T.amber,
+            }}
+          />
+          <div
+            style={{
+              position: "absolute",
+              top: 0,
+              left: 0,
+              width: 1,
+              height: 7,
+              background: T.amber,
+            }}
+          />
+          <div
+            style={{
+              position: "absolute",
+              bottom: 0,
+              right: 0,
+              width: 7,
+              height: 1,
+              background: T.amber,
+            }}
+          />
+          <div
+            style={{
+              position: "absolute",
+              bottom: 0,
+              right: 0,
+              width: 1,
+              height: 7,
+              background: T.amber,
+            }}
+          />
+        </div>
+      ))}
 
       <Toast toast={toast} />
 
-      {/* Nav */}
+      {/* ── NAV ── */}
       <nav
         style={{
           position: "fixed",
@@ -1402,147 +1702,249 @@ export default function BarberDashboard() {
           left: 0,
           right: 0,
           zIndex: 50,
-          padding: isMobile ? "13px 16px" : "15px 24px",
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          background: "rgba(5,5,5,0.92)",
-          backdropFilter: "blur(16px)",
-          borderBottom: "1px solid rgba(255,255,255,0.05)",
+          background: "rgba(4,4,4,0.94)",
+          backdropFilter: "blur(20px)",
+          borderBottom: `1px solid ${T.border}`,
         }}
       >
-        <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-          <div
-            style={{
-              ...sf,
-              fontWeight: 700,
-              fontSize: 15,
-              letterSpacing: "-0.05em",
-            }}
-          >
-            HEADZ
-            <span style={{ color: "#f59e0b", fontStyle: "italic" }}>UP</span>
-          </div>
-          {!isMobile && (
-            <>
-              <div
-                style={{
-                  width: 1,
-                  height: 14,
-                  background: "rgba(255,255,255,0.08)",
-                }}
-              />
+        <div
+          style={{
+            maxWidth: 1200,
+            margin: "0 auto",
+            padding: isMobile ? "0 14px" : "0 24px",
+            height: 56,
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+          }}
+        >
+          {/* Left */}
+          <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <Scissors size={14} />
               <span
                 style={{
                   ...sf,
-                  fontSize: 7,
-                  letterSpacing: "0.3em",
-                  color: "#f59e0b",
-                  textTransform: "uppercase",
+                  fontWeight: 700,
+                  fontSize: 14,
+                  letterSpacing: "-0.05em",
                 }}
               >
-                {barber.name}
+                HEADZ
+                <span style={{ color: T.amber, fontStyle: "italic" }}>UP</span>
               </span>
-            </>
-          )}
+            </div>
+            {!isMobile && (
+              <>
+                <div style={{ width: 1, height: 14, background: T.border }} />
+                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  <div
+                    style={{
+                      width: 6,
+                      height: 6,
+                      borderRadius: "50%",
+                      background: "#22c55e",
+                      boxShadow: "0 0 8px rgba(34,197,94,0.6)",
+                    }}
+                  />
+                  <span
+                    style={{
+                      ...sf,
+                      fontSize: 6,
+                      letterSpacing: "0.3em",
+                      color: T.amber,
+                      textTransform: "uppercase",
+                    }}
+                  >
+                    {barber.name}
+                  </span>
+                </div>
+              </>
+            )}
+          </div>
+
+          {/* Right */}
+          <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+            <button
+              onClick={() => handleSelectDate(today)}
+              style={{
+                ...sf,
+                fontSize: 6,
+                letterSpacing: "0.2em",
+                textTransform: "uppercase",
+                color: T.muted,
+                background: "none",
+                border: `1px solid ${T.border}`,
+                padding: "6px 12px",
+                cursor: "pointer",
+                transition: "all 0.2s",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.borderColor = T.amberBorder;
+                e.currentTarget.style.color = T.amber;
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.borderColor = T.border;
+                e.currentTarget.style.color = T.muted;
+              }}
+            >
+              Today
+            </button>
+            <button
+              onClick={handleLogout}
+              style={{
+                ...sf,
+                fontSize: 6,
+                letterSpacing: "0.2em",
+                textTransform: "uppercase",
+                color: T.muted,
+                background: "none",
+                border: `1px solid ${T.border}`,
+                padding: "6px 12px",
+                cursor: "pointer",
+                transition: "all 0.2s",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.borderColor = "#f87171";
+                e.currentTarget.style.color = "#f87171";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.borderColor = T.border;
+                e.currentTarget.style.color = T.muted;
+              }}
+            >
+              Sign Out
+            </button>
+          </div>
         </div>
-        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-          <button
-            onClick={() => setSelectedDate(today)}
-            style={{
-              ...sf,
-              fontSize: 7,
-              letterSpacing: "0.15em",
-              textTransform: "uppercase",
-              color: "#52525b",
-              background: "none",
-              border: "1px solid rgba(255,255,255,0.07)",
-              padding: "6px 12px",
-              cursor: "pointer",
-              transition: "all 0.2s",
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.borderColor = "rgba(245,158,11,0.4)";
-              e.currentTarget.style.color = "#f59e0b";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.borderColor = "rgba(255,255,255,0.07)";
-              e.currentTarget.style.color = "#52525b";
-            }}
-          >
-            Today
-          </button>
-          <button
-            onClick={handleLogout}
-            style={{
-              ...sf,
-              fontSize: 7,
-              letterSpacing: "0.15em",
-              textTransform: "uppercase",
-              color: "#52525b",
-              background: "none",
-              border: "1px solid rgba(255,255,255,0.07)",
-              padding: "6px 12px",
-              cursor: "pointer",
-              transition: "all 0.2s",
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.borderColor = "#f87171";
-              e.currentTarget.style.color = "#f87171";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.borderColor = "rgba(255,255,255,0.07)";
-              e.currentTarget.style.color = "#52525b";
-            }}
-          >
-            Sign Out
-          </button>
+
+        {/* Tabs in nav */}
+        <div
+          style={{
+            maxWidth: 1200,
+            margin: "0 auto",
+            padding: isMobile ? "0 14px" : "0 24px",
+            display: "flex",
+            borderTop: `1px solid ${T.border}`,
+          }}
+        >
+          {[
+            { key: "schedule", label: "Schedule", icon: "📅" },
+            { key: "availability", label: "My Hours", icon: "⏰" },
+            { key: "timeoff", label: "Time Off", icon: "🏖" },
+          ].map(({ key, label, icon }) => (
+            <button
+              key={key}
+              onClick={() => setActiveTab(key)}
+              className="tab-pill"
+              style={{
+                padding: isMobile ? "10px 14px" : "10px 20px",
+                ...sf,
+                fontSize: isMobile ? 6 : 7,
+                letterSpacing: "0.15em",
+                textTransform: "uppercase",
+                background: "transparent",
+                border: "none",
+                borderBottom: `2px solid ${activeTab === key ? T.amber : "transparent"}`,
+                color: activeTab === key ? T.amber : T.muted,
+                cursor: "pointer",
+                marginBottom: -1,
+                transition: "all 0.2s",
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+              }}
+            >
+              {!isMobile && <span style={{ fontSize: 10 }}>{icon}</span>}
+              {label}
+            </button>
+          ))}
         </div>
       </nav>
 
-      {/* Page */}
+      {/* ── MAIN ── */}
       <div
         className="bd-page"
         style={{
           position: "relative",
           zIndex: 10,
           minHeight: "100vh",
-          padding: isMobile ? "64px 12px 40px" : "68px 20px 48px",
-          maxWidth: 1140,
+          padding: isMobile ? "104px 12px 40px" : "108px 24px 48px",
+          maxWidth: 1200,
           margin: "0 auto",
         }}
       >
-        {/* Header */}
-        <div className="bd-enter" style={{ marginBottom: 24 }}>
-          <p
+        {/* ── HEADER ── */}
+        <div
+          className="bd-enter"
+          style={{
+            marginBottom: 24,
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "flex-end",
+            flexWrap: "wrap",
+            gap: 12,
+          }}
+        >
+          <div>
+            <p
+              style={{
+                ...sf,
+                fontSize: 6,
+                letterSpacing: "0.6em",
+                color: T.muted,
+                textTransform: "uppercase",
+                marginBottom: 6,
+              }}
+            >
+              Barber Portal
+            </p>
+            <h1
+              style={{
+                ...sf,
+                fontSize: "clamp(1.4rem, 2.5vw, 2rem)",
+                fontWeight: 900,
+                textTransform: "uppercase",
+                lineHeight: 1,
+                margin: 0,
+              }}
+            >
+              {isMobile ? barber.name : `Hey, `}
+              <span style={{ color: T.amber, fontStyle: "italic" }}>
+                {isMobile ? "_" : `${barber.name}_`}
+              </span>
+            </h1>
+          </div>
+          {/* Animated scissors divider */}
+          <div
             style={{
-              ...sf,
-              fontSize: 7,
-              letterSpacing: "0.5em",
-              color: "#3f3f46",
-              textTransform: "uppercase",
-              marginBottom: 6,
+              display: "flex",
+              alignItems: "center",
+              gap: 10,
+              opacity: 0.25,
             }}
           >
-            Barber Portal
-          </p>
-          <h1
-            style={{
-              ...sf,
-              fontSize: "clamp(1.5rem,3vw,2.2rem)",
-              fontWeight: 900,
-              textTransform: "uppercase",
-              lineHeight: 1,
-            }}
-          >
-            Hey,{" "}
-            <span style={{ color: "#f59e0b", fontStyle: "italic" }}>
-              {barber.name}_
-            </span>
-          </h1>
+            <div
+              style={{
+                width: isMobile ? 36 : 96,
+                height: 1,
+                background: `linear-gradient(to right, transparent, ${T.amber})`,
+              }}
+            />
+            <div style={{ animation: "drift 5s ease-in-out infinite" }}>
+              <Scissors size={16} />
+            </div>
+            <div
+              style={{
+                width: isMobile ? 36 : 96,
+                height: 1,
+                background: `linear-gradient(to left, transparent, ${T.amber})`,
+              }}
+            />
+          </div>
         </div>
 
-        {/* Stats */}
+        {/* ── STATS ── */}
         <div
           className="bd-enter"
           style={{
@@ -1552,101 +1954,10 @@ export default function BarberDashboard() {
             marginBottom: 24,
           }}
         >
-          {[
-            { label: "Today", value: barber.today_count, accent: true },
-            { label: "All Time", value: barber.total_count, accent: false },
-            {
-              label: "Online Rev",
-              value: `$${summary.online_revenue}`,
-              accent: false,
-            },
-            { label: "Pay In Shop", value: summary.pay_in_shop, accent: false },
-          ].map(({ label, value, accent }) => (
-            <div
-              key={label}
-              style={{
-                padding: "14px 12px",
-                background: accent
-                  ? "rgba(245,158,11,0.07)"
-                  : "rgba(255,255,255,0.025)",
-                border: `1px solid ${accent ? "rgba(245,158,11,0.25)" : "rgba(255,255,255,0.06)"}`,
-                transition: "all 0.2s",
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.borderColor = "#f59e0b";
-                e.currentTarget.style.background = "rgba(245,158,11,0.07)";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.borderColor = accent
-                  ? "rgba(245,158,11,0.25)"
-                  : "rgba(255,255,255,0.06)";
-                e.currentTarget.style.background = accent
-                  ? "rgba(245,158,11,0.07)"
-                  : "rgba(255,255,255,0.025)";
-              }}
-            >
-              <p
-                style={{
-                  ...sf,
-                  fontSize: 6,
-                  letterSpacing: "0.25em",
-                  color: "#3f3f46",
-                  textTransform: "uppercase",
-                  marginBottom: 6,
-                }}
-              >
-                {label}
-              </p>
-              <p
-                style={{
-                  ...sf,
-                  fontSize: 22,
-                  fontWeight: 900,
-                  color: accent ? "#f59e0b" : "white",
-                  lineHeight: 1,
-                }}
-              >
-                {value}
-              </p>
-            </div>
-          ))}
-        </div>
-
-        {/* Tabs */}
-        <div
-          className="bd-enter"
-          style={{
-            display: "flex",
-            borderBottom: "1px solid rgba(255,255,255,0.06)",
-            marginBottom: 20,
-          }}
-        >
-          {[
-            { key: "schedule", label: "Schedule" },
-            { key: "availability", label: "My Hours" },
-            { key: "timeoff", label: "Time Off" },
-          ].map(({ key, label }) => (
-            <button
-              key={key}
-              onClick={() => setActiveTab(key)}
-              style={{
-                padding: "11px 20px",
-                ...sf,
-                fontSize: 7,
-                letterSpacing: "0.2em",
-                textTransform: "uppercase",
-                background: "transparent",
-                border: "none",
-                borderBottom: `2px solid ${activeTab === key ? "#f59e0b" : "transparent"}`,
-                color: activeTab === key ? "#f59e0b" : "#3f3f46",
-                cursor: "pointer",
-                marginBottom: -1,
-                transition: "all 0.2s",
-              }}
-            >
-              {label}
-            </button>
-          ))}
+          <StatCard label="Today" value={barber.today_count} accent icon="✂️" />
+          <StatCard label="All Time" value={barber.total_count} />
+          <StatCard label="Online Rev" value={`$${summary.online_revenue}`} />
+          <StatCard label="Pay In Shop" value={summary.pay_in_shop} />
         </div>
 
         {/* ── SCHEDULE TAB ── */}
@@ -1654,15 +1965,15 @@ export default function BarberDashboard() {
           <div
             style={{
               display: "grid",
-              gridTemplateColumns: isMobile ? "1fr" : "280px 1fr",
-              gap: isMobile ? 16 : 24,
+              gridTemplateColumns: isMobile ? "1fr" : "260px 1fr",
+              gap: isMobile ? 16 : 20,
               alignItems: "start",
             }}
           >
             {/* LEFT: Calendar */}
             <div
               className="bd-enter"
-              style={{ display: "flex", flexDirection: "column", gap: 12 }}
+              style={{ display: "flex", flexDirection: "column", gap: 10 }}
             >
               <MonthCalendar
                 year={calYear}
@@ -1673,66 +1984,55 @@ export default function BarberDashboard() {
                 onPrevMonth={prevMonth}
                 onNextMonth={nextMonth}
               />
-              {/* Quick jump — prev/next day */}
-              <div style={{ display: "flex", gap: 6 }}>
-                <button
-                  onClick={() => handleSelectDate(addDays(selectedDate, -1))}
-                  style={{
-                    flex: 1,
-                    padding: "8px",
-                    background: "rgba(255,255,255,0.02)",
-                    border: "1px solid rgba(255,255,255,0.07)",
-                    color: "#52525b",
-                    cursor: "pointer",
-                    ...sf,
-                    fontSize: 7,
-                    letterSpacing: "0.1em",
-                    textTransform: "uppercase",
-                    transition: "all 0.2s",
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.borderColor = "rgba(245,158,11,0.3)";
-                    e.currentTarget.style.color = "#f59e0b";
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.borderColor =
-                      "rgba(255,255,255,0.07)";
-                    e.currentTarget.style.color = "#52525b";
-                  }}
-                >
-                  ← Prev Day
-                </button>
-                <button
-                  onClick={() => handleSelectDate(addDays(selectedDate, 1))}
-                  style={{
-                    flex: 1,
-                    padding: "8px",
-                    background: "rgba(255,255,255,0.02)",
-                    border: "1px solid rgba(255,255,255,0.07)",
-                    color: "#52525b",
-                    cursor: "pointer",
-                    ...sf,
-                    fontSize: 7,
-                    letterSpacing: "0.1em",
-                    textTransform: "uppercase",
-                    transition: "all 0.2s",
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.borderColor = "rgba(245,158,11,0.3)";
-                    e.currentTarget.style.color = "#f59e0b";
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.borderColor =
-                      "rgba(255,255,255,0.07)";
-                    e.currentTarget.style.color = "#52525b";
-                  }}
-                >
-                  Next Day →
-                </button>
+              {/* Prev / Next day */}
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "1fr 1fr",
+                  gap: 6,
+                }}
+              >
+                {[
+                  {
+                    label: "← Prev",
+                    fn: () => handleSelectDate(addDays(selectedDate, -1)),
+                  },
+                  {
+                    label: "Next →",
+                    fn: () => handleSelectDate(addDays(selectedDate, 1)),
+                  },
+                ].map(({ label, fn }) => (
+                  <button
+                    key={label}
+                    onClick={fn}
+                    style={{
+                      padding: "8px",
+                      background: T.surface,
+                      border: `1px solid ${T.border}`,
+                      color: T.muted,
+                      cursor: "pointer",
+                      ...sf,
+                      fontSize: 6,
+                      letterSpacing: "0.1em",
+                      textTransform: "uppercase",
+                      transition: "all 0.2s",
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.borderColor = T.amberBorder;
+                      e.currentTarget.style.color = T.amber;
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.borderColor = T.border;
+                      e.currentTarget.style.color = T.muted;
+                    }}
+                  >
+                    {label}
+                  </button>
+                ))}
               </div>
             </div>
 
-            {/* RIGHT: Day detail */}
+            {/* RIGHT: Day panel */}
             <div className="bd-enter">
               {/* Day header */}
               <div
@@ -1740,25 +2040,27 @@ export default function BarberDashboard() {
                   display: "flex",
                   justifyContent: "space-between",
                   alignItems: "center",
-                  marginBottom: 12,
+                  marginBottom: 14,
                   flexWrap: "wrap",
                   gap: 8,
+                  paddingBottom: 14,
+                  borderBottom: `1px solid ${T.border}`,
                 }}
               >
                 <div>
                   <h2
                     style={{
                       ...sf,
-                      fontSize: "clamp(0.8rem,1.8vw,0.95rem)",
+                      fontSize: "clamp(0.75rem,1.5vw,0.9rem)",
                       fontWeight: 900,
                       textTransform: "uppercase",
-                      color: selectedDate === today ? "#f59e0b" : "white",
+                      color: selectedDate === today ? T.amber : "white",
                       margin: 0,
                     }}
                   >
                     {fmtDayFull(selectedDate)}
                     {selectedDate === today && (
-                      <span style={{ color: "#f59e0b", fontStyle: "italic" }}>
+                      <span style={{ color: T.amber, fontStyle: "italic" }}>
                         {" "}
                         — Today
                       </span>
@@ -1768,39 +2070,44 @@ export default function BarberDashboard() {
                     style={{
                       ...mono,
                       fontSize: 10,
-                      color: "#3f3f46",
+                      color: T.muted,
                       marginTop: 3,
                     }}
                   >
                     {summary.total}{" "}
                     {summary.total === 1 ? "appointment" : "appointments"}
+                    {summary.total > 0 && (
+                      <span style={{ color: T.amber }}>
+                        {" "}
+                        · ${summary.online_revenue} online
+                      </span>
+                    )}
                   </p>
                 </div>
                 <button
                   onClick={loadSchedule}
                   style={{
                     ...sf,
-                    fontSize: 7,
-                    letterSpacing: "0.15em",
+                    fontSize: 6,
+                    letterSpacing: "0.2em",
                     textTransform: "uppercase",
-                    color: "#3f3f46",
+                    color: T.muted,
                     background: "none",
-                    border: "1px solid rgba(255,255,255,0.07)",
+                    border: `1px solid ${T.border}`,
                     padding: "6px 12px",
                     cursor: "pointer",
                     transition: "all 0.2s",
                   }}
                   onMouseEnter={(e) => {
-                    e.currentTarget.style.color = "#f59e0b";
-                    e.currentTarget.style.borderColor = "rgba(245,158,11,0.3)";
+                    e.currentTarget.style.color = T.amber;
+                    e.currentTarget.style.borderColor = T.amberBorder;
                   }}
                   onMouseLeave={(e) => {
-                    e.currentTarget.style.color = "#3f3f46";
-                    e.currentTarget.style.borderColor =
-                      "rgba(255,255,255,0.07)";
+                    e.currentTarget.style.color = T.muted;
+                    e.currentTarget.style.borderColor = T.border;
                   }}
                 >
-                  ↻ Refresh
+                  ↻
                 </button>
               </div>
 
@@ -1808,7 +2115,7 @@ export default function BarberDashboard() {
               {loadingSched ? (
                 <div
                   style={{
-                    padding: "48px 0",
+                    padding: "40px 0",
                     display: "flex",
                     flexDirection: "column",
                     alignItems: "center",
@@ -1817,10 +2124,10 @@ export default function BarberDashboard() {
                 >
                   <div
                     style={{
-                      width: 24,
-                      height: 24,
-                      border: "2px solid rgba(245,158,11,0.2)",
-                      borderTopColor: "#f59e0b",
+                      width: 20,
+                      height: 20,
+                      border: `1.5px solid rgba(245,158,11,0.2)`,
+                      borderTopColor: T.amber,
                       borderRadius: "50%",
                       animation: "spin 0.8s linear infinite",
                     }}
@@ -1828,8 +2135,8 @@ export default function BarberDashboard() {
                   <p
                     style={{
                       ...sf,
-                      fontSize: 7,
-                      color: "#27272a",
+                      fontSize: 6,
+                      color: T.dim,
                       letterSpacing: "0.3em",
                       textTransform: "uppercase",
                     }}
@@ -1840,37 +2147,71 @@ export default function BarberDashboard() {
               ) : schedule.length === 0 ? (
                 <div
                   style={{
-                    padding: "48px 20px",
+                    padding: "56px 20px",
                     textAlign: "center",
-                    border: "1px solid rgba(255,255,255,0.05)",
-                    background: "rgba(255,255,255,0.015)",
+                    border: `1px solid ${T.border}`,
+                    background: "rgba(255,255,255,0.01)",
+                    position: "relative",
+                    overflow: "hidden",
                   }}
                 >
+                  {/* Decorative background text */}
                   <p
                     style={{
+                      position: "absolute",
+                      inset: 0,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
                       ...sf,
-                      fontSize: "clamp(1.2rem,2.5vw,1.8rem)",
+                      fontSize: "clamp(3rem,8vw,6rem)",
                       fontWeight: 900,
-                      color: "rgba(255,255,255,0.04)",
+                      color: "rgba(255,255,255,0.02)",
                       textTransform: "uppercase",
-                      marginBottom: 10,
+                      letterSpacing: "-0.05em",
+                      userSelect: "none",
+                      pointerEvents: "none",
                     }}
                   >
-                    No Bookings
+                    FREE
                   </p>
-                  <p style={{ color: "#27272a", fontSize: 12 }}>
-                    Nothing scheduled for this day.
-                  </p>
+                  <div style={{ position: "relative", zIndex: 1 }}>
+                    <div
+                      style={{
+                        marginBottom: 16,
+                        display: "flex",
+                        justifyContent: "center",
+                      }}
+                    >
+                      <Scissors size={28} color="rgba(255,255,255,0.08)" />
+                    </div>
+                    <p
+                      style={{
+                        ...sf,
+                        fontSize: "clamp(0.9rem,2vw,1.2rem)",
+                        fontWeight: 900,
+                        color: "rgba(255,255,255,0.05)",
+                        textTransform: "uppercase",
+                        marginBottom: 8,
+                        letterSpacing: "0.1em",
+                      }}
+                    >
+                      No Bookings
+                    </p>
+                    <p style={{ ...mono, color: T.dim, fontSize: 11 }}>
+                      Nothing scheduled — enjoy the day off.
+                    </p>
+                  </div>
                 </div>
               ) : (
                 <div
-                  style={{ display: "flex", flexDirection: "column", gap: 6 }}
+                  style={{ display: "flex", flexDirection: "column", gap: 5 }}
                 >
                   {schedule
                     .slice()
                     .sort((a, b) => (a.time || "").localeCompare(b.time || ""))
                     .map((appt) => (
-                      <ApptCard
+                      <ApptTicket
                         key={appt.id}
                         appt={appt}
                         onStatusChange={handleStatusChange}
@@ -1882,22 +2223,32 @@ export default function BarberDashboard() {
                 </div>
               )}
 
-              {/* Timeline — desktop */}
+              {/* Timeline — desktop only */}
               {!isMobile && schedule.length > 0 && (
-                <div style={{ marginTop: 32 }}>
-                  <p
+                <div style={{ marginTop: 28 }}>
+                  <div
                     style={{
-                      ...sf,
-                      fontSize: 7,
-                      letterSpacing: "0.3em",
-                      color: "#27272a",
-                      textTransform: "uppercase",
-                      marginBottom: 14,
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 12,
+                      marginBottom: 12,
                     }}
                   >
-                    Timeline
-                  </p>
-                  <div style={{ position: "relative", paddingLeft: 56 }}>
+                    <p
+                      style={{
+                        ...sf,
+                        fontSize: 6,
+                        letterSpacing: "0.4em",
+                        color: T.dim,
+                        textTransform: "uppercase",
+                        margin: 0,
+                      }}
+                    >
+                      Timeline
+                    </p>
+                    <div style={{ flex: 1, height: 1, background: T.border }} />
+                  </div>
+                  <div style={{ position: "relative", paddingLeft: 52 }}>
                     {Array.from({ length: 10 }, (_, i) => {
                       const hour = 9 + i;
                       return (
@@ -1906,8 +2257,8 @@ export default function BarberDashboard() {
                           style={{
                             position: "absolute",
                             left: 0,
-                            top: i * 50,
-                            height: 50,
+                            top: i * 48,
+                            height: 48,
                             display: "flex",
                             alignItems: "flex-start",
                             paddingTop: 2,
@@ -1917,10 +2268,10 @@ export default function BarberDashboard() {
                             style={{
                               ...mono,
                               fontSize: 8,
-                              color: "#27272a",
+                              color: T.dim,
                               whiteSpace: "nowrap",
                             }}
-                          >{`${hour % 12 || 12}${hour < 12 ? "am" : "pm"}`}</span>
+                          >{`${hour % 12 || 12}${hour < 12 ? "a" : "p"}`}</span>
                         </div>
                       );
                     })}
@@ -1929,24 +2280,24 @@ export default function BarberDashboard() {
                         key={i}
                         style={{
                           position: "absolute",
-                          left: 48,
+                          left: 44,
                           right: 0,
-                          top: i * 50,
+                          top: i * 48,
                           height: 1,
-                          background: "rgba(255,255,255,0.04)",
+                          background: T.border,
                         }}
                       />
                     ))}
-                    <div style={{ position: "relative", height: 9 * 50 + 24 }}>
+                    <div style={{ position: "relative", height: 9 * 48 + 24 }}>
                       {schedule.map((appt) => {
                         if (!appt.time) return null;
                         const [h, m] = appt.time.split(":");
                         const top =
-                          (parseInt(h) - 9) * 50 + (parseInt(m) / 60) * 50;
+                          (parseInt(h) - 9) * 48 + (parseInt(m) / 60) * 48;
                         const sCfg = STATUS_CFG[appt.status || "confirmed"];
                         const height = Math.max(
-                          32,
-                          ((appt.service_duration || 30) / 60) * 50 - 3,
+                          30,
+                          ((appt.service_duration || 30) / 60) * 48 - 3,
                         );
                         return (
                           <div
@@ -1958,7 +2309,7 @@ export default function BarberDashboard() {
                               top,
                               height,
                               background: sCfg.bg,
-                              border: `1px solid ${sCfg.border}`,
+                              borderLeft: `2px solid ${sCfg.color}`,
                               padding: "4px 10px",
                               display: "flex",
                               alignItems: "center",
@@ -2001,36 +2352,37 @@ export default function BarberDashboard() {
           </div>
         )}
 
-        {/* ── AVAILABILITY TAB ── */}
+        {/* ── MY HOURS TAB ── */}
         {activeTab === "availability" && (
           <div className="bd-enter">
             <p
               style={{
-                color: "#52525b",
+                ...mono,
+                color: T.muted,
                 fontSize: 12,
                 marginBottom: 24,
                 lineHeight: 1.7,
               }}
             >
-              Set which days you work and your hours. Clients can only book
-              during these times.
+              Set your working hours per day. Clients can only book during these
+              windows.
             </p>
-            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
               {DAYS.map((dayName, dayIdx) => {
                 const saved = availability.find(
                   (a) => a.day_of_week === dayIdx,
                 );
                 const isEditing = editingDay === dayIdx;
                 const isWorking = saved?.is_working ?? dayIdx < 6;
-                const isSunday = dayIdx === 6;
+                const isSun = dayIdx === 6;
                 return (
                   <div
                     key={dayIdx}
                     style={{
-                      padding: "16px 18px",
-                      background: "rgba(255,255,255,0.025)",
-                      border: `1px solid ${isEditing ? "rgba(245,158,11,0.4)" : "rgba(255,255,255,0.07)"}`,
+                      background: T.surface,
+                      border: `1px solid ${isEditing ? T.amberBorder : T.border}`,
                       transition: "all 0.2s",
+                      overflow: "hidden",
                     }}
                   >
                     <div
@@ -2038,6 +2390,7 @@ export default function BarberDashboard() {
                         display: "flex",
                         justifyContent: "space-between",
                         alignItems: "center",
+                        padding: "14px 16px",
                         flexWrap: "wrap",
                         gap: 10,
                       }}
@@ -2046,50 +2399,64 @@ export default function BarberDashboard() {
                         style={{
                           display: "flex",
                           alignItems: "center",
-                          gap: 14,
+                          gap: 16,
                         }}
                       >
                         <p
                           style={{
                             ...sf,
-                            fontSize: 9,
+                            fontSize: 8,
                             fontWeight: 700,
                             textTransform: "uppercase",
-                            minWidth: 90,
+                            minWidth: 96,
+                            margin: 0,
                           }}
                         >
                           {dayName}
                         </p>
-                        {isSunday ? (
-                          <span
+                        <div
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 6,
+                          }}
+                        >
+                          <div
                             style={{
-                              ...sf,
-                              fontSize: 7,
-                              letterSpacing: "0.15em",
-                              textTransform: "uppercase",
-                              color: "#3f3f46",
+                              width: 5,
+                              height: 5,
+                              borderRadius: "50%",
+                              background: isSun
+                                ? T.dim
+                                : isWorking && saved
+                                  ? "#4ade80"
+                                  : T.dim,
                             }}
-                          >
-                            Closed
-                          </span>
-                        ) : saved ? (
+                          />
                           <span
                             style={{
+                              ...mono,
                               fontSize: 11,
-                              color: isWorking ? "#a1a1aa" : "#3f3f46",
+                              color: isSun
+                                ? T.dim
+                                : saved
+                                  ? isWorking
+                                    ? "#a1a1aa"
+                                    : T.muted
+                                  : T.dim,
                             }}
                           >
-                            {isWorking
-                              ? `${fmtTime(saved.start_time)} — ${fmtTime(saved.end_time)}`
-                              : "Day Off"}
+                            {isSun
+                              ? "Closed"
+                              : saved
+                                ? isWorking
+                                  ? `${fmtTime(saved.start_time)} — ${fmtTime(saved.end_time)}`
+                                  : "Day Off"
+                                : "Not set"}
                           </span>
-                        ) : (
-                          <span style={{ fontSize: 11, color: "#3f3f46" }}>
-                            Not set — defaults 9AM–6PM
-                          </span>
-                        )}
+                        </div>
                       </div>
-                      {!isSunday && (
+                      {!isSun && (
                         <button
                           onClick={() => {
                             if (isEditing) {
@@ -2107,15 +2474,13 @@ export default function BarberDashboard() {
                           }}
                           style={{
                             ...sf,
-                            fontSize: 7,
+                            fontSize: 6,
                             letterSpacing: "0.15em",
                             textTransform: "uppercase",
                             padding: "6px 12px",
-                            background: isEditing
-                              ? "rgba(245,158,11,0.1)"
-                              : "transparent",
-                            border: `1px solid ${isEditing ? "#f59e0b" : "rgba(255,255,255,0.1)"}`,
-                            color: isEditing ? "#f59e0b" : "#52525b",
+                            background: isEditing ? T.amberDim : "transparent",
+                            border: `1px solid ${isEditing ? T.amber : T.border}`,
+                            color: isEditing ? T.amber : T.muted,
                             cursor: "pointer",
                             transition: "all 0.2s",
                           }}
@@ -2124,16 +2489,17 @@ export default function BarberDashboard() {
                         </button>
                       )}
                     </div>
+
                     {isEditing && (
                       <div
                         style={{
-                          marginTop: 16,
-                          paddingTop: 16,
-                          borderTop: "1px solid rgba(255,255,255,0.07)",
+                          padding: "16px",
+                          borderTop: `1px solid ${T.border}`,
+                          background: "rgba(245,158,11,0.02)",
                         }}
                       >
                         <div
-                          style={{ display: "flex", gap: 8, marginBottom: 16 }}
+                          style={{ display: "flex", gap: 6, marginBottom: 14 }}
                         >
                           {[
                             { val: true, label: "Working" },
@@ -2150,12 +2516,9 @@ export default function BarberDashboard() {
                                 textTransform: "uppercase",
                                 letterSpacing: "0.15em",
                                 background:
-                                  editWorking === val
-                                    ? "#f59e0b"
-                                    : "transparent",
-                                color:
-                                  editWorking === val ? "black" : "#52525b",
-                                border: `1px solid ${editWorking === val ? "#f59e0b" : "rgba(255,255,255,0.1)"}`,
+                                  editWorking === val ? T.amber : "transparent",
+                                color: editWorking === val ? "black" : T.muted,
+                                border: `1px solid ${editWorking === val ? T.amber : T.border}`,
                                 cursor: "pointer",
                                 transition: "all 0.2s",
                               }}
@@ -2169,29 +2532,25 @@ export default function BarberDashboard() {
                             style={{
                               display: "grid",
                               gridTemplateColumns: "1fr 1fr",
-                              gap: 12,
-                              marginBottom: 16,
+                              gap: 10,
+                              marginBottom: 14,
                             }}
                           >
                             {[
                               {
-                                label: "Start Time",
+                                label: "Start",
                                 val: editStart,
                                 set: setEditStart,
                               },
-                              {
-                                label: "End Time",
-                                val: editEnd,
-                                set: setEditEnd,
-                              },
+                              { label: "End", val: editEnd, set: setEditEnd },
                             ].map(({ label, val, set }) => (
                               <div key={label}>
                                 <label
                                   style={{
                                     ...sf,
-                                    fontSize: 7,
-                                    letterSpacing: "0.25em",
-                                    color: "#52525b",
+                                    fontSize: 6,
+                                    letterSpacing: "0.3em",
+                                    color: T.muted,
                                     textTransform: "uppercase",
                                     display: "block",
                                     marginBottom: 6,
@@ -2205,19 +2564,19 @@ export default function BarberDashboard() {
                                   onChange={(e) => set(e.target.value)}
                                   style={{
                                     width: "100%",
-                                    background: "#050505",
-                                    border: "1px solid rgba(255,255,255,0.1)",
+                                    background: T.bg,
+                                    border: `1px solid ${T.border}`,
                                     padding: "10px 12px",
                                     color: "white",
                                     fontSize: 14,
                                     outline: "none",
+                                    ...mono,
                                   }}
                                   onFocus={(e) =>
-                                    (e.target.style.borderColor = "#f59e0b")
+                                    (e.target.style.borderColor = T.amber)
                                   }
                                   onBlur={(e) =>
-                                    (e.target.style.borderColor =
-                                      "rgba(255,255,255,0.1)")
+                                    (e.target.style.borderColor = T.border)
                                   }
                                 />
                               </div>
@@ -2228,11 +2587,11 @@ export default function BarberDashboard() {
                           onClick={saveAvailability}
                           disabled={savingAvail}
                           style={{
-                            padding: "12px 24px",
-                            background: savingAvail ? "#1c1c1e" : "#f59e0b",
-                            color: savingAvail ? "#3f3f46" : "black",
+                            padding: "11px 24px",
+                            background: savingAvail ? T.deepDim : T.amber,
+                            color: savingAvail ? T.dim : "black",
                             ...sf,
-                            fontSize: 8,
+                            fontSize: 7,
                             fontWeight: 700,
                             textTransform: "uppercase",
                             letterSpacing: "0.2em",
@@ -2248,8 +2607,8 @@ export default function BarberDashboard() {
                             <>
                               <span
                                 style={{
-                                  width: 11,
-                                  height: 11,
+                                  width: 10,
+                                  height: 10,
                                   border: "2px solid #3f3f46",
                                   borderTopColor: "#71717a",
                                   borderRadius: "50%",
@@ -2260,7 +2619,7 @@ export default function BarberDashboard() {
                               Saving...
                             </>
                           ) : (
-                            "Save Hours →"
+                            "Save →"
                           )}
                         </button>
                       </div>
@@ -2277,21 +2636,23 @@ export default function BarberDashboard() {
           <div className="bd-enter">
             <p
               style={{
-                color: "#52525b",
+                ...mono,
+                color: T.muted,
                 fontSize: 12,
                 marginBottom: 24,
                 lineHeight: 1.7,
               }}
             >
-              Block specific dates — vacation, sick days, personal time. Clients
-              won't be able to book you on these days.
+              Block specific dates. Clients won't be able to book you on these
+              days.
             </p>
+
             <div
               style={{
                 padding: "20px",
-                background: "rgba(255,255,255,0.025)",
-                border: "1px solid rgba(255,255,255,0.07)",
-                marginBottom: 28,
+                background: T.surface,
+                border: `1px solid ${T.border}`,
+                marginBottom: 24,
               }}
             >
               <p
@@ -2299,7 +2660,7 @@ export default function BarberDashboard() {
                   ...sf,
                   fontSize: 7,
                   letterSpacing: "0.3em",
-                  color: "#71717a",
+                  color: T.muted,
                   textTransform: "uppercase",
                   marginBottom: 16,
                 }}
@@ -2318,9 +2679,9 @@ export default function BarberDashboard() {
                   <label
                     style={{
                       ...sf,
-                      fontSize: 7,
-                      letterSpacing: "0.25em",
-                      color: "#52525b",
+                      fontSize: 6,
+                      letterSpacing: "0.3em",
+                      color: T.muted,
                       textTransform: "uppercase",
                       display: "block",
                       marginBottom: 8,
@@ -2335,26 +2696,25 @@ export default function BarberDashboard() {
                     onChange={(e) => setNewTimeOffDate(e.target.value)}
                     style={{
                       width: "100%",
-                      background: "#050505",
-                      border: "1px solid rgba(255,255,255,0.1)",
+                      background: T.bg,
+                      border: `1px solid ${T.border}`,
                       padding: "11px 12px",
                       color: "white",
                       fontSize: 14,
                       outline: "none",
+                      ...mono,
                     }}
-                    onFocus={(e) => (e.target.style.borderColor = "#f59e0b")}
-                    onBlur={(e) =>
-                      (e.target.style.borderColor = "rgba(255,255,255,0.1)")
-                    }
+                    onFocus={(e) => (e.target.style.borderColor = T.amber)}
+                    onBlur={(e) => (e.target.style.borderColor = T.border)}
                   />
                 </div>
                 <div>
                   <label
                     style={{
                       ...sf,
-                      fontSize: 7,
-                      letterSpacing: "0.25em",
-                      color: "#52525b",
+                      fontSize: 6,
+                      letterSpacing: "0.3em",
+                      color: T.muted,
                       textTransform: "uppercase",
                       display: "block",
                       marginBottom: 8,
@@ -2366,21 +2726,19 @@ export default function BarberDashboard() {
                     type="text"
                     value={newTimeOffReason}
                     onChange={(e) => setNewTimeOffReason(e.target.value)}
-                    placeholder="Vacation, sick day, etc."
+                    placeholder="Vacation, personal, etc."
                     style={{
                       width: "100%",
-                      background: "#050505",
-                      border: "1px solid rgba(255,255,255,0.1)",
+                      background: T.bg,
+                      border: `1px solid ${T.border}`,
                       padding: "11px 12px",
                       color: "white",
                       fontSize: 16,
                       outline: "none",
                       ...mono,
                     }}
-                    onFocus={(e) => (e.target.style.borderColor = "#f59e0b")}
-                    onBlur={(e) =>
-                      (e.target.style.borderColor = "rgba(255,255,255,0.1)")
-                    }
+                    onFocus={(e) => (e.target.style.borderColor = T.amber)}
+                    onBlur={(e) => (e.target.style.borderColor = T.border)}
                   />
                 </div>
               </div>
@@ -2388,12 +2746,12 @@ export default function BarberDashboard() {
                 onClick={addTimeOff}
                 disabled={!newTimeOffDate || addingTimeOff}
                 style={{
-                  padding: "12px 24px",
+                  padding: "11px 24px",
                   background:
-                    !newTimeOffDate || addingTimeOff ? "#1c1c1e" : "#f59e0b",
-                  color: !newTimeOffDate || addingTimeOff ? "#3f3f46" : "black",
+                    !newTimeOffDate || addingTimeOff ? T.deepDim : T.amber,
+                  color: !newTimeOffDate || addingTimeOff ? T.dim : "black",
                   ...sf,
-                  fontSize: 8,
+                  fontSize: 7,
                   fontWeight: 700,
                   textTransform: "uppercase",
                   letterSpacing: "0.2em",
@@ -2405,34 +2763,45 @@ export default function BarberDashboard() {
                   transition: "all 0.25s",
                 }}
               >
-                {addingTimeOff ? "Adding..." : "Block This Date →"}
+                {addingTimeOff ? "Adding..." : "Block Date →"}
               </button>
             </div>
 
-            <p
+            <div
               style={{
-                ...sf,
-                fontSize: 7,
-                letterSpacing: "0.35em",
-                color: "#3f3f46",
-                textTransform: "uppercase",
+                display: "flex",
+                alignItems: "center",
+                gap: 12,
                 marginBottom: 12,
               }}
             >
-              Upcoming Time Off
-            </p>
+              <p
+                style={{
+                  ...sf,
+                  fontSize: 6,
+                  letterSpacing: "0.4em",
+                  color: T.dim,
+                  textTransform: "uppercase",
+                  margin: 0,
+                }}
+              >
+                Upcoming
+              </p>
+              <div style={{ flex: 1, height: 1, background: T.border }} />
+            </div>
+
             {timeOff.length === 0 ? (
               <div
                 style={{
                   padding: "40px 0",
                   textAlign: "center",
-                  border: "1px solid rgba(255,255,255,0.05)",
+                  border: `1px solid ${T.border}`,
                 }}
               >
                 <p
                   style={{
                     ...sf,
-                    fontSize: "1.4rem",
+                    fontSize: "1.2rem",
                     fontWeight: 900,
                     color: "rgba(255,255,255,0.04)",
                     textTransform: "uppercase",
@@ -2451,8 +2820,8 @@ export default function BarberDashboard() {
                       justifyContent: "space-between",
                       alignItems: "center",
                       padding: "14px 16px",
-                      background: "rgba(255,255,255,0.025)",
-                      border: "1px solid rgba(255,255,255,0.07)",
+                      background: T.surface,
+                      border: `1px solid ${T.border}`,
                       flexWrap: "wrap",
                       gap: 10,
                     }}
@@ -2461,10 +2830,10 @@ export default function BarberDashboard() {
                       <p
                         style={{
                           ...sf,
-                          fontSize: 9,
+                          fontSize: 8,
                           fontWeight: 700,
                           textTransform: "uppercase",
-                          marginBottom: 3,
+                          marginBottom: 2,
                         }}
                       >
                         {new Date(off.date + "T00:00:00").toLocaleDateString(
@@ -2478,7 +2847,7 @@ export default function BarberDashboard() {
                         )}
                       </p>
                       {off.reason && (
-                        <p style={{ fontSize: 11, color: "#52525b" }}>
+                        <p style={{ ...mono, fontSize: 11, color: T.muted }}>
                           {off.reason}
                         </p>
                       )}
@@ -2487,7 +2856,7 @@ export default function BarberDashboard() {
                       onClick={() => removeTimeOff(off.id)}
                       style={{
                         ...sf,
-                        fontSize: 7,
+                        fontSize: 6,
                         letterSpacing: "0.15em",
                         textTransform: "uppercase",
                         padding: "6px 12px",
@@ -2531,8 +2900,8 @@ export default function BarberDashboard() {
             position: "fixed",
             inset: 0,
             zIndex: 300,
-            background: "rgba(0,0,0,0.88)",
-            backdropFilter: "blur(8px)",
+            background: "rgba(4,4,4,0.95)",
+            backdropFilter: "blur(12px)",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
@@ -2543,82 +2912,92 @@ export default function BarberDashboard() {
             style={{
               width: "100%",
               maxWidth: 380,
-              background: "#080808",
+              background: "#060606",
               border: "1px solid rgba(248,113,113,0.2)",
-              padding: "26px 22px",
+              padding: "24px 22px",
             }}
           >
             <div
               style={{
-                width: 40,
-                height: 40,
-                borderRadius: "50%",
-                background: "rgba(248,113,113,0.1)",
-                border: "1px solid rgba(248,113,113,0.25)",
                 display: "flex",
                 alignItems: "center",
-                justifyContent: "center",
-                marginBottom: 14,
+                gap: 12,
+                marginBottom: 16,
               }}
             >
-              <svg
-                width="18"
-                height="18"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="#f87171"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
+              <div
+                style={{
+                  width: 36,
+                  height: 36,
+                  borderRadius: "50%",
+                  background: "rgba(248,113,113,0.08)",
+                  border: "1px solid rgba(248,113,113,0.2)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  flexShrink: 0,
+                }}
               >
-                <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
-                <line x1="12" y1="9" x2="12" y2="13" />
-                <line x1="12" y1="17" x2="12.01" y2="17" />
-              </svg>
+                <svg
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="#f87171"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+                  <line x1="12" y1="9" x2="12" y2="13" />
+                  <line x1="12" y1="17" x2="12.01" y2="17" />
+                </svg>
+              </div>
+              <div>
+                <p
+                  style={{
+                    ...sf,
+                    fontSize: 6,
+                    color: T.muted,
+                    letterSpacing: "0.4em",
+                    textTransform: "uppercase",
+                    margin: 0,
+                  }}
+                >
+                  Cancel Appointment
+                </p>
+                <h2
+                  style={{
+                    ...sf,
+                    fontSize: 14,
+                    fontWeight: 900,
+                    textTransform: "uppercase",
+                    color: "white",
+                    margin: 0,
+                  }}
+                >
+                  Confirm<span style={{ color: "#f87171" }}>?</span>
+                </h2>
+              </div>
             </div>
-            <p
-              style={{
-                ...sf,
-                fontSize: 7,
-                color: "#52525b",
-                letterSpacing: "0.4em",
-                textTransform: "uppercase",
-                marginBottom: 6,
-              }}
-            >
-              Cancel Appointment
-            </p>
-            <h2
-              style={{
-                ...sf,
-                fontSize: 15,
-                fontWeight: 900,
-                textTransform: "uppercase",
-                color: "white",
-                marginBottom: 14,
-              }}
-            >
-              Confirm<span style={{ color: "#f87171" }}>?</span>
-            </h2>
             <div
               style={{
                 padding: "11px 14px",
                 background: "rgba(248,113,113,0.04)",
-                border: "1px solid rgba(248,113,113,0.12)",
+                border: "1px solid rgba(248,113,113,0.1)",
                 marginBottom: 16,
               }}
             >
               <p
                 style={{
+                  ...mono,
                   fontSize: 12,
                   color: "#a1a1aa",
                   lineHeight: 1.7,
                   margin: 0,
                 }}
               >
-                <span style={{ color: "white", fontWeight: 700 }}>
-                  {cancelTarget.client}
-                </span>
+                <span style={{ color: "white" }}>{cancelTarget.client}</span>
                 <br />
                 {cancelTarget.service} ·{" "}
                 <span style={{ color: "#f87171" }}>
@@ -2631,12 +3010,12 @@ export default function BarberDashboard() {
                 onClick={() => setCancelTarget(null)}
                 style={{
                   flex: 1,
-                  padding: "12px",
+                  padding: "11px",
                   background: "transparent",
-                  border: "1px solid rgba(255,255,255,0.1)",
-                  color: "#71717a",
+                  border: `1px solid ${T.border}`,
+                  color: T.muted,
                   ...sf,
-                  fontSize: 8,
+                  fontSize: 7,
                   textTransform: "uppercase",
                   letterSpacing: "0.15em",
                   cursor: "pointer",
@@ -2647,8 +3026,8 @@ export default function BarberDashboard() {
                   e.currentTarget.style.color = "white";
                 }}
                 onMouseLeave={(e) => {
-                  e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)";
-                  e.currentTarget.style.color = "#71717a";
+                  e.currentTarget.style.borderColor = T.border;
+                  e.currentTarget.style.color = T.muted;
                 }}
               >
                 Keep It
@@ -2658,11 +3037,11 @@ export default function BarberDashboard() {
                 disabled={cancelling}
                 style={{
                   flex: 2,
-                  padding: "12px",
-                  background: cancelling ? "#1c1c1e" : "#f87171",
-                  color: cancelling ? "#3f3f46" : "black",
+                  padding: "11px",
+                  background: cancelling ? T.deepDim : "#f87171",
+                  color: cancelling ? T.dim : "black",
                   ...sf,
-                  fontSize: 8,
+                  fontSize: 7,
                   fontWeight: 700,
                   textTransform: "uppercase",
                   letterSpacing: "0.15em",
@@ -2679,8 +3058,8 @@ export default function BarberDashboard() {
                   <>
                     <span
                       style={{
-                        width: 11,
-                        height: 11,
+                        width: 10,
+                        height: 10,
                         border: "2px solid #3f3f46",
                         borderTopColor: "#71717a",
                         borderRadius: "50%",
