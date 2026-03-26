@@ -1,0 +1,5 @@
+[phases.install]
+cmds = ["pip3.11 install -r requirements.txt"]
+
+[start]
+cmd = "python3.11 manage.py collectstatic --noinput && python3.11 -m gunicorn config.wsgi:application --bind 0.0.0.0:$PORT"
