@@ -1,5 +1,15 @@
-[phases.install]
-cmds = ["pip3.11 install -r requirements.txt"]
+FROM python:3.11-slim
 
-[start]
-cmd = "python3.11 manage.py collectstatic --noinput && python3.11 -m gunicorn config.wsgi:application --bind 0.0.0.0:$PORT"
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
+
+WORKDIR /app
+
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY . .
+
+EXPOSE 8080
+
+CMD python manage.py collectstatic --noinput && gunicorn config.wsgi:application --bind 0.0.0.0:${PORT:-8080} --workers 2 --timeout 120
