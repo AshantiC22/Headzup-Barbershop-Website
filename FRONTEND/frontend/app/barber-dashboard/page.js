@@ -1,27 +1,15 @@
 "use client";
 
-import MiniCalendar from "@/lib/MiniCalendar";
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { gsap } from "gsap";
 import API from "@/lib/api";
 import useBreakpoint from "@/lib/useBreakpoint";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
-function fmtTime(t) {
-  if (!t) return "—";
-  const [h, m] = t.split(":");
-  const hour = parseInt(h);
-  return `${hour % 12 || 12}:${m} ${hour >= 12 ? "PM" : "AM"}`;
-}
-function fmtDate(d) {
-  return new Date(d + "T00:00:00").toLocaleDateString("en-US", {
-    weekday: "long",
-    month: "long",
-    day: "numeric",
-    year: "numeric",
-  });
-}
+const sf = { fontFamily: "'Syncopate', sans-serif" };
+const mono = { fontFamily: "'DM Mono', monospace" };
+
 function todayISO() {
   return new Date().toISOString().split("T")[0];
 }
@@ -29,6 +17,25 @@ function addDays(d, n) {
   const dt = new Date(d + "T00:00:00");
   dt.setDate(dt.getDate() + n);
   return dt.toISOString().split("T")[0];
+}
+function fmtTime(t) {
+  if (!t) return "—";
+  const [h, m] = t.split(":");
+  const hr = parseInt(h);
+  return `${hr % 12 || 12}:${m} ${hr >= 12 ? "PM" : "AM"}`;
+}
+function fmtDayFull(d) {
+  return new Date(d + "T00:00:00").toLocaleDateString("en-US", {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+  });
+}
+function fmtMonthYear(y, m) {
+  return new Date(y, m, 1).toLocaleDateString("en-US", {
+    month: "long",
+    year: "numeric",
+  });
 }
 function to24Hour(t) {
   const [time, mod] = t.split(" ");
@@ -98,16 +105,16 @@ function Badge({ cfg }) {
   return (
     <span
       style={{
-        fontFamily: "'Syncopate',sans-serif",
-        fontSize: 7,
-        letterSpacing: "0.12em",
+        ...sf,
+        fontSize: 6,
+        letterSpacing: "0.1em",
         textTransform: "uppercase",
-        padding: "4px 10px",
+        padding: "3px 8px",
         background: cfg.bg,
         color: cfg.color,
         border: `1px solid ${cfg.border}`,
-        flexShrink: 0,
         whiteSpace: "nowrap",
+        flexShrink: 0,
       }}
     >
       {cfg.label}
@@ -115,15 +122,590 @@ function Badge({ cfg }) {
   );
 }
 
-const sf = { fontFamily: "'Syncopate',sans-serif" };
+function Toast({ toast }) {
+  if (!toast) return null;
+  const isErr = toast.type === "error";
+  return (
+    <div
+      style={{
+        position: "fixed",
+        bottom: 32,
+        left: "50%",
+        transform: "translateX(-50%)",
+        zIndex: 9999,
+        padding: "12px 22px",
+        background: isErr ? "rgba(248,113,113,0.1)" : "rgba(74,222,128,0.1)",
+        border: `1px solid ${isErr ? "rgba(248,113,113,0.3)" : "rgba(74,222,128,0.3)"}`,
+        backdropFilter: "blur(12px)",
+        animation: "fadeUp 0.25s ease",
+        whiteSpace: "nowrap",
+      }}
+    >
+      <p
+        style={{
+          ...sf,
+          fontSize: 8,
+          color: isErr ? "#f87171" : "#4ade80",
+          letterSpacing: "0.2em",
+          textTransform: "uppercase",
+          margin: 0,
+        }}
+      >
+        {toast.msg}
+      </p>
+    </div>
+  );
+}
 
-// ── Reschedule modal ──────────────────────────────────────────────────────────
+// ── Monthly Calendar ──────────────────────────────────────────────────────────
+function MonthCalendar({
+  year,
+  month,
+  selectedDate,
+  appointmentDates,
+  onSelectDate,
+  onPrevMonth,
+  onNextMonth,
+}) {
+  const today = todayISO();
+  const firstDay = new Date(year, month, 1).getDay();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const cells = [];
+  for (let i = 0; i < firstDay; i++) cells.push(null);
+  for (let d = 1; d <= daysInMonth; d++) cells.push(d);
+  const DAY_LABELS = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
+
+  return (
+    <div
+      style={{
+        background: "rgba(255,255,255,0.02)",
+        border: "1px solid rgba(255,255,255,0.07)",
+        padding: 16,
+      }}
+    >
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          marginBottom: 12,
+        }}
+      >
+        <button
+          onClick={onPrevMonth}
+          style={{
+            width: 28,
+            height: 28,
+            background: "transparent",
+            border: "1px solid rgba(255,255,255,0.1)",
+            color: "#71717a",
+            cursor: "pointer",
+            fontSize: 14,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            transition: "all 0.2s",
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.borderColor = "#f59e0b";
+            e.currentTarget.style.color = "#f59e0b";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)";
+            e.currentTarget.style.color = "#71717a";
+          }}
+        >
+          ‹
+        </button>
+        <h3
+          style={{
+            ...sf,
+            fontSize: 9,
+            fontWeight: 700,
+            textTransform: "uppercase",
+            letterSpacing: "0.15em",
+            color: "white",
+            margin: 0,
+          }}
+        >
+          {fmtMonthYear(year, month)}
+        </h3>
+        <button
+          onClick={onNextMonth}
+          style={{
+            width: 28,
+            height: 28,
+            background: "transparent",
+            border: "1px solid rgba(255,255,255,0.1)",
+            color: "#71717a",
+            cursor: "pointer",
+            fontSize: 14,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            transition: "all 0.2s",
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.borderColor = "#f59e0b";
+            e.currentTarget.style.color = "#f59e0b";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)";
+            e.currentTarget.style.color = "#71717a";
+          }}
+        >
+          ›
+        </button>
+      </div>
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(7,1fr)",
+          marginBottom: 4,
+        }}
+      >
+        {DAY_LABELS.map((d) => (
+          <div
+            key={d}
+            style={{
+              ...sf,
+              fontSize: 6,
+              textAlign: "center",
+              color: "#27272a",
+              letterSpacing: "0.1em",
+              padding: "2px 0",
+            }}
+          >
+            {d}
+          </div>
+        ))}
+      </div>
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(7,1fr)",
+          gap: 2,
+        }}
+      >
+        {cells.map((day, i) => {
+          if (!day) return <div key={`e-${i}`} />;
+          const ds = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+          const isToday = ds === today;
+          const isSelected = ds === selectedDate;
+          const hasAppts = (appointmentDates[ds] || 0) > 0;
+          const isSun = new Date(ds + "T00:00:00").getDay() === 0;
+          return (
+            <button
+              key={ds}
+              onClick={() => onSelectDate(ds)}
+              style={{
+                aspectRatio: "1",
+                background: isSelected
+                  ? "#f59e0b"
+                  : isToday
+                    ? "rgba(245,158,11,0.1)"
+                    : "transparent",
+                border: `1px solid ${isSelected ? "#f59e0b" : isToday ? "rgba(245,158,11,0.4)" : "transparent"}`,
+                color: isSelected
+                  ? "black"
+                  : isSun
+                    ? "#27272a"
+                    : isToday
+                      ? "#f59e0b"
+                      : "white",
+                cursor: "pointer",
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 1,
+                transition: "all 0.15s",
+                padding: 1,
+              }}
+              onMouseEnter={(e) => {
+                if (!isSelected) {
+                  e.currentTarget.style.background = "rgba(245,158,11,0.08)";
+                  e.currentTarget.style.borderColor = "rgba(245,158,11,0.3)";
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (!isSelected) {
+                  e.currentTarget.style.background = isToday
+                    ? "rgba(245,158,11,0.1)"
+                    : "transparent";
+                  e.currentTarget.style.borderColor = isToday
+                    ? "rgba(245,158,11,0.4)"
+                    : "transparent";
+                }
+              }}
+            >
+              <span
+                style={{
+                  ...sf,
+                  fontSize: 10,
+                  fontWeight: isToday || isSelected ? 900 : 400,
+                  lineHeight: 1,
+                }}
+              >
+                {day}
+              </span>
+              {hasAppts && (
+                <span
+                  style={{
+                    width: 4,
+                    height: 4,
+                    borderRadius: "50%",
+                    background: isSelected ? "rgba(0,0,0,0.4)" : "#f59e0b",
+                    display: "block",
+                  }}
+                />
+              )}
+            </button>
+          );
+        })}
+      </div>
+      <div
+        style={{
+          display: "flex",
+          gap: 12,
+          marginTop: 10,
+          paddingTop: 10,
+          borderTop: "1px solid rgba(255,255,255,0.05)",
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+          <div
+            style={{
+              width: 5,
+              height: 5,
+              borderRadius: "50%",
+              background: "#f59e0b",
+            }}
+          />
+          <span style={{ fontSize: 9, color: "#3f3f46", ...mono }}>
+            Has bookings
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Appointment Card ──────────────────────────────────────────────────────────
+function ApptCard({ appt, onStatusChange, onReschedule, onCancel, isMobile }) {
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [status, setStatus] = useState(appt.status || "confirmed");
+  const menuRef = useRef(null);
+  const sCfg = STATUS_CFG[status] || STATUS_CFG.confirmed;
+  const pCfg = PAY_CFG[appt.payment_method] || PAY_CFG.shop;
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    const handler = (e) => {
+      if (menuRef.current && !menuRef.current.contains(e.target))
+        setMenuOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [menuOpen]);
+
+  const handleStatus = async (newStatus) => {
+    setMenuOpen(false);
+    const prev = status;
+    setStatus(newStatus);
+    try {
+      await onStatusChange(appt.id, newStatus);
+    } catch {
+      setStatus(prev);
+    }
+  };
+
+  return (
+    <div
+      style={{
+        display: "flex",
+        gap: isMobile ? 8 : 12,
+        padding: isMobile ? "12px 10px" : "14px 16px",
+        background: "rgba(255,255,255,0.025)",
+        border: "1px solid rgba(255,255,255,0.07)",
+        transition: "all 0.2s",
+        position: "relative",
+      }}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.borderColor = "rgba(245,158,11,0.2)";
+        e.currentTarget.style.background = "rgba(245,158,11,0.02)";
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.borderColor = "rgba(255,255,255,0.07)";
+        e.currentTarget.style.background = "rgba(255,255,255,0.025)";
+      }}
+    >
+      {/* Status bar */}
+      <div
+        style={{
+          width: 3,
+          background: sCfg.color,
+          flexShrink: 0,
+          borderRadius: 2,
+          opacity: 0.8,
+        }}
+      />
+
+      {/* Time */}
+      <div
+        style={{
+          width: 52,
+          flexShrink: 0,
+          display: "flex",
+          flexDirection: "column",
+          justifyContent: "center",
+        }}
+      >
+        <p
+          style={{
+            ...mono,
+            fontSize: 12,
+            color: "#f59e0b",
+            fontWeight: 500,
+            margin: 0,
+          }}
+        >
+          {fmtTime(appt.time)}
+        </p>
+        {appt.service_duration && (
+          <p
+            style={{
+              ...mono,
+              fontSize: 9,
+              color: "#3f3f46",
+              margin: "2px 0 0",
+            }}
+          >
+            {appt.service_duration}m
+          </p>
+        )}
+      </div>
+
+      <div
+        style={{
+          width: 1,
+          background: "rgba(255,255,255,0.06)",
+          flexShrink: 0,
+        }}
+      />
+
+      {/* Info */}
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 6,
+            marginBottom: 3,
+            flexWrap: "wrap",
+          }}
+        >
+          <p
+            style={{
+              ...sf,
+              fontSize: 9,
+              fontWeight: 700,
+              textTransform: "uppercase",
+              color: "white",
+              margin: 0,
+            }}
+          >
+            {appt.client}
+          </p>
+          <Badge cfg={pCfg} />
+        </div>
+        <p style={{ fontSize: 11, color: "#a1a1aa", margin: 0 }}>
+          {appt.service}
+          {appt.service_price ? ` — $${appt.service_price}` : ""}
+        </p>
+        {!isMobile && appt.client_email && (
+          <p style={{ fontSize: 10, color: "#27272a", marginTop: 2 }}>
+            {appt.client_email}
+          </p>
+        )}
+      </div>
+
+      {/* Actions */}
+      <div
+        style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}
+      >
+        {/* Status dropdown */}
+        <div ref={menuRef} style={{ position: "relative" }}>
+          <button
+            onClick={() => setMenuOpen((o) => !o)}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 4,
+              ...sf,
+              fontSize: 6,
+              letterSpacing: "0.1em",
+              textTransform: "uppercase",
+              padding: "4px 8px",
+              background: sCfg.bg,
+              color: sCfg.color,
+              border: `1px solid ${sCfg.border}`,
+              cursor: "pointer",
+            }}
+          >
+            {sCfg.label} <span style={{ fontSize: 7, opacity: 0.6 }}>▾</span>
+          </button>
+          {menuOpen && (
+            <div
+              style={{
+                position: "absolute",
+                top: "calc(100% + 4px)",
+                right: 0,
+                zIndex: 200,
+                background: "#0d0d0d",
+                border: "1px solid rgba(255,255,255,0.1)",
+                minWidth: 130,
+                boxShadow: "0 12px 40px rgba(0,0,0,0.7)",
+              }}
+            >
+              {Object.entries(STATUS_CFG).map(([key, cfg]) => (
+                <button
+                  key={key}
+                  onClick={() => handleStatus(key)}
+                  style={{
+                    width: "100%",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 8,
+                    padding: "9px 12px",
+                    background:
+                      status === key ? "rgba(245,158,11,0.06)" : "transparent",
+                    border: "none",
+                    cursor: "pointer",
+                    transition: "background 0.15s",
+                  }}
+                  onMouseEnter={(e) => {
+                    if (status !== key)
+                      e.currentTarget.style.background =
+                        "rgba(255,255,255,0.04)";
+                  }}
+                  onMouseLeave={(e) => {
+                    if (status !== key)
+                      e.currentTarget.style.background = "transparent";
+                  }}
+                >
+                  <div
+                    style={{
+                      width: 6,
+                      height: 6,
+                      borderRadius: "50%",
+                      background: cfg.color,
+                      flexShrink: 0,
+                    }}
+                  />
+                  <span
+                    style={{
+                      ...sf,
+                      fontSize: 7,
+                      letterSpacing: "0.1em",
+                      textTransform: "uppercase",
+                      color: status === key ? "#f59e0b" : "#a1a1aa",
+                    }}
+                  >
+                    {cfg.label}
+                  </span>
+                  {status === key && (
+                    <span
+                      style={{
+                        marginLeft: "auto",
+                        fontSize: 9,
+                        color: "#f59e0b",
+                      }}
+                    >
+                      ✓
+                    </span>
+                  )}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Reschedule */}
+        <button
+          onClick={() => onReschedule(appt)}
+          title="Reschedule"
+          style={{
+            width: 28,
+            height: 28,
+            background: "transparent",
+            border: "1px solid rgba(245,158,11,0.25)",
+            color: "#f59e0b",
+            cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            fontSize: 12,
+            transition: "all 0.2s",
+          }}
+          onMouseEnter={(e) =>
+            (e.currentTarget.style.background = "rgba(245,158,11,0.1)")
+          }
+          onMouseLeave={(e) =>
+            (e.currentTarget.style.background = "transparent")
+          }
+        >
+          ↻
+        </button>
+
+        {/* Cancel */}
+        <button
+          onClick={() => onCancel(appt)}
+          title="Cancel"
+          style={{
+            width: 28,
+            height: 28,
+            background: "transparent",
+            border: "1px solid rgba(248,113,113,0.2)",
+            color: "#3f3f46",
+            cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            fontSize: 12,
+            transition: "all 0.2s",
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.borderColor = "#f87171";
+            e.currentTarget.style.color = "#f87171";
+            e.currentTarget.style.background = "rgba(248,113,113,0.08)";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.borderColor = "rgba(248,113,113,0.2)";
+            e.currentTarget.style.color = "#3f3f46";
+            e.currentTarget.style.background = "transparent";
+          }}
+        >
+          ✕
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ── Reschedule Modal ──────────────────────────────────────────────────────────
 function RescheduleModal({ appt, onClose, onDone }) {
   const [newDate, setNewDate] = useState("");
   const [newTime, setNewTime] = useState("");
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState("");
   const [done, setDone] = useState(false);
+
+  const slots = HOURS.map((h) => {
+    const [hr, mn] = h.split(":");
+    const hour = parseInt(hr);
+    return `${hour % 12 || 12}:${mn} ${hour >= 12 ? "PM" : "AM"}`;
+  });
 
   const handle = async () => {
     if (!newDate || !newTime) {
@@ -141,19 +723,13 @@ function RescheduleModal({ appt, onClose, onDone }) {
       setTimeout(() => {
         onDone(appt.id, newDate, to24Hour(newTime));
         onClose();
-      }, 1600);
+      }, 1400);
     } catch (e) {
       setErr(e.response?.data?.error || "That slot may already be booked.");
     } finally {
       setSaving(false);
     }
   };
-
-  const slots = HOURS.map((h) => {
-    const [hr, mn] = h.split(":");
-    const hour = parseInt(hr);
-    return `${hour % 12 || 12}:${mn} ${hour >= 12 ? "PM" : "AM"}`;
-  });
 
   return (
     <div
@@ -172,31 +748,31 @@ function RescheduleModal({ appt, onClose, onDone }) {
       <div
         style={{
           width: "100%",
-          maxWidth: 460,
+          maxWidth: 440,
           background: "#0a0a0a",
           border: "1px solid rgba(255,255,255,0.1)",
-          padding: "32px 28px",
+          padding: "28px 24px",
           maxHeight: "90vh",
           overflowY: "auto",
         }}
       >
         {done ? (
-          <div style={{ textAlign: "center", padding: "32px 0" }}>
+          <div style={{ textAlign: "center", padding: "28px 0" }}>
             <div
               style={{
-                width: 52,
-                height: 52,
+                width: 48,
+                height: 48,
                 borderRadius: "50%",
                 background: "linear-gradient(135deg,#22c55e,#16a34a)",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                margin: "0 auto 16px",
+                margin: "0 auto 14px",
               }}
             >
               <svg
-                width="24"
-                height="24"
+                width="22"
+                height="22"
                 viewBox="0 0 24 24"
                 fill="none"
                 stroke="black"
@@ -210,7 +786,7 @@ function RescheduleModal({ appt, onClose, onDone }) {
             <p
               style={{
                 ...sf,
-                fontSize: 10,
+                fontSize: 9,
                 color: "#4ade80",
                 textTransform: "uppercase",
                 letterSpacing: "0.3em",
@@ -221,234 +797,190 @@ function RescheduleModal({ appt, onClose, onDone }) {
           </div>
         ) : (
           <>
-            <div
+            <p
               style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                marginBottom: 24,
+                ...sf,
+                fontSize: 7,
+                letterSpacing: "0.4em",
+                color: "#52525b",
+                textTransform: "uppercase",
+                marginBottom: 6,
               }}
             >
-              <h2
-                style={{
-                  ...sf,
-                  fontSize: 18,
-                  fontWeight: 900,
-                  textTransform: "uppercase",
-                }}
-              >
-                Reschedule<span style={{ color: "#f59e0b" }}>_</span>
-              </h2>
-              <button
-                onClick={onClose}
-                style={{
-                  background: "none",
-                  border: "none",
-                  color: "#52525b",
-                  cursor: "pointer",
-                  ...sf,
-                  fontSize: 8,
-                  textTransform: "uppercase",
-                  letterSpacing: "0.2em",
-                  transition: "color 0.2s",
-                }}
-                onMouseEnter={(e) => (e.currentTarget.style.color = "#f87171")}
-                onMouseLeave={(e) => (e.currentTarget.style.color = "#52525b")}
-              >
-                ✕ Close
-              </button>
-            </div>
-            <div
+              Reschedule
+            </p>
+            <h2
               style={{
-                padding: "12px 16px",
-                background: "rgba(245,158,11,0.05)",
-                border: "1px solid rgba(245,158,11,0.15)",
-                marginBottom: 24,
+                ...sf,
+                fontSize: 16,
+                fontWeight: 900,
+                textTransform: "uppercase",
+                color: "white",
+                marginBottom: 20,
               }}
             >
-              <p style={{ fontSize: 12, color: "#a1a1aa" }}>
-                <span style={{ color: "white", fontWeight: 700 }}>
-                  {appt.client}
-                </span>{" "}
-                · {appt.service}
-                <br />
-                <span style={{ color: "#f59e0b" }}>
-                  {fmtTime(appt.time)} on {appt.date}
-                </span>
-              </p>
-            </div>
-            <div style={{ marginBottom: 20 }}>
-              <label
-                style={{
-                  ...sf,
-                  fontSize: 8,
-                  letterSpacing: "0.3em",
-                  color: "#a1a1aa",
-                  textTransform: "uppercase",
-                  display: "block",
-                  marginBottom: 10,
-                }}
-              >
-                New Date
-              </label>
-              <input
-                type="date"
-                value={newDate}
-                min={todayISO()}
-                onChange={(e) => setNewDate(e.target.value)}
-                style={{
-                  width: "100%",
-                  background: "#050505",
-                  border: "1px solid rgba(255,255,255,0.1)",
-                  padding: "13px 16px",
-                  color: "white",
-                  fontSize: 14,
-                  outline: "none",
-                }}
-                onFocus={(e) => (e.target.style.borderColor = "#f59e0b")}
-                onBlur={(e) =>
-                  (e.target.style.borderColor = "rgba(255,255,255,0.1)")
-                }
-              />
-            </div>
-            <div style={{ marginBottom: 24 }}>
-              <label
-                style={{
-                  ...sf,
-                  fontSize: 8,
-                  letterSpacing: "0.3em",
-                  color: "#a1a1aa",
-                  textTransform: "uppercase",
-                  display: "block",
-                  marginBottom: 10,
-                }}
-              >
-                New Time
-              </label>
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "repeat(4,1fr)",
-                  gap: 6,
-                }}
-              >
-                {slots.map((slot) => (
-                  <button
-                    key={slot}
-                    onClick={() => setNewTime(slot)}
-                    style={{
-                      padding: "9px 4px",
-                      ...sf,
-                      fontSize: 7,
-                      textTransform: "uppercase",
-                      border: `1px solid ${newTime === slot ? "#f59e0b" : "rgba(255,255,255,0.08)"}`,
-                      background:
-                        newTime === slot
-                          ? "rgba(245,158,11,0.12)"
-                          : "transparent",
-                      color: newTime === slot ? "#f59e0b" : "#a1a1aa",
-                      cursor: "pointer",
-                      transition: "all 0.2s",
-                    }}
-                  >
-                    {slot}
-                  </button>
-                ))}
-              </div>
-            </div>
-            {err && (
-              <div
-                style={{
-                  padding: "10px 14px",
-                  background: "rgba(248,113,113,0.08)",
-                  border: "1px solid rgba(248,113,113,0.25)",
-                  marginBottom: 16,
-                }}
-              >
-                <p
+              {appt.client}
+              <span style={{ color: "#f59e0b" }}>_</span>
+            </h2>
+            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+              <div>
+                <label
                   style={{
                     ...sf,
-                    fontSize: 8,
-                    color: "#f87171",
+                    fontSize: 7,
+                    letterSpacing: "0.3em",
+                    color: "#71717a",
                     textTransform: "uppercase",
-                    letterSpacing: "0.15em",
-                    margin: 0,
+                    display: "block",
+                    marginBottom: 8,
                   }}
                 >
-                  {err}
-                </p>
+                  New Date
+                </label>
+                <input
+                  type="date"
+                  value={newDate}
+                  min={todayISO()}
+                  onChange={(e) => setNewDate(e.target.value)}
+                  style={{
+                    width: "100%",
+                    background: "#050505",
+                    border: "1px solid rgba(255,255,255,0.1)",
+                    padding: "12px 14px",
+                    color: "white",
+                    fontSize: 14,
+                    outline: "none",
+                  }}
+                  onFocus={(e) => (e.target.style.borderColor = "#f59e0b")}
+                  onBlur={(e) =>
+                    (e.target.style.borderColor = "rgba(255,255,255,0.1)")
+                  }
+                />
               </div>
-            )}
-            <div style={{ display: "flex", gap: 10 }}>
-              <button
-                onClick={onClose}
-                style={{
-                  flex: 1,
-                  padding: "14px",
-                  background: "transparent",
-                  border: "1px solid rgba(255,255,255,0.1)",
-                  color: "#a1a1aa",
-                  ...sf,
-                  fontSize: 8,
-                  textTransform: "uppercase",
-                  letterSpacing: "0.2em",
-                  cursor: "pointer",
-                  transition: "all 0.2s",
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.borderColor = "rgba(255,255,255,0.4)";
-                  e.currentTarget.style.color = "white";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)";
-                  e.currentTarget.style.color = "#a1a1aa";
-                }}
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handle}
-                disabled={!newDate || !newTime || saving}
-                style={{
-                  flex: 2,
-                  padding: "14px",
-                  background:
-                    !newDate || !newTime || saving ? "#27272a" : "#f59e0b",
-                  color: !newDate || !newTime || saving ? "#52525b" : "black",
-                  ...sf,
-                  fontSize: 8,
-                  fontWeight: 700,
-                  textTransform: "uppercase",
-                  letterSpacing: "0.2em",
-                  border: "none",
-                  cursor:
-                    !newDate || !newTime || saving ? "not-allowed" : "pointer",
-                  transition: "all 0.3s",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  gap: 8,
-                }}
-              >
-                {saving ? (
-                  <>
-                    <span
+              <div>
+                <label
+                  style={{
+                    ...sf,
+                    fontSize: 7,
+                    letterSpacing: "0.3em",
+                    color: "#71717a",
+                    textTransform: "uppercase",
+                    display: "block",
+                    marginBottom: 8,
+                  }}
+                >
+                  New Time
+                </label>
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "repeat(4,1fr)",
+                    gap: 6,
+                  }}
+                >
+                  {slots.map((s) => (
+                    <button
+                      key={s}
+                      onClick={() => setNewTime(s)}
                       style={{
-                        width: 11,
-                        height: 11,
-                        border: "2px solid #52525b",
-                        borderTopColor: "transparent",
-                        borderRadius: "50%",
-                        display: "inline-block",
-                        animation: "spin 0.7s linear infinite",
+                        padding: "8px 2px",
+                        ...sf,
+                        fontSize: 7,
+                        letterSpacing: "0.05em",
+                        textTransform: "uppercase",
+                        border: `1px solid ${newTime === s ? "#f59e0b" : "rgba(255,255,255,0.08)"}`,
+                        background:
+                          newTime === s
+                            ? "rgba(245,158,11,0.1)"
+                            : "transparent",
+                        color: newTime === s ? "#f59e0b" : "#71717a",
+                        cursor: "pointer",
+                        transition: "all 0.15s",
                       }}
-                    />
-                    Saving...
-                  </>
-                ) : (
-                  "Confirm New Time →"
-                )}
-              </button>
+                    >
+                      {s}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              {err && (
+                <p style={{ fontSize: 11, color: "#f87171", ...mono }}>
+                  ⚠ {err}
+                </p>
+              )}
+              <div style={{ display: "flex", gap: 10 }}>
+                <button
+                  onClick={onClose}
+                  style={{
+                    flex: 1,
+                    padding: "12px",
+                    background: "transparent",
+                    border: "1px solid rgba(255,255,255,0.1)",
+                    color: "#71717a",
+                    ...sf,
+                    fontSize: 8,
+                    textTransform: "uppercase",
+                    letterSpacing: "0.15em",
+                    cursor: "pointer",
+                    transition: "all 0.2s",
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.borderColor = "rgba(255,255,255,0.3)";
+                    e.currentTarget.style.color = "white";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)";
+                    e.currentTarget.style.color = "#71717a";
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handle}
+                  disabled={!newDate || !newTime || saving}
+                  style={{
+                    flex: 2,
+                    padding: "12px",
+                    background:
+                      !newDate || !newTime || saving ? "#1c1c1e" : "#f59e0b",
+                    color: !newDate || !newTime || saving ? "#3f3f46" : "black",
+                    ...sf,
+                    fontSize: 8,
+                    fontWeight: 700,
+                    textTransform: "uppercase",
+                    letterSpacing: "0.15em",
+                    border: "none",
+                    cursor:
+                      !newDate || !newTime || saving
+                        ? "not-allowed"
+                        : "pointer",
+                    transition: "all 0.25s",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 8,
+                  }}
+                >
+                  {saving ? (
+                    <>
+                      <span
+                        style={{
+                          width: 11,
+                          height: 11,
+                          border: "2px solid #3f3f46",
+                          borderTopColor: "#71717a",
+                          borderRadius: "50%",
+                          display: "inline-block",
+                          animation: "spin 0.7s linear infinite",
+                        }}
+                      />
+                      Saving...
+                    </>
+                  ) : (
+                    "Confirm →"
+                  )}
+                </button>
+              </div>
             </div>
           </>
         )}
@@ -457,14 +989,24 @@ function RescheduleModal({ appt, onClose, onDone }) {
   );
 }
 
-// ── Main page ─────────────────────────────────────────────────────────────────
+// ── Main ──────────────────────────────────────────────────────────────────────
 export default function BarberDashboard() {
   const router = useRouter();
   const { isMobile } = useBreakpoint();
 
   const [barber, setBarber] = useState(null);
   const [activeTab, setActiveTab] = useState("schedule");
-  const [selectedDate, setSelectedDate] = useState(todayISO());
+  const [loading, setLoading] = useState(true);
+  const [toast, setToast] = useState(null);
+
+  // Calendar state
+  const today = todayISO();
+  const [selectedDate, setSelectedDate] = useState(today);
+  const [calYear, setCalYear] = useState(new Date().getFullYear());
+  const [calMonth, setCalMonth] = useState(new Date().getMonth());
+  const [apptDots, setApptDots] = useState({});
+
+  // Schedule
   const [schedule, setSchedule] = useState([]);
   const [summary, setSummary] = useState({
     total: 0,
@@ -472,43 +1014,41 @@ export default function BarberDashboard() {
     pay_in_shop: 0,
     online_revenue: "0.00",
   });
-  const [availability, setAvailability] = useState([]);
-  const [timeOff, setTimeOff] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [toast, setToast] = useState(null);
-  const [statusMenuId, setStatusMenuId] = useState(null);
-  const [statusOverrides, setStatusOverrides] = useState({});
+  const [loadingSched, setLoadingSched] = useState(false);
+
+  // Modals
   const [rescheduleAppt, setRescheduleAppt] = useState(null);
   const [cancelTarget, setCancelTarget] = useState(null);
   const [cancelling, setCancelling] = useState(false);
 
-  // Availability editor state
+  // Availability
+  const [availability, setAvailability] = useState([]);
   const [editingDay, setEditingDay] = useState(null);
   const [editStart, setEditStart] = useState("09:00");
   const [editEnd, setEditEnd] = useState("18:00");
   const [editWorking, setEditWorking] = useState(true);
   const [savingAvail, setSavingAvail] = useState(false);
 
-  // Time off state
+  // Time off
+  const [timeOff, setTimeOff] = useState([]);
   const [newTimeOffDate, setNewTimeOffDate] = useState("");
   const [newTimeOffReason, setNewTimeOffReason] = useState("");
   const [addingTimeOff, setAddingTimeOff] = useState(false);
 
   const showToast = (msg, type = "success") => {
     setToast({ msg, type });
-    setTimeout(() => setToast(null), 4000);
+    setTimeout(() => setToast(null), 3500);
   };
 
-  // ── Auth + load barber identity ─────────────────────────────────────────────
+  // ── Auth ──
   useEffect(() => {
     const init = async () => {
       try {
         const res = await API.get("barber/me/");
         setBarber(res.data);
       } catch (e) {
-        if (e.response?.status === 403 || e.response?.status === 401) {
-          router.push("/login");
-        }
+        if (e.response?.status === 403 || e.response?.status === 401)
+          router.push("/barber-login");
       } finally {
         setLoading(false);
       }
@@ -516,16 +1056,25 @@ export default function BarberDashboard() {
     init();
   }, []);
 
-  // ── Load schedule ───────────────────────────────────────────────────────────
+  // ── Load schedule for selected date ──
   const loadSchedule = useCallback(async () => {
     if (!barber) return;
+    setLoadingSched(true);
     try {
       const res = await API.get(`barber/schedule/?date=${selectedDate}`);
-      setSchedule(res.data.appointments);
-      setSummary(res.data.summary);
-      setStatusOverrides({});
+      setSchedule(res.data.appointments || []);
+      setSummary(
+        res.data.summary || {
+          total: 0,
+          paid_online: 0,
+          pay_in_shop: 0,
+          online_revenue: "0.00",
+        },
+      );
     } catch {
       showToast("Could not load schedule.", "error");
+    } finally {
+      setLoadingSched(false);
     }
   }, [barber, selectedDate]);
 
@@ -533,7 +1082,25 @@ export default function BarberDashboard() {
     loadSchedule();
   }, [loadSchedule]);
 
-  // ── Load availability ───────────────────────────────────────────────────────
+  // ── Load month dots ──
+  const loadMonthDots = useCallback(async () => {
+    if (!barber) return;
+    try {
+      const firstDay = `${calYear}-${String(calMonth + 1).padStart(2, "0")}-01`;
+      const res = await API.get(`barber/schedule/?date=${firstDay}&month=true`);
+      const counts = {};
+      (res.data.appointments || []).forEach((a) => {
+        counts[a.date] = (counts[a.date] || 0) + 1;
+      });
+      setApptDots(counts);
+    } catch {}
+  }, [barber, calYear, calMonth]);
+
+  useEffect(() => {
+    loadMonthDots();
+  }, [loadMonthDots]);
+
+  // ── Load availability ──
   const loadAvailability = useCallback(async () => {
     if (!barber) return;
     try {
@@ -546,7 +1113,7 @@ export default function BarberDashboard() {
     loadAvailability();
   }, [loadAvailability]);
 
-  // ── Load time off ───────────────────────────────────────────────────────────
+  // ── Load time off ──
   const loadTimeOff = useCallback(async () => {
     if (!barber) return;
     try {
@@ -559,50 +1126,50 @@ export default function BarberDashboard() {
     if (activeTab === "timeoff") loadTimeOff();
   }, [activeTab, loadTimeOff]);
 
-  // ── Entrance animation ──────────────────────────────────────────────────────
+  // ── Entry animation ──
   useEffect(() => {
-    if (!loading && barber) {
+    if (!loading && barber)
       gsap.from(".bd-enter", {
-        y: 30,
+        y: 24,
         opacity: 0,
-        duration: 1,
-        stagger: 0.08,
+        duration: 0.9,
+        stagger: 0.07,
         ease: "expo.out",
       });
-    }
   }, [loading, barber]);
 
   const handleLogout = () => {
     localStorage.removeItem("access");
     localStorage.removeItem("refresh");
-    router.push("/login");
+    router.push("/barber-login");
   };
 
-  // ── Status change ───────────────────────────────────────────────────────────
+  // ── Status change ──
   const handleStatusChange = async (apptId, newStatus) => {
-    setStatusMenuId(null);
-    setStatusOverrides((prev) => ({ ...prev, [apptId]: newStatus }));
     try {
       await API.patch(`barber/appointments/${apptId}/`, { status: newStatus });
+      setSchedule((prev) =>
+        prev.map((a) => (a.id === apptId ? { ...a, status: newStatus } : a)),
+      );
       showToast(`Marked as ${STATUS_CFG[newStatus].label}`);
     } catch {
-      setStatusOverrides((prev) => {
-        const n = { ...prev };
-        delete n[apptId];
-        return n;
-      });
       showToast("Could not update status.", "error");
+      throw new Error("failed");
     }
   };
 
-  // ── Cancel appointment ──────────────────────────────────────────────────────
+  // ── Cancel ──
   const handleCancel = async () => {
     if (!cancelTarget) return;
     setCancelling(true);
     try {
       await API.delete(`barber/appointments/${cancelTarget.id}/`);
       setSchedule((prev) => prev.filter((a) => a.id !== cancelTarget.id));
-      setSummary((prev) => ({ ...prev, total: prev.total - 1 }));
+      setSummary((prev) => ({ ...prev, total: Math.max(0, prev.total - 1) }));
+      setApptDots((prev) => ({
+        ...prev,
+        [cancelTarget.date]: Math.max(0, (prev[cancelTarget.date] || 1) - 1),
+      }));
       setCancelTarget(null);
       showToast("Appointment cancelled.");
     } catch {
@@ -612,21 +1179,19 @@ export default function BarberDashboard() {
     }
   };
 
-  // ── Reschedule done ─────────────────────────────────────────────────────────
+  // ── Reschedule done ──
   const handleRescheduleDone = (apptId, newDate, newTime) => {
-    if (newDate === selectedDate) {
+    if (newDate === selectedDate)
       setSchedule((prev) =>
         prev.map((a) =>
           a.id === apptId ? { ...a, date: newDate, time: newTime } : a,
         ),
       );
-    } else {
-      setSchedule((prev) => prev.filter((a) => a.id !== apptId));
-    }
-    showToast("Appointment rescheduled.");
+    else setSchedule((prev) => prev.filter((a) => a.id !== apptId));
+    showToast("Rescheduled.");
   };
 
-  // ── Save availability for a day ─────────────────────────────────────────────
+  // ── Save availability ──
   const saveAvailability = async () => {
     if (editingDay === null) return;
     setSavingAvail(true);
@@ -639,7 +1204,7 @@ export default function BarberDashboard() {
       });
       await loadAvailability();
       setEditingDay(null);
-      showToast("Availability saved.");
+      showToast("Hours saved.");
     } catch {
       showToast("Could not save.", "error");
     } finally {
@@ -647,7 +1212,7 @@ export default function BarberDashboard() {
     }
   };
 
-  // ── Add time off ────────────────────────────────────────────────────────────
+  // ── Add time off ──
   const addTimeOff = async () => {
     if (!newTimeOffDate) return;
     setAddingTimeOff(true);
@@ -659,9 +1224,9 @@ export default function BarberDashboard() {
       setNewTimeOffDate("");
       setNewTimeOffReason("");
       await loadTimeOff();
-      showToast("Day blocked off.");
+      showToast("Date blocked.");
     } catch {
-      showToast("Could not add time off.", "error");
+      showToast("Could not add.", "error");
     } finally {
       setAddingTimeOff(false);
     }
@@ -671,15 +1236,33 @@ export default function BarberDashboard() {
     try {
       await API.delete(`barber/time-off/${id}/`);
       setTimeOff((prev) => prev.filter((t) => t.id !== id));
-      showToast("Time off removed.");
+      showToast("Removed.");
     } catch {
       showToast("Could not remove.", "error");
     }
   };
 
-  const weekDays = Array.from({ length: 7 }, (_, i) =>
-    addDays(todayISO(), i - 1),
-  );
+  // ── Calendar nav ──
+  const prevMonth = () => {
+    if (calMonth === 0) {
+      setCalMonth(11);
+      setCalYear((y) => y - 1);
+    } else setCalMonth((m) => m - 1);
+  };
+  const nextMonth = () => {
+    if (calMonth === 11) {
+      setCalMonth(0);
+      setCalYear((y) => y + 1);
+    } else setCalMonth((m) => m + 1);
+  };
+
+  const handleSelectDate = (ds) => {
+    setSelectedDate(ds);
+    const d = new Date(ds + "T00:00:00");
+    setCalYear(d.getFullYear());
+    setCalMonth(d.getMonth());
+    if (activeTab !== "schedule") setActiveTab("schedule");
+  };
 
   if (loading)
     return (
@@ -695,7 +1278,7 @@ export default function BarberDashboard() {
         }}
       >
         <style jsx global>{`
-          @import url("https://fonts.googleapis.com/css2?family=Syncopate:wght@400;700&family=Inter:wght@400;700;900&display=swap");
+          @import url("https://fonts.googleapis.com/css2?family=Syncopate:wght@400;700&display=swap");
           body {
             background: #050505;
             margin: 0;
@@ -711,8 +1294,8 @@ export default function BarberDashboard() {
         `}</style>
         <div
           style={{
-            width: 32,
-            height: 32,
+            width: 28,
+            height: 28,
             border: "2px solid rgba(245,158,11,0.3)",
             borderTopColor: "#f59e0b",
             borderRadius: "50%",
@@ -727,7 +1310,7 @@ export default function BarberDashboard() {
   return (
     <>
       <style jsx global>{`
-        @import url("https://fonts.googleapis.com/css2?family=Syncopate:wght@400;700&family=DM+Mono:wght@400;500&family=Inter:wght@300;400;700;900&display=swap");
+        @import url("https://fonts.googleapis.com/css2?family=Syncopate:wght@400;700&family=DM+Mono:wght@400;500&display=swap");
         *,
         *::before,
         *::after {
@@ -738,17 +1321,12 @@ export default function BarberDashboard() {
         body {
           background: #050505;
           color: white;
-          font-family: "Inter", sans-serif;
+          font-family: "DM Mono", monospace;
+          overflow-y: auto !important;
         }
-        @keyframes fadeUp {
-          from {
-            opacity: 0;
-            transform: translateY(10px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
+        ::-webkit-scrollbar {
+          width: 0;
+          height: 0;
         }
         @keyframes spin {
           from {
@@ -758,35 +1336,43 @@ export default function BarberDashboard() {
             transform: rotate(360deg);
           }
         }
-        .appt-row {
-          transition:
-            border-color 0.2s,
-            background 0.2s;
+        @keyframes fadeUp {
+          from {
+            opacity: 0;
+            transform: translateY(8px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
         }
-        .appt-row:hover {
-          border-color: rgba(245, 158, 11, 0.2) !important;
-          background: rgba(245, 158, 11, 0.025) !important;
+        @keyframes pageIn {
+          from {
+            opacity: 0;
+          }
+          to {
+            opacity: 1;
+          }
         }
-        .tab-btn {
-          transition: all 0.2s;
+        .bd-page {
+          opacity: 0;
+          animation: pageIn 0.4s ease forwards;
         }
-        input[type="date"]::-webkit-calendar-picker-indicator {
-          filter: invert(1) opacity(0.4);
-          cursor: pointer;
-        }
+        input[type="date"]::-webkit-calendar-picker-indicator,
         input[type="time"]::-webkit-calendar-picker-indicator {
           filter: invert(1) opacity(0.4);
           cursor: pointer;
         }
       `}</style>
 
+      {/* Background */}
       <div
         style={{
           position: "fixed",
           inset: 0,
           zIndex: 0,
           pointerEvents: "none",
-          opacity: 0.03,
+          opacity: 0.025,
           backgroundImage:
             "url('https://grainy-gradients.vercel.app/noise.svg')",
         }}
@@ -794,51 +1380,19 @@ export default function BarberDashboard() {
       <div
         style={{
           position: "fixed",
-          top: "30%",
-          left: "50%",
+          top: "20%",
+          left: "60%",
           transform: "translate(-50%,-50%)",
-          width: 700,
-          height: 700,
+          width: 600,
+          height: 600,
           zIndex: 0,
           pointerEvents: "none",
           background:
-            "radial-gradient(circle, rgba(245,158,11,0.05) 0%, transparent 65%)",
+            "radial-gradient(circle, rgba(245,158,11,0.04) 0%, transparent 65%)",
         }}
       />
 
-      {/* Toast */}
-      {toast && (
-        <div
-          style={{
-            position: "fixed",
-            bottom: 28,
-            left: "50%",
-            transform: "translateX(-50%)",
-            zIndex: 9999,
-            padding: "13px 24px",
-            background:
-              toast.type === "success"
-                ? "rgba(34,197,94,0.1)"
-                : "rgba(248,113,113,0.1)",
-            border: `1px solid ${toast.type === "success" ? "rgba(34,197,94,0.35)" : "rgba(248,113,113,0.35)"}`,
-            backdropFilter: "blur(10px)",
-            animation: "fadeUp 0.3s ease",
-            whiteSpace: "nowrap",
-          }}
-        >
-          <p
-            style={{
-              ...sf,
-              fontSize: 8,
-              color: toast.type === "success" ? "#4ade80" : "#f87171",
-              letterSpacing: "0.2em",
-              textTransform: "uppercase",
-            }}
-          >
-            {toast.msg}
-          </p>
-        </div>
-      )}
+      <Toast toast={toast} />
 
       {/* Nav */}
       <nav
@@ -848,94 +1402,126 @@ export default function BarberDashboard() {
           left: 0,
           right: 0,
           zIndex: 50,
-          padding: isMobile ? "14px 16px" : "18px 32px",
+          padding: isMobile ? "13px 16px" : "15px 24px",
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
           background: "rgba(5,5,5,0.92)",
-          backdropFilter: "blur(12px)",
+          backdropFilter: "blur(16px)",
           borderBottom: "1px solid rgba(255,255,255,0.05)",
         }}
       >
-        <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
           <div
             style={{
               ...sf,
               fontWeight: 700,
-              fontSize: 16,
+              fontSize: 15,
               letterSpacing: "-0.05em",
             }}
           >
             HEADZ
             <span style={{ color: "#f59e0b", fontStyle: "italic" }}>UP</span>
           </div>
-          <div
-            style={{
-              width: 1,
-              height: 16,
-              background: "rgba(255,255,255,0.1)",
-            }}
-          />
-          <span
+          {!isMobile && (
+            <>
+              <div
+                style={{
+                  width: 1,
+                  height: 14,
+                  background: "rgba(255,255,255,0.08)",
+                }}
+              />
+              <span
+                style={{
+                  ...sf,
+                  fontSize: 7,
+                  letterSpacing: "0.3em",
+                  color: "#f59e0b",
+                  textTransform: "uppercase",
+                }}
+              >
+                {barber.name}
+              </span>
+            </>
+          )}
+        </div>
+        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          <button
+            onClick={() => setSelectedDate(today)}
             style={{
               ...sf,
               fontSize: 7,
-              letterSpacing: "0.3em",
-              color: "#f59e0b",
+              letterSpacing: "0.15em",
               textTransform: "uppercase",
+              color: "#52525b",
+              background: "none",
+              border: "1px solid rgba(255,255,255,0.07)",
+              padding: "6px 12px",
+              cursor: "pointer",
+              transition: "all 0.2s",
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.borderColor = "rgba(245,158,11,0.4)";
+              e.currentTarget.style.color = "#f59e0b";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.borderColor = "rgba(255,255,255,0.07)";
+              e.currentTarget.style.color = "#52525b";
             }}
           >
-            {barber.name}
-          </span>
+            Today
+          </button>
+          <button
+            onClick={handleLogout}
+            style={{
+              ...sf,
+              fontSize: 7,
+              letterSpacing: "0.15em",
+              textTransform: "uppercase",
+              color: "#52525b",
+              background: "none",
+              border: "1px solid rgba(255,255,255,0.07)",
+              padding: "6px 12px",
+              cursor: "pointer",
+              transition: "all 0.2s",
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.borderColor = "#f87171";
+              e.currentTarget.style.color = "#f87171";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.borderColor = "rgba(255,255,255,0.07)";
+              e.currentTarget.style.color = "#52525b";
+            }}
+          >
+            Sign Out
+          </button>
         </div>
-        <button
-          onClick={handleLogout}
-          style={{
-            ...sf,
-            fontSize: 8,
-            letterSpacing: "0.15em",
-            textTransform: "uppercase",
-            color: "#52525b",
-            background: "none",
-            border: "1px solid rgba(255,255,255,0.08)",
-            padding: "7px 14px",
-            cursor: "pointer",
-            transition: "all 0.2s",
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.borderColor = "#f87171";
-            e.currentTarget.style.color = "#f87171";
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.borderColor = "rgba(255,255,255,0.08)";
-            e.currentTarget.style.color = "#52525b";
-          }}
-        >
-          Sign Out
-        </button>
       </nav>
 
-      {/* Main */}
+      {/* Page */}
       <div
+        className="bd-page"
         style={{
           position: "relative",
           zIndex: 10,
           minHeight: "100vh",
-          padding: isMobile ? "72px 14px 48px" : "88px 28px 60px",
-          maxWidth: 1000,
+          padding: isMobile ? "64px 12px 40px" : "68px 20px 48px",
+          maxWidth: 1140,
           margin: "0 auto",
         }}
       >
         {/* Header */}
-        <div className="bd-enter" style={{ marginBottom: 32 }}>
+        <div className="bd-enter" style={{ marginBottom: 24 }}>
           <p
             style={{
               ...sf,
-              fontSize: 8,
+              fontSize: 7,
               letterSpacing: "0.5em",
-              color: "#71717a",
+              color: "#3f3f46",
               textTransform: "uppercase",
-              marginBottom: 8,
+              marginBottom: 6,
             }}
           >
             Barber Portal
@@ -943,7 +1529,7 @@ export default function BarberDashboard() {
           <h1
             style={{
               ...sf,
-              fontSize: "clamp(1.8rem,4vw,2.8rem)",
+              fontSize: "clamp(1.5rem,3vw,2.2rem)",
               fontWeight: 900,
               textTransform: "uppercase",
               lineHeight: 1,
@@ -962,23 +1548,15 @@ export default function BarberDashboard() {
           style={{
             display: "grid",
             gridTemplateColumns: isMobile ? "repeat(2,1fr)" : "repeat(4,1fr)",
-            gap: 10,
-            marginBottom: 32,
+            gap: 8,
+            marginBottom: 24,
           }}
         >
           {[
+            { label: "Today", value: barber.today_count, accent: true },
+            { label: "All Time", value: barber.total_count, accent: false },
             {
-              label: "Today's Bookings",
-              value: barber.today_count,
-              accent: true,
-            },
-            {
-              label: "Total All-Time",
-              value: barber.total_count,
-              accent: false,
-            },
-            {
-              label: "Online Revenue",
+              label: "Online Rev",
               value: `$${summary.online_revenue}`,
               accent: false,
             },
@@ -987,12 +1565,12 @@ export default function BarberDashboard() {
             <div
               key={label}
               style={{
-                padding: "20px 18px",
+                padding: "14px 12px",
                 background: accent
-                  ? "rgba(245,158,11,0.08)"
-                  : "rgba(255,255,255,0.03)",
-                border: `1px solid ${accent ? "rgba(245,158,11,0.3)" : "rgba(255,255,255,0.07)"}`,
-                transition: "all 0.25s",
+                  ? "rgba(245,158,11,0.07)"
+                  : "rgba(255,255,255,0.025)",
+                border: `1px solid ${accent ? "rgba(245,158,11,0.25)" : "rgba(255,255,255,0.06)"}`,
+                transition: "all 0.2s",
               }}
               onMouseEnter={(e) => {
                 e.currentTarget.style.borderColor = "#f59e0b";
@@ -1000,21 +1578,21 @@ export default function BarberDashboard() {
               }}
               onMouseLeave={(e) => {
                 e.currentTarget.style.borderColor = accent
-                  ? "rgba(245,158,11,0.3)"
-                  : "rgba(255,255,255,0.07)";
+                  ? "rgba(245,158,11,0.25)"
+                  : "rgba(255,255,255,0.06)";
                 e.currentTarget.style.background = accent
-                  ? "rgba(245,158,11,0.08)"
-                  : "rgba(255,255,255,0.03)";
+                  ? "rgba(245,158,11,0.07)"
+                  : "rgba(255,255,255,0.025)";
               }}
             >
               <p
                 style={{
                   ...sf,
-                  fontSize: 7,
-                  letterSpacing: "0.3em",
-                  color: "#71717a",
+                  fontSize: 6,
+                  letterSpacing: "0.25em",
+                  color: "#3f3f46",
                   textTransform: "uppercase",
-                  marginBottom: 10,
+                  marginBottom: 6,
                 }}
               >
                 {label}
@@ -1022,7 +1600,7 @@ export default function BarberDashboard() {
               <p
                 style={{
                   ...sf,
-                  fontSize: 28,
+                  fontSize: 22,
                   fontWeight: 900,
                   color: accent ? "#f59e0b" : "white",
                   lineHeight: 1,
@@ -1039,8 +1617,8 @@ export default function BarberDashboard() {
           className="bd-enter"
           style={{
             display: "flex",
-            borderBottom: "1px solid rgba(255,255,255,0.07)",
-            marginBottom: 32,
+            borderBottom: "1px solid rgba(255,255,255,0.06)",
+            marginBottom: 20,
           }}
         >
           {[
@@ -1051,19 +1629,19 @@ export default function BarberDashboard() {
             <button
               key={key}
               onClick={() => setActiveTab(key)}
-              className="tab-btn"
               style={{
-                padding: "14px 24px",
+                padding: "11px 20px",
                 ...sf,
-                fontSize: 8,
+                fontSize: 7,
                 letterSpacing: "0.2em",
                 textTransform: "uppercase",
                 background: "transparent",
                 border: "none",
                 borderBottom: `2px solid ${activeTab === key ? "#f59e0b" : "transparent"}`,
-                color: activeTab === key ? "#f59e0b" : "#52525b",
+                color: activeTab === key ? "#f59e0b" : "#3f3f46",
                 cursor: "pointer",
                 marginBottom: -1,
+                transition: "all 0.2s",
               }}
             >
               {label}
@@ -1073,523 +1651,354 @@ export default function BarberDashboard() {
 
         {/* ── SCHEDULE TAB ── */}
         {activeTab === "schedule" && (
-          <>
-            {/* Week strip */}
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: isMobile ? "1fr" : "280px 1fr",
+              gap: isMobile ? 16 : 24,
+              alignItems: "start",
+            }}
+          >
+            {/* LEFT: Calendar */}
             <div
               className="bd-enter"
-              style={{
-                display: "flex",
-                gap: 6,
-                marginBottom: 24,
-                alignItems: "center",
-                flexWrap: "wrap",
-              }}
+              style={{ display: "flex", flexDirection: "column", gap: 12 }}
             >
-              <button
-                onClick={() => setSelectedDate((d) => addDays(d, -7))}
+              <MonthCalendar
+                year={calYear}
+                month={calMonth}
+                selectedDate={selectedDate}
+                appointmentDates={apptDots}
+                onSelectDate={handleSelectDate}
+                onPrevMonth={prevMonth}
+                onNextMonth={nextMonth}
+              />
+              {/* Quick jump — prev/next day */}
+              <div style={{ display: "flex", gap: 6 }}>
+                <button
+                  onClick={() => handleSelectDate(addDays(selectedDate, -1))}
+                  style={{
+                    flex: 1,
+                    padding: "8px",
+                    background: "rgba(255,255,255,0.02)",
+                    border: "1px solid rgba(255,255,255,0.07)",
+                    color: "#52525b",
+                    cursor: "pointer",
+                    ...sf,
+                    fontSize: 7,
+                    letterSpacing: "0.1em",
+                    textTransform: "uppercase",
+                    transition: "all 0.2s",
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.borderColor = "rgba(245,158,11,0.3)";
+                    e.currentTarget.style.color = "#f59e0b";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.borderColor =
+                      "rgba(255,255,255,0.07)";
+                    e.currentTarget.style.color = "#52525b";
+                  }}
+                >
+                  ← Prev Day
+                </button>
+                <button
+                  onClick={() => handleSelectDate(addDays(selectedDate, 1))}
+                  style={{
+                    flex: 1,
+                    padding: "8px",
+                    background: "rgba(255,255,255,0.02)",
+                    border: "1px solid rgba(255,255,255,0.07)",
+                    color: "#52525b",
+                    cursor: "pointer",
+                    ...sf,
+                    fontSize: 7,
+                    letterSpacing: "0.1em",
+                    textTransform: "uppercase",
+                    transition: "all 0.2s",
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.borderColor = "rgba(245,158,11,0.3)";
+                    e.currentTarget.style.color = "#f59e0b";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.borderColor =
+                      "rgba(255,255,255,0.07)";
+                    e.currentTarget.style.color = "#52525b";
+                  }}
+                >
+                  Next Day →
+                </button>
+              </div>
+            </div>
+
+            {/* RIGHT: Day detail */}
+            <div className="bd-enter">
+              {/* Day header */}
+              <div
                 style={{
-                  width: 34,
-                  height: 34,
-                  background: "transparent",
-                  border: "1px solid rgba(255,255,255,0.1)",
-                  color: "#71717a",
-                  cursor: "pointer",
                   display: "flex",
+                  justifyContent: "space-between",
                   alignItems: "center",
-                  justifyContent: "center",
-                  flexShrink: 0,
-                  transition: "all 0.2s",
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.borderColor = "#f59e0b";
-                  e.currentTarget.style.color = "#f59e0b";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)";
-                  e.currentTarget.style.color = "#71717a";
+                  marginBottom: 12,
+                  flexWrap: "wrap",
+                  gap: 8,
                 }}
               >
-                ←
-              </button>
-
-              {(isMobile ? weekDays.slice(0, 5) : weekDays).map((day) => {
-                const isToday = day === todayISO();
-                const isSelected = day === selectedDate;
-                const d = new Date(day + "T00:00:00");
-                return (
-                  <button
-                    key={day}
-                    onClick={() => setSelectedDate(day)}
+                <div>
+                  <h2
                     style={{
-                      flex: 1,
-                      minWidth: 44,
-                      padding: "9px 4px",
-                      background: isSelected
-                        ? "#f59e0b"
-                        : isToday
-                          ? "rgba(245,158,11,0.08)"
-                          : "transparent",
-                      border: `1px solid ${isSelected ? "#f59e0b" : isToday ? "rgba(245,158,11,0.3)" : "rgba(255,255,255,0.08)"}`,
-                      color: isSelected
-                        ? "black"
-                        : isToday
-                          ? "#f59e0b"
-                          : "#71717a",
-                      cursor: "pointer",
-                      textAlign: "center",
-                      transition: "all 0.2s",
+                      ...sf,
+                      fontSize: "clamp(0.8rem,1.8vw,0.95rem)",
+                      fontWeight: 900,
+                      textTransform: "uppercase",
+                      color: selectedDate === today ? "#f59e0b" : "white",
+                      margin: 0,
                     }}
                   >
-                    <div
-                      style={{
-                        ...sf,
-                        fontSize: 7,
-                        textTransform: "uppercase",
-                        marginBottom: 3,
-                      }}
-                    >
-                      {d.toLocaleDateString("en-US", { weekday: "short" })}
-                    </div>
-                    <div style={{ ...sf, fontSize: 15, fontWeight: 900 }}>
-                      {d.getDate()}
-                    </div>
-                  </button>
-                );
-              })}
-
-              <button
-                onClick={() => setSelectedDate((d) => addDays(d, 7))}
-                style={{
-                  width: 34,
-                  height: 34,
-                  background: "transparent",
-                  border: "1px solid rgba(255,255,255,0.1)",
-                  color: "#71717a",
-                  cursor: "pointer",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  flexShrink: 0,
-                  transition: "all 0.2s",
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.borderColor = "#f59e0b";
-                  e.currentTarget.style.color = "#f59e0b";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)";
-                  e.currentTarget.style.color = "#71717a";
-                }}
-              >
-                →
-              </button>
-
-              <input
-                type="date"
-                value={selectedDate}
-                onChange={(e) => setSelectedDate(e.target.value)}
-                style={{
-                  background: "#0a0a0a",
-                  border: "1px solid rgba(255,255,255,0.1)",
-                  padding: "8px 12px",
-                  color: "white",
-                  fontSize: 12,
-                  outline: "none",
-                  cursor: "pointer",
-                }}
-                onFocus={(e) => (e.target.style.borderColor = "#f59e0b")}
-                onBlur={(e) =>
-                  (e.target.style.borderColor = "rgba(255,255,255,0.1)")
-                }
-              />
-
-              {selectedDate !== todayISO() && (
+                    {fmtDayFull(selectedDate)}
+                    {selectedDate === today && (
+                      <span style={{ color: "#f59e0b", fontStyle: "italic" }}>
+                        {" "}
+                        — Today
+                      </span>
+                    )}
+                  </h2>
+                  <p
+                    style={{
+                      ...mono,
+                      fontSize: 10,
+                      color: "#3f3f46",
+                      marginTop: 3,
+                    }}
+                  >
+                    {summary.total}{" "}
+                    {summary.total === 1 ? "appointment" : "appointments"}
+                  </p>
+                </div>
                 <button
-                  onClick={() => setSelectedDate(todayISO())}
+                  onClick={loadSchedule}
                   style={{
-                    padding: "8px 14px",
                     ...sf,
                     fontSize: 7,
                     letterSpacing: "0.15em",
                     textTransform: "uppercase",
-                    background: "transparent",
-                    border: "1px solid rgba(245,158,11,0.3)",
-                    color: "#f59e0b",
+                    color: "#3f3f46",
+                    background: "none",
+                    border: "1px solid rgba(255,255,255,0.07)",
+                    padding: "6px 12px",
                     cursor: "pointer",
                     transition: "all 0.2s",
                   }}
-                  onMouseEnter={(e) =>
-                    (e.currentTarget.style.background = "rgba(245,158,11,0.1)")
-                  }
-                  onMouseLeave={(e) =>
-                    (e.currentTarget.style.background = "transparent")
-                  }
-                >
-                  Today
-                </button>
-              )}
-            </div>
-
-            {/* Date heading */}
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                marginBottom: 20,
-                flexWrap: "wrap",
-                gap: 12,
-              }}
-            >
-              <p
-                style={{
-                  ...sf,
-                  fontSize: 10,
-                  fontWeight: 900,
-                  textTransform: "uppercase",
-                }}
-              >
-                {fmtDate(selectedDate)}
-                <span style={{ color: "#f59e0b", fontStyle: "italic" }}>
-                  {" "}
-                  — {summary.total}{" "}
-                  {summary.total === 1 ? "booking" : "bookings"}
-                </span>
-              </p>
-              <button
-                onClick={loadSchedule}
-                style={{
-                  ...sf,
-                  fontSize: 7,
-                  letterSpacing: "0.2em",
-                  textTransform: "uppercase",
-                  color: "#52525b",
-                  background: "none",
-                  border: "1px solid rgba(255,255,255,0.07)",
-                  padding: "7px 13px",
-                  cursor: "pointer",
-                  transition: "all 0.2s",
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.color = "#f59e0b";
-                  e.currentTarget.style.borderColor = "rgba(245,158,11,0.3)";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.color = "#52525b";
-                  e.currentTarget.style.borderColor = "rgba(255,255,255,0.07)";
-                }}
-              >
-                ↻ Refresh
-              </button>
-            </div>
-
-            {/* Appointment rows */}
-            {schedule.length === 0 ? (
-              <div
-                style={{
-                  padding: "64px 0",
-                  textAlign: "center",
-                  border: "1px solid rgba(255,255,255,0.06)",
-                  background: "rgba(255,255,255,0.02)",
-                }}
-              >
-                <p
-                  style={{
-                    ...sf,
-                    fontSize: 26,
-                    fontWeight: 900,
-                    color: "rgba(255,255,255,0.04)",
-                    textTransform: "uppercase",
-                    marginBottom: 14,
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.color = "#f59e0b";
+                    e.currentTarget.style.borderColor = "rgba(245,158,11,0.3)";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.color = "#3f3f46";
+                    e.currentTarget.style.borderColor =
+                      "rgba(255,255,255,0.07)";
                   }}
                 >
-                  No Bookings
-                </p>
-                <p style={{ color: "#3f3f46", fontSize: 13 }}>
-                  Nothing scheduled for this day.
-                </p>
+                  ↻ Refresh
+                </button>
               </div>
-            ) : (
-              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                {schedule.map((appt, i) => {
-                  const currentStatus =
-                    statusOverrides[appt.id] || appt.status || "confirmed";
-                  const sCfg =
-                    STATUS_CFG[currentStatus] || STATUS_CFG.confirmed;
-                  const pCfg = PAY_CFG[appt.payment_method] || PAY_CFG.shop;
-                  return (
-                    <div
-                      key={appt.id}
-                      className="appt-row"
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: isMobile ? 10 : 16,
-                        padding: isMobile ? "13px 14px" : "18px 22px",
-                        background: "rgba(255,255,255,0.025)",
-                        border: "1px solid rgba(255,255,255,0.07)",
-                        animation: "fadeUp 0.35s ease forwards",
-                        animationDelay: `${i * 0.05}s`,
-                        opacity: 0,
-                        flexWrap: "wrap",
-                        position: "relative",
-                      }}
-                    >
-                      {/* Time */}
-                      <div style={{ width: 58, flexShrink: 0 }}>
-                        <p
+
+              {/* Appointments */}
+              {loadingSched ? (
+                <div
+                  style={{
+                    padding: "48px 0",
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    gap: 12,
+                  }}
+                >
+                  <div
+                    style={{
+                      width: 24,
+                      height: 24,
+                      border: "2px solid rgba(245,158,11,0.2)",
+                      borderTopColor: "#f59e0b",
+                      borderRadius: "50%",
+                      animation: "spin 0.8s linear infinite",
+                    }}
+                  />
+                  <p
+                    style={{
+                      ...sf,
+                      fontSize: 7,
+                      color: "#27272a",
+                      letterSpacing: "0.3em",
+                      textTransform: "uppercase",
+                    }}
+                  >
+                    Loading...
+                  </p>
+                </div>
+              ) : schedule.length === 0 ? (
+                <div
+                  style={{
+                    padding: "48px 20px",
+                    textAlign: "center",
+                    border: "1px solid rgba(255,255,255,0.05)",
+                    background: "rgba(255,255,255,0.015)",
+                  }}
+                >
+                  <p
+                    style={{
+                      ...sf,
+                      fontSize: "clamp(1.2rem,2.5vw,1.8rem)",
+                      fontWeight: 900,
+                      color: "rgba(255,255,255,0.04)",
+                      textTransform: "uppercase",
+                      marginBottom: 10,
+                    }}
+                  >
+                    No Bookings
+                  </p>
+                  <p style={{ color: "#27272a", fontSize: 12 }}>
+                    Nothing scheduled for this day.
+                  </p>
+                </div>
+              ) : (
+                <div
+                  style={{ display: "flex", flexDirection: "column", gap: 6 }}
+                >
+                  {schedule
+                    .slice()
+                    .sort((a, b) => (a.time || "").localeCompare(b.time || ""))
+                    .map((appt) => (
+                      <ApptCard
+                        key={appt.id}
+                        appt={appt}
+                        onStatusChange={handleStatusChange}
+                        onReschedule={setRescheduleAppt}
+                        onCancel={setCancelTarget}
+                        isMobile={isMobile}
+                      />
+                    ))}
+                </div>
+              )}
+
+              {/* Timeline — desktop */}
+              {!isMobile && schedule.length > 0 && (
+                <div style={{ marginTop: 32 }}>
+                  <p
+                    style={{
+                      ...sf,
+                      fontSize: 7,
+                      letterSpacing: "0.3em",
+                      color: "#27272a",
+                      textTransform: "uppercase",
+                      marginBottom: 14,
+                    }}
+                  >
+                    Timeline
+                  </p>
+                  <div style={{ position: "relative", paddingLeft: 56 }}>
+                    {Array.from({ length: 10 }, (_, i) => {
+                      const hour = 9 + i;
+                      return (
+                        <div
+                          key={hour}
                           style={{
-                            fontFamily: "'DM Mono',monospace",
-                            fontSize: 13,
-                            fontWeight: 500,
-                            color: "#f59e0b",
+                            position: "absolute",
+                            left: 0,
+                            top: i * 50,
+                            height: 50,
+                            display: "flex",
+                            alignItems: "flex-start",
+                            paddingTop: 2,
                           }}
                         >
-                          {fmtTime(appt.time)}
-                        </p>
-                        {appt.service_duration && (
-                          <p
+                          <span
                             style={{
-                              fontFamily: "'DM Mono',monospace",
-                              fontSize: 9,
-                              color: "#52525b",
+                              ...mono,
+                              fontSize: 8,
+                              color: "#27272a",
+                              whiteSpace: "nowrap",
                             }}
-                          >
-                            {appt.service_duration}min
-                          </p>
-                        )}
-                      </div>
+                          >{`${hour % 12 || 12}${hour < 12 ? "am" : "pm"}`}</span>
+                        </div>
+                      );
+                    })}
+                    {Array.from({ length: 10 }, (_, i) => (
                       <div
+                        key={i}
                         style={{
-                          width: 1,
-                          height: 38,
-                          background: "rgba(255,255,255,0.07)",
-                          flexShrink: 0,
+                          position: "absolute",
+                          left: 48,
+                          right: 0,
+                          top: i * 50,
+                          height: 1,
+                          background: "rgba(255,255,255,0.04)",
                         }}
                       />
-
-                      {/* Info */}
-                      <div style={{ flex: 1, minWidth: 140 }}>
-                        <p
-                          style={{
-                            ...sf,
-                            fontSize: 11,
-                            fontWeight: 700,
-                            textTransform: "uppercase",
-                            marginBottom: 4,
-                          }}
-                        >
-                          {appt.client}
-                        </p>
-                        <div
-                          style={{
-                            display: "flex",
-                            flexWrap: "wrap",
-                            gap: "2px 12px",
-                          }}
-                        >
-                          <span style={{ fontSize: 11, color: "#a1a1aa" }}>
-                            {appt.service}
-                          </span>
-                          {appt.service_price && (
-                            <span
-                              style={{
-                                fontFamily: "'DM Mono',monospace",
-                                fontSize: 11,
-                                color: "#52525b",
-                              }}
-                            >
-                              ${appt.service_price}
-                            </span>
-                          )}
-                        </div>
-                        {!isMobile && appt.client_email && (
-                          <p
-                            style={{
-                              fontSize: 10,
-                              color: "#3f3f46",
-                              marginTop: 2,
-                            }}
-                          >
-                            {appt.client_email}
-                          </p>
-                        )}
-                      </div>
-
-                      <Badge cfg={pCfg} />
-
-                      {/* Status dropdown */}
-                      <div style={{ position: "relative" }}>
-                        <button
-                          onClick={() =>
-                            setStatusMenuId(
-                              statusMenuId === appt.id ? null : appt.id,
-                            )
-                          }
-                          style={{
-                            display: "flex",
-                            alignItems: "center",
-                            gap: 6,
-                            ...sf,
-                            fontSize: 7,
-                            letterSpacing: "0.12em",
-                            textTransform: "uppercase",
-                            padding: "5px 10px",
-                            background: sCfg.bg,
-                            color: sCfg.color,
-                            border: `1px solid ${sCfg.border}`,
-                            cursor: "pointer",
-                          }}
-                        >
-                          {sCfg.label}{" "}
-                          <span style={{ fontSize: 8, opacity: 0.7 }}>▾</span>
-                        </button>
-                        {statusMenuId === appt.id && (
+                    ))}
+                    <div style={{ position: "relative", height: 9 * 50 + 24 }}>
+                      {schedule.map((appt) => {
+                        if (!appt.time) return null;
+                        const [h, m] = appt.time.split(":");
+                        const top =
+                          (parseInt(h) - 9) * 50 + (parseInt(m) / 60) * 50;
+                        const sCfg = STATUS_CFG[appt.status || "confirmed"];
+                        const height = Math.max(
+                          32,
+                          ((appt.service_duration || 30) / 60) * 50 - 3,
+                        );
+                        return (
                           <div
+                            key={appt.id}
                             style={{
                               position: "absolute",
-                              top: "calc(100% + 4px)",
+                              left: 0,
                               right: 0,
-                              zIndex: 100,
-                              background: "#0f0f0f",
-                              border: "1px solid rgba(255,255,255,0.12)",
-                              minWidth: 140,
-                              boxShadow: "0 8px 32px rgba(0,0,0,0.6)",
+                              top,
+                              height,
+                              background: sCfg.bg,
+                              border: `1px solid ${sCfg.border}`,
+                              padding: "4px 10px",
+                              display: "flex",
+                              alignItems: "center",
+                              gap: 8,
+                              overflow: "hidden",
                             }}
                           >
-                            {Object.entries(STATUS_CFG).map(([key, cfg]) => (
-                              <button
-                                key={key}
-                                onClick={() => handleStatusChange(appt.id, key)}
-                                style={{
-                                  width: "100%",
-                                  display: "flex",
-                                  alignItems: "center",
-                                  gap: 10,
-                                  padding: "11px 14px",
-                                  background:
-                                    currentStatus === key
-                                      ? "rgba(245,158,11,0.06)"
-                                      : "transparent",
-                                  border: "none",
-                                  cursor: "pointer",
-                                  transition: "background 0.15s",
-                                }}
-                                onMouseEnter={(e) =>
-                                  (e.currentTarget.style.background =
-                                    "rgba(255,255,255,0.04)")
-                                }
-                                onMouseLeave={(e) =>
-                                  (e.currentTarget.style.background =
-                                    currentStatus === key
-                                      ? "rgba(245,158,11,0.06)"
-                                      : "transparent")
-                                }
-                              >
-                                <div
-                                  style={{
-                                    width: 7,
-                                    height: 7,
-                                    borderRadius: "50%",
-                                    background: cfg.color,
-                                    flexShrink: 0,
-                                  }}
-                                />
-                                <span
-                                  style={{
-                                    ...sf,
-                                    fontSize: 7,
-                                    letterSpacing: "0.12em",
-                                    textTransform: "uppercase",
-                                    color:
-                                      currentStatus === key
-                                        ? "#f59e0b"
-                                        : "#a1a1aa",
-                                  }}
-                                >
-                                  {cfg.label}
-                                </span>
-                                {currentStatus === key && (
-                                  <span
-                                    style={{
-                                      marginLeft: "auto",
-                                      fontSize: 10,
-                                      color: "#f59e0b",
-                                    }}
-                                  >
-                                    ✓
-                                  </span>
-                                )}
-                              </button>
-                            ))}
+                            <span
+                              style={{
+                                ...mono,
+                                fontSize: 8,
+                                color: sCfg.color,
+                                flexShrink: 0,
+                              }}
+                            >
+                              {fmtTime(appt.time)}
+                            </span>
+                            <span
+                              style={{
+                                ...sf,
+                                fontSize: 7,
+                                textTransform: "uppercase",
+                                letterSpacing: "0.08em",
+                                color: "white",
+                                overflow: "hidden",
+                                textOverflow: "ellipsis",
+                                whiteSpace: "nowrap",
+                              }}
+                            >
+                              {appt.client} — {appt.service}
+                            </span>
                           </div>
-                        )}
-                      </div>
-
-                      {/* Action buttons */}
-                      <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
-                        <button
-                          onClick={() => setRescheduleAppt(appt)}
-                          style={{
-                            width: 32,
-                            height: 32,
-                            background: "transparent",
-                            border: "1px solid rgba(245,158,11,0.3)",
-                            color: "#f59e0b",
-                            cursor: "pointer",
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            transition: "all 0.2s",
-                          }}
-                          onMouseEnter={(e) =>
-                            (e.currentTarget.style.background =
-                              "rgba(245,158,11,0.1)")
-                          }
-                          onMouseLeave={(e) =>
-                            (e.currentTarget.style.background = "transparent")
-                          }
-                          title="Reschedule"
-                        >
-                          ↻
-                        </button>
-                        <button
-                          onClick={() => setCancelTarget(appt)}
-                          style={{
-                            width: 32,
-                            height: 32,
-                            background: "transparent",
-                            border: "1px solid rgba(248,113,113,0.25)",
-                            color: "#52525b",
-                            cursor: "pointer",
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            transition: "all 0.2s",
-                          }}
-                          onMouseEnter={(e) => {
-                            e.currentTarget.style.borderColor = "#f87171";
-                            e.currentTarget.style.color = "#f87171";
-                            e.currentTarget.style.background =
-                              "rgba(248,113,113,0.08)";
-                          }}
-                          onMouseLeave={(e) => {
-                            e.currentTarget.style.borderColor =
-                              "rgba(248,113,113,0.25)";
-                            e.currentTarget.style.color = "#52525b";
-                            e.currentTarget.style.background = "transparent";
-                          }}
-                          title="Cancel appointment"
-                        >
-                          ✕
-                        </button>
-                      </div>
+                        );
+                      })}
                     </div>
-                  );
-                })}
-              </div>
-            )}
-          </>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
         )}
 
         {/* ── AVAILABILITY TAB ── */}
@@ -1597,16 +2006,15 @@ export default function BarberDashboard() {
           <div className="bd-enter">
             <p
               style={{
-                color: "#71717a",
-                fontSize: 13,
-                marginBottom: 28,
+                color: "#52525b",
+                fontSize: 12,
+                marginBottom: 24,
                 lineHeight: 1.7,
               }}
             >
-              Set which days you work and your start/end times. Clients can only
-              book during these hours.
+              Set which days you work and your hours. Clients can only book
+              during these times.
             </p>
-
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               {DAYS.map((dayName, dayIdx) => {
                 const saved = availability.find(
@@ -1615,12 +2023,11 @@ export default function BarberDashboard() {
                 const isEditing = editingDay === dayIdx;
                 const isWorking = saved?.is_working ?? dayIdx < 6;
                 const isSunday = dayIdx === 6;
-
                 return (
                   <div
                     key={dayIdx}
                     style={{
-                      padding: "18px 22px",
+                      padding: "16px 18px",
                       background: "rgba(255,255,255,0.025)",
                       border: `1px solid ${isEditing ? "rgba(245,158,11,0.4)" : "rgba(255,255,255,0.07)"}`,
                       transition: "all 0.2s",
@@ -1632,23 +2039,23 @@ export default function BarberDashboard() {
                         justifyContent: "space-between",
                         alignItems: "center",
                         flexWrap: "wrap",
-                        gap: 12,
+                        gap: 10,
                       }}
                     >
                       <div
                         style={{
                           display: "flex",
                           alignItems: "center",
-                          gap: 16,
+                          gap: 14,
                         }}
                       >
                         <p
                           style={{
                             ...sf,
-                            fontSize: 10,
+                            fontSize: 9,
                             fontWeight: 700,
                             textTransform: "uppercase",
-                            minWidth: 100,
+                            minWidth: 90,
                           }}
                         >
                           {dayName}
@@ -1660,16 +2067,16 @@ export default function BarberDashboard() {
                               fontSize: 7,
                               letterSpacing: "0.15em",
                               textTransform: "uppercase",
-                              color: "#52525b",
+                              color: "#3f3f46",
                             }}
                           >
-                            Closed (Shop Policy)
+                            Closed
                           </span>
                         ) : saved ? (
                           <span
                             style={{
-                              fontSize: 12,
-                              color: isWorking ? "#a1a1aa" : "#52525b",
+                              fontSize: 11,
+                              color: isWorking ? "#a1a1aa" : "#3f3f46",
                             }}
                           >
                             {isWorking
@@ -1677,12 +2084,11 @@ export default function BarberDashboard() {
                               : "Day Off"}
                           </span>
                         ) : (
-                          <span style={{ fontSize: 12, color: "#52525b" }}>
-                            Not set — defaults to 9AM–6PM
+                          <span style={{ fontSize: 11, color: "#3f3f46" }}>
+                            Not set — defaults 9AM–6PM
                           </span>
                         )}
                       </div>
-
                       {!isSunday && (
                         <button
                           onClick={() => {
@@ -1701,15 +2107,15 @@ export default function BarberDashboard() {
                           }}
                           style={{
                             ...sf,
-                            fontSize: 8,
+                            fontSize: 7,
                             letterSpacing: "0.15em",
                             textTransform: "uppercase",
-                            padding: "7px 14px",
+                            padding: "6px 12px",
                             background: isEditing
                               ? "rgba(245,158,11,0.1)"
                               : "transparent",
-                            border: `1px solid ${isEditing ? "#f59e0b" : "rgba(255,255,255,0.12)"}`,
-                            color: isEditing ? "#f59e0b" : "#71717a",
+                            border: `1px solid ${isEditing ? "#f59e0b" : "rgba(255,255,255,0.1)"}`,
+                            color: isEditing ? "#f59e0b" : "#52525b",
                             cursor: "pointer",
                             transition: "all 0.2s",
                           }}
@@ -1718,19 +2124,16 @@ export default function BarberDashboard() {
                         </button>
                       )}
                     </div>
-
-                    {/* Edit panel */}
                     {isEditing && (
                       <div
                         style={{
-                          marginTop: 20,
-                          paddingTop: 20,
+                          marginTop: 16,
+                          paddingTop: 16,
                           borderTop: "1px solid rgba(255,255,255,0.07)",
                         }}
                       >
-                        {/* Working toggle */}
                         <div
-                          style={{ display: "flex", gap: 8, marginBottom: 20 }}
+                          style={{ display: "flex", gap: 8, marginBottom: 16 }}
                         >
                           {[
                             { val: true, label: "Working" },
@@ -1741,9 +2144,9 @@ export default function BarberDashboard() {
                               onClick={() => setEditWorking(val)}
                               style={{
                                 flex: 1,
-                                padding: "10px",
+                                padding: "9px",
                                 ...sf,
-                                fontSize: 8,
+                                fontSize: 7,
                                 textTransform: "uppercase",
                                 letterSpacing: "0.15em",
                                 background:
@@ -1751,7 +2154,7 @@ export default function BarberDashboard() {
                                     ? "#f59e0b"
                                     : "transparent",
                                 color:
-                                  editWorking === val ? "black" : "#71717a",
+                                  editWorking === val ? "black" : "#52525b",
                                 border: `1px solid ${editWorking === val ? "#f59e0b" : "rgba(255,255,255,0.1)"}`,
                                 cursor: "pointer",
                                 transition: "all 0.2s",
@@ -1761,14 +2164,13 @@ export default function BarberDashboard() {
                             </button>
                           ))}
                         </div>
-
                         {editWorking && (
                           <div
                             style={{
                               display: "grid",
                               gridTemplateColumns: "1fr 1fr",
-                              gap: 16,
-                              marginBottom: 20,
+                              gap: 12,
+                              marginBottom: 16,
                             }}
                           >
                             {[
@@ -1788,11 +2190,11 @@ export default function BarberDashboard() {
                                   style={{
                                     ...sf,
                                     fontSize: 7,
-                                    letterSpacing: "0.3em",
-                                    color: "#a1a1aa",
+                                    letterSpacing: "0.25em",
+                                    color: "#52525b",
                                     textTransform: "uppercase",
                                     display: "block",
-                                    marginBottom: 8,
+                                    marginBottom: 6,
                                   }}
                                 >
                                   {label}
@@ -1805,7 +2207,7 @@ export default function BarberDashboard() {
                                     width: "100%",
                                     background: "#050505",
                                     border: "1px solid rgba(255,255,255,0.1)",
-                                    padding: "11px 14px",
+                                    padding: "10px 12px",
                                     color: "white",
                                     fontSize: 14,
                                     outline: "none",
@@ -1822,22 +2224,21 @@ export default function BarberDashboard() {
                             ))}
                           </div>
                         )}
-
                         <button
                           onClick={saveAvailability}
                           disabled={savingAvail}
                           style={{
-                            padding: "14px 28px",
-                            background: savingAvail ? "#27272a" : "#f59e0b",
-                            color: savingAvail ? "#52525b" : "black",
+                            padding: "12px 24px",
+                            background: savingAvail ? "#1c1c1e" : "#f59e0b",
+                            color: savingAvail ? "#3f3f46" : "black",
                             ...sf,
-                            fontSize: 9,
+                            fontSize: 8,
                             fontWeight: 700,
                             textTransform: "uppercase",
                             letterSpacing: "0.2em",
                             border: "none",
                             cursor: savingAvail ? "not-allowed" : "pointer",
-                            transition: "all 0.3s",
+                            transition: "all 0.25s",
                             display: "flex",
                             alignItems: "center",
                             gap: 8,
@@ -1849,8 +2250,8 @@ export default function BarberDashboard() {
                                 style={{
                                   width: 11,
                                   height: 11,
-                                  border: "2px solid #52525b",
-                                  borderTopColor: "transparent",
+                                  border: "2px solid #3f3f46",
+                                  borderTopColor: "#71717a",
                                   borderRadius: "50%",
                                   display: "inline-block",
                                   animation: "spin 0.7s linear infinite",
@@ -1876,33 +2277,31 @@ export default function BarberDashboard() {
           <div className="bd-enter">
             <p
               style={{
-                color: "#71717a",
-                fontSize: 13,
-                marginBottom: 28,
+                color: "#52525b",
+                fontSize: 12,
+                marginBottom: 24,
                 lineHeight: 1.7,
               }}
             >
-              Block off specific dates — vacation, sick days, personal time.
-              Clients won't be able to book you on these days.
+              Block specific dates — vacation, sick days, personal time. Clients
+              won't be able to book you on these days.
             </p>
-
-            {/* Add time off */}
             <div
               style={{
-                padding: "24px",
+                padding: "20px",
                 background: "rgba(255,255,255,0.025)",
                 border: "1px solid rgba(255,255,255,0.07)",
-                marginBottom: 32,
+                marginBottom: 28,
               }}
             >
               <p
                 style={{
                   ...sf,
-                  fontSize: 8,
+                  fontSize: 7,
                   letterSpacing: "0.3em",
-                  color: "#a1a1aa",
+                  color: "#71717a",
                   textTransform: "uppercase",
-                  marginBottom: 20,
+                  marginBottom: 16,
                 }}
               >
                 Block a Date
@@ -1911,8 +2310,8 @@ export default function BarberDashboard() {
                 style={{
                   display: "grid",
                   gridTemplateColumns: isMobile ? "1fr" : "1fr 2fr",
-                  gap: 14,
-                  marginBottom: 16,
+                  gap: 12,
+                  marginBottom: 14,
                 }}
               >
                 <div>
@@ -1920,8 +2319,8 @@ export default function BarberDashboard() {
                     style={{
                       ...sf,
                       fontSize: 7,
-                      letterSpacing: "0.3em",
-                      color: "#71717a",
+                      letterSpacing: "0.25em",
+                      color: "#52525b",
                       textTransform: "uppercase",
                       display: "block",
                       marginBottom: 8,
@@ -1929,11 +2328,24 @@ export default function BarberDashboard() {
                   >
                     Date
                   </label>
-                  <MiniCalendar
-                    selected={newTimeOffDate}
-                    onSelect={setNewTimeOffDate}
-                    sf={sf}
-                    blockSundays={false}
+                  <input
+                    type="date"
+                    value={newTimeOffDate}
+                    min={today}
+                    onChange={(e) => setNewTimeOffDate(e.target.value)}
+                    style={{
+                      width: "100%",
+                      background: "#050505",
+                      border: "1px solid rgba(255,255,255,0.1)",
+                      padding: "11px 12px",
+                      color: "white",
+                      fontSize: 14,
+                      outline: "none",
+                    }}
+                    onFocus={(e) => (e.target.style.borderColor = "#f59e0b")}
+                    onBlur={(e) =>
+                      (e.target.style.borderColor = "rgba(255,255,255,0.1)")
+                    }
                   />
                 </div>
                 <div>
@@ -1941,8 +2353,8 @@ export default function BarberDashboard() {
                     style={{
                       ...sf,
                       fontSize: 7,
-                      letterSpacing: "0.3em",
-                      color: "#71717a",
+                      letterSpacing: "0.25em",
+                      color: "#52525b",
                       textTransform: "uppercase",
                       display: "block",
                       marginBottom: 8,
@@ -1954,16 +2366,16 @@ export default function BarberDashboard() {
                     type="text"
                     value={newTimeOffReason}
                     onChange={(e) => setNewTimeOffReason(e.target.value)}
-                    placeholder="Vacation, appointment, etc."
+                    placeholder="Vacation, sick day, etc."
                     style={{
                       width: "100%",
                       background: "#050505",
                       border: "1px solid rgba(255,255,255,0.1)",
-                      padding: "12px 14px",
+                      padding: "11px 12px",
                       color: "white",
-                      fontSize: 14,
+                      fontSize: 16,
                       outline: "none",
-                      fontFamily: "Inter,sans-serif",
+                      ...mono,
                     }}
                     onFocus={(e) => (e.target.style.borderColor = "#f59e0b")}
                     onBlur={(e) =>
@@ -1976,12 +2388,12 @@ export default function BarberDashboard() {
                 onClick={addTimeOff}
                 disabled={!newTimeOffDate || addingTimeOff}
                 style={{
-                  padding: "13px 28px",
+                  padding: "12px 24px",
                   background:
-                    !newTimeOffDate || addingTimeOff ? "#27272a" : "#f59e0b",
-                  color: !newTimeOffDate || addingTimeOff ? "#52525b" : "black",
+                    !newTimeOffDate || addingTimeOff ? "#1c1c1e" : "#f59e0b",
+                  color: !newTimeOffDate || addingTimeOff ? "#3f3f46" : "black",
                   ...sf,
-                  fontSize: 9,
+                  fontSize: 8,
                   fontWeight: 700,
                   textTransform: "uppercase",
                   letterSpacing: "0.2em",
@@ -1990,22 +2402,21 @@ export default function BarberDashboard() {
                     !newTimeOffDate || addingTimeOff
                       ? "not-allowed"
                       : "pointer",
-                  transition: "all 0.3s",
+                  transition: "all 0.25s",
                 }}
               >
                 {addingTimeOff ? "Adding..." : "Block This Date →"}
               </button>
             </div>
 
-            {/* Upcoming time off list */}
             <p
               style={{
                 ...sf,
-                fontSize: 8,
-                letterSpacing: "0.4em",
-                color: "#52525b",
+                fontSize: 7,
+                letterSpacing: "0.35em",
+                color: "#3f3f46",
                 textTransform: "uppercase",
-                marginBottom: 16,
+                marginBottom: 12,
               }}
             >
               Upcoming Time Off
@@ -2013,15 +2424,15 @@ export default function BarberDashboard() {
             {timeOff.length === 0 ? (
               <div
                 style={{
-                  padding: "48px 0",
+                  padding: "40px 0",
                   textAlign: "center",
-                  border: "1px solid rgba(255,255,255,0.06)",
+                  border: "1px solid rgba(255,255,255,0.05)",
                 }}
               >
                 <p
                   style={{
                     ...sf,
-                    fontSize: 20,
+                    fontSize: "1.4rem",
                     fontWeight: 900,
                     color: "rgba(255,255,255,0.04)",
                     textTransform: "uppercase",
@@ -2031,7 +2442,7 @@ export default function BarberDashboard() {
                 </p>
               </div>
             ) : (
-              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                 {timeOff.map((off) => (
                   <div
                     key={off.id}
@@ -2039,21 +2450,21 @@ export default function BarberDashboard() {
                       display: "flex",
                       justifyContent: "space-between",
                       alignItems: "center",
-                      padding: "16px 20px",
+                      padding: "14px 16px",
                       background: "rgba(255,255,255,0.025)",
                       border: "1px solid rgba(255,255,255,0.07)",
                       flexWrap: "wrap",
-                      gap: 12,
+                      gap: 10,
                     }}
                   >
                     <div>
                       <p
                         style={{
                           ...sf,
-                          fontSize: 11,
+                          fontSize: 9,
                           fontWeight: 700,
                           textTransform: "uppercase",
-                          marginBottom: 4,
+                          marginBottom: 3,
                         }}
                       >
                         {new Date(off.date + "T00:00:00").toLocaleDateString(
@@ -2067,7 +2478,7 @@ export default function BarberDashboard() {
                         )}
                       </p>
                       {off.reason && (
-                        <p style={{ fontSize: 12, color: "#71717a" }}>
+                        <p style={{ fontSize: 11, color: "#52525b" }}>
                           {off.reason}
                         </p>
                       )}
@@ -2079,16 +2490,16 @@ export default function BarberDashboard() {
                         fontSize: 7,
                         letterSpacing: "0.15em",
                         textTransform: "uppercase",
-                        padding: "7px 14px",
+                        padding: "6px 12px",
                         background: "transparent",
-                        border: "1px solid rgba(248,113,113,0.3)",
+                        border: "1px solid rgba(248,113,113,0.25)",
                         color: "#f87171",
                         cursor: "pointer",
                         transition: "all 0.2s",
                       }}
                       onMouseEnter={(e) =>
                         (e.currentTarget.style.background =
-                          "rgba(248,113,113,0.1)")
+                          "rgba(248,113,113,0.08)")
                       }
                       onMouseLeave={(e) =>
                         (e.currentTarget.style.background = "transparent")
@@ -2104,14 +2515,6 @@ export default function BarberDashboard() {
         )}
       </div>
 
-      {/* Click outside status menu */}
-      {statusMenuId && (
-        <div
-          style={{ position: "fixed", inset: 0, zIndex: 99 }}
-          onClick={() => setStatusMenuId(null)}
-        />
-      )}
-
       {/* Reschedule modal */}
       {rescheduleAppt && (
         <RescheduleModal
@@ -2121,7 +2524,7 @@ export default function BarberDashboard() {
         />
       )}
 
-      {/* Cancel confirm modal */}
+      {/* Cancel modal */}
       {cancelTarget && (
         <div
           style={{
@@ -2139,28 +2542,28 @@ export default function BarberDashboard() {
           <div
             style={{
               width: "100%",
-              maxWidth: 400,
-              background: "#0a0a0a",
+              maxWidth: 380,
+              background: "#080808",
               border: "1px solid rgba(248,113,113,0.2)",
-              padding: "32px 28px",
+              padding: "26px 22px",
             }}
           >
             <div
               style={{
-                width: 44,
-                height: 44,
+                width: 40,
+                height: 40,
                 borderRadius: "50%",
                 background: "rgba(248,113,113,0.1)",
-                border: "1px solid rgba(248,113,113,0.3)",
+                border: "1px solid rgba(248,113,113,0.25)",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                marginBottom: 20,
+                marginBottom: 14,
               }}
             >
               <svg
-                width="20"
-                height="20"
+                width="18"
+                height="18"
                 viewBox="0 0 24 24"
                 fill="none"
                 stroke="#f87171"
@@ -2188,24 +2591,31 @@ export default function BarberDashboard() {
             <h2
               style={{
                 ...sf,
-                fontSize: 18,
+                fontSize: 15,
                 fontWeight: 900,
                 textTransform: "uppercase",
                 color: "white",
-                marginBottom: 16,
+                marginBottom: 14,
               }}
             >
               Confirm<span style={{ color: "#f87171" }}>?</span>
             </h2>
             <div
               style={{
-                padding: "12px 16px",
-                background: "rgba(248,113,113,0.05)",
-                border: "1px solid rgba(248,113,113,0.15)",
-                marginBottom: 20,
+                padding: "11px 14px",
+                background: "rgba(248,113,113,0.04)",
+                border: "1px solid rgba(248,113,113,0.12)",
+                marginBottom: 16,
               }}
             >
-              <p style={{ fontSize: 12, color: "#a1a1aa", lineHeight: 1.7 }}>
+              <p
+                style={{
+                  fontSize: 12,
+                  color: "#a1a1aa",
+                  lineHeight: 1.7,
+                  margin: 0,
+                }}
+              >
                 <span style={{ color: "white", fontWeight: 700 }}>
                   {cancelTarget.client}
                 </span>
@@ -2216,29 +2626,29 @@ export default function BarberDashboard() {
                 </span>
               </p>
             </div>
-            <div style={{ display: "flex", gap: 10 }}>
+            <div style={{ display: "flex", gap: 8 }}>
               <button
                 onClick={() => setCancelTarget(null)}
                 style={{
                   flex: 1,
-                  padding: "13px",
+                  padding: "12px",
                   background: "transparent",
                   border: "1px solid rgba(255,255,255,0.1)",
-                  color: "#a1a1aa",
+                  color: "#71717a",
                   ...sf,
                   fontSize: 8,
                   textTransform: "uppercase",
-                  letterSpacing: "0.2em",
+                  letterSpacing: "0.15em",
                   cursor: "pointer",
                   transition: "all 0.2s",
                 }}
                 onMouseEnter={(e) => {
-                  e.currentTarget.style.borderColor = "rgba(255,255,255,0.4)";
+                  e.currentTarget.style.borderColor = "rgba(255,255,255,0.3)";
                   e.currentTarget.style.color = "white";
                 }}
                 onMouseLeave={(e) => {
                   e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)";
-                  e.currentTarget.style.color = "#a1a1aa";
+                  e.currentTarget.style.color = "#71717a";
                 }}
               >
                 Keep It
@@ -2248,17 +2658,17 @@ export default function BarberDashboard() {
                 disabled={cancelling}
                 style={{
                   flex: 2,
-                  padding: "13px",
-                  background: cancelling ? "#27272a" : "#f87171",
-                  color: cancelling ? "#52525b" : "black",
+                  padding: "12px",
+                  background: cancelling ? "#1c1c1e" : "#f87171",
+                  color: cancelling ? "#3f3f46" : "black",
                   ...sf,
                   fontSize: 8,
                   fontWeight: 700,
                   textTransform: "uppercase",
-                  letterSpacing: "0.2em",
+                  letterSpacing: "0.15em",
                   border: "none",
                   cursor: cancelling ? "not-allowed" : "pointer",
-                  transition: "all 0.3s",
+                  transition: "all 0.25s",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
@@ -2271,8 +2681,8 @@ export default function BarberDashboard() {
                       style={{
                         width: 11,
                         height: 11,
-                        border: "2px solid #52525b",
-                        borderTopColor: "transparent",
+                        border: "2px solid #3f3f46",
+                        borderTopColor: "#71717a",
                         borderRadius: "50%",
                         display: "inline-block",
                         animation: "spin 0.7s linear infinite",
