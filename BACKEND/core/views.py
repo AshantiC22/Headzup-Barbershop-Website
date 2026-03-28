@@ -1273,3 +1273,177 @@ class BarberClientDetailView(APIView):
             "is_vip":     bc.is_vip,
             "is_blocked": bc.is_blocked,
         })
+
+
+class BarberReportsView(APIView):
+    """
+    Full business analytics for a barber.
+    GET /barber/reports/?period=week|month|year|all
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        barber = get_barber_for_user(request.user)
+        if not barber:
+            return Response({"error": "Not a barber account"}, status=403)
+
+        from datetime import date as date_type, timedelta
+        from django.db.models import Count, Sum, Q
+        from decimal import Decimal
+
+        period = request.query_params.get("period", "month")
+        today  = date_type.today()
+
+        if period == "week":
+            start = today - timedelta(days=today.weekday())  # Monday
+        elif period == "month":
+            start = today.replace(day=1)
+        elif period == "year":
+            start = today.replace(month=1, day=1)
+        else:  # all time
+            start = None
+
+        # Base queryset
+        qs = Appointment.objects.filter(barber=barber).select_related("service", "user")
+        qs_period = qs.filter(date__gte=start) if start else qs
+
+        # ── Overall summary ──
+        total        = qs_period.count()
+        completed    = qs_period.filter(status="completed").count()
+        cancelled    = qs_period.filter(status="cancelled").count()
+        no_shows     = qs_period.filter(status="no_show").count()
+        confirmed    = qs_period.filter(status="confirmed").count()
+        walk_ins     = qs_period.filter(is_walk_in=True).count()
+
+        online_appts = qs_period.filter(payment_method="online", status="completed")
+        shop_appts   = qs_period.filter(payment_method="shop",   status="confirmed") | \
+                       qs_period.filter(payment_method="shop",   status="completed")
+
+        online_revenue = sum(
+            float(a.service.price) for a in online_appts if a.service
+        )
+        shop_revenue = sum(
+            float(a.service.price) for a in shop_appts if a.service
+        )
+        total_revenue = online_revenue + shop_revenue
+
+        # Completion rate
+        completion_rate = round((completed / total * 100) if total > 0 else 0, 1)
+        no_show_rate    = round((no_shows  / total * 100) if total > 0 else 0, 1)
+
+        # ── Service breakdown ──
+        service_stats = []
+        services = Service.objects.all()
+        for svc in services:
+            svc_qs = qs_period.filter(service=svc)
+            svc_count = svc_qs.count()
+            if svc_count == 0:
+                continue
+            svc_completed = svc_qs.filter(status="completed").count()
+            svc_revenue   = svc_completed * float(svc.price)
+            service_stats.append({
+                "name":      svc.name,
+                "price":     str(svc.price),
+                "bookings":  svc_count,
+                "completed": svc_completed,
+                "revenue":   f"{svc_revenue:.2f}",
+            })
+        service_stats.sort(key=lambda x: -x["bookings"])
+
+        # ── Daily revenue for chart (last 30 days always, regardless of period) ──
+        chart_start = today - timedelta(days=29)
+        daily_data  = []
+        for i in range(30):
+            day = chart_start + timedelta(days=i)
+            day_qs = qs.filter(date=day)
+            day_online  = day_qs.filter(payment_method="online", status="completed")
+            day_shop    = day_qs.filter(payment_method="shop").filter(
+                status__in=["confirmed", "completed"]
+            )
+            day_revenue = sum(float(a.service.price) for a in day_online if a.service) + \
+                          sum(float(a.service.price) for a in day_shop   if a.service)
+            daily_data.append({
+                "date":       str(day),
+                "label":      day.strftime("%b %d"),
+                "revenue":    round(day_revenue, 2),
+                "bookings":   day_qs.count(),
+                "completed":  day_qs.filter(status="completed").count(),
+            })
+
+        # ── Weekly breakdown (last 8 weeks) ──
+        weekly_data = []
+        for i in range(7, -1, -1):
+            week_start = today - timedelta(weeks=i, days=today.weekday())
+            week_end   = week_start + timedelta(days=6)
+            week_qs    = qs.filter(date__gte=week_start, date__lte=week_end)
+            week_online = week_qs.filter(payment_method="online", status="completed")
+            week_shop   = week_qs.filter(payment_method="shop").filter(
+                status__in=["confirmed", "completed"]
+            )
+            week_rev = sum(float(a.service.price) for a in week_online if a.service) + \
+                       sum(float(a.service.price) for a in week_shop   if a.service)
+            weekly_data.append({
+                "week":      f"Wk {week_start.strftime('%b %d')}",
+                "revenue":   round(week_rev, 2),
+                "bookings":  week_qs.count(),
+                "completed": week_qs.filter(status="completed").count(),
+            })
+
+        # ── Busiest days of the week ──
+        day_names = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+        busiest_days = []
+        for dow in range(7):
+            # Django week_day: 1=Sunday ... 7=Saturday, so Mon=2
+            django_dow = (dow + 2) % 7 or 7
+            count = qs_period.filter(date__week_day=django_dow).count()
+            busiest_days.append({"day": day_names[dow], "bookings": count})
+
+        # ── Busiest hours ──
+        from django.db.models.functions import ExtractHour
+        hour_counts = (
+            qs_period.annotate(hour=ExtractHour("time"))
+            .values("hour")
+            .annotate(count=Count("id"))
+            .order_by("hour")
+        )
+        busiest_hours = [{"hour": h["hour"], "label": f"{h['hour'] % 12 or 12}{'am' if h['hour'] < 12 else 'pm'}", "bookings": h["count"]} for h in hour_counts]
+
+        # ── Top clients ──
+        from django.db.models import Count
+        top_clients_qs = (
+            qs_period.values("user__id", "user__username", "user__first_name", "user__email")
+            .annotate(visits=Count("id"))
+            .order_by("-visits")[:5]
+        )
+        top_clients = [{
+            "id":       c["user__id"],
+            "name":     c["user__first_name"] or c["user__username"],
+            "email":    c["user__email"],
+            "visits":   c["visits"],
+        } for c in top_clients_qs]
+
+        return Response({
+            "period": period,
+            "start":  str(start) if start else "all",
+            "summary": {
+                "total":           total,
+                "completed":       completed,
+                "cancelled":       cancelled,
+                "no_shows":        no_shows,
+                "confirmed":       confirmed,
+                "walk_ins":        walk_ins,
+                "completion_rate": completion_rate,
+                "no_show_rate":    no_show_rate,
+                "online_revenue":  f"{online_revenue:.2f}",
+                "shop_revenue":    f"{shop_revenue:.2f}",
+                "total_revenue":   f"{total_revenue:.2f}",
+                "online_count":    online_appts.count(),
+                "shop_count":      shop_appts.count(),
+            },
+            "services":     service_stats,
+            "daily":        daily_data,
+            "weekly":       weekly_data,
+            "busiest_days": busiest_days,
+            "busiest_hours":busiest_hours,
+            "top_clients":  top_clients,
+        })

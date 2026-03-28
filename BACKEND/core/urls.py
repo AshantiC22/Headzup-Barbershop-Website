@@ -28,6 +28,7 @@ from core.views import (
     SendRemindersView,
     BarberClientListView,
     BarberClientDetailView,
+    BarberReportsView,
     # Push notifications + reviews
     PushSubscriptionView,
     TriggerReviewNotificationView,
@@ -78,6 +79,8 @@ urlpatterns = [
     # Client management
     path("barber/clients/",              BarberClientListView.as_view(),        name="barber_clients"),
     path("barber/clients/<int:pk>/",     BarberClientDetailView.as_view(),      name="barber_client_detail"),
+    # Reports
+    path("barber/reports/",              BarberReportsView.as_view(),           name="barber_reports"),
 
     # Push notifications
     path("push/subscribe/",              PushSubscriptionView.as_view(),             name="push_subscribe"),

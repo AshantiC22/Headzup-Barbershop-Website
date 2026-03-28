@@ -1305,6 +1305,11 @@ export default function BarberDashboard() {
   const [loadingClient, setLoadingClient] = useState(false);
   const [savingClient, setSavingClient] = useState(false);
 
+  // Reports state
+  const [reports, setReports] = useState(null);
+  const [reportPeriod, setReportPeriod] = useState("month");
+  const [loadingReports, setLoadingReports] = useState(false);
+
   // Auth
   useEffect(() => {
     API.get("barber/me/")
@@ -1424,6 +1429,23 @@ export default function BarberDashboard() {
   useEffect(() => {
     if (activeTab === "clients") loadClients();
   }, [activeTab, loadClients]);
+
+  // Reports
+  const loadReports = useCallback(async () => {
+    if (!barber) return;
+    setLoadingReports(true);
+    try {
+      const res = await API.get(`barber/reports/?period=${reportPeriod}`);
+      setReports(res.data);
+    } catch {
+      showToast("Could not load reports.", "error");
+    } finally {
+      setLoadingReports(false);
+    }
+  }, [barber, reportPeriod]);
+  useEffect(() => {
+    if (activeTab === "reports") loadReports();
+  }, [activeTab, loadReports]);
 
   // Entry animation
   useEffect(() => {
@@ -2118,6 +2140,7 @@ export default function BarberDashboard() {
             { key: "walkin", label: "Walk-In", icon: "✂️" },
             { key: "waitlist", label: "Waitlist", icon: "⏳" },
             { key: "clients", label: "Clients", icon: "👤" },
+            { key: "reports", label: "Reports", icon: "📊" },
             { key: "availability", label: "My Hours", icon: "⏰" },
             { key: "timeoff", label: "Time Off", icon: "🏖" },
           ].map(({ key, label, icon }) => (
@@ -3716,6 +3739,938 @@ export default function BarberDashboard() {
                   </button>
                 ))}
               </div>
+            )}
+          </div>
+        )}
+
+        {/* ── REPORTS TAB ── */}
+        {activeTab === "reports" && (
+          <div className="bd-enter">
+            {/* Period selector */}
+            <div
+              style={{
+                display: "flex",
+                gap: 6,
+                marginBottom: 24,
+                flexWrap: "wrap",
+              }}
+            >
+              {[
+                { key: "week", label: "This Week" },
+                { key: "month", label: "This Month" },
+                { key: "year", label: "This Year" },
+                { key: "all", label: "All Time" },
+              ].map(({ key, label }) => (
+                <button
+                  key={key}
+                  onClick={() => setReportPeriod(key)}
+                  style={{
+                    padding: "8px 16px",
+                    ...sf,
+                    fontSize: 7,
+                    letterSpacing: "0.15em",
+                    textTransform: "uppercase",
+                    background: reportPeriod === key ? T.amber : T.surface,
+                    color: reportPeriod === key ? "black" : T.muted,
+                    border: `1px solid ${reportPeriod === key ? T.amber : T.border}`,
+                    cursor: "pointer",
+                    transition: "all 0.2s",
+                  }}
+                  onMouseEnter={(e) => {
+                    if (reportPeriod !== key) {
+                      e.currentTarget.style.borderColor = T.amberBorder;
+                      e.currentTarget.style.color = T.amber;
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (reportPeriod !== key) {
+                      e.currentTarget.style.borderColor = T.border;
+                      e.currentTarget.style.color = T.muted;
+                    }
+                  }}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+
+            {loadingReports || !reports ? (
+              <div
+                style={{
+                  padding: "48px 0",
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  gap: 12,
+                }}
+              >
+                <div
+                  style={{
+                    width: 20,
+                    height: 20,
+                    border: `1.5px solid rgba(245,158,11,0.2)`,
+                    borderTopColor: T.amber,
+                    borderRadius: "50%",
+                    animation: "spin 0.8s linear infinite",
+                  }}
+                />
+                <p
+                  style={{
+                    ...sf,
+                    fontSize: 6,
+                    color: T.dim,
+                    letterSpacing: "0.3em",
+                    textTransform: "uppercase",
+                  }}
+                >
+                  Loading reports...
+                </p>
+              </div>
+            ) : (
+              <>
+                {/* ── Revenue summary cards ── */}
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: isMobile
+                      ? "repeat(2,1fr)"
+                      : "repeat(4,1fr)",
+                    gap: 8,
+                    marginBottom: 24,
+                  }}
+                >
+                  {[
+                    {
+                      label: "Total Revenue",
+                      value: `$${reports.summary.total_revenue}`,
+                      accent: true,
+                    },
+                    {
+                      label: "Online (Stripe)",
+                      value: `$${reports.summary.online_revenue}`,
+                    },
+                    {
+                      label: "In Shop",
+                      value: `$${reports.summary.shop_revenue}`,
+                    },
+                    {
+                      label: "Avg Per Visit",
+                      value:
+                        reports.summary.completed > 0
+                          ? `$${(parseFloat(reports.summary.total_revenue) / reports.summary.completed).toFixed(2)}`
+                          : "$0",
+                    },
+                  ].map(({ label, value, accent }) => (
+                    <div
+                      key={label}
+                      style={{
+                        padding: "16px 14px",
+                        background: accent ? T.amberDim : T.surface,
+                        border: `1px solid ${accent ? T.amberBorder : T.border}`,
+                        position: "relative",
+                        overflow: "hidden",
+                      }}
+                    >
+                      <div
+                        style={{
+                          position: "absolute",
+                          top: 0,
+                          right: 0,
+                          width: 40,
+                          height: 40,
+                          background: accent
+                            ? "linear-gradient(225deg,rgba(245,158,11,0.2),transparent)"
+                            : "linear-gradient(225deg,rgba(255,255,255,0.03),transparent)",
+                        }}
+                      />
+                      <p
+                        style={{
+                          ...sf,
+                          fontSize: 6,
+                          letterSpacing: "0.3em",
+                          color: accent ? T.amber : T.muted,
+                          textTransform: "uppercase",
+                          marginBottom: 8,
+                        }}
+                      >
+                        {label}
+                      </p>
+                      <p
+                        style={{
+                          ...sf,
+                          fontSize: isMobile ? 18 : 22,
+                          fontWeight: 900,
+                          color: accent ? T.amber : "white",
+                          margin: 0,
+                          lineHeight: 1,
+                        }}
+                      >
+                        {value}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+
+                {/* ── Appointment summary cards ── */}
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: isMobile
+                      ? "repeat(3,1fr)"
+                      : "repeat(6,1fr)",
+                    gap: 6,
+                    marginBottom: 24,
+                  }}
+                >
+                  {[
+                    { label: "Total", value: reports.summary.total },
+                    {
+                      label: "Completed",
+                      value: reports.summary.completed,
+                      color: "#4ade80",
+                    },
+                    {
+                      label: "Confirmed",
+                      value: reports.summary.confirmed,
+                      color: T.amber,
+                    },
+                    {
+                      label: "Cancelled",
+                      value: reports.summary.cancelled,
+                      color: T.muted,
+                    },
+                    {
+                      label: "No-Shows",
+                      value: reports.summary.no_shows,
+                      color: "#f87171",
+                    },
+                    {
+                      label: "Walk-Ins",
+                      value: reports.summary.walk_ins,
+                      color: "#a78bfa",
+                    },
+                  ].map(({ label, value, color }) => (
+                    <div
+                      key={label}
+                      style={{
+                        padding: "12px 10px",
+                        background: T.surface,
+                        border: `1px solid ${T.border}`,
+                        textAlign: "center",
+                      }}
+                    >
+                      <p
+                        style={{
+                          ...sf,
+                          fontSize: 5,
+                          letterSpacing: "0.25em",
+                          color: T.muted,
+                          textTransform: "uppercase",
+                          marginBottom: 6,
+                        }}
+                      >
+                        {label}
+                      </p>
+                      <p
+                        style={{
+                          ...sf,
+                          fontSize: 20,
+                          fontWeight: 900,
+                          color: color || "white",
+                          margin: 0,
+                        }}
+                      >
+                        {value}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+
+                {/* ── Rates row ── */}
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "1fr 1fr",
+                    gap: 8,
+                    marginBottom: 24,
+                  }}
+                >
+                  {[
+                    {
+                      label: "Completion Rate",
+                      value: `${reports.summary.completion_rate}%`,
+                      color: "#4ade80",
+                      desc: "Appointments marked completed",
+                    },
+                    {
+                      label: "No-Show Rate",
+                      value: `${reports.summary.no_show_rate}%`,
+                      color: "#f87171",
+                      desc: "Clients who didn't show up",
+                    },
+                  ].map(({ label, value, color, desc }) => (
+                    <div
+                      key={label}
+                      style={{
+                        padding: "18px 16px",
+                        background: T.surface,
+                        border: `1px solid ${T.border}`,
+                      }}
+                    >
+                      <p
+                        style={{
+                          ...sf,
+                          fontSize: 6,
+                          letterSpacing: "0.3em",
+                          color: T.muted,
+                          textTransform: "uppercase",
+                          marginBottom: 8,
+                        }}
+                      >
+                        {label}
+                      </p>
+                      <p
+                        style={{
+                          ...sf,
+                          fontSize: 28,
+                          fontWeight: 900,
+                          color,
+                          margin: "0 0 4px",
+                        }}
+                      >
+                        {value}
+                      </p>
+                      <div
+                        style={{
+                          width: "100%",
+                          height: 3,
+                          background: T.border,
+                          borderRadius: 2,
+                          overflow: "hidden",
+                        }}
+                      >
+                        <div
+                          style={{
+                            width: value,
+                            height: "100%",
+                            background: color,
+                            borderRadius: 2,
+                            transition: "width 0.8s ease",
+                          }}
+                        />
+                      </div>
+                      <p
+                        style={{
+                          ...mono,
+                          fontSize: 9,
+                          color: T.dim,
+                          marginTop: 6,
+                        }}
+                      >
+                        {desc}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+
+                {/* ── Daily revenue bar chart ── */}
+                <div
+                  style={{
+                    background: T.surface,
+                    border: `1px solid ${T.border}`,
+                    padding: "18px 16px",
+                    marginBottom: 20,
+                  }}
+                >
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 12,
+                      marginBottom: 16,
+                    }}
+                  >
+                    <p
+                      style={{
+                        ...sf,
+                        fontSize: 7,
+                        letterSpacing: "0.3em",
+                        color: T.muted,
+                        textTransform: "uppercase",
+                        margin: 0,
+                      }}
+                    >
+                      Daily Revenue — Last 30 Days
+                    </p>
+                    <div style={{ flex: 1, height: 1, background: T.border }} />
+                  </div>
+                  {(() => {
+                    const maxRev = Math.max(
+                      ...reports.daily.map((d) => d.revenue),
+                      1,
+                    );
+                    const nonZero = reports.daily.filter((d) => d.revenue > 0);
+                    return (
+                      <div
+                        style={{
+                          overflowX: "auto",
+                          WebkitOverflowScrolling: "touch",
+                        }}
+                      >
+                        <div
+                          style={{
+                            display: "flex",
+                            alignItems: "flex-end",
+                            gap: 3,
+                            height: 100,
+                            minWidth: isMobile ? 500 : "100%",
+                            paddingBottom: 24,
+                            position: "relative",
+                          }}
+                        >
+                          {reports.daily.map((d, i) => {
+                            const pct = d.revenue / maxRev;
+                            const isToday = d.date === today;
+                            return (
+                              <div
+                                key={d.date}
+                                style={{
+                                  flex: 1,
+                                  display: "flex",
+                                  flexDirection: "column",
+                                  alignItems: "center",
+                                  gap: 2,
+                                  height: "100%",
+                                  justifyContent: "flex-end",
+                                }}
+                                title={`${d.label}: $${d.revenue} · ${d.bookings} bookings`}
+                              >
+                                <div
+                                  style={{
+                                    width: "100%",
+                                    height: `${Math.max(pct * 76, d.revenue > 0 ? 3 : 0)}px`,
+                                    background: isToday
+                                      ? T.amber
+                                      : d.revenue > 0
+                                        ? "rgba(245,158,11,0.5)"
+                                        : "rgba(255,255,255,0.04)",
+                                    borderRadius: "1px 1px 0 0",
+                                    transition: "height 0.5s ease",
+                                    position: "relative",
+                                  }}
+                                />
+                                {(i % 5 === 0 || isToday) && (
+                                  <span
+                                    style={{
+                                      ...mono,
+                                      fontSize: 7,
+                                      color: isToday ? T.amber : T.dim,
+                                      whiteSpace: "nowrap",
+                                      position: "absolute",
+                                      bottom: 4,
+                                    }}
+                                  >
+                                    {d.label.split(" ")[1]}
+                                  </span>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                        {nonZero.length === 0 && (
+                          <p
+                            style={{
+                              ...mono,
+                              color: T.dim,
+                              fontSize: 11,
+                              textAlign: "center",
+                              marginTop: 8,
+                            }}
+                          >
+                            No revenue data for this period.
+                          </p>
+                        )}
+                      </div>
+                    );
+                  })()}
+                </div>
+
+                {/* ── Service breakdown ── */}
+                <div
+                  style={{
+                    background: T.surface,
+                    border: `1px solid ${T.border}`,
+                    padding: "18px 16px",
+                    marginBottom: 20,
+                  }}
+                >
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 12,
+                      marginBottom: 16,
+                    }}
+                  >
+                    <p
+                      style={{
+                        ...sf,
+                        fontSize: 7,
+                        letterSpacing: "0.3em",
+                        color: T.muted,
+                        textTransform: "uppercase",
+                        margin: 0,
+                      }}
+                    >
+                      Service Performance
+                    </p>
+                    <div style={{ flex: 1, height: 1, background: T.border }} />
+                  </div>
+                  {reports.services.length === 0 ? (
+                    <p style={{ ...mono, color: T.dim, fontSize: 11 }}>
+                      No service data yet.
+                    </p>
+                  ) : (
+                    <div
+                      style={{
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: 5,
+                      }}
+                    >
+                      {reports.services.map((svc, i) => {
+                        const maxBookings = reports.services[0].bookings;
+                        const pct = (svc.bookings / maxBookings) * 100;
+                        return (
+                          <div
+                            key={svc.name}
+                            style={{
+                              padding: "12px 14px",
+                              background: "rgba(255,255,255,0.01)",
+                              border: `1px solid ${T.border}`,
+                            }}
+                          >
+                            <div
+                              style={{
+                                display: "flex",
+                                justifyContent: "space-between",
+                                alignItems: "center",
+                                marginBottom: 6,
+                              }}
+                            >
+                              <div
+                                style={{
+                                  display: "flex",
+                                  alignItems: "center",
+                                  gap: 10,
+                                }}
+                              >
+                                <span
+                                  style={{
+                                    ...sf,
+                                    fontSize: 6,
+                                    color: T.dim,
+                                    width: 14,
+                                  }}
+                                >
+                                  #{i + 1}
+                                </span>
+                                <p
+                                  style={{
+                                    ...sf,
+                                    fontSize: 9,
+                                    fontWeight: 700,
+                                    textTransform: "uppercase",
+                                    color: "white",
+                                    margin: 0,
+                                  }}
+                                >
+                                  {svc.name}
+                                </p>
+                              </div>
+                              <div
+                                style={{
+                                  display: "flex",
+                                  gap: 14,
+                                  alignItems: "center",
+                                }}
+                              >
+                                <span
+                                  style={{
+                                    ...mono,
+                                    fontSize: 10,
+                                    color: T.muted,
+                                  }}
+                                >
+                                  {svc.bookings} booked
+                                </span>
+                                <span
+                                  style={{
+                                    ...mono,
+                                    fontSize: 11,
+                                    color: T.amber,
+                                    fontWeight: 500,
+                                  }}
+                                >
+                                  ${svc.revenue}
+                                </span>
+                              </div>
+                            </div>
+                            <div
+                              style={{
+                                height: 2,
+                                background: T.border,
+                                borderRadius: 1,
+                                overflow: "hidden",
+                              }}
+                            >
+                              <div
+                                style={{
+                                  width: `${pct}%`,
+                                  height: "100%",
+                                  background: T.amber,
+                                  borderRadius: 1,
+                                  transition: "width 0.6s ease",
+                                }}
+                              />
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+
+                {/* ── Busiest days + hours ── */}
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr",
+                    gap: 16,
+                    marginBottom: 20,
+                  }}
+                >
+                  {/* Busiest days */}
+                  <div
+                    style={{
+                      background: T.surface,
+                      border: `1px solid ${T.border}`,
+                      padding: "18px 16px",
+                    }}
+                  >
+                    <p
+                      style={{
+                        ...sf,
+                        fontSize: 7,
+                        letterSpacing: "0.3em",
+                        color: T.muted,
+                        textTransform: "uppercase",
+                        marginBottom: 14,
+                      }}
+                    >
+                      Busiest Days
+                    </p>
+                    {(() => {
+                      const max = Math.max(
+                        ...reports.busiest_days.map((d) => d.bookings),
+                        1,
+                      );
+                      return reports.busiest_days.map((d) => (
+                        <div
+                          key={d.day}
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 10,
+                            marginBottom: 8,
+                          }}
+                        >
+                          <span
+                            style={{
+                              ...sf,
+                              fontSize: 7,
+                              color: T.muted,
+                              width: 28,
+                              flexShrink: 0,
+                            }}
+                          >
+                            {d.day}
+                          </span>
+                          <div
+                            style={{
+                              flex: 1,
+                              height: 6,
+                              background: T.border,
+                              borderRadius: 1,
+                              overflow: "hidden",
+                            }}
+                          >
+                            <div
+                              style={{
+                                width: `${(d.bookings / max) * 100}%`,
+                                height: "100%",
+                                background:
+                                  d.bookings === max
+                                    ? T.amber
+                                    : "rgba(245,158,11,0.35)",
+                                borderRadius: 1,
+                                transition: "width 0.6s ease",
+                              }}
+                            />
+                          </div>
+                          <span
+                            style={{
+                              ...mono,
+                              fontSize: 10,
+                              color: d.bookings === max ? T.amber : T.muted,
+                              width: 20,
+                              textAlign: "right",
+                              flexShrink: 0,
+                            }}
+                          >
+                            {d.bookings}
+                          </span>
+                        </div>
+                      ));
+                    })()}
+                  </div>
+
+                  {/* Busiest hours */}
+                  <div
+                    style={{
+                      background: T.surface,
+                      border: `1px solid ${T.border}`,
+                      padding: "18px 16px",
+                    }}
+                  >
+                    <p
+                      style={{
+                        ...sf,
+                        fontSize: 7,
+                        letterSpacing: "0.3em",
+                        color: T.muted,
+                        textTransform: "uppercase",
+                        marginBottom: 14,
+                      }}
+                    >
+                      Busiest Hours
+                    </p>
+                    {reports.busiest_hours.length === 0 ? (
+                      <p style={{ ...mono, color: T.dim, fontSize: 11 }}>
+                        No data yet.
+                      </p>
+                    ) : (
+                      (() => {
+                        const max = Math.max(
+                          ...reports.busiest_hours.map((h) => h.bookings),
+                          1,
+                        );
+                        return reports.busiest_hours.map((h) => (
+                          <div
+                            key={h.hour}
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: 10,
+                              marginBottom: 8,
+                            }}
+                          >
+                            <span
+                              style={{
+                                ...mono,
+                                fontSize: 9,
+                                color: T.muted,
+                                width: 32,
+                                flexShrink: 0,
+                              }}
+                            >
+                              {h.label}
+                            </span>
+                            <div
+                              style={{
+                                flex: 1,
+                                height: 6,
+                                background: T.border,
+                                borderRadius: 1,
+                                overflow: "hidden",
+                              }}
+                            >
+                              <div
+                                style={{
+                                  width: `${(h.bookings / max) * 100}%`,
+                                  height: "100%",
+                                  background:
+                                    h.bookings === max
+                                      ? T.amber
+                                      : "rgba(245,158,11,0.35)",
+                                  borderRadius: 1,
+                                  transition: "width 0.6s ease",
+                                }}
+                              />
+                            </div>
+                            <span
+                              style={{
+                                ...mono,
+                                fontSize: 10,
+                                color: h.bookings === max ? T.amber : T.muted,
+                                width: 20,
+                                textAlign: "right",
+                                flexShrink: 0,
+                              }}
+                            >
+                              {h.bookings}
+                            </span>
+                          </div>
+                        ));
+                      })()
+                    )}
+                  </div>
+                </div>
+
+                {/* ── Top clients ── */}
+                {reports.top_clients.length > 0 && (
+                  <div
+                    style={{
+                      background: T.surface,
+                      border: `1px solid ${T.border}`,
+                      padding: "18px 16px",
+                    }}
+                  >
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 12,
+                        marginBottom: 14,
+                      }}
+                    >
+                      <p
+                        style={{
+                          ...sf,
+                          fontSize: 7,
+                          letterSpacing: "0.3em",
+                          color: T.muted,
+                          textTransform: "uppercase",
+                          margin: 0,
+                        }}
+                      >
+                        Top Clients
+                      </p>
+                      <div
+                        style={{ flex: 1, height: 1, background: T.border }}
+                      />
+                    </div>
+                    <div
+                      style={{
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: 5,
+                      }}
+                    >
+                      {reports.top_clients.map((c, i) => (
+                        <div
+                          key={c.id}
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 12,
+                            padding: "10px 12px",
+                            background: "rgba(255,255,255,0.01)",
+                            border: `1px solid ${T.border}`,
+                          }}
+                        >
+                          <span
+                            style={{
+                              ...sf,
+                              fontSize: 8,
+                              color: i === 0 ? T.amber : T.dim,
+                              width: 20,
+                              flexShrink: 0,
+                              fontWeight: 900,
+                            }}
+                          >
+                            #{i + 1}
+                          </span>
+                          <div
+                            style={{
+                              width: 32,
+                              height: 32,
+                              borderRadius: "50%",
+                              background:
+                                i === 0 ? T.amberDim : "rgba(255,255,255,0.04)",
+                              border: `1px solid ${i === 0 ? T.amberBorder : T.border}`,
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              flexShrink: 0,
+                            }}
+                          >
+                            <span
+                              style={{
+                                ...sf,
+                                fontSize: 11,
+                                fontWeight: 900,
+                                color: i === 0 ? T.amber : "#a1a1aa",
+                              }}
+                            >
+                              {(c.name || "?").charAt(0).toUpperCase()}
+                            </span>
+                          </div>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <p
+                              style={{
+                                ...sf,
+                                fontSize: 8,
+                                fontWeight: 700,
+                                textTransform: "uppercase",
+                                color: "white",
+                                margin: 0,
+                              }}
+                            >
+                              {c.name}
+                            </p>
+                            {!isMobile && c.email && (
+                              <p
+                                style={{
+                                  ...mono,
+                                  fontSize: 9,
+                                  color: T.dim,
+                                  margin: 0,
+                                }}
+                              >
+                                {c.email}
+                              </p>
+                            )}
+                          </div>
+                          <div style={{ textAlign: "right", flexShrink: 0 }}>
+                            <p
+                              style={{
+                                ...sf,
+                                fontSize: 9,
+                                color: i === 0 ? T.amber : T.muted,
+                                margin: 0,
+                                fontWeight: 700,
+                              }}
+                            >
+                              {c.visits}
+                            </p>
+                            <p
+                              style={{
+                                ...mono,
+                                fontSize: 8,
+                                color: T.dim,
+                                margin: 0,
+                              }}
+                            >
+                              visit{c.visits !== 1 ? "s" : ""}
+                            </p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </>
             )}
           </div>
         )}
