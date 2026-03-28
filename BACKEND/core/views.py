@@ -1812,34 +1812,40 @@ class BarberRescheduleRequestView(APIView):
 
 class TestEmailView(APIView):
     """Debug endpoint — sends a test email and returns the result."""
-    permission_classes = [IsAuthenticated]
+    permission_classes = [AllowAny]  # temporary for debugging
 
     def post(self, request):
-        if not request.user.is_staff:
-            return Response({"error": "Staff only"}, status=403)
-
         from django.core.mail import send_mail
         from django.conf import settings as django_settings
 
-        recipient = request.data.get("to", request.user.email)
+        recipient = request.data.get("to", "bdkshan18@gmail.com")
         
         # Check config
-        api_key  = getattr(django_settings, "EMAIL_HOST_PASSWORD", "")
+        api_key    = getattr(django_settings, "EMAIL_HOST_PASSWORD", "")
         from_email = getattr(django_settings, "DEFAULT_FROM_EMAIL", "")
+        backend    = getattr(django_settings, "EMAIL_BACKEND", "not set")
+        host       = getattr(django_settings, "EMAIL_HOST", "not set")
         
+        debug_info = {
+            "api_key_set":  bool(api_key),
+            "api_key_prefix": api_key[:8] if api_key else "empty",
+            "from_email":   from_email,
+            "email_backend": backend,
+            "email_host":   host,
+            "recipient":    recipient,
+        }
+
         if not api_key:
-            return Response({"error": "SENDGRID_API_KEY not set in environment"}, status=500)
-        if not from_email:
-            return Response({"error": "DEFAULT_FROM_EMAIL not set"}, status=500)
+            return Response({"error": "SENDGRID_API_KEY not set", "debug": debug_info}, status=500)
 
         try:
             send_mail(
                 subject="HEADZ UP — Test Email",
-                message="This is a test email from HEADZ UP Barbershop. If you received this, email is working correctly.",
+                message="This is a test email from HEADZ UP Barbershop.",
                 from_email=from_email,
                 recipient_list=[recipient],
-                fail_silently=False,  # raise on error so we see what's wrong
+                fail_silently=False,
             )
-            return Response({"success": True, "sent_to": recipient, "from": from_email})
+            return Response({"success": True, "debug": debug_info})
         except Exception as e:
-            return Response({"error": str(e), "sent_to": recipient, "from": from_email}, status=500)
+            return Response({"error": str(e), "debug": debug_info}, status=500)
