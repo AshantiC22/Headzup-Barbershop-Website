@@ -31,7 +31,7 @@ class Barber(models.Model):
         related_name="barber_profile"
     )
     bio   = models.TextField(blank=True, default="")
-    photo = models.CharField(max_length=200, blank=True, default="")
+    photo = models.ImageField(upload_to="barbers/", blank=True, null=True)
 
     def __str__(self):
         return self.name
@@ -75,22 +75,43 @@ class Appointment(models.Model):
         ("shop",   "Pay In Shop"),
     ]
 
-    user           = models.ForeignKey(User, on_delete=models.CASCADE)
-    barber         = models.ForeignKey(Barber, on_delete=models.CASCADE)
-    service        = models.ForeignKey(Service, on_delete=models.CASCADE)
-    date           = models.DateField()
-    time           = models.TimeField()
-    status         = models.CharField(max_length=20, choices=STATUS_CHOICES, default="confirmed")
-    payment_method = models.CharField(max_length=20, choices=PAYMENT_CHOICES, default="shop")
-    created_at     = models.DateTimeField(auto_now_add=True)
-    # Track whether post-haircut notification was sent
-    review_notified = models.BooleanField(default=False)
+    user             = models.ForeignKey(User, on_delete=models.CASCADE)
+    barber           = models.ForeignKey(Barber, on_delete=models.CASCADE)
+    service          = models.ForeignKey(Service, on_delete=models.CASCADE)
+    date             = models.DateField()
+    time             = models.TimeField()
+    status           = models.CharField(max_length=20, choices=STATUS_CHOICES, default="confirmed")
+    payment_method   = models.CharField(max_length=20, choices=PAYMENT_CHOICES, default="shop")
+    created_at       = models.DateTimeField(auto_now_add=True)
+    review_notified  = models.BooleanField(default=False)
+    reminder_sent    = models.BooleanField(default=False)  # 24hr reminder sent
+    barber_notes     = models.TextField(blank=True, default="")  # barber's private notes
+    is_walk_in       = models.BooleanField(default=False)  # walk-in booking flag
 
     class Meta:
         unique_together = ("barber", "date", "time")
 
     def __str__(self):
         return f"{self.user.username} - {self.barber.name} {self.date} {self.time}"
+
+
+class WaitlistEntry(models.Model):
+    """Client added to waitlist for a fully booked slot."""
+    barber      = models.ForeignKey(Barber, on_delete=models.CASCADE, related_name="waitlist")
+    service     = models.ForeignKey(Service, on_delete=models.SET_NULL, null=True, blank=True)
+    client_name = models.CharField(max_length=100)
+    client_phone= models.CharField(max_length=30, blank=True, default="")
+    client_email= models.CharField(max_length=200, blank=True, default="")
+    date        = models.DateField()
+    notes       = models.TextField(blank=True, default="")
+    notified    = models.BooleanField(default=False)
+    created_at  = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["created_at"]
+
+    def __str__(self):
+        return f"Waitlist: {self.client_name} for {self.barber.name} on {self.date}"
 
 
 class Review(models.Model):

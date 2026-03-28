@@ -5,7 +5,7 @@ from django.conf import settings
 from django.db import IntegrityError
 from django.shortcuts import redirect
 from rest_framework import viewsets
-from .models import Appointment, Barber, BarberAvailability, BarberTimeOff, Service, UserProfile, PushSubscription, Review
+from .models import Appointment, Barber, BarberAvailability, BarberTimeOff, Service, UserProfile, PushSubscription, Review, WaitlistEntry
 from .serializers import AppointmentSerializer, BarberSerializer, ServiceSerializer, UserProfileSerializer, RegisterSerializer
 from rest_framework.permissions import IsAuthenticated, AllowAny, IsAdminUser
 from rest_framework.response import Response
@@ -639,11 +639,23 @@ class BarberScheduleOwnView(APIView):
         barber   = get_barber_for_user(request.user)
         if not barber:
             return Response({"error": "Not a barber account"}, status=403)
-        date_str = request.query_params.get("date", str(date_type.today()))
-        queryset = Appointment.objects.filter(barber=barber, date=date_str).select_related("user", "service").order_by("time")
+        date_str   = request.query_params.get("date", str(date_type.today()))
+        month_view = request.query_params.get("month") == "true"
+
+        if month_view:
+            try:
+                import calendar
+                parsed = date_type.fromisoformat(date_str)
+                _, days = calendar.monthrange(parsed.year, parsed.month)
+                month_end = date_type(parsed.year, parsed.month, days)
+                queryset = Appointment.objects.filter(barber=barber, date__gte=date_str, date__lte=month_end).select_related("user", "service").order_by("date", "time")
+            except Exception:
+                queryset = Appointment.objects.filter(barber=barber, date=date_str).select_related("user", "service").order_by("time")
+        else:
+            queryset = Appointment.objects.filter(barber=barber, date=date_str).select_related("user", "service").order_by("time")
         data = [{
             "id":               appt.id,
-            "client":           appt.user.username,
+            "client":           appt.user.first_name if appt.is_walk_in and appt.user.first_name else appt.user.username,
             "client_email":     appt.user.email,
             "service":          appt.service.name if appt.service else "",
             "service_price":    str(appt.service.price) if appt.service else "",
@@ -652,6 +664,8 @@ class BarberScheduleOwnView(APIView):
             "time":             str(appt.time),
             "status":           appt.status,
             "payment_method":   appt.payment_method,
+            "barber_notes":     appt.barber_notes,
+            "is_walk_in":       appt.is_walk_in,
         } for appt in queryset]
 
         total   = queryset.count()
@@ -678,6 +692,7 @@ class BarberAppointmentUpdateView(APIView):
         new_status = request.data.get("status")
         new_date   = request.data.get("date")
         new_time   = request.data.get("time")
+        new_notes  = request.data.get("barber_notes")
 
         if new_status in ["confirmed", "completed", "no_show", "cancelled"]:
             appt.status = new_status
@@ -685,17 +700,18 @@ class BarberAppointmentUpdateView(APIView):
             appt.date = new_date
         if new_time:
             appt.time = new_time
+        if new_notes is not None:
+            appt.barber_notes = new_notes
 
         try:
             appt.save()
         except Exception:
             return Response({"error": "That slot is already booked"}, status=400)
 
-        # If barber manually marks completed, send review notification immediately
         if new_status == "completed":
             _schedule_review_notification(appt)
 
-        return Response({"message": "Updated", "id": appt.id})
+        return Response({"message": "Updated", "id": appt.id, "barber_notes": appt.barber_notes})
 
     def delete(self, request, pk):
         barber = get_barber_for_user(request.user)
@@ -707,6 +723,139 @@ class BarberAppointmentUpdateView(APIView):
             return Response({"message": "Deleted"}, status=204)
         except Appointment.DoesNotExist:
             return Response({"error": "Not found"}, status=404)
+
+
+class WalkInBookingView(APIView):
+    """Barber creates a walk-in appointment on the spot."""
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        barber = get_barber_for_user(request.user)
+        if not barber:
+            return Response({"error": "Not a barber account"}, status=403)
+
+        client_name = request.data.get("client_name", "").strip()
+        service_id  = request.data.get("service")
+        date        = request.data.get("date")
+        time        = request.data.get("time")
+        notes       = request.data.get("notes", "")
+        payment     = request.data.get("payment_method", "shop")
+
+        if not all([client_name, service_id, date, time]):
+            return Response({"error": "client_name, service, date and time are required."}, status=400)
+
+        try:
+            service = Service.objects.get(pk=service_id)
+        except Service.DoesNotExist:
+            return Response({"error": "Service not found."}, status=404)
+
+        # Create or get a placeholder user for walk-ins
+        username = f"walkin_{client_name.lower().replace(' ', '_')}_{date.replace('-', '')}"
+        user, _ = User.objects.get_or_create(
+            username=username[:150],
+            defaults={"first_name": client_name}
+        )
+
+        try:
+            appt = Appointment.objects.create(
+                user=user,
+                barber=barber,
+                service=service,
+                date=date,
+                time=time,
+                status="confirmed",
+                payment_method=payment,
+                barber_notes=notes,
+                is_walk_in=True,
+            )
+        except Exception:
+            return Response({"error": "That slot is already booked."}, status=400)
+
+        return Response({
+            "message": "Walk-in booked.",
+            "id": appt.id,
+            "client": client_name,
+            "service": service.name,
+            "date": str(appt.date),
+            "time": str(appt.time),
+        }, status=201)
+
+
+class WaitlistView(APIView):
+    """Barber manages waitlist entries for their schedule."""
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        barber = get_barber_for_user(request.user)
+        if not barber:
+            return Response({"error": "Not a barber account"}, status=403)
+        date = request.query_params.get("date")
+        qs = WaitlistEntry.objects.filter(barber=barber)
+        if date:
+            qs = qs.filter(date=date)
+        return Response([{
+            "id":           w.id,
+            "client_name":  w.client_name,
+            "client_phone": w.client_phone,
+            "client_email": w.client_email,
+            "service":      w.service.name if w.service else "",
+            "service_id":   w.service.id if w.service else None,
+            "date":         str(w.date),
+            "notes":        w.notes,
+            "notified":     w.notified,
+            "created_at":   w.created_at.isoformat(),
+        } for w in qs])
+
+    def post(self, request):
+        barber = get_barber_for_user(request.user)
+        if not barber:
+            return Response({"error": "Not a barber account"}, status=403)
+
+        client_name = request.data.get("client_name", "").strip()
+        date        = request.data.get("date")
+        if not client_name or not date:
+            return Response({"error": "client_name and date required."}, status=400)
+
+        service = None
+        sid = request.data.get("service")
+        if sid:
+            try: service = Service.objects.get(pk=sid)
+            except Service.DoesNotExist: pass
+
+        entry = WaitlistEntry.objects.create(
+            barber=barber,
+            service=service,
+            client_name=client_name,
+            client_phone=request.data.get("client_phone", ""),
+            client_email=request.data.get("client_email", ""),
+            date=date,
+            notes=request.data.get("notes", ""),
+        )
+        return Response({"message": "Added to waitlist.", "id": entry.id}, status=201)
+
+    def delete(self, request, pk):
+        barber = get_barber_for_user(request.user)
+        if not barber:
+            return Response({"error": "Not a barber account"}, status=403)
+        try:
+            entry = WaitlistEntry.objects.get(pk=pk, barber=barber)
+            entry.delete()
+            return Response({"message": "Removed."}, status=204)
+        except WaitlistEntry.DoesNotExist:
+            return Response({"error": "Not found."}, status=404)
+
+    def patch(self, request, pk):
+        """Mark waitlist entry as notified."""
+        barber = get_barber_for_user(request.user)
+        if not barber:
+            return Response({"error": "Not a barber account"}, status=403)
+        try:
+            entry = WaitlistEntry.objects.get(pk=pk, barber=barber)
+            entry.notified = True
+            entry.save()
+            return Response({"message": "Marked as notified."})
+        except WaitlistEntry.DoesNotExist:
+            return Response({"error": "Not found."}, status=404)
 
 
 class BarberAvailabilityView(APIView):
@@ -918,3 +1067,57 @@ class VapidPublicKeyView(APIView):
 
     def get(self, request):
         return Response({"public_key": getattr(settings, "VAPID_PUBLIC_KEY", "")})
+
+
+class SendRemindersView(APIView):
+    """
+    Called by a cron job or manually to send 24-hour appointment reminders.
+    Sends email to clients with appointments tomorrow.
+    Only staff can trigger this.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        if not request.user.is_staff:
+            return Response({"error": "Staff only"}, status=403)
+
+        from datetime import date, timedelta
+        from django.core.mail import send_mail
+        from django.conf import settings as django_settings
+
+        tomorrow = date.today() + timedelta(days=1)
+        appts = Appointment.objects.filter(
+            date=tomorrow,
+            status="confirmed",
+            reminder_sent=False,
+        ).select_related("user", "barber", "service")
+
+        sent = 0
+        for appt in appts:
+            if not appt.user.email:
+                continue
+            try:
+                send_mail(
+                    subject=f"Reminder: Your appointment tomorrow at HEADZ UP",
+                    message=(
+                        f"Hey {appt.user.first_name or appt.user.username},\n\n"
+                        f"Just a reminder that you have an appointment tomorrow:\n\n"
+                        f"  Service: {appt.service.name}\n"
+                        f"  Barber:  {appt.barber.name}\n"
+                        f"  Date:    {appt.date.strftime('%A, %B %d')}\n"
+                        f"  Time:    {appt.time.strftime('%I:%M %p')}\n\n"
+                        f"See you then!\n\n"
+                        f"— HEADZ UP Barbershop\n"
+                        f"  Hattiesburg, MS"
+                    ),
+                    from_email=getattr(django_settings, "DEFAULT_FROM_EMAIL", "noreply@headzup.com"),
+                    recipient_list=[appt.user.email],
+                    fail_silently=True,
+                )
+                appt.reminder_sent = True
+                appt.save(update_fields=["reminder_sent"])
+                sent += 1
+            except Exception:
+                pass
+
+        return Response({"message": f"Reminders sent: {sent}", "tomorrow": str(tomorrow)})

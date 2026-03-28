@@ -22,6 +22,10 @@ from core.views import (
     BarberAppointmentUpdateView,
     BarberAvailabilityView,
     BarberTimeOffView,
+    # New features
+    WalkInBookingView,
+    WaitlistView,
+    SendRemindersView,
     # Push notifications + reviews
     PushSubscriptionView,
     TriggerReviewNotificationView,
@@ -64,6 +68,11 @@ urlpatterns = [
     path("barber/time-off/",              BarberTimeOffView.as_view(),          name="barber_time_off"),
     path("barber/time-off/<int:pk>/",     BarberTimeOffView.as_view(),          name="barber_time_off_delete"),
     path("barber/reviews/",               BarberReviewsView.as_view(),          name="barber_reviews"),
+    # Walk-in + waitlist + reminders
+    path("barber/walk-in/",               WalkInBookingView.as_view(),          name="barber_walk_in"),
+    path("barber/waitlist/",              WaitlistView.as_view(),               name="barber_waitlist"),
+    path("barber/waitlist/<int:pk>/",     WaitlistView.as_view(),               name="barber_waitlist_item"),
+    path("barber/send-reminders/",        SendRemindersView.as_view(),          name="send_reminders"),
 
     # Push notifications
     path("push/subscribe/",              PushSubscriptionView.as_view(),             name="push_subscribe"),
