@@ -397,10 +397,11 @@ class CreateCheckoutSessionView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
-        service_id = request.data.get("service")
-        barber_id  = request.data.get("barber")
-        date       = request.data.get("date")
-        time       = request.data.get("time")
+        service_id   = request.data.get("service")
+        barber_id    = request.data.get("barber")
+        date         = request.data.get("date")
+        time         = request.data.get("time")
+        client_notes = request.data.get("client_notes", "")
 
         try:
             service = Service.objects.get(id=service_id)
@@ -418,11 +419,12 @@ class CreateCheckoutSessionView(APIView):
                 success_url=f"{BACKEND_URL}/api/payment-success/?session_id={{CHECKOUT_SESSION_ID}}",
                 cancel_url=f"{FRONTEND_URL}/dashboard?canceled=true",
                 metadata={
-                    "user_id":    request.user.id,
-                    "service_id": service_id,
-                    "barber_id":  barber_id,
-                    "date":       date,
-                    "time":       time,
+                    "user_id":      request.user.id,
+                    "service_id":   service_id,
+                    "barber_id":    barber_id,
+                    "date":         date,
+                    "time":         time,
+                    "client_notes": client_notes[:500],  # Stripe metadata limit
                 },
             )
             return Response({"url": checkout_session.url})
@@ -448,7 +450,10 @@ class PaymentSuccessView(APIView):
             appt, created = Appointment.objects.get_or_create(
                 user=user, service=service, barber=barber,
                 date=metadata.get("date"), time=metadata.get("time"),
-                defaults={"payment_method": "online"},
+                defaults={
+                    "payment_method": "online",
+                    "client_notes":   metadata.get("client_notes", ""),
+                },
             )
             if created:
                 send_booking_confirmation(appt)
@@ -665,6 +670,7 @@ class BarberScheduleOwnView(APIView):
             "status":           appt.status,
             "payment_method":   appt.payment_method,
             "barber_notes":     appt.barber_notes,
+            "client_notes":     appt.client_notes,
             "is_walk_in":       appt.is_walk_in,
         } for appt in queryset]
 

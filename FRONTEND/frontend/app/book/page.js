@@ -273,6 +273,7 @@ function BookContent() {
   const [selectedDate, setSelectedDate] = useState("");
   const [selectedTime, setSelectedTime] = useState("");
   const [paymentMethod, setPaymentMethod] = useState("online"); // "online" | "shop"
+  const [clientNotes, setClientNotes] = useState(""); // client's style request
 
   // Available slots state
   const [availableSlots, setAvailableSlots] = useState([]);
@@ -423,6 +424,7 @@ function BookContent() {
         date: selectedDate,
         time: to24Hour(selectedTime),
         payment_method: "shop",
+        client_notes: clientNotes,
       });
       router.push("/booking-confirmed");
     } catch (e) {
@@ -446,6 +448,7 @@ function BookContent() {
         barber: selectedBarber.id,
         date: selectedDate,
         time: to24Hour(selectedTime),
+        client_notes: clientNotes,
       });
       window.location.href = res.data.url;
     } catch (e) {
@@ -1389,6 +1392,55 @@ function BookContent() {
                         </span>
                       </div>
                     ))}
+                  </div>
+
+                  {/* Client notes / style request */}
+                  <div style={{ marginBottom: 20 }}>
+                    <p
+                      style={{
+                        ...sf,
+                        fontSize: 7,
+                        letterSpacing: "0.3em",
+                        color: "#52525b",
+                        textTransform: "uppercase",
+                        marginBottom: 10,
+                      }}
+                    >
+                      Style Request (optional)
+                    </p>
+                    <textarea
+                      value={clientNotes}
+                      onChange={(e) => setClientNotes(e.target.value)}
+                      placeholder="e.g. Low fade, leave length on top, lineup..."
+                      rows={3}
+                      style={{
+                        width: "100%",
+                        background: "#0a0a0a",
+                        border: "1px solid rgba(255,255,255,0.1)",
+                        padding: "12px 14px",
+                        color: "white",
+                        fontSize: 14,
+                        outline: "none",
+                        fontFamily: "'DM Mono', monospace",
+                        resize: "none",
+                        lineHeight: 1.6,
+                        transition: "border-color 0.2s",
+                      }}
+                      onFocus={(e) => (e.target.style.borderColor = "#f59e0b")}
+                      onBlur={(e) =>
+                        (e.target.style.borderColor = "rgba(255,255,255,0.1)")
+                      }
+                    />
+                    <p
+                      style={{
+                        fontSize: 10,
+                        color: "#27272a",
+                        marginTop: 6,
+                        fontFamily: "'DM Mono', monospace",
+                      }}
+                    >
+                      Your barber will see this before your appointment
+                    </p>
                   </div>
 
                   {/* Payment method selector */}

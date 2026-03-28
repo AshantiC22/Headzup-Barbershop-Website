@@ -695,6 +695,19 @@ function ApptTicket({
             ""
           )}
         </p>
+        {appt.client_notes && (
+          <p
+            style={{
+              ...mono,
+              fontSize: 10,
+              color: T.amber,
+              marginTop: 4,
+              fontStyle: "italic",
+            }}
+          >
+            💬 {appt.client_notes}
+          </p>
+        )}
         {!isMobile && appt.client_email && (
           <p style={{ ...mono, fontSize: 9, color: T.dim, marginTop: 4 }}>
             {appt.client_email}
@@ -707,45 +720,46 @@ function ApptTicket({
         style={{
           display: "flex",
           alignItems: "center",
-          gap: isMobile ? 8 : 6,
-          padding: isMobile ? "0 12px" : "0 10px",
+          gap: isMobile ? 6 : 6,
+          padding: isMobile ? "0 10px" : "0 10px",
           flexShrink: 0,
         }}
       >
-        {/* Status pill */}
+        {/* Status pill — always shows label */}
         <div ref={menuRef} style={{ position: "relative" }}>
           <button
             onClick={() => setMenuOpen((o) => !o)}
             style={{
               display: "flex",
               alignItems: "center",
-              gap: 4,
+              gap: 6,
               ...sf,
               fontSize: 6,
               letterSpacing: "0.1em",
               textTransform: "uppercase",
-              padding: "4px 8px",
+              padding: isMobile ? "8px 10px" : "5px 10px",
               background: sCfg.bg,
               color: sCfg.color,
               border: `1px solid ${sCfg.border}`,
               cursor: "pointer",
               transition: "all 0.15s",
               whiteSpace: "nowrap",
+              minHeight: isMobile ? 36 : "auto",
             }}
           >
             <span
               style={{
-                width: 5,
-                height: 5,
+                width: 6,
+                height: 6,
                 borderRadius: "50%",
                 background: sCfg.color,
                 flexShrink: 0,
               }}
             />
-            {!isMobile && sCfg.label}
+            <span>{sCfg.label}</span>
             <span
               style={{
-                fontSize: 7,
+                fontSize: 8,
                 opacity: 0.5,
                 transform: menuOpen ? "rotate(180deg)" : "none",
                 transition: "transform 0.2s",
@@ -764,8 +778,8 @@ function ApptTicket({
                 zIndex: 200,
                 background: "#0a0a0a",
                 border: `1px solid ${T.border}`,
-                minWidth: 140,
-                boxShadow: "0 20px 60px rgba(0,0,0,0.8)",
+                minWidth: 150,
+                boxShadow: "0 20px 60px rgba(0,0,0,0.9)",
               }}
             >
               {Object.entries(STATUS_CFG).map(([key, cfg]) => (
@@ -777,7 +791,7 @@ function ApptTicket({
                     display: "flex",
                     alignItems: "center",
                     gap: 10,
-                    padding: "10px 14px",
+                    padding: isMobile ? "14px 16px" : "10px 14px",
                     background: status === key ? T.amberDim : "transparent",
                     border: "none",
                     cursor: "pointer",
@@ -794,8 +808,8 @@ function ApptTicket({
                 >
                   <div
                     style={{
-                      width: 6,
-                      height: 6,
+                      width: 8,
+                      height: 8,
                       borderRadius: "50%",
                       background: cfg.color,
                       flexShrink: 0,
@@ -817,7 +831,7 @@ function ApptTicket({
                       style={{
                         marginLeft: "auto",
                         color: T.amber,
-                        fontSize: 9,
+                        fontSize: 10,
                       }}
                     >
                       ✓
@@ -949,10 +963,11 @@ function RescheduleModal({ appt, onClose, onDone }) {
         time: to24Hour(newTime),
       });
       setDone(true);
+      // After 1.5 seconds close modal and navigate to the new date
       setTimeout(() => {
         onDone(appt.id, newDate, to24Hour(newTime));
         onClose();
-      }, 1400);
+      }, 1500);
     } catch (e) {
       setErr(e.response?.data?.error || "Slot may already be booked.");
     } finally {
@@ -1499,14 +1514,12 @@ export default function BarberDashboard() {
   };
 
   const handleRescheduleDone = (apptId, newDate, newTime) => {
-    if (newDate === selectedDate)
-      setSchedule((prev) =>
-        prev.map((a) =>
-          a.id === apptId ? { ...a, date: newDate, time: newTime } : a,
-        ),
-      );
-    else setSchedule((prev) => prev.filter((a) => a.id !== apptId));
-    showToast("Rescheduled.");
+    // Remove from current day's schedule
+    setSchedule((prev) => prev.filter((a) => a.id !== apptId));
+    setSummary((prev) => ({ ...prev, total: Math.max(0, prev.total - 1) }));
+    // Navigate to the new date so barber sees the rescheduled appointment
+    handleSelectDate(newDate);
+    showToast("Rescheduled — viewing new date.");
   };
 
   const saveAvailability = async () => {
@@ -2133,6 +2146,8 @@ export default function BarberDashboard() {
             padding: isMobile ? "0 14px" : "0 24px",
             display: "flex",
             borderTop: `1px solid ${T.border}`,
+            overflowX: "auto",
+            WebkitOverflowScrolling: "touch",
           }}
         >
           {[
@@ -2149,7 +2164,7 @@ export default function BarberDashboard() {
               onClick={() => setActiveTab(key)}
               className="tab-pill"
               style={{
-                padding: isMobile ? "10px 14px" : "10px 20px",
+                padding: isMobile ? "10px 12px" : "10px 20px",
                 ...sf,
                 fontSize: isMobile ? 6 : 7,
                 letterSpacing: "0.15em",
@@ -2163,7 +2178,9 @@ export default function BarberDashboard() {
                 transition: "all 0.2s",
                 display: "flex",
                 alignItems: "center",
-                gap: 6,
+                gap: 4,
+                whiteSpace: "nowrap",
+                flexShrink: 0,
               }}
             >
               {!isMobile && <span style={{ fontSize: 10 }}>{icon}</span>}

@@ -86,6 +86,7 @@ class Appointment(models.Model):
     review_notified  = models.BooleanField(default=False)
     reminder_sent    = models.BooleanField(default=False)  # 24hr reminder sent
     barber_notes     = models.TextField(blank=True, default="")  # barber's private notes
+    client_notes     = models.TextField(blank=True, default="")  # client's style request
     is_walk_in       = models.BooleanField(default=False)  # walk-in booking flag
 
     class Meta:
