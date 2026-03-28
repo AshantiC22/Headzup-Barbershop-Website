@@ -1,22 +1,24 @@
 "use client";
 
-import { Suspense } from "react";
+import MiniCalendar from "@/lib/MiniCalendar";
 import { useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { gsap } from "gsap";
 import API from "@/lib/api";
 import useBreakpoint from "@/lib/useBreakpoint";
 
-export const dynamic = "force-dynamic";
-
+// ── Confetti — runs forever ───────────────────────────────────────────────────
 function Confetti() {
   const canvasRef = useRef(null);
+
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
+
+    // Green + white palette for in-shop
     const colors = [
       "#22c55e",
       "#4ade80",
@@ -38,6 +40,7 @@ function Confetti() {
       opacity: 0.6 + Math.random() * 0.4,
       shape: Math.random() > 0.5 ? "rect" : "circle",
     }));
+
     let raf;
     const draw = () => {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -78,6 +81,7 @@ function Confetti() {
       window.removeEventListener("resize", onResize);
     };
   }, []);
+
   return (
     <canvas
       ref={canvasRef}
@@ -86,6 +90,7 @@ function Confetti() {
   );
 }
 
+// ── Scissor SVG ───────────────────────────────────────────────────────────────
 function ScissorIcon({ size = 28, color = "#22c55e" }) {
   return (
     <svg
@@ -107,9 +112,10 @@ function ScissorIcon({ size = 28, color = "#22c55e" }) {
   );
 }
 
-function BookingConfirmedPage() {
+export default function BookingConfirmedPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
+
   const [data, setData] = useState({
     username: "...",
     service: "Loading...",
@@ -117,9 +123,16 @@ function BookingConfirmedPage() {
     date: "",
     time: "",
   });
+  const [loading, setLoading] = useState(false);
+
   const sf = { fontFamily: "'Syncopate', sans-serif" };
   const { isMobile } = useBreakpoint();
   const [bookingRef, setBookingRef] = useState("--------");
+  useEffect(() => {
+    setBookingRef(Date.now().toString(36).toUpperCase().slice(-8));
+  }, []);
+
+  // ── Reschedule modal state ────────────────────────────────────────────────
   const [showReschedule, setShowReschedule] = useState(false);
   const [newDate, setNewDate] = useState("");
   const [newTime, setNewTime] = useState("");
@@ -146,10 +159,6 @@ function BookingConfirmedPage() {
     "4:30 PM",
   ];
 
-  useEffect(() => {
-    setBookingRef(Date.now().toString(36).toUpperCase().slice(-8));
-  }, []);
-
   function to24Hour(t) {
     const [time, mod] = t.split(" ");
     let [h, m] = time.split(":");
@@ -158,19 +167,25 @@ function BookingConfirmedPage() {
     return `${h.padStart(2, "0")}:${m}:00`;
   }
 
+  // ── Block browser back button ────────────────────────────────────────────
   useEffect(() => {
+    // Push a dummy history entry so back goes nowhere useful
     window.history.pushState(null, "", window.location.href);
-    const handlePop = () =>
+    const handlePop = () => {
       window.history.pushState(null, "", window.location.href);
+    };
     window.addEventListener("popstate", handlePop);
     return () => window.removeEventListener("popstate", handlePop);
   }, []);
 
+  // ── Load data — URL params first (instant), API enriches in background ────
   useEffect(() => {
+    // Step 1: read URL params immediately — these were passed by book page
     const urlService = searchParams.get("service");
     const urlBarber = searchParams.get("barber");
     const urlDate = searchParams.get("date");
     const urlTime = searchParams.get("time");
+
     if (urlService && urlBarber) {
       setData((prev) => ({
         ...prev,
@@ -180,16 +195,22 @@ function BookingConfirmedPage() {
         time: urlTime || "",
       }));
     }
+
+    // Step 2: fetch username from API in background (non-blocking)
     const loadUser = async () => {
       try {
         const userRes = await API.get("dashboard/");
         setData((prev) => ({ ...prev, username: userRes.data.user }));
-      } catch {}
+      } catch {
+        // username stays as "..." — not critical
+      }
     };
     loadUser();
   }, []);
 
+  // ── Entrance animations — fire on mount, data is already in state ────────
   useEffect(() => {
+    // Small timeout lets the first paint complete before GSAP runs
     const id = setTimeout(() => {
       const tl = gsap.timeline({ defaults: { ease: "expo.out" } });
       tl.from(".conf-check", {
@@ -212,6 +233,7 @@ function BookingConfirmedPage() {
     return () => clearTimeout(id);
   }, []);
 
+  // ── Reschedule handler ───────────────────────────────────────────────────
   const handleReschedule = async () => {
     if (!newDate || !newTime) {
       setRescheduleError("Please pick both a date and time.");
@@ -220,14 +242,19 @@ function BookingConfirmedPage() {
     setRescheduling(true);
     setRescheduleError("");
     try {
+      // Get the latest appointment id
       const apptRes = await API.get("appointments/");
       const appointments = apptRes.data;
       const latest = appointments[appointments.length - 1];
       if (!latest) throw new Error("No appointment found");
+
+      // Update the appointment with new date/time
       await API.patch(`appointments/${latest.id}/`, {
         date: newDate,
         time: to24Hour(newTime),
       });
+
+      // Update displayed data
       setData((prev) => ({ ...prev, date: newDate, time: newTime }));
       setRescheduleDone(true);
       setTimeout(() => {
@@ -237,11 +264,11 @@ function BookingConfirmedPage() {
         setNewTime("");
       }, 2000);
     } catch (e) {
-      setRescheduleError(
+      const msg =
         e.response?.data?.detail ||
-          e.response?.data?.non_field_errors?.[0] ||
-          "That slot may already be taken. Try another time.",
-      );
+        e.response?.data?.non_field_errors?.[0] ||
+        "That slot may already be taken. Try another time.";
+      setRescheduleError(msg);
     } finally {
       setRescheduling(false);
     }
@@ -288,6 +315,7 @@ function BookingConfirmedPage() {
         *::after {
           box-sizing: border-box;
         }
+
         .page-root {
           opacity: 0;
           animation: fadeIn 0.5s ease forwards;
@@ -297,6 +325,7 @@ function BookingConfirmedPage() {
             opacity: 1;
           }
         }
+
         .tear-line {
           border: none;
           border-top: 2px dashed rgba(255, 255, 255, 0.1);
@@ -320,6 +349,7 @@ function BookingConfirmedPage() {
         .tear-line::after {
           right: -12px;
         }
+
         @keyframes scissor-spin {
           0% {
             transform: rotate(0deg) translateX(2px);
@@ -334,6 +364,7 @@ function BookingConfirmedPage() {
         .scissor-spin {
           animation: scissor-spin 3s ease-in-out infinite;
         }
+
         @keyframes green-glow {
           0%,
           100% {
@@ -350,6 +381,7 @@ function BookingConfirmedPage() {
         .green-glow {
           animation: green-glow 2.5s ease-in-out infinite;
         }
+
         @keyframes spin {
           from {
             transform: rotate(0deg);
@@ -358,6 +390,7 @@ function BookingConfirmedPage() {
             transform: rotate(360deg);
           }
         }
+
         @keyframes flicker {
           0%,
           100% {
@@ -376,6 +409,7 @@ function BookingConfirmedPage() {
         .barcode {
           animation: flicker 4s ease-in-out infinite;
         }
+
         .noise {
           position: fixed;
           inset: 0;
@@ -392,6 +426,8 @@ function BookingConfirmedPage() {
       >
         <div className="noise" />
         <Confetti />
+
+        {/* Green ambient glow */}
         <div
           style={{
             position: "fixed",
@@ -407,6 +443,7 @@ function BookingConfirmedPage() {
           }}
         />
 
+        {/* Nav */}
         <nav
           style={{
             position: "fixed",
@@ -471,6 +508,7 @@ function BookingConfirmedPage() {
                 gap: 32,
               }}
             >
+              {/* Green checkmark */}
               <div
                 className="conf-check green-glow"
                 style={{
@@ -516,6 +554,7 @@ function BookingConfirmedPage() {
                 </svg>
               </div>
 
+              {/* Title */}
               <div className="conf-title" style={{ textAlign: "center" }}>
                 <p
                   style={{
@@ -547,6 +586,7 @@ function BookingConfirmedPage() {
                 </h1>
               </div>
 
+              {/* Sub */}
               <p
                 className="conf-sub"
                 style={{
@@ -562,10 +602,39 @@ function BookingConfirmedPage() {
                 <span style={{ color: "white", fontWeight: 700 }}>
                   {data.username}
                 </span>
-                . Your time slot is locked in — pay when you arrive.
+                . Your time slot is locked in.
               </p>
 
+              {/* Email notice */}
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 10,
+                  padding: "12px 20px",
+                  background: "rgba(34,197,94,0.06)",
+                  border: "1px solid rgba(34,197,94,0.2)",
+                  maxWidth: 380,
+                  width: "100%",
+                }}
+              >
+                <span style={{ fontSize: 18, flexShrink: 0 }}>📧</span>
+                <p
+                  style={{
+                    fontSize: 12,
+                    color: "#a1a1aa",
+                    margin: 0,
+                    lineHeight: 1.6,
+                  }}
+                >
+                  A confirmation has been sent to the email address on your
+                  account.
+                </p>
+              </div>
+
+              {/* Ticket */}
               <div className="conf-ticket" style={{ width: "100%" }}>
+                {/* Top */}
                 <div
                   style={{
                     background: "rgba(255,255,255,0.03)",
@@ -576,6 +645,7 @@ function BookingConfirmedPage() {
                     overflow: "hidden",
                   }}
                 >
+                  {/* Green corner accent */}
                   <div
                     style={{
                       position: "absolute",
@@ -587,6 +657,8 @@ function BookingConfirmedPage() {
                         "linear-gradient(225deg, rgba(34,197,94,0.12), transparent)",
                     }}
                   />
+
+                  {/* Header */}
                   <div
                     style={{
                       display: "flex",
@@ -626,6 +698,8 @@ function BookingConfirmedPage() {
                       <ScissorIcon size={28} color="#22c55e" />
                     </div>
                   </div>
+
+                  {/* Rows */}
                   {[
                     { label: "Service", value: data.service, icon: "✂️" },
                     { label: "Barber", value: data.barber, icon: "👤" },
@@ -680,8 +754,10 @@ function BookingConfirmedPage() {
                   ))}
                 </div>
 
+                {/* Tear line */}
                 <hr className="tear-line" />
 
+                {/* Bottom — location */}
                 <div
                   className="conf-footer"
                   style={{
@@ -755,6 +831,8 @@ function BookingConfirmedPage() {
                       </p>
                     </div>
                   </div>
+
+                  {/* Barcode */}
                   <div
                     className="barcode"
                     style={{
@@ -792,6 +870,7 @@ function BookingConfirmedPage() {
                 </div>
               </div>
 
+              {/* Reminder */}
               <div
                 className="conf-actions"
                 style={{
@@ -830,6 +909,7 @@ function BookingConfirmedPage() {
                 </p>
               </div>
 
+              {/* Reschedule button */}
               <div className="conf-actions" style={{ width: "100%" }}>
                 <button
                   onClick={() => {
@@ -863,6 +943,7 @@ function BookingConfirmedPage() {
                 </button>
               </div>
 
+              {/* Buttons */}
               <div
                 className="conf-actions"
                 style={{ display: "flex", gap: 12, width: "100%" }}
@@ -921,6 +1002,7 @@ function BookingConfirmedPage() {
                 </button>
               </div>
 
+              {/* ── Reschedule Modal ── */}
               {showReschedule && (
                 <div
                   style={{
@@ -992,6 +1074,7 @@ function BookingConfirmedPage() {
                       </div>
                     ) : (
                       <>
+                        {/* Header */}
                         <div
                           style={{
                             display: "flex",
@@ -1059,6 +1142,7 @@ function BookingConfirmedPage() {
                           </button>
                         </div>
 
+                        {/* Current booking info */}
                         <div
                           style={{
                             padding: "12px 16px",
@@ -1111,6 +1195,7 @@ function BookingConfirmedPage() {
                           </p>
                         </div>
 
+                        {/* New date */}
                         <div style={{ marginBottom: 20 }}>
                           <label
                             style={{
@@ -1138,6 +1223,7 @@ function BookingConfirmedPage() {
                               color: "white",
                               fontSize: 14,
                               outline: "none",
+                              transition: "border-color 0.2s",
                             }}
                             onFocus={(e) =>
                               (e.target.style.borderColor = "#f59e0b")
@@ -1149,6 +1235,7 @@ function BookingConfirmedPage() {
                           />
                         </div>
 
+                        {/* New time */}
                         <div style={{ marginBottom: 24 }}>
                           <label
                             style={{
@@ -1313,13 +1400,5 @@ function BookingConfirmedPage() {
         </div>
       </div>
     </>
-  );
-}
-
-export default function BookingConfirmedPageWrapper() {
-  return (
-    <Suspense fallback={null}>
-      <BookingConfirmedPage />
-    </Suspense>
   );
 }

@@ -47,10 +47,17 @@ def send_booking_confirmation(appointment):
     def _send():
         try:
             from django.core.mail import send_mail
+            import logging
+            logger = logging.getLogger(__name__)
 
             # Skip if email is not configured yet
             host_pw = getattr(settings, "EMAIL_HOST_PASSWORD", "")
             if not host_pw or host_pw in ("your-app-password-here", ""):
+                logger.warning("EMAIL_HOST_PASSWORD not set — skipping confirmation email")
+                return
+
+            if not user_email:
+                logger.warning(f"No email for user {username} — skipping confirmation email")
                 return
 
             subject = f"Booking Confirmed - {service_name} at HEADZ UP"
@@ -135,10 +142,12 @@ def send_booking_confirmation(appointment):
                 from_email     = settings.DEFAULT_FROM_EMAIL,
                 recipient_list = [user_email],
                 html_message   = html_message,
-                fail_silently  = True,
+                fail_silently  = False,
             )
-        except Exception:
-            pass  # never crash — email is best-effort only
+            logger.info(f"Confirmation email sent to {user_email}")
+        except Exception as e:
+            import logging
+            logging.getLogger(__name__).error(f"Email send failed: {e}")
 
     threading.Thread(target=_send, daemon=True).start()
 
