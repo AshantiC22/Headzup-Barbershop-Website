@@ -1799,3 +1799,38 @@ class BarberRescheduleRequestView(APIView):
         )
         send_reschedule_request_email(rr)
         return Response({"message": "Reschedule proposal sent to client.", "id": rr.id})
+
+
+class TestEmailView(APIView):
+    """Debug endpoint — sends a test email and returns the result."""
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        if not request.user.is_staff:
+            return Response({"error": "Staff only"}, status=403)
+
+        from django.core.mail import send_mail
+        from django.conf import settings as django_settings
+
+        recipient = request.data.get("to", request.user.email)
+        
+        # Check config
+        api_key  = getattr(django_settings, "EMAIL_HOST_PASSWORD", "")
+        from_email = getattr(django_settings, "DEFAULT_FROM_EMAIL", "")
+        
+        if not api_key:
+            return Response({"error": "SENDGRID_API_KEY not set in environment"}, status=500)
+        if not from_email:
+            return Response({"error": "DEFAULT_FROM_EMAIL not set"}, status=500)
+
+        try:
+            send_mail(
+                subject="HEADZ UP — Test Email",
+                message="This is a test email from HEADZ UP Barbershop. If you received this, email is working correctly.",
+                from_email=from_email,
+                recipient_list=[recipient],
+                fail_silently=False,  # raise on error so we see what's wrong
+            )
+            return Response({"success": True, "sent_to": recipient, "from": from_email})
+        except Exception as e:
+            return Response({"error": str(e), "sent_to": recipient, "from": from_email}, status=500)
