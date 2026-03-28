@@ -143,3 +143,13 @@ VAPID_CLAIM_EMAIL = os.environ.get("VAPID_CLAIM_EMAIL", "")
 
 # ── Barber invite code (required to create a barber account) ─────────────────
 BARBER_INVITE_CODE = os.environ.get("BARBER_INVITE_CODE", "HEADZUP2026")
+
+# ── JWT token lifetimes ───────────────────────────────────────────────────────
+from datetime import timedelta
+SIMPLE_JWT = {
+    "ACCESS_TOKEN_LIFETIME":  timedelta(days=1),
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=30),
+    "ROTATE_REFRESH_TOKENS":  True,   # give a new refresh token on each refresh
+    "BLACKLIST_AFTER_ROTATION": False, # keep it simple — no blacklist needed
+    "UPDATE_LAST_LOGIN": True,
+}
