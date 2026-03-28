@@ -512,7 +512,8 @@ class UserProfileViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         try:
-            serializer.save(user=self.request.user)
+            appt = serializer.save(user=self.request.user)
+            send_booking_confirmation(appt)
         except IntegrityError:
             raise serializers.ValidationError("This time slot is already booked.")
 
