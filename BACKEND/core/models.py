@@ -132,6 +132,31 @@ class BarberClient(models.Model):
         return f"{self.barber.name} → {self.client.username}"
 
 
+class RescheduleRequest(models.Model):
+    """Tracks a pending reschedule request from client or barber."""
+    STATUS_CHOICES = [
+        ("pending",  "Pending"),
+        ("accepted", "Accepted"),
+        ("rejected", "Rejected"),
+        ("expired",  "Expired"),
+    ]
+    INITIATED_BY_CHOICES = [
+        ("client", "Client"),
+        ("barber", "Barber"),
+    ]
+
+    appointment  = models.ForeignKey(Appointment, on_delete=models.CASCADE, related_name="reschedule_requests")
+    initiated_by = models.CharField(max_length=10, choices=INITIATED_BY_CHOICES)
+    new_date     = models.DateField()
+    new_time     = models.TimeField()
+    status       = models.CharField(max_length=10, choices=STATUS_CHOICES, default="pending")
+    token        = models.CharField(max_length=64, unique=True)  # for email accept/reject links
+    created_at   = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Reschedule for appt {self.appointment_id} — {self.status}"
+
+
 class Review(models.Model):
     """Client review submitted after haircut notification."""
     appointment = models.OneToOneField(Appointment, on_delete=models.CASCADE, related_name="review")

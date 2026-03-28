@@ -2,7 +2,7 @@ from django.contrib import admin
 from .models import (
     UserProfile, Barber, Service, Appointment,
     BarberAvailability, BarberTimeOff,
-    PushSubscription, Review, WaitlistEntry, BarberClient,
+    PushSubscription, Review, WaitlistEntry, BarberClient, RescheduleRequest,
 )
 
 # ── Site branding ─────────────────────────────────────────────────────────────
@@ -77,3 +77,10 @@ class BarberClientAdmin(admin.ModelAdmin):
     list_display  = ("barber", "client", "is_vip", "is_blocked", "updated_at")
     list_filter   = ("barber", "is_vip", "is_blocked")
     search_fields = ("client__username", "client__email", "barber__name")
+
+
+@admin.register(RescheduleRequest)
+class RescheduleRequestAdmin(admin.ModelAdmin):
+    list_display  = ("appointment", "initiated_by", "new_date", "new_time", "status", "created_at")
+    list_filter   = ("status", "initiated_by")
+    ordering      = ("-created_at",)

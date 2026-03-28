@@ -5,7 +5,7 @@ from django.conf import settings
 from django.db import IntegrityError
 from django.shortcuts import redirect
 from rest_framework import viewsets
-from .models import Appointment, Barber, BarberAvailability, BarberTimeOff, Service, UserProfile, PushSubscription, Review, WaitlistEntry, BarberClient
+from .models import Appointment, Barber, BarberAvailability, BarberTimeOff, Service, UserProfile, PushSubscription, Review, WaitlistEntry, BarberClient, RescheduleRequest
 from .serializers import AppointmentSerializer, BarberSerializer, ServiceSerializer, UserProfileSerializer, RegisterSerializer
 from rest_framework.permissions import IsAuthenticated, AllowAny, IsAdminUser
 from rest_framework.response import Response
@@ -139,6 +139,250 @@ def send_booking_confirmation(appointment):
             )
         except Exception:
             pass  # never crash — email is best-effort only
+
+    threading.Thread(target=_send, daemon=True).start()
+
+
+    threading.Thread(target=_send, daemon=True).start()
+
+
+def _html_email_wrapper(logo, icon_html, headline, subhead, body_rows, cta_url, cta_label, footer="HEADZ UP Barbershop · 4 Hub Dr, Hattiesburg, MS 39402"):
+    """Shared HTML email shell."""
+    return f"""<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#050505;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;color:#fff;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#050505;padding:40px 20px;">
+    <tr><td align="center">
+      <table width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;">
+        <tr><td style="padding-bottom:28px;">
+          <p style="font-family:'Courier New',monospace;font-size:22px;font-weight:900;letter-spacing:-0.05em;margin:0;text-transform:uppercase;">
+            HEADZ<span style="color:#f59e0b;font-style:italic;">UP</span>
+          </p>
+        </td></tr>
+        <tr><td style="padding-bottom:20px;">{icon_html}</td></tr>
+        <tr><td style="padding-bottom:8px;">
+          <h1 style="font-family:'Courier New',monospace;font-size:26px;font-weight:900;text-transform:uppercase;margin:0;">{headline}</h1>
+        </td></tr>
+        <tr><td style="padding-bottom:28px;">
+          <p style="color:#71717a;font-size:13px;margin:0;">{subhead}</p>
+        </td></tr>
+        <tr><td style="background:#0a0a0a;border:1px solid rgba(255,255,255,0.1);padding:24px;">
+          <table width="100%" cellpadding="0" cellspacing="0">{body_rows}</table>
+        </td></tr>
+        {"" if not cta_url else f'''<tr><td style="padding:20px 0;">
+          <a href="{cta_url}" style="display:inline-block;padding:14px 28px;background:#f59e0b;color:black;font-family:'Courier New',monospace;font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:0.2em;text-decoration:none;">{cta_label} &rarr;</a>
+        </td></tr>'''}
+        <tr><td style="border-top:1px solid rgba(255,255,255,0.06);padding-top:20px;">
+          <p style="font-size:11px;color:#3f3f46;margin:0;line-height:1.7;">{footer}</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>"""
+
+
+def _ticket_rows(*pairs):
+    rows = ""
+    for label, value in pairs:
+        rows += f"""<tr><td style="padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.05);">
+          <p style="font-family:'Courier New',monospace;font-size:9px;letter-spacing:0.3em;color:#52525b;text-transform:uppercase;margin:0 0 4px;">{label}</p>
+          <p style="font-size:14px;color:white;margin:0;font-weight:700;">{value}</p>
+        </td></tr>"""
+    return rows
+
+
+def send_reschedule_request_email(reschedule_request):
+    """
+    Notify the other party about a reschedule request.
+    - Client requests → email the BARBER with Accept/Reject links
+    - Barber requests  → email the CLIENT with Accept/Reject links
+    """
+    import threading
+    import secrets
+
+    rr   = reschedule_request
+    appt = rr.appointment
+
+    try:
+        client_email  = appt.user.email
+        client_name   = appt.user.first_name or appt.user.username
+        barber_name   = appt.barber.name
+        service_name  = appt.service.name if appt.service else "Appointment"
+        old_date      = appt.date.strftime("%A, %B %d, %Y")
+        old_time      = appt.time.strftime("%I:%M %p").lstrip("0")
+        new_date_str  = rr.new_date.strftime("%A, %B %d, %Y")
+        new_time_str  = rr.new_time.strftime("%I:%M %p").lstrip("0")
+        accept_url    = f"{FRONTEND_URL}/reschedule/respond?token={rr.token}&action=accept"
+        reject_url    = f"{FRONTEND_URL}/reschedule/respond?token={rr.token}&action=reject"
+    except Exception:
+        return
+
+    def _send():
+        try:
+            from django.core.mail import send_mail
+            if not getattr(settings, "EMAIL_HOST_PASSWORD", ""):
+                return
+
+            if rr.initiated_by == "client":
+                # Email the barber
+                recipient  = appt.barber.user.email if appt.barber.user else None
+                if not recipient:
+                    return
+                subject    = f"Reschedule Request from {client_name} — HEADZ UP"
+                subhead    = f"{client_name} wants to reschedule their appointment."
+                rows       = _ticket_rows(
+                    ("Service", service_name),
+                    ("Client",  client_name),
+                    ("Current Date", old_date),
+                    ("Current Time", old_time),
+                    ("Requested Date", f"<span style='color:#f59e0b'>{new_date_str}</span>"),
+                    ("Requested Time", f"<span style='color:#f59e0b'>{new_time_str}</span>"),
+                )
+                icon = '<div style="width:52px;height:52px;border-radius:50%;background:rgba(245,158,11,0.15);border:1px solid rgba(245,158,11,0.3);display:inline-block;text-align:center;line-height:52px;"><span style="color:#f59e0b;font-size:22px;">↻</span></div>'
+                action_btns = f'''
+                  <a href="{accept_url}" style="display:inline-block;padding:12px 24px;background:#22c55e;color:black;font-family:'Courier New',monospace;font-size:10px;font-weight:900;text-transform:uppercase;text-decoration:none;margin-right:8px;">Accept</a>
+                  <a href="{reject_url}" style="display:inline-block;padding:12px 24px;background:#f87171;color:black;font-family:'Courier New',monospace;font-size:10px;font-weight:900;text-transform:uppercase;text-decoration:none;">Reject</a>
+                '''
+                html = _html_email_wrapper("", icon, "Reschedule<br><span style='color:#f59e0b;font-style:italic;'>Request_</span>", subhead, rows, None, "")
+                html = html.replace("</table>\n        </td></tr>", f"</table></td></tr><tr><td style='padding:20px 0;'>{action_btns}</td></tr>")
+                plain = f"Reschedule request from {client_name}\nFrom: {old_date} {old_time}\nTo: {new_date_str} {new_time_str}\nAccept: {accept_url}\nReject: {reject_url}"
+            else:
+                # Email the client
+                recipient  = client_email
+                subject    = f"Your Appointment Has Been Rescheduled — HEADZ UP"
+                subhead    = f"{barber_name} has proposed a new time for your appointment."
+                rows       = _ticket_rows(
+                    ("Service", service_name),
+                    ("Barber",  barber_name),
+                    ("Original Date", old_date),
+                    ("Original Time", old_time),
+                    ("New Date", f"<span style='color:#f59e0b'>{new_date_str}</span>"),
+                    ("New Time", f"<span style='color:#f59e0b'>{new_time_str}</span>"),
+                )
+                icon = '<div style="width:52px;height:52px;border-radius:50%;background:rgba(245,158,11,0.15);border:1px solid rgba(245,158,11,0.3);display:inline-block;text-align:center;line-height:52px;"><span style="color:#f59e0b;font-size:22px;">↻</span></div>'
+                action_btns = f'''
+                  <a href="{accept_url}" style="display:inline-block;padding:12px 24px;background:#22c55e;color:black;font-family:'Courier New',monospace;font-size:10px;font-weight:900;text-transform:uppercase;text-decoration:none;margin-right:8px;">Accept Change</a>
+                  <a href="{reject_url}" style="display:inline-block;padding:12px 24px;background:#f87171;color:black;font-family:'Courier New',monospace;font-size:10px;font-weight:900;text-transform:uppercase;text-decoration:none;">Reject Change</a>
+                '''
+                html = _html_email_wrapper("", icon, "Appointment<br><span style='color:#f59e0b;font-style:italic;'>Update_</span>", subhead, rows, None, "")
+                html = html.replace("</table>\n        </td></tr>", f"</table></td></tr><tr><td style='padding:20px 0;'>{action_btns}</td></tr>")
+                plain = f"Reschedule from {barber_name}\nFrom: {old_date} {old_time}\nTo: {new_date_str} {new_time_str}\nAccept: {accept_url}\nReject: {reject_url}"
+
+            send_mail(subject=subject, message=plain, from_email=settings.DEFAULT_FROM_EMAIL, recipient_list=[recipient], html_message=html, fail_silently=True)
+        except Exception:
+            pass
+
+    threading.Thread(target=_send, daemon=True).start()
+
+
+def send_reschedule_response_email(reschedule_request, accepted):
+    """Notify originator of reschedule request that it was accepted or rejected."""
+    import threading
+    rr   = reschedule_request
+    appt = rr.appointment
+
+    try:
+        client_email = appt.user.email
+        client_name  = appt.user.first_name or appt.user.username
+        barber_name  = appt.barber.name
+        service_name = appt.service.name if appt.service else "Appointment"
+        new_date_str = rr.new_date.strftime("%A, %B %d, %Y")
+        new_time_str = rr.new_time.strftime("%I:%M %p").lstrip("0")
+    except Exception:
+        return
+
+    def _send():
+        try:
+            from django.core.mail import send_mail
+            if not getattr(settings, "EMAIL_HOST_PASSWORD", ""):
+                return
+
+            if accepted:
+                icon = '<div style="width:52px;height:52px;border-radius:50%;background:linear-gradient(135deg,#22c55e,#16a34a);display:inline-block;text-align:center;line-height:52px;"><span style="color:black;font-size:24px;font-weight:900;">&#10003;</span></div>'
+                if rr.initiated_by == "client":
+                    # Barber accepted client's request — email client
+                    subject = f"Reschedule Accepted — HEADZ UP"
+                    subhead = f"{barber_name} accepted your reschedule request."
+                    rows    = _ticket_rows(("Service", service_name), ("Barber", barber_name), ("New Date", new_date_str), ("New Time", new_time_str))
+                    html    = _html_email_wrapper("", icon, "Reschedule<br><span style='color:#4ade80;font-style:italic;'>Accepted_</span>", subhead, rows, f"{FRONTEND_URL}/dashboard", "View My Dashboard")
+                    plain   = f"Your reschedule was accepted.\nNew time: {new_date_str} {new_time_str}"
+                    send_mail(subject=subject, message=plain, from_email=settings.DEFAULT_FROM_EMAIL, recipient_list=[client_email], html_message=html, fail_silently=True)
+                else:
+                    # Client accepted barber's change — email barber
+                    barber_email = appt.barber.user.email if appt.barber.user else None
+                    if barber_email:
+                        subject = f"Client Accepted Reschedule — HEADZ UP"
+                        subhead = f"{client_name} accepted the new appointment time."
+                        rows    = _ticket_rows(("Client", client_name), ("Service", service_name), ("New Date", new_date_str), ("New Time", new_time_str))
+                        html    = _html_email_wrapper("", icon, "Reschedule<br><span style='color:#4ade80;font-style:italic;'>Confirmed_</span>", subhead, rows, f"{FRONTEND_URL}/barber-dashboard", "View Dashboard")
+                        plain   = f"{client_name} accepted the reschedule.\nNew time: {new_date_str} {new_time_str}"
+                        send_mail(subject=subject, message=plain, from_email=settings.DEFAULT_FROM_EMAIL, recipient_list=[barber_email], html_message=html, fail_silently=True)
+            else:
+                icon = '<div style="width:52px;height:52px;border-radius:50%;background:rgba(248,113,113,0.15);border:1px solid rgba(248,113,113,0.3);display:inline-block;text-align:center;line-height:52px;"><span style="color:#f87171;font-size:22px;">✕</span></div>'
+                if rr.initiated_by == "client":
+                    subject = f"Reschedule Declined — HEADZ UP"
+                    subhead = f"{barber_name} couldn't accommodate the new time. Your original appointment stands."
+                    rows    = _ticket_rows(("Service", service_name), ("Barber", barber_name), ("Your Appointment", f"{appt.date.strftime('%A, %B %d')} at {appt.time.strftime('%I:%M %p').lstrip('0')}"))
+                    html    = _html_email_wrapper("", icon, "Reschedule<br><span style='color:#f87171;font-style:italic;'>Declined_</span>", subhead, rows, f"{FRONTEND_URL}/dashboard", "View My Dashboard")
+                    plain   = f"Your reschedule request was declined. Original appointment stands."
+                    send_mail(subject=subject, message=plain, from_email=settings.DEFAULT_FROM_EMAIL, recipient_list=[client_email], html_message=html, fail_silently=True)
+                else:
+                    barber_email = appt.barber.user.email if appt.barber.user else None
+                    if barber_email:
+                        subject = f"Client Rejected Reschedule — HEADZ UP"
+                        subhead = f"{client_name} declined the new time. Original appointment stands."
+                        rows    = _ticket_rows(("Client", client_name), ("Service", service_name), ("Original Appt", f"{appt.date.strftime('%A, %B %d')} at {appt.time.strftime('%I:%M %p').lstrip('0')}"))
+                        html    = _html_email_wrapper("", icon, "Reschedule<br><span style='color:#f87171;font-style:italic;'>Rejected_</span>", subhead, rows, f"{FRONTEND_URL}/barber-dashboard", "View Dashboard")
+                        plain   = f"{client_name} rejected the reschedule."
+                        send_mail(subject=subject, message=plain, from_email=settings.DEFAULT_FROM_EMAIL, recipient_list=[barber_email], html_message=html, fail_silently=True)
+        except Exception:
+            pass
+
+    threading.Thread(target=_send, daemon=True).start()
+
+
+def send_cancellation_email(appointment, cancelled_by="client"):
+    """Notify the other party when an appointment is cancelled."""
+    import threading
+
+    try:
+        client_email = appointment.user.email
+        client_name  = appointment.user.first_name or appointment.user.username
+        barber_name  = appointment.barber.name
+        service_name = appointment.service.name if appointment.service else "Appointment"
+        appt_date    = appointment.date.strftime("%A, %B %d, %Y")
+        appt_time    = appointment.time.strftime("%I:%M %p").lstrip("0")
+        barber_email = appointment.barber.user.email if appointment.barber.user else None
+    except Exception:
+        return
+
+    def _send():
+        try:
+            from django.core.mail import send_mail
+            if not getattr(settings, "EMAIL_HOST_PASSWORD", ""):
+                return
+
+            icon = '<div style="width:52px;height:52px;border-radius:50%;background:rgba(248,113,113,0.15);border:1px solid rgba(248,113,113,0.3);display:inline-block;text-align:center;line-height:52px;"><span style="color:#f87171;font-size:22px;">✕</span></div>'
+            rows = _ticket_rows(("Service", service_name), ("Date", appt_date), ("Time", appt_time))
+
+            if cancelled_by == "client" and barber_email:
+                # Notify barber
+                subject = f"Appointment Cancelled by {client_name} — HEADZ UP"
+                subhead = f"{client_name} has cancelled their appointment."
+                html    = _html_email_wrapper("", icon, "Appointment<br><span style='color:#f87171;font-style:italic;'>Cancelled_</span>", subhead, rows, f"{FRONTEND_URL}/barber-dashboard", "View Dashboard")
+                plain   = f"{client_name} cancelled their {service_name} on {appt_date} at {appt_time}."
+                send_mail(subject=subject, message=plain, from_email=settings.DEFAULT_FROM_EMAIL, recipient_list=[barber_email], html_message=html, fail_silently=True)
+            elif cancelled_by == "barber" and client_email:
+                # Notify client
+                subject = f"Your Appointment Has Been Cancelled — HEADZ UP"
+                subhead = f"We're sorry — your appointment with {barber_name} has been cancelled. Please rebook at your convenience."
+                html    = _html_email_wrapper("", icon, "Appointment<br><span style='color:#f87171;font-style:italic;'>Cancelled_</span>", subhead, rows, f"{FRONTEND_URL}/book", "Book Again")
+                plain   = f"Your {service_name} on {appt_date} at {appt_time} with {barber_name} has been cancelled."
+                send_mail(subject=subject, message=plain, from_email=settings.DEFAULT_FROM_EMAIL, recipient_list=[client_email], html_message=html, fail_silently=True)
+        except Exception:
+            pass
 
     threading.Thread(target=_send, daemon=True).start()
 
@@ -725,6 +969,7 @@ class BarberAppointmentUpdateView(APIView):
             return Response({"error": "Not a barber account"}, status=403)
         try:
             appt = Appointment.objects.get(pk=pk, barber=barber)
+            send_cancellation_email(appt, cancelled_by="barber")
             appt.delete()
             return Response({"message": "Deleted"}, status=204)
         except Appointment.DoesNotExist:
@@ -1453,3 +1698,104 @@ class BarberReportsView(APIView):
             "busiest_hours":busiest_hours,
             "top_clients":  top_clients,
         })
+
+
+class ClientRescheduleRequestView(APIView):
+    """Client requests to reschedule their appointment."""
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, pk):
+        import secrets
+        try:
+            appt = Appointment.objects.get(pk=pk, user=request.user)
+        except Appointment.DoesNotExist:
+            return Response({"error": "Appointment not found."}, status=404)
+
+        new_date = request.data.get("new_date")
+        new_time = request.data.get("new_time")
+        if not new_date or not new_time:
+            return Response({"error": "new_date and new_time required."}, status=400)
+
+        # Cancel any existing pending requests
+        RescheduleRequest.objects.filter(appointment=appt, status="pending").update(status="expired")
+
+        token = secrets.token_urlsafe(32)
+        rr = RescheduleRequest.objects.create(
+            appointment=appt,
+            initiated_by="client",
+            new_date=new_date,
+            new_time=new_time,
+            token=token,
+        )
+        send_reschedule_request_email(rr)
+        return Response({"message": "Reschedule request sent to your barber.", "id": rr.id})
+
+
+class RescheduleResponseView(APIView):
+    """Accept or reject a reschedule request via token link from email."""
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        token  = request.query_params.get("token")
+        action = request.query_params.get("action")  # "accept" or "reject"
+
+        if not token or action not in ("accept", "reject"):
+            return redirect(f"{FRONTEND_URL}/?reschedule=invalid")
+
+        try:
+            rr = RescheduleRequest.objects.select_related("appointment", "appointment__user", "appointment__barber", "appointment__service").get(token=token)
+        except RescheduleRequest.DoesNotExist:
+            return redirect(f"{FRONTEND_URL}/?reschedule=invalid")
+
+        if rr.status != "pending":
+            return redirect(f"{FRONTEND_URL}/?reschedule=already_handled")
+
+        if action == "accept":
+            rr.status = "accepted"
+            rr.save()
+            # Update the actual appointment
+            appt = rr.appointment
+            appt.date = rr.new_date
+            appt.time = rr.new_time
+            appt.save()
+            send_reschedule_response_email(rr, accepted=True)
+            return redirect(f"{FRONTEND_URL}/?reschedule=accepted")
+        else:
+            rr.status = "rejected"
+            rr.save()
+            send_reschedule_response_email(rr, accepted=False)
+            return redirect(f"{FRONTEND_URL}/?reschedule=rejected")
+
+
+class BarberRescheduleRequestView(APIView):
+    """Barber proposes a reschedule — sends email to client with accept/reject."""
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, pk):
+        import secrets
+        barber = get_barber_for_user(request.user)
+        if not barber:
+            return Response({"error": "Not a barber account."}, status=403)
+
+        try:
+            appt = Appointment.objects.get(pk=pk, barber=barber)
+        except Appointment.DoesNotExist:
+            return Response({"error": "Appointment not found."}, status=404)
+
+        new_date = request.data.get("new_date")
+        new_time = request.data.get("new_time")
+        if not new_date or not new_time:
+            return Response({"error": "new_date and new_time required."}, status=400)
+
+        RescheduleRequest.objects.filter(appointment=appt, status="pending").update(status="expired")
+
+        token = secrets.token_urlsafe(32)
+        rr = RescheduleRequest.objects.create(
+            appointment=appt,
+            initiated_by="barber",
+            new_date=new_date,
+            new_time=new_time,
+            token=token,
+        )
+        send_reschedule_request_email(rr)
+        return Response({"message": "Reschedule proposal sent to client.", "id": rr.id})

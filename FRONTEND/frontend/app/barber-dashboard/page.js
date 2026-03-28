@@ -958,18 +958,22 @@ function RescheduleModal({ appt, onClose, onDone }) {
     setSaving(true);
     setErr("");
     try {
-      await API.patch(`barber/appointments/${appt.id}/`, {
-        date: newDate,
-        time: to24Hour(newTime),
+      // Send reschedule proposal to client via email
+      await API.post(`barber/appointments/${appt.id}/reschedule/`, {
+        new_date: newDate,
+        new_time: to24Hour(newTime),
       });
       setDone(true);
-      // After 1.5 seconds close modal and navigate to the new date
       setTimeout(() => {
         onDone(appt.id, newDate, to24Hour(newTime));
         onClose();
       }, 1500);
     } catch (e) {
-      setErr(e.response?.data?.error || "Slot may already be booked.");
+      setErr(
+        e.response?.data?.error ||
+          e.response?.data?.message ||
+          "Could not send reschedule request.",
+      );
     } finally {
       setSaving(false);
     }
@@ -1034,9 +1038,20 @@ function RescheduleModal({ appt, onClose, onDone }) {
                 color: "#4ade80",
                 textTransform: "uppercase",
                 letterSpacing: "0.3em",
+                marginBottom: 8,
               }}
             >
-              Rescheduled
+              Request Sent
+            </p>
+            <p
+              style={{
+                ...mono,
+                fontSize: 11,
+                color: "#52525b",
+                lineHeight: 1.6,
+              }}
+            >
+              Client will receive an email to accept or reject the new time.
             </p>
           </div>
         ) : (
