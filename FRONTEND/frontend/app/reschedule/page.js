@@ -1,5 +1,6 @@
 "use client";
 
+import { Suspense } from "react";
 import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import API from "@/lib/api";
@@ -7,7 +8,7 @@ import API from "@/lib/api";
 const sf = { fontFamily: "'Syncopate', sans-serif" };
 const mono = { fontFamily: "'DM Mono', monospace" };
 
-export default function RescheduleRespondPage() {
+function RescheduleRespondInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [status, setStatus] = useState("loading"); // loading | success | rejected | error | invalid
@@ -276,5 +277,37 @@ export default function RescheduleRespondPage() {
         </div>
       </div>
     </>
+  );
+}
+
+export default function RescheduleRespondPage() {
+  return (
+    <Suspense
+      fallback={
+        <div
+          style={{
+            minHeight: "100vh",
+            background: "#040404",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <div
+            style={{
+              width: 20,
+              height: 20,
+              border: "2px solid rgba(245,158,11,0.2)",
+              borderTopColor: "#f59e0b",
+              borderRadius: "50%",
+              animation: "spin 0.8s linear infinite",
+            }}
+          />
+          <style>{`@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}`}</style>
+        </div>
+      }
+    >
+      <RescheduleRespondInner />
+    </Suspense>
   );
 }

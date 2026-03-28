@@ -1,6 +1,7 @@
 "use client";
 
 import MiniCalendar from "@/lib/MiniCalendar";
+import { Suspense } from "react";
 import { useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { gsap } from "gsap";
@@ -112,7 +113,7 @@ function ScissorIcon({ size = 28, color = "#22c55e" }) {
   );
 }
 
-export default function BookingConfirmedPage() {
+function BookingConfirmedInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -1400,5 +1401,37 @@ export default function BookingConfirmedPage() {
         </div>
       </div>
     </>
+  );
+}
+
+export default function BookingConfirmedPage() {
+  return (
+    <Suspense
+      fallback={
+        <div
+          style={{
+            minHeight: "100vh",
+            background: "#040404",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <div
+            style={{
+              width: 20,
+              height: 20,
+              border: "2px solid rgba(245,158,11,0.2)",
+              borderTopColor: "#f59e0b",
+              borderRadius: "50%",
+              animation: "spin 0.8s linear infinite",
+            }}
+          />
+          <style>{`@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}`}</style>
+        </div>
+      }
+    >
+      <BookingConfirmedInner />
+    </Suspense>
   );
 }
