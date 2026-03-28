@@ -46,19 +46,52 @@ def send_booking_confirmation(appointment):
 
     def _send():
         try:
-            from django.core.mail import send_mail
+            import urllib.request
+            import json as json_lib
+            import re
             import logging
             logger = logging.getLogger(__name__)
 
-            # Skip if email is not configured yet
-            host_pw = getattr(settings, "EMAIL_HOST_PASSWORD", "")
-            if not host_pw or host_pw in ("your-app-password-here", ""):
-                logger.warning("EMAIL_HOST_PASSWORD not set — skipping confirmation email")
-                return
+            api_key    = getattr(settings, "SENDGRID_API_KEY", "")
+            from_email = getattr(settings, "DEFAULT_FROM_EMAIL", "")
 
+            if not api_key:
+                logger.warning("SENDGRID_API_KEY not set — skipping confirmation email")
+                return
             if not user_email:
                 logger.warning(f"No email for user {username} — skipping confirmation email")
                 return
+
+            # Extract name and email from "Name <email>" format
+            match        = re.search(r'<(.+?)>', from_email)
+            sender_email = match.group(1) if match else from_email
+            sender_name  = from_email.split("<")[0].strip() if "<" in from_email else "HEADZ UP"
+
+            payload = {
+                "personalizations": [{"to": [{"email": user_email}]}],
+                "from": {"email": sender_email, "name": sender_name},
+                "subject": subject,
+                "content": [
+                    {"type": "text/plain", "value": message},
+                    {"type": "text/html",  "value": html_message},
+                ],
+            }
+
+            data = json_lib.dumps(payload).encode("utf-8")
+            req  = urllib.request.Request(
+                "https://api.sendgrid.com/v3/mail/send",
+                data=data,
+                headers={
+                    "Authorization": f"Bearer {api_key}",
+                    "Content-Type":  "application/json",
+                },
+                method="POST",
+            )
+            with urllib.request.urlopen(req, timeout=10) as resp:
+                logger.info(f"Confirmation email sent to {user_email} — SendGrid status {resp.status}")
+        except Exception as e:
+            import logging
+            logging.getLogger(__name__).error(f"Email send failed: {e}")
 
             subject = f"Booking Confirmed - {service_name} at HEADZ UP"
             message = (
@@ -136,21 +169,21 @@ def send_booking_confirmation(appointment):
 </body>
 </html>"""
 
-            send_mail(
-                subject        = subject,
-                message        = message,
-                from_email     = settings.DEFAULT_FROM_EMAIL,
-                recipient_list = [user_email],
-                html_message   = html_message,
-                fail_silently  = False,
+            data = json_lib.dumps(payload).encode("utf-8")
+            req  = urllib.request.Request(
+                "https://api.sendgrid.com/v3/mail/send",
+                data=data,
+                headers={
+                    "Authorization": f"Bearer {api_key}",
+                    "Content-Type":  "application/json",
+                },
+                method="POST",
             )
-            logger.info(f"Confirmation email sent to {user_email}")
+            with urllib.request.urlopen(req, timeout=10) as resp:
+                logger.info(f"Confirmation email sent to {user_email} — SendGrid status {resp.status}")
         except Exception as e:
             import logging
             logging.getLogger(__name__).error(f"Email send failed: {e}")
-
-    threading.Thread(target=_send, daemon=True).start()
-
 
     threading.Thread(target=_send, daemon=True).start()
 
@@ -202,6 +235,48 @@ def _ticket_rows(*pairs):
     return rows
 
 
+def _sendgrid_send(to_email, subject, plain, html):
+    """Send email via SendGrid HTTP API — bypasses SMTP port blocks on Railway."""
+    import urllib.request
+    import json as json_lib
+    import re
+    import logging
+    logger = logging.getLogger(__name__)
+
+    api_key    = getattr(settings, "SENDGRID_API_KEY", "")
+    from_email = getattr(settings, "DEFAULT_FROM_EMAIL", "")
+
+    if not api_key or not to_email:
+        return
+
+    match        = re.search(r'<(.+?)>', from_email)
+    sender_email = match.group(1) if match else from_email
+    sender_name  = from_email.split("<")[0].strip() if "<" in from_email else "HEADZ UP"
+
+    payload = {
+        "personalizations": [{"to": [{"email": to_email}]}],
+        "from": {"email": sender_email, "name": sender_name},
+        "subject": subject,
+        "content": [
+            {"type": "text/plain", "value": plain},
+            {"type": "text/html",  "value": html},
+        ],
+    }
+
+    try:
+        data = json_lib.dumps(payload).encode("utf-8")
+        req  = urllib.request.Request(
+            "https://api.sendgrid.com/v3/mail/send",
+            data=data,
+            headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+            method="POST",
+        )
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            logger.info(f"Email sent to {to_email} — SendGrid {resp.status}")
+    except Exception as e:
+        logger.error(f"SendGrid send failed to {to_email}: {e}")
+
+
 def send_reschedule_request_email(reschedule_request):
     """
     Notify the other party about a reschedule request.
@@ -230,7 +305,6 @@ def send_reschedule_request_email(reschedule_request):
 
     def _send():
         try:
-            from django.core.mail import send_mail
             if not getattr(settings, "EMAIL_HOST_PASSWORD", ""):
                 return
 
@@ -279,7 +353,7 @@ def send_reschedule_request_email(reschedule_request):
                 html = html.replace("</table>\n        </td></tr>", f"</table></td></tr><tr><td style='padding:20px 0;'>{action_btns}</td></tr>")
                 plain = f"Reschedule from {barber_name}\nFrom: {old_date} {old_time}\nTo: {new_date_str} {new_time_str}\nAccept: {accept_url}\nReject: {reject_url}"
 
-            send_mail(subject=subject, message=plain, from_email=settings.DEFAULT_FROM_EMAIL, recipient_list=[recipient], html_message=html, fail_silently=True)
+            _sendgrid_send(recipient, subject, plain, html)
         except Exception:
             pass
 
@@ -304,7 +378,6 @@ def send_reschedule_response_email(reschedule_request, accepted):
 
     def _send():
         try:
-            from django.core.mail import send_mail
             if not getattr(settings, "EMAIL_HOST_PASSWORD", ""):
                 return
 
@@ -317,7 +390,7 @@ def send_reschedule_response_email(reschedule_request, accepted):
                     rows    = _ticket_rows(("Service", service_name), ("Barber", barber_name), ("New Date", new_date_str), ("New Time", new_time_str))
                     html    = _html_email_wrapper("", icon, "Reschedule<br><span style='color:#4ade80;font-style:italic;'>Accepted_</span>", subhead, rows, f"{FRONTEND_URL}/dashboard", "View My Dashboard")
                     plain   = f"Your reschedule was accepted.\nNew time: {new_date_str} {new_time_str}"
-                    send_mail(subject=subject, message=plain, from_email=settings.DEFAULT_FROM_EMAIL, recipient_list=[client_email], html_message=html, fail_silently=True)
+                    _sendgrid_send(client_email, subject, plain, html)
                 else:
                     # Client accepted barber's change — email barber
                     barber_email = appt.barber.user.email if appt.barber.user else None
@@ -327,7 +400,7 @@ def send_reschedule_response_email(reschedule_request, accepted):
                         rows    = _ticket_rows(("Client", client_name), ("Service", service_name), ("New Date", new_date_str), ("New Time", new_time_str))
                         html    = _html_email_wrapper("", icon, "Reschedule<br><span style='color:#4ade80;font-style:italic;'>Confirmed_</span>", subhead, rows, f"{FRONTEND_URL}/barber-dashboard", "View Dashboard")
                         plain   = f"{client_name} accepted the reschedule.\nNew time: {new_date_str} {new_time_str}"
-                        send_mail(subject=subject, message=plain, from_email=settings.DEFAULT_FROM_EMAIL, recipient_list=[barber_email], html_message=html, fail_silently=True)
+                        _sendgrid_send(barber_email, subject, plain, html)
             else:
                 icon = '<div style="width:52px;height:52px;border-radius:50%;background:rgba(248,113,113,0.15);border:1px solid rgba(248,113,113,0.3);display:inline-block;text-align:center;line-height:52px;"><span style="color:#f87171;font-size:22px;">✕</span></div>'
                 if rr.initiated_by == "client":
@@ -336,7 +409,7 @@ def send_reschedule_response_email(reschedule_request, accepted):
                     rows    = _ticket_rows(("Service", service_name), ("Barber", barber_name), ("Your Appointment", f"{appt.date.strftime('%A, %B %d')} at {appt.time.strftime('%I:%M %p').lstrip('0')}"))
                     html    = _html_email_wrapper("", icon, "Reschedule<br><span style='color:#f87171;font-style:italic;'>Declined_</span>", subhead, rows, f"{FRONTEND_URL}/dashboard", "View My Dashboard")
                     plain   = f"Your reschedule request was declined. Original appointment stands."
-                    send_mail(subject=subject, message=plain, from_email=settings.DEFAULT_FROM_EMAIL, recipient_list=[client_email], html_message=html, fail_silently=True)
+                    _sendgrid_send(client_email, subject, plain, html)
                 else:
                     barber_email = appt.barber.user.email if appt.barber.user else None
                     if barber_email:
@@ -345,7 +418,7 @@ def send_reschedule_response_email(reschedule_request, accepted):
                         rows    = _ticket_rows(("Client", client_name), ("Service", service_name), ("Original Appt", f"{appt.date.strftime('%A, %B %d')} at {appt.time.strftime('%I:%M %p').lstrip('0')}"))
                         html    = _html_email_wrapper("", icon, "Reschedule<br><span style='color:#f87171;font-style:italic;'>Rejected_</span>", subhead, rows, f"{FRONTEND_URL}/barber-dashboard", "View Dashboard")
                         plain   = f"{client_name} rejected the reschedule."
-                        send_mail(subject=subject, message=plain, from_email=settings.DEFAULT_FROM_EMAIL, recipient_list=[barber_email], html_message=html, fail_silently=True)
+                        _sendgrid_send(barber_email, subject, plain, html)
         except Exception:
             pass
 
@@ -369,7 +442,6 @@ def send_cancellation_email(appointment, cancelled_by="client"):
 
     def _send():
         try:
-            from django.core.mail import send_mail
             if not getattr(settings, "EMAIL_HOST_PASSWORD", ""):
                 return
 
@@ -382,14 +454,14 @@ def send_cancellation_email(appointment, cancelled_by="client"):
                 subhead = f"{client_name} has cancelled their appointment."
                 html    = _html_email_wrapper("", icon, "Appointment<br><span style='color:#f87171;font-style:italic;'>Cancelled_</span>", subhead, rows, f"{FRONTEND_URL}/barber-dashboard", "View Dashboard")
                 plain   = f"{client_name} cancelled their {service_name} on {appt_date} at {appt_time}."
-                send_mail(subject=subject, message=plain, from_email=settings.DEFAULT_FROM_EMAIL, recipient_list=[barber_email], html_message=html, fail_silently=True)
+                _sendgrid_send(barber_email, subject, plain, html)
             elif cancelled_by == "barber" and client_email:
                 # Notify client
                 subject = f"Your Appointment Has Been Cancelled — HEADZ UP"
                 subhead = f"We're sorry — your appointment with {barber_name} has been cancelled. Please rebook at your convenience."
                 html    = _html_email_wrapper("", icon, "Appointment<br><span style='color:#f87171;font-style:italic;'>Cancelled_</span>", subhead, rows, f"{FRONTEND_URL}/book", "Book Again")
                 plain   = f"Your {service_name} on {appt_date} at {appt_time} with {barber_name} has been cancelled."
-                send_mail(subject=subject, message=plain, from_email=settings.DEFAULT_FROM_EMAIL, recipient_list=[client_email], html_message=html, fail_silently=True)
+                _sendgrid_send(client_email, subject, plain, html)
         except Exception:
             pass
 
@@ -1342,7 +1414,6 @@ class SendRemindersView(APIView):
             return Response({"error": "Staff only"}, status=403)
 
         from datetime import date, timedelta
-        from django.core.mail import send_mail
         from django.conf import settings as django_settings
 
         tomorrow = date.today() + timedelta(days=1)
@@ -1357,22 +1428,20 @@ class SendRemindersView(APIView):
             if not appt.user.email:
                 continue
             try:
-                send_mail(
-                    subject=f"Reminder: Your appointment tomorrow at HEADZ UP",
-                    message=(
-                        f"Hey {appt.user.first_name or appt.user.username},\n\n"
-                        f"Just a reminder that you have an appointment tomorrow:\n\n"
-                        f"  Service: {appt.service.name}\n"
-                        f"  Barber:  {appt.barber.name}\n"
-                        f"  Date:    {appt.date.strftime('%A, %B %d')}\n"
-                        f"  Time:    {appt.time.strftime('%I:%M %p')}\n\n"
-                        f"See you then!\n\n"
-                        f"— HEADZ UP Barbershop\n"
-                        f"  Hattiesburg, MS"
-                    ),
-                    from_email=getattr(django_settings, "DEFAULT_FROM_EMAIL", "noreply@headzup.com"),
-                    recipient_list=[appt.user.email],
-                    fail_silently=True,
+                plain = (
+                    f"Hey {appt.user.first_name or appt.user.username},\n\n"
+                    f"Just a reminder that you have an appointment tomorrow:\n\n"
+                    f"  Service: {appt.service.name}\n"
+                    f"  Barber:  {appt.barber.name}\n"
+                    f"  Date:    {appt.date.strftime('%A, %B %d')}\n"
+                    f"  Time:    {appt.time.strftime('%I:%M %p')}\n\n"
+                    f"See you then!\n\n"
+                    f"— HEADZ UP Barbershop\n  Hattiesburg, MS"
+                )
+                _sendgrid_send(
+                    appt.user.email,
+                    "Reminder: Your appointment tomorrow at HEADZ UP",
+                    plain, plain,
                 )
                 appt.reminder_sent = True
                 appt.save(update_fields=["reminder_sent"])
@@ -1811,41 +1880,50 @@ class BarberRescheduleRequestView(APIView):
 
 
 class TestEmailView(APIView):
-    """Debug endpoint — sends a test email and returns the result."""
-    permission_classes = [AllowAny]  # temporary for debugging
+    """Debug endpoint — sends a test email via SendGrid HTTP API."""
+    permission_classes = [AllowAny]
 
     def post(self, request):
-        from django.core.mail import send_mail
+        import urllib.request
+        import json as json_lib
         from django.conf import settings as django_settings
 
-        recipient = request.data.get("to", "bdkshan18@gmail.com")
-        
-        # Check config
-        api_key    = getattr(django_settings, "EMAIL_HOST_PASSWORD", "")
+        recipient  = request.data.get("to", "bdkshan18@gmail.com")
+        api_key    = getattr(django_settings, "SENDGRID_API_KEY", "")
         from_email = getattr(django_settings, "DEFAULT_FROM_EMAIL", "")
-        backend    = getattr(django_settings, "EMAIL_BACKEND", "not set")
-        host       = getattr(django_settings, "EMAIL_HOST", "not set")
-        
-        debug_info = {
-            "api_key_set":  bool(api_key),
-            "api_key_prefix": api_key[:8] if api_key else "empty",
-            "from_email":   from_email,
-            "email_backend": backend,
-            "email_host":   host,
-            "recipient":    recipient,
-        }
 
         if not api_key:
-            return Response({"error": "SENDGRID_API_KEY not set", "debug": debug_info}, status=500)
+            return Response({"error": "SENDGRID_API_KEY not set"}, status=500)
+
+        # Extract plain email from "Name <email>" format
+        import re
+        match = re.search(r'<(.+?)>', from_email)
+        sender_email = match.group(1) if match else from_email
+        sender_name  = from_email.split("<")[0].strip() if "<" in from_email else "HEADZ UP"
+
+        payload = {
+            "personalizations": [{"to": [{"email": recipient}]}],
+            "from": {"email": sender_email, "name": sender_name},
+            "subject": "HEADZ UP — Test Email",
+            "content": [{"type": "text/plain", "value": "This is a test email from HEADZ UP Barbershop. Email is working!"}],
+        }
 
         try:
-            send_mail(
-                subject="HEADZ UP — Test Email",
-                message="This is a test email from HEADZ UP Barbershop.",
-                from_email=from_email,
-                recipient_list=[recipient],
-                fail_silently=False,
+            data = json_lib.dumps(payload).encode("utf-8")
+            req  = urllib.request.Request(
+                "https://api.sendgrid.com/v3/mail/send",
+                data=data,
+                headers={
+                    "Authorization": f"Bearer {api_key}",
+                    "Content-Type":  "application/json",
+                },
+                method="POST",
             )
-            return Response({"success": True, "debug": debug_info})
+            with urllib.request.urlopen(req, timeout=10) as resp:
+                status_code = resp.status
+            return Response({"success": True, "sendgrid_status": status_code, "sent_to": recipient, "from": from_email})
+        except urllib.error.HTTPError as e:
+            body = e.read().decode("utf-8")
+            return Response({"error": f"SendGrid HTTP {e.code}: {body}", "sent_to": recipient}, status=500)
         except Exception as e:
-            return Response({"error": str(e), "debug": debug_info}, status=500)
+            return Response({"error": str(e), "sent_to": recipient}, status=500)

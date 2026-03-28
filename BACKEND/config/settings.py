@@ -129,13 +129,16 @@ STRIPE_PUBLISHABLE_KEY = os.environ.get("STRIPE_PUBLISHABLE_KEY", "")
 FRONTEND_URL = os.environ.get("FRONTEND_URL", "https://headzup-barbershop-website.vercel.app")
 BACKEND_URL  = os.environ.get("BACKEND_URL",  "https://headzup-barbershop-website-production.up.railway.app")
 
-EMAIL_BACKEND       = "django.core.mail.backends.smtp.EmailBackend"
-EMAIL_HOST          = "smtp.sendgrid.net"
-EMAIL_PORT          = 587
-EMAIL_USE_TLS       = True
-EMAIL_HOST_USER     = "apikey"
-EMAIL_HOST_PASSWORD = os.environ.get("SENDGRID_API_KEY", "")
-DEFAULT_FROM_EMAIL  = os.environ.get("DEFAULT_FROM_EMAIL", "HEADZ UP <noreply@headzup.com>")
+# ── Email — SendGrid HTTP API (not SMTP — Railway blocks port 587) ────────────
+SENDGRID_API_KEY   = os.environ.get("SENDGRID_API_KEY", "")
+DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", "HEADZ UP <noreply@headzup.com>")
+EMAIL_BACKEND      = "django.core.mail.backends.smtp.EmailBackend"
+EMAIL_HOST         = "smtp.sendgrid.net"
+EMAIL_PORT         = 465
+EMAIL_USE_SSL      = True
+EMAIL_USE_TLS      = False
+EMAIL_HOST_USER    = "apikey"
+EMAIL_HOST_PASSWORD = SENDGRID_API_KEY
 
 VAPID_PUBLIC_KEY  = os.environ.get("VAPID_PUBLIC_KEY", "")
 VAPID_PRIVATE_KEY = os.environ.get("VAPID_PRIVATE_KEY", "")
