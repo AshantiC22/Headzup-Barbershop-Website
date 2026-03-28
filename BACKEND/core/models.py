@@ -114,6 +114,23 @@ class WaitlistEntry(models.Model):
         return f"Waitlist: {self.client_name} for {self.barber.name} on {self.date}"
 
 
+class BarberClient(models.Model):
+    """Barber's relationship with a client — notes, VIP status, block list."""
+    barber     = models.ForeignKey(Barber, on_delete=models.CASCADE, related_name="clients")
+    client     = models.ForeignKey(User, on_delete=models.CASCADE, related_name="barber_relationships")
+    notes      = models.TextField(blank=True, default="")
+    is_vip     = models.BooleanField(default=False)
+    is_blocked = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ("barber", "client")
+
+    def __str__(self):
+        return f"{self.barber.name} → {self.client.username}"
+
+
 class Review(models.Model):
     """Client review submitted after haircut notification."""
     appointment = models.OneToOneField(Appointment, on_delete=models.CASCADE, related_name="review")

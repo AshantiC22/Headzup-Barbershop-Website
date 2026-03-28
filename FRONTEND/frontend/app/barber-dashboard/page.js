@@ -1297,6 +1297,14 @@ export default function BarberDashboard() {
   // Reminders
   const [sendingReminders, setSendingReminders] = useState(false);
 
+  // Client management state
+  const [clients, setClients] = useState([]);
+  const [clientSearch, setClientSearch] = useState("");
+  const [loadingClients, setLoadingClients] = useState(false);
+  const [selectedClient, setSelectedClient] = useState(null); // full profile view
+  const [loadingClient, setLoadingClient] = useState(false);
+  const [savingClient, setSavingClient] = useState(false);
+
   // Auth
   useEffect(() => {
     API.get("barber/me/")
@@ -1396,6 +1404,26 @@ export default function BarberDashboard() {
   useEffect(() => {
     if (activeTab === "waitlist") loadWaitlist();
   }, [activeTab, loadWaitlist]);
+
+  // Clients
+  const loadClients = useCallback(async () => {
+    if (!barber) return;
+    setLoadingClients(true);
+    try {
+      const url = clientSearch
+        ? `barber/clients/?search=${encodeURIComponent(clientSearch)}`
+        : "barber/clients/";
+      const res = await API.get(url);
+      setClients(res.data);
+    } catch {
+      showToast("Could not load clients.", "error");
+    } finally {
+      setLoadingClients(false);
+    }
+  }, [barber, clientSearch]);
+  useEffect(() => {
+    if (activeTab === "clients") loadClients();
+  }, [activeTab, loadClients]);
 
   // Entry animation
   useEffect(() => {
@@ -1589,6 +1617,35 @@ export default function BarberDashboard() {
       showToast("Marked as notified.");
     } catch {
       showToast("Could not update.", "error");
+    }
+  };
+
+  // Client management handlers
+  const openClientProfile = async (clientId) => {
+    setLoadingClient(true);
+    try {
+      const res = await API.get(`barber/clients/${clientId}/`);
+      setSelectedClient(res.data);
+    } catch {
+      showToast("Could not load client profile.", "error");
+    } finally {
+      setLoadingClient(false);
+    }
+  };
+
+  const updateClient = async (clientId, updates) => {
+    setSavingClient(true);
+    try {
+      const res = await API.patch(`barber/clients/${clientId}/`, updates);
+      setSelectedClient((prev) => ({ ...prev, ...res.data }));
+      setClients((prev) =>
+        prev.map((c) => (c.id === clientId ? { ...c, ...updates } : c)),
+      );
+      showToast("Client updated.");
+    } catch {
+      showToast("Could not update.", "error");
+    } finally {
+      setSavingClient(false);
     }
   };
 
@@ -2060,6 +2117,7 @@ export default function BarberDashboard() {
             { key: "schedule", label: "Schedule", icon: "📅" },
             { key: "walkin", label: "Walk-In", icon: "✂️" },
             { key: "waitlist", label: "Waitlist", icon: "⏳" },
+            { key: "clients", label: "Clients", icon: "👤" },
             { key: "availability", label: "My Hours", icon: "⏰" },
             { key: "timeoff", label: "Time Off", icon: "🏖" },
           ].map(({ key, label, icon }) => (
@@ -2874,6 +2932,792 @@ export default function BarberDashboard() {
               </div>
             </div>
           </>
+        )}
+
+        {/* ── CLIENTS TAB ── */}
+        {activeTab === "clients" && (
+          <div className="bd-enter">
+            {/* Client detail modal */}
+            {selectedClient && (
+              <div
+                style={{
+                  position: "fixed",
+                  inset: 0,
+                  zIndex: 300,
+                  background: "rgba(4,4,4,0.96)",
+                  backdropFilter: "blur(12px)",
+                  display: "flex",
+                  flexDirection: "column",
+                  overflowY: "auto",
+                  zIndex: 400,
+                }}
+              >
+                <div
+                  style={{
+                    maxWidth: 640,
+                    width: "100%",
+                    margin: "0 auto",
+                    padding: isMobile ? "20px 14px 48px" : "32px 24px 48px",
+                  }}
+                >
+                  {/* Header */}
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "flex-start",
+                      marginBottom: 24,
+                    }}
+                  >
+                    <div>
+                      <button
+                        onClick={() => setSelectedClient(null)}
+                        style={{
+                          ...sf,
+                          fontSize: 6,
+                          letterSpacing: "0.3em",
+                          textTransform: "uppercase",
+                          color: T.muted,
+                          background: "none",
+                          border: "none",
+                          cursor: "pointer",
+                          marginBottom: 12,
+                          padding: 0,
+                          transition: "color 0.2s",
+                        }}
+                        onMouseEnter={(e) =>
+                          (e.currentTarget.style.color = T.amber)
+                        }
+                        onMouseLeave={(e) =>
+                          (e.currentTarget.style.color = T.muted)
+                        }
+                      >
+                        ← All Clients
+                      </button>
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 10,
+                        }}
+                      >
+                        <div
+                          style={{
+                            width: 44,
+                            height: 44,
+                            borderRadius: "50%",
+                            background: T.amberDim,
+                            border: `1px solid ${T.amberBorder}`,
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            flexShrink: 0,
+                          }}
+                        >
+                          <span
+                            style={{
+                              ...sf,
+                              fontSize: 16,
+                              fontWeight: 900,
+                              color: T.amber,
+                            }}
+                          >
+                            {(selectedClient.name || "?")
+                              .charAt(0)
+                              .toUpperCase()}
+                          </span>
+                        </div>
+                        <div>
+                          <div
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: 8,
+                            }}
+                          >
+                            <h2
+                              style={{
+                                ...sf,
+                                fontSize: "clamp(1rem,2.5vw,1.3rem)",
+                                fontWeight: 900,
+                                textTransform: "uppercase",
+                                color: "white",
+                                margin: 0,
+                              }}
+                            >
+                              {selectedClient.name}
+                            </h2>
+                            {selectedClient.is_vip && (
+                              <span
+                                style={{
+                                  ...sf,
+                                  fontSize: 6,
+                                  color: T.amber,
+                                  padding: "2px 8px",
+                                  background: T.amberDim,
+                                  border: `1px solid ${T.amberBorder}`,
+                                }}
+                              >
+                                VIP
+                              </span>
+                            )}
+                            {selectedClient.is_blocked && (
+                              <span
+                                style={{
+                                  ...sf,
+                                  fontSize: 6,
+                                  color: "#f87171",
+                                  padding: "2px 8px",
+                                  background: "rgba(248,113,113,0.08)",
+                                  border: "1px solid rgba(248,113,113,0.2)",
+                                }}
+                              >
+                                Blocked
+                              </span>
+                            )}
+                          </div>
+                          <p
+                            style={{
+                              ...mono,
+                              fontSize: 11,
+                              color: T.muted,
+                              margin: 0,
+                            }}
+                          >
+                            {selectedClient.email}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* VIP + Block toggles */}
+                    <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
+                      <button
+                        onClick={() =>
+                          updateClient(selectedClient.id, {
+                            is_vip: !selectedClient.is_vip,
+                          })
+                        }
+                        disabled={savingClient}
+                        style={{
+                          ...sf,
+                          fontSize: 6,
+                          letterSpacing: "0.1em",
+                          textTransform: "uppercase",
+                          padding: "7px 12px",
+                          background: selectedClient.is_vip
+                            ? T.amberDim
+                            : "transparent",
+                          border: `1px solid ${selectedClient.is_vip ? T.amberBorder : T.border}`,
+                          color: selectedClient.is_vip ? T.amber : T.muted,
+                          cursor: "pointer",
+                          transition: "all 0.2s",
+                        }}
+                      >
+                        ★ {selectedClient.is_vip ? "VIP" : "VIP?"}
+                      </button>
+                      <button
+                        onClick={() =>
+                          updateClient(selectedClient.id, {
+                            is_blocked: !selectedClient.is_blocked,
+                          })
+                        }
+                        disabled={savingClient}
+                        style={{
+                          ...sf,
+                          fontSize: 6,
+                          letterSpacing: "0.1em",
+                          textTransform: "uppercase",
+                          padding: "7px 12px",
+                          background: selectedClient.is_blocked
+                            ? "rgba(248,113,113,0.08)"
+                            : "transparent",
+                          border: `1px solid ${selectedClient.is_blocked ? "rgba(248,113,113,0.3)" : T.border}`,
+                          color: selectedClient.is_blocked
+                            ? "#f87171"
+                            : T.muted,
+                          cursor: "pointer",
+                          transition: "all 0.2s",
+                        }}
+                      >
+                        {selectedClient.is_blocked ? "🚫 Blocked" : "Block"}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Stats row */}
+                  <div
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns: "repeat(4, 1fr)",
+                      gap: 8,
+                      marginBottom: 24,
+                    }}
+                  >
+                    {[
+                      {
+                        label: "Visits",
+                        value: selectedClient.total_visits,
+                        accent: true,
+                      },
+                      { label: "Completed", value: selectedClient.completed },
+                      { label: "No-Shows", value: selectedClient.no_shows },
+                      {
+                        label: "Spent",
+                        value: `$${selectedClient.total_spent}`,
+                      },
+                    ].map(({ label, value, accent }) => (
+                      <div
+                        key={label}
+                        style={{
+                          padding: "12px 10px",
+                          background: accent ? T.amberDim : T.surface,
+                          border: `1px solid ${accent ? T.amberBorder : T.border}`,
+                        }}
+                      >
+                        <p
+                          style={{
+                            ...sf,
+                            fontSize: 5,
+                            letterSpacing: "0.25em",
+                            color: accent ? T.amber : T.muted,
+                            textTransform: "uppercase",
+                            marginBottom: 4,
+                          }}
+                        >
+                          {label}
+                        </p>
+                        <p
+                          style={{
+                            ...sf,
+                            fontSize: 18,
+                            fontWeight: 900,
+                            color: accent ? T.amber : "white",
+                            margin: 0,
+                          }}
+                        >
+                          {value}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Notes */}
+                  <div style={{ marginBottom: 20 }}>
+                    <label
+                      style={{
+                        ...sf,
+                        fontSize: 6,
+                        letterSpacing: "0.3em",
+                        color: T.muted,
+                        textTransform: "uppercase",
+                        display: "block",
+                        marginBottom: 8,
+                      }}
+                    >
+                      Client Notes
+                    </label>
+                    <textarea
+                      key={selectedClient.id}
+                      defaultValue={selectedClient.notes}
+                      onBlur={(e) => {
+                        if (e.target.value !== selectedClient.notes)
+                          updateClient(selectedClient.id, {
+                            notes: e.target.value,
+                          });
+                      }}
+                      placeholder="Hair texture, preferred style, allergies, preferences..."
+                      rows={3}
+                      style={{
+                        width: "100%",
+                        background: T.bg,
+                        border: `1px solid ${T.border}`,
+                        padding: "12px 14px",
+                        color: "white",
+                        fontSize: 14,
+                        outline: "none",
+                        ...mono,
+                        resize: "vertical",
+                        lineHeight: 1.6,
+                      }}
+                      onFocus={(e) => (e.target.style.borderColor = T.amber)}
+                      onBlur={(e) => {
+                        e.target.style.borderColor = T.border;
+                        if (e.target.value !== selectedClient.notes)
+                          updateClient(selectedClient.id, {
+                            notes: e.target.value,
+                          });
+                      }}
+                    />
+                    <p
+                      style={{
+                        ...mono,
+                        fontSize: 9,
+                        color: T.dim,
+                        marginTop: 4,
+                      }}
+                    >
+                      Auto-saves on blur
+                    </p>
+                  </div>
+
+                  {/* Appointment history */}
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 12,
+                      marginBottom: 14,
+                    }}
+                  >
+                    <p
+                      style={{
+                        ...sf,
+                        fontSize: 6,
+                        letterSpacing: "0.4em",
+                        color: T.dim,
+                        textTransform: "uppercase",
+                        margin: 0,
+                      }}
+                    >
+                      Visit History
+                    </p>
+                    <div style={{ flex: 1, height: 1, background: T.border }} />
+                  </div>
+
+                  {selectedClient.history?.length === 0 ? (
+                    <p style={{ ...mono, color: T.dim, fontSize: 12 }}>
+                      No visits yet.
+                    </p>
+                  ) : (
+                    <div
+                      style={{
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: 5,
+                      }}
+                    >
+                      {selectedClient.history?.map((h) => {
+                        const sCfg =
+                          STATUS_CFG[h.status] || STATUS_CFG.confirmed;
+                        return (
+                          <div
+                            key={h.id}
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: 10,
+                              padding: "12px 14px",
+                              background: T.surface,
+                              border: `1px solid ${T.border}`,
+                              flexWrap: "wrap",
+                            }}
+                          >
+                            <div
+                              style={{
+                                width: 3,
+                                height: 36,
+                                background: sCfg.color,
+                                flexShrink: 0,
+                                borderRadius: 2,
+                              }}
+                            />
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div
+                                style={{
+                                  display: "flex",
+                                  alignItems: "center",
+                                  gap: 8,
+                                  flexWrap: "wrap",
+                                }}
+                              >
+                                <p
+                                  style={{
+                                    ...mono,
+                                    fontSize: 12,
+                                    color: T.amber,
+                                    margin: 0,
+                                  }}
+                                >
+                                  {new Date(
+                                    h.date + "T00:00:00",
+                                  ).toLocaleDateString("en-US", {
+                                    month: "short",
+                                    day: "numeric",
+                                    year: "numeric",
+                                  })}
+                                </p>
+                                <span
+                                  style={{
+                                    ...sf,
+                                    fontSize: 6,
+                                    color: sCfg.color,
+                                    padding: "2px 7px",
+                                    background: sCfg.bg,
+                                    border: `1px solid ${sCfg.border}`,
+                                  }}
+                                >
+                                  {sCfg.label}
+                                </span>
+                                {h.walk_in && (
+                                  <span
+                                    style={{
+                                      ...sf,
+                                      fontSize: 6,
+                                      color: "#a78bfa",
+                                      padding: "2px 7px",
+                                      background: "rgba(139,92,246,0.08)",
+                                      border: "1px solid rgba(139,92,246,0.2)",
+                                    }}
+                                  >
+                                    Walk-In
+                                  </span>
+                                )}
+                              </div>
+                              <p
+                                style={{
+                                  ...mono,
+                                  fontSize: 11,
+                                  color: "#a1a1aa",
+                                  margin: "3px 0 0",
+                                }}
+                              >
+                                {h.service}
+                                {h.price ? ` · $${h.price}` : ""}
+                              </p>
+                              {h.notes && (
+                                <p
+                                  style={{
+                                    ...mono,
+                                    fontSize: 10,
+                                    color: T.muted,
+                                    marginTop: 3,
+                                  }}
+                                >
+                                  📝 {h.notes}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Client list */}
+            <div
+              style={{
+                display: "flex",
+                gap: 10,
+                marginBottom: 20,
+                alignItems: "center",
+                flexWrap: "wrap",
+              }}
+            >
+              <div style={{ flex: 1, position: "relative", minWidth: 200 }}>
+                <input
+                  value={clientSearch}
+                  onChange={(e) => setClientSearch(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && loadClients()}
+                  placeholder="Search clients..."
+                  style={{
+                    width: "100%",
+                    background: T.bg,
+                    border: `1px solid ${T.border}`,
+                    padding: "11px 14px",
+                    color: "white",
+                    fontSize: 15,
+                    outline: "none",
+                    ...mono,
+                  }}
+                  onFocus={(e) => (e.target.style.borderColor = T.amber)}
+                  onBlur={(e) => (e.target.style.borderColor = T.border)}
+                />
+              </div>
+              <button
+                onClick={loadClients}
+                disabled={loadingClients}
+                style={{
+                  padding: "11px 18px",
+                  background: T.amberDim,
+                  border: `1px solid ${T.amberBorder}`,
+                  color: T.amber,
+                  ...sf,
+                  fontSize: 7,
+                  letterSpacing: "0.15em",
+                  textTransform: "uppercase",
+                  cursor: "pointer",
+                  transition: "all 0.2s",
+                  flexShrink: 0,
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = T.amber;
+                  e.currentTarget.style.color = "black";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = T.amberDim;
+                  e.currentTarget.style.color = T.amber;
+                }}
+              >
+                {loadingClients ? "..." : "Search"}
+              </button>
+            </div>
+
+            {/* Summary */}
+            {clients.length > 0 && (
+              <p
+                style={{
+                  ...mono,
+                  fontSize: 10,
+                  color: T.dim,
+                  marginBottom: 14,
+                }}
+              >
+                {clients.length} client{clients.length !== 1 ? "s" : ""}
+                {" · "}
+                {clients.filter((c) => c.is_vip).length} VIP
+                {" · "}
+                {clients.filter((c) => c.is_blocked).length} blocked
+              </p>
+            )}
+
+            {loadingClients ? (
+              <div
+                style={{
+                  padding: "40px 0",
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  gap: 12,
+                }}
+              >
+                <div
+                  style={{
+                    width: 20,
+                    height: 20,
+                    border: `1.5px solid rgba(245,158,11,0.2)`,
+                    borderTopColor: T.amber,
+                    borderRadius: "50%",
+                    animation: "spin 0.8s linear infinite",
+                  }}
+                />
+                <p
+                  style={{
+                    ...sf,
+                    fontSize: 6,
+                    color: T.dim,
+                    letterSpacing: "0.3em",
+                    textTransform: "uppercase",
+                  }}
+                >
+                  Loading clients...
+                </p>
+              </div>
+            ) : clients.length === 0 ? (
+              <div
+                style={{
+                  padding: "40px 0",
+                  textAlign: "center",
+                  border: `1px solid ${T.border}`,
+                }}
+              >
+                <p
+                  style={{
+                    ...sf,
+                    fontSize: "1.2rem",
+                    fontWeight: 900,
+                    color: "rgba(255,255,255,0.04)",
+                    textTransform: "uppercase",
+                  }}
+                >
+                  No Clients Yet
+                </p>
+                <p
+                  style={{ ...mono, color: T.dim, fontSize: 11, marginTop: 8 }}
+                >
+                  Clients appear here once they book an appointment.
+                </p>
+              </div>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+                {clients.map((c) => (
+                  <button
+                    key={c.id}
+                    onClick={() => openClientProfile(c.id)}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: isMobile ? 10 : 14,
+                      padding: isMobile ? "13px 12px" : "14px 16px",
+                      background: c.is_blocked
+                        ? "rgba(248,113,113,0.03)"
+                        : T.surface,
+                      border: `1px solid ${c.is_vip ? T.amberBorder : c.is_blocked ? "rgba(248,113,113,0.15)" : T.border}`,
+                      cursor: "pointer",
+                      textAlign: "left",
+                      width: "100%",
+                      transition: "all 0.2s",
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.borderColor = T.amber;
+                      e.currentTarget.style.background = T.amberDim;
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.borderColor = c.is_vip
+                        ? T.amberBorder
+                        : c.is_blocked
+                          ? "rgba(248,113,113,0.15)"
+                          : T.border;
+                      e.currentTarget.style.background = c.is_blocked
+                        ? "rgba(248,113,113,0.03)"
+                        : T.surface;
+                    }}
+                  >
+                    {/* Avatar */}
+                    <div
+                      style={{
+                        width: isMobile ? 36 : 42,
+                        height: isMobile ? 36 : 42,
+                        borderRadius: "50%",
+                        background: c.is_vip
+                          ? T.amberDim
+                          : "rgba(255,255,255,0.05)",
+                        border: `1px solid ${c.is_vip ? T.amberBorder : T.border}`,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        flexShrink: 0,
+                      }}
+                    >
+                      <span
+                        style={{
+                          ...sf,
+                          fontSize: isMobile ? 12 : 14,
+                          fontWeight: 900,
+                          color: c.is_vip ? T.amber : "#a1a1aa",
+                        }}
+                      >
+                        {(c.name || "?").charAt(0).toUpperCase()}
+                      </span>
+                    </div>
+
+                    {/* Info */}
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 8,
+                          marginBottom: 3,
+                          flexWrap: "wrap",
+                        }}
+                      >
+                        <p
+                          style={{
+                            ...sf,
+                            fontSize: isMobile ? 8 : 9,
+                            fontWeight: 700,
+                            textTransform: "uppercase",
+                            color: c.is_blocked ? "#f87171" : "white",
+                            margin: 0,
+                          }}
+                        >
+                          {c.name}
+                        </p>
+                        {c.is_vip && (
+                          <span
+                            style={{
+                              ...sf,
+                              fontSize: 5,
+                              color: T.amber,
+                              padding: "1px 6px",
+                              background: T.amberDim,
+                              border: `1px solid ${T.amberBorder}`,
+                            }}
+                          >
+                            ★ VIP
+                          </span>
+                        )}
+                        {c.is_blocked && (
+                          <span
+                            style={{
+                              ...sf,
+                              fontSize: 5,
+                              color: "#f87171",
+                              padding: "1px 6px",
+                              background: "rgba(248,113,113,0.08)",
+                              border: "1px solid rgba(248,113,113,0.2)",
+                            }}
+                          >
+                            Blocked
+                          </span>
+                        )}
+                        {c.is_walk_in && (
+                          <span
+                            style={{
+                              ...sf,
+                              fontSize: 5,
+                              color: "#a78bfa",
+                              padding: "1px 6px",
+                              background: "rgba(139,92,246,0.08)",
+                              border: "1px solid rgba(139,92,246,0.2)",
+                            }}
+                          >
+                            Walk-In
+                          </span>
+                        )}
+                      </div>
+                      <div
+                        style={{ display: "flex", gap: 10, flexWrap: "wrap" }}
+                      >
+                        <span style={{ ...mono, fontSize: 10, color: T.amber }}>
+                          {c.total_visits} visit
+                          {c.total_visits !== 1 ? "s" : ""}
+                        </span>
+                        {c.last_visit && (
+                          <span
+                            style={{ ...mono, fontSize: 10, color: T.muted }}
+                          >
+                            Last:{" "}
+                            {new Date(
+                              c.last_visit + "T00:00:00",
+                            ).toLocaleDateString("en-US", {
+                              month: "short",
+                              day: "numeric",
+                            })}
+                          </span>
+                        )}
+                        {c.last_service && (
+                          <span
+                            style={{ ...mono, fontSize: 10, color: T.muted }}
+                          >
+                            {c.last_service}
+                          </span>
+                        )}
+                        {c.no_shows > 0 && (
+                          <span
+                            style={{ ...mono, fontSize: 10, color: "#f87171" }}
+                          >
+                            {c.no_shows} no-show{c.no_shows !== 1 ? "s" : ""}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Arrow */}
+                    <span
+                      style={{ color: T.muted, fontSize: 16, flexShrink: 0 }}
+                    >
+                      ›
+                    </span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
         )}
 
         {/* ── MY HOURS TAB ── */}

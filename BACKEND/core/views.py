@@ -5,7 +5,7 @@ from django.conf import settings
 from django.db import IntegrityError
 from django.shortcuts import redirect
 from rest_framework import viewsets
-from .models import Appointment, Barber, BarberAvailability, BarberTimeOff, Service, UserProfile, PushSubscription, Review, WaitlistEntry
+from .models import Appointment, Barber, BarberAvailability, BarberTimeOff, Service, UserProfile, PushSubscription, Review, WaitlistEntry, BarberClient
 from .serializers import AppointmentSerializer, BarberSerializer, ServiceSerializer, UserProfileSerializer, RegisterSerializer
 from rest_framework.permissions import IsAuthenticated, AllowAny, IsAdminUser
 from rest_framework.response import Response
@@ -1121,3 +1121,155 @@ class SendRemindersView(APIView):
                 pass
 
         return Response({"message": f"Reminders sent: {sent}", "tomorrow": str(tomorrow)})
+
+
+class BarberClientListView(APIView):
+    """
+    GET  /barber/clients/         — list all unique clients who have booked this barber
+    GET  /barber/clients/?search= — search by name or email
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        barber = get_barber_for_user(request.user)
+        if not barber:
+            return Response({"error": "Not a barber account"}, status=403)
+
+        search = request.query_params.get("search", "").strip().lower()
+
+        # Get all unique clients from appointments
+        appt_clients = Appointment.objects.filter(
+            barber=barber
+        ).select_related("user", "user__profile").values("user").distinct()
+
+        client_ids = [a["user"] for a in appt_clients]
+        clients = User.objects.filter(id__in=client_ids).select_related("profile")
+
+        if search:
+            clients = clients.filter(
+                username__icontains=search
+            ) | clients.filter(
+                email__icontains=search
+            ) | clients.filter(
+                first_name__icontains=search
+            )
+
+        # Get barber-client relationships
+        bc_map = {
+            bc.client_id: bc
+            for bc in BarberClient.objects.filter(barber=barber, client_id__in=client_ids)
+        }
+
+        data = []
+        for client in clients:
+            bc = bc_map.get(client.id)
+            # Get appointment stats for this client
+            appts = Appointment.objects.filter(barber=barber, user=client).order_by("-date", "-time")
+            total = appts.count()
+            completed = appts.filter(status="completed").count()
+            no_shows  = appts.filter(status="no_show").count()
+            last_appt = appts.first()
+
+            data.append({
+                "id":           client.id,
+                "username":     client.username,
+                "email":        client.email,
+                "name":         client.first_name or client.username,
+                "total_visits": total,
+                "completed":    completed,
+                "no_shows":     no_shows,
+                "last_visit":   str(last_appt.date) if last_appt else None,
+                "last_service": last_appt.service.name if last_appt and last_appt.service else None,
+                "notes":        bc.notes if bc else "",
+                "is_vip":       bc.is_vip if bc else False,
+                "is_blocked":   bc.is_blocked if bc else False,
+                "is_walk_in":   client.username.startswith("walkin_"),
+            })
+
+        # Sort: VIP first, then by total visits
+        data.sort(key=lambda x: (-x["is_vip"], -x["total_visits"]))
+
+        return Response(data)
+
+
+class BarberClientDetailView(APIView):
+    """
+    GET   /barber/clients/<id>/   — client profile + full appointment history
+    PATCH /barber/clients/<id>/   — update notes, vip, blocked status
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, pk):
+        barber = get_barber_for_user(request.user)
+        if not barber:
+            return Response({"error": "Not a barber account"}, status=403)
+
+        try:
+            client = User.objects.get(pk=pk)
+        except User.DoesNotExist:
+            return Response({"error": "Client not found"}, status=404)
+
+        bc = BarberClient.objects.filter(barber=barber, client=client).first()
+
+        appts = Appointment.objects.filter(
+            barber=barber, user=client
+        ).select_related("service").order_by("-date", "-time")
+
+        history = [{
+            "id":       a.id,
+            "date":     str(a.date),
+            "time":     str(a.time),
+            "service":  a.service.name if a.service else "",
+            "price":    str(a.service.price) if a.service else "",
+            "status":   a.status,
+            "payment":  a.payment_method,
+            "notes":    a.barber_notes,
+            "walk_in":  a.is_walk_in,
+        } for a in appts]
+
+        total_spent = sum(
+            float(a["price"]) for a in history
+            if a["status"] == "completed" and a["price"]
+        )
+
+        return Response({
+            "id":           client.id,
+            "username":     client.username,
+            "email":        client.email,
+            "name":         client.first_name or client.username,
+            "notes":        bc.notes if bc else "",
+            "is_vip":       bc.is_vip if bc else False,
+            "is_blocked":   bc.is_blocked if bc else False,
+            "total_visits": appts.count(),
+            "completed":    appts.filter(status="completed").count(),
+            "no_shows":     appts.filter(status="no_show").count(),
+            "total_spent":  f"{total_spent:.2f}",
+            "history":      history,
+        })
+
+    def patch(self, request, pk):
+        barber = get_barber_for_user(request.user)
+        if not barber:
+            return Response({"error": "Not a barber account"}, status=403)
+
+        try:
+            client = User.objects.get(pk=pk)
+        except User.DoesNotExist:
+            return Response({"error": "Client not found"}, status=404)
+
+        bc, _ = BarberClient.objects.get_or_create(barber=barber, client=client)
+
+        if "notes" in request.data:
+            bc.notes = request.data["notes"]
+        if "is_vip" in request.data:
+            bc.is_vip = bool(request.data["is_vip"])
+        if "is_blocked" in request.data:
+            bc.is_blocked = bool(request.data["is_blocked"])
+
+        bc.save()
+        return Response({
+            "message":    "Updated",
+            "notes":      bc.notes,
+            "is_vip":     bc.is_vip,
+            "is_blocked": bc.is_blocked,
+        })

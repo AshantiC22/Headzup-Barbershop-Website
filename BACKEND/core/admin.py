@@ -2,7 +2,7 @@ from django.contrib import admin
 from .models import (
     UserProfile, Barber, Service, Appointment,
     BarberAvailability, BarberTimeOff,
-    PushSubscription, Review, WaitlistEntry,
+    PushSubscription, Review, WaitlistEntry, BarberClient,
 )
 
 # ── Site branding ─────────────────────────────────────────────────────────────
@@ -70,3 +70,10 @@ class WaitlistEntryAdmin(admin.ModelAdmin):
     list_display  = ("client_name", "barber", "service", "date", "notified", "created_at")
     list_filter   = ("barber", "notified", "date")
     ordering      = ("date", "created_at")
+
+
+@admin.register(BarberClient)
+class BarberClientAdmin(admin.ModelAdmin):
+    list_display  = ("barber", "client", "is_vip", "is_blocked", "updated_at")
+    list_filter   = ("barber", "is_vip", "is_blocked")
+    search_fields = ("client__username", "client__email", "barber__name")

@@ -26,6 +26,8 @@ from core.views import (
     WalkInBookingView,
     WaitlistView,
     SendRemindersView,
+    BarberClientListView,
+    BarberClientDetailView,
     # Push notifications + reviews
     PushSubscriptionView,
     TriggerReviewNotificationView,
@@ -73,6 +75,9 @@ urlpatterns = [
     path("barber/waitlist/",              WaitlistView.as_view(),               name="barber_waitlist"),
     path("barber/waitlist/<int:pk>/",     WaitlistView.as_view(),               name="barber_waitlist_item"),
     path("barber/send-reminders/",        SendRemindersView.as_view(),          name="send_reminders"),
+    # Client management
+    path("barber/clients/",              BarberClientListView.as_view(),        name="barber_clients"),
+    path("barber/clients/<int:pk>/",     BarberClientDetailView.as_view(),      name="barber_client_detail"),
 
     # Push notifications
     path("push/subscribe/",              PushSubscriptionView.as_view(),             name="push_subscribe"),
