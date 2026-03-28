@@ -67,6 +67,7 @@ export default function HomePage() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [isStaff, setIsStaff] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [homeBarbers, setHomeBarbers] = useState([]);
 
   // Check login state — runs on mount and whenever window regains focus
   const checkAuth = useCallback(() => {
@@ -103,6 +104,23 @@ export default function HomePage() {
       window.removeEventListener("focus", checkAuth);
     };
   }, [checkAuth]);
+
+  // Load barbers from API for the barber section — no auth needed
+  useEffect(() => {
+    fetch(
+      `${process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000"}/api/barbers/`,
+      {
+        headers: localStorage.getItem("access")
+          ? { Authorization: `Bearer ${localStorage.getItem("access")}` }
+          : {},
+      },
+    )
+      .then((r) => r.json())
+      .then((data) =>
+        setHomeBarbers(Array.isArray(data) ? data : data.results || []),
+      )
+      .catch(() => {});
+  }, []);
 
   // Smart Book Now
   const handleBookNow = (e) => {
@@ -1194,7 +1212,7 @@ export default function HomePage() {
                     alignItems: "flex-start",
                   }}
                 >
-                  {/* Barber cards */}
+                  {/* Barber cards — dynamic from API */}
                   <div
                     style={{
                       display: "flex",
@@ -1203,116 +1221,163 @@ export default function HomePage() {
                       flexShrink: 0,
                     }}
                   >
-                    {[
-                      { name: "Jarvis", initial: "J" },
-                      { name: "Mr. J", initial: "M" },
-                    ].map((barber) => (
-                      <div key={barber.name} className="scroll-reveal">
-                        <div
+                    {homeBarbers.length === 0 ? (
+                      <div
+                        style={{
+                          width: 160,
+                          height: 160,
+                          background: "linear-gradient(145deg,#1c1c1e,#111)",
+                          border: "1px solid rgba(245,158,11,0.2)",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                        }}
+                      >
+                        <span
                           style={{
-                            width: 160,
-                            height: 160,
-                            background:
-                              "linear-gradient(145deg, #1c1c1e, #111)",
-                            border: "1px solid rgba(245,158,11,0.2)",
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            position: "relative",
-                            overflow: "hidden",
+                            ...sf,
+                            fontSize: 48,
+                            fontWeight: 900,
+                            color: "rgba(245,158,11,0.3)",
                           }}
                         >
+                          ✂
+                        </span>
+                      </div>
+                    ) : (
+                      homeBarbers.map((barber) => (
+                        <div key={barber.id} className="scroll-reveal">
                           <div
                             style={{
-                              position: "absolute",
-                              top: 0,
-                              left: 0,
-                              width: 32,
-                              height: 32,
-                              borderTop: "2px solid #f59e0b",
-                              borderLeft: "2px solid #f59e0b",
-                            }}
-                          />
-                          <div
-                            style={{
-                              position: "absolute",
-                              bottom: 0,
-                              right: 0,
-                              width: 32,
-                              height: 32,
-                              borderBottom: "2px solid #f59e0b",
-                              borderRight: "2px solid #f59e0b",
-                            }}
-                          />
-                          <span
-                            style={{
-                              ...sf,
-                              fontSize: 64,
-                              fontWeight: 900,
-                              color: "#f59e0b",
-                              lineHeight: 1,
-                            }}
-                          >
-                            {barber.initial}
-                          </span>
-                        </div>
-                        <div style={{ marginTop: 16 }}>
-                          <p
-                            style={{
-                              ...sf,
-                              fontSize: 8,
-                              letterSpacing: "0.5em",
-                              color: "#71717a",
-                              textTransform: "uppercase",
-                            }}
-                          >
-                            Your Barber
-                          </p>
-                          <h3
-                            style={{
-                              ...sf,
-                              fontSize: 22,
-                              fontWeight: 900,
-                              textTransform: "uppercase",
-                              marginTop: 6,
-                              color: "white",
-                            }}
-                          >
-                            {barber.name}
-                          </h3>
-                          <div
-                            style={{
+                              width: 160,
+                              height: 160,
+                              background:
+                                "linear-gradient(145deg, #1c1c1e, #111)",
+                              border: "1px solid rgba(245,158,11,0.2)",
                               display: "flex",
                               alignItems: "center",
-                              gap: 8,
-                              marginTop: 10,
+                              justifyContent: "center",
+                              position: "relative",
+                              overflow: "hidden",
                             }}
                           >
                             <div
-                              className="pulse-green"
                               style={{
-                                width: 7,
-                                height: 7,
-                                background: "#22c55e",
-                                borderRadius: "50%",
-                                flexShrink: 0,
+                                position: "absolute",
+                                top: 0,
+                                left: 0,
+                                width: 32,
+                                height: 32,
+                                borderTop: "2px solid #f59e0b",
+                                borderLeft: "2px solid #f59e0b",
                               }}
                             />
-                            <span
+                            <div
+                              style={{
+                                position: "absolute",
+                                bottom: 0,
+                                right: 0,
+                                width: 32,
+                                height: 32,
+                                borderBottom: "2px solid #f59e0b",
+                                borderRight: "2px solid #f59e0b",
+                              }}
+                            />
+                            {barber.photo ? (
+                              <img
+                                src={barber.photo}
+                                alt={barber.name}
+                                style={{
+                                  width: "100%",
+                                  height: "100%",
+                                  objectFit: "cover",
+                                }}
+                              />
+                            ) : (
+                              <span
+                                style={{
+                                  ...sf,
+                                  fontSize: 64,
+                                  fontWeight: 900,
+                                  color: "#f59e0b",
+                                  lineHeight: 1,
+                                }}
+                              >
+                                {barber.name.charAt(0).toUpperCase()}
+                              </span>
+                            )}
+                          </div>
+                          <div style={{ marginTop: 16 }}>
+                            <p
                               style={{
                                 ...sf,
                                 fontSize: 8,
-                                color: "#4ade80",
+                                letterSpacing: "0.5em",
+                                color: "#71717a",
                                 textTransform: "uppercase",
-                                letterSpacing: "0.2em",
                               }}
                             >
-                              Accepting Clients
-                            </span>
+                              Your Barber
+                            </p>
+                            <h3
+                              style={{
+                                ...sf,
+                                fontSize: 22,
+                                fontWeight: 900,
+                                textTransform: "uppercase",
+                                marginTop: 6,
+                                color: "white",
+                              }}
+                            >
+                              {barber.name}
+                            </h3>
+                            {barber.bio && (
+                              <p
+                                style={{
+                                  fontSize: 12,
+                                  color: "#71717a",
+                                  marginTop: 6,
+                                  lineHeight: 1.6,
+                                  maxWidth: 180,
+                                }}
+                              >
+                                {barber.bio}
+                              </p>
+                            )}
+                            <div
+                              style={{
+                                display: "flex",
+                                alignItems: "center",
+                                gap: 8,
+                                marginTop: 10,
+                              }}
+                            >
+                              <div
+                                className="pulse-green"
+                                style={{
+                                  width: 7,
+                                  height: 7,
+                                  background: "#22c55e",
+                                  borderRadius: "50%",
+                                  flexShrink: 0,
+                                }}
+                              />
+                              <span
+                                style={{
+                                  ...sf,
+                                  fontSize: 8,
+                                  color: "#4ade80",
+                                  textTransform: "uppercase",
+                                  letterSpacing: "0.2em",
+                                }}
+                              >
+                                Accepting Clients
+                              </span>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    ))}
+                      ))
+                    )}
                   </div>
 
                   {/* Full service list */}
@@ -1403,7 +1468,7 @@ export default function HomePage() {
                         onClick={handleBookNow}
                         className="book-btn"
                       >
-                        <span>Book with Jarvis</span>
+                        <span>Book Now</span>
                       </a>
                     </div>
                   </div>
