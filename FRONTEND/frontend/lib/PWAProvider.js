@@ -3,51 +3,38 @@
 import { useEffect } from "react";
 import API from "@/lib/api";
 
-// ── Converts a base64 VAPID public key to Uint8Array ─────────────────────────
+// ── Converts base64 VAPID key to Uint8Array ───────────────────────────────────
 function urlBase64ToUint8Array(base64String) {
   const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
   const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
   const rawData = window.atob(base64);
-  const outputArray = new Uint8Array(rawData.length);
-  for (let i = 0; i < rawData.length; i++) {
-    outputArray[i] = rawData.charCodeAt(i);
-  }
-  return outputArray;
+  const output = new Uint8Array(rawData.length);
+  for (let i = 0; i < rawData.length; i++) output[i] = rawData.charCodeAt(i);
+  return output;
 }
 
-// ── Subscribe to push notifications ──────────────────────────────────────────
+// ── Push subscription ─────────────────────────────────────────────────────────
 async function subscribeToPush() {
   try {
     if (!("serviceWorker" in navigator) || !("PushManager" in window)) return;
-
     const registration = await navigator.serviceWorker.ready;
-
-    // Check if already subscribed
     const existing = await registration.pushManager.getSubscription();
     if (existing) {
       await sendSubscriptionToServer(existing);
       return;
     }
-
-    // Ask permission
     const permission = await Notification.requestPermission();
     if (permission !== "granted") return;
-
-    // Get VAPID public key from backend
     const keyRes = await API.get("push/vapid-key/");
     const vapidKey = keyRes.data.public_key;
     if (!vapidKey) return;
-
-    // Subscribe
     const subscription = await registration.pushManager.subscribe({
       userVisibleOnly: true,
       applicationServerKey: urlBase64ToUint8Array(vapidKey),
     });
-
     await sendSubscriptionToServer(subscription);
   } catch (e) {
-    // Silently fail — push is a nice-to-have
-    console.log("Push subscription failed:", e.message);
+    console.log("[PWA] Push subscription failed:", e.message);
   }
 }
 
@@ -59,78 +46,106 @@ async function sendSubscriptionToServer(subscription) {
       p256dh: json.keys.p256dh,
       auth: json.keys.auth,
     });
-  } catch {
-    // ignore
-  }
+  } catch {}
 }
 
-// ── Schedule a 30-minute review notification trigger ─────────────────────────
+// ── Review trigger ────────────────────────────────────────────────────────────
 export function scheduleReviewTrigger(
   appointmentId,
   appointmentDate,
   appointmentTime,
 ) {
   try {
-    // Parse appointment datetime
     const [year, month, day] = appointmentDate.split("-").map(Number);
     const [hour, minute] = appointmentTime.split(":").map(Number);
     const apptDateTime = new Date(year, month - 1, day, hour, minute, 0);
-    const triggerAt = new Date(apptDateTime.getTime() + 30 * 60 * 1000); // +30 min
+    const triggerAt = new Date(apptDateTime.getTime() + 30 * 60 * 1000);
     const msUntilTrigger = triggerAt.getTime() - Date.now();
-
-    if (msUntilTrigger <= 0) return; // already past
-
-    console.log(
-      `Review trigger scheduled in ${Math.round(msUntilTrigger / 60000)} minutes for appt ${appointmentId}`,
-    );
-
+    if (msUntilTrigger <= 0) return;
     setTimeout(async () => {
       try {
         await API.post(`review/trigger/${appointmentId}/`);
-      } catch {
-        // ignore — notification is best-effort
-      }
+      } catch {}
     }, msUntilTrigger);
-  } catch {
-    // ignore
-  }
+  } catch {}
 }
 
-// ── Listen for service worker messages (token requests) ──────────────────────
+// ── Token listener for SW ─────────────────────────────────────────────────────
 function setupTokenListener() {
   if (!("serviceWorker" in navigator)) return;
-
   navigator.serviceWorker.addEventListener("message", (event) => {
     if (event.data?.type === "GET_TOKEN") {
       const token = localStorage.getItem("access");
-      event.ports[0].postMessage({ token });
+      event.ports[0]?.postMessage({ token });
     }
   });
 }
 
-// ── Main PWA Provider component ───────────────────────────────────────────────
+// ── Auto-update: detect new SW and reload all tabs ───────────────────────────
+function setupAutoUpdate(registration) {
+  // When a new SW is waiting, reload all open tabs so users get latest version
+  const onStateChange = () => {
+    if (registration.waiting) {
+      // Tell the waiting SW to skip waiting and activate
+      registration.waiting.postMessage({ type: "SKIP_WAITING" });
+    }
+  };
+
+  // New SW found during this session
+  registration.addEventListener("updatefound", () => {
+    const newWorker = registration.installing;
+    if (!newWorker) return;
+    newWorker.addEventListener("statechange", () => {
+      if (
+        newWorker.state === "installed" &&
+        navigator.serviceWorker.controller
+      ) {
+        // New version installed — reload to get fresh content
+        newWorker.postMessage({ type: "SKIP_WAITING" });
+      }
+    });
+  });
+
+  // SW controller changed (new SW took over) → reload page
+  let refreshing = false;
+  navigator.serviceWorker.addEventListener("controllerchange", () => {
+    if (refreshing) return;
+    refreshing = true;
+    window.location.reload();
+  });
+}
+
+// ── Main PWAProvider ──────────────────────────────────────────────────────────
 export default function PWAProvider({ children }) {
   useEffect(() => {
-    // Register service worker
-    if ("serviceWorker" in navigator) {
-      navigator.serviceWorker
-        .register("/sw.js")
-        .then((reg) => {
-          console.log("[PWA] Service worker registered:", reg.scope);
-        })
-        .catch((err) => {
-          console.log("[PWA] SW registration failed:", err);
-        });
-    }
+    if (!("serviceWorker" in navigator)) return;
 
-    // Set up token listener for SW
+    // Register SW
+    navigator.serviceWorker
+      .register("/sw.js")
+      .then((registration) => {
+        console.log("[PWA] SW registered:", registration.scope);
+
+        // Set up auto-update
+        setupAutoUpdate(registration);
+
+        // Check for updates every 60 seconds (catches deploys while app is open)
+        const updateInterval = setInterval(() => {
+          registration.update().catch(() => {});
+        }, 60 * 1000);
+
+        return () => clearInterval(updateInterval);
+      })
+      .catch((err) => {
+        console.log("[PWA] SW registration failed:", err);
+      });
+
+    // Token listener for push notification actions
     setupTokenListener();
 
-    // Subscribe to push if user is logged in
+    // Subscribe to push if logged in
     const token = localStorage.getItem("access");
-    if (token) {
-      subscribeToPush();
-    }
+    if (token) subscribeToPush();
   }, []);
 
   return children;
