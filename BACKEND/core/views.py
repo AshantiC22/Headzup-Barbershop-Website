@@ -59,10 +59,70 @@ def send_booking_confirmation(appointment):
                 logger.warning("SENDGRID_API_KEY not set — skipping confirmation email")
                 return
             if not user_email:
-                logger.warning(f"No email for user {username} — skipping confirmation email")
+                logger.warning(f"No email for user {username} — skipping")
                 return
 
-            # Extract name and email from "Name <email>" format
+            # Build email content
+            subject = f"Booking Confirmed - {service_name} at HEADZ UP"
+            message = (
+                f"Hey {username},\n\nYour appointment is confirmed.\n\n"
+                f"Service:  {service_name}\nBarber:   {barber_name}\n"
+                f"Date:     {appt_date}\nTime:     {appt_time}\n"
+                f"Payment:  {payment_label}\n\n"
+                f"Please arrive 5 minutes early.\n\nHEADZ UP Barbershop\n4 Hub Dr, Hattiesburg, MS 39402"
+            )
+
+            ticket_rows = ""
+            for label, value in [
+                ("Service", service_name), ("Barber", barber_name),
+                ("Date", appt_date), ("Time", appt_time), ("Payment", payment_label),
+                ("Location", "4 Hub Dr, Hattiesburg, MS 39402"),
+            ]:
+                ticket_rows += f"""<tr><td style="padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.05);">
+                  <p style="font-family:'Courier New',monospace;font-size:9px;letter-spacing:0.3em;color:#52525b;text-transform:uppercase;margin:0 0 4px;">{label}</p>
+                  <p style="font-size:14px;color:white;margin:0;font-weight:700;">{value}</p>
+                </td></tr>"""
+
+            html_message = f"""<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#050505;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;color:#ffffff;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#050505;padding:40px 20px;">
+    <tr><td align="center">
+      <table width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;">
+        <tr><td style="padding-bottom:32px;">
+          <p style="font-family:'Courier New',monospace;font-size:22px;font-weight:900;letter-spacing:-0.05em;margin:0;text-transform:uppercase;">HEADZ<span style="color:#f59e0b;font-style:italic;">UP</span></p>
+        </td></tr>
+        <tr><td style="padding-bottom:24px;">
+          <div style="width:52px;height:52px;border-radius:50%;background:linear-gradient(135deg,#22c55e,#16a34a);display:inline-block;text-align:center;line-height:52px;">
+            <span style="color:black;font-size:24px;font-weight:900;">&#10003;</span>
+          </div>
+        </td></tr>
+        <tr><td style="padding-bottom:8px;">
+          <h1 style="font-family:'Courier New',monospace;font-size:28px;font-weight:900;text-transform:uppercase;margin:0;">Booking<br><span style="color:#f59e0b;font-style:italic;">Confirmed_</span></h1>
+        </td></tr>
+        <tr><td style="padding-bottom:32px;">
+          <p style="color:#71717a;font-size:13px;margin:0;">Hey {username}, you're all set. See you soon.</p>
+        </td></tr>
+        <tr><td style="background:#0a0a0a;border:1px solid rgba(255,255,255,0.1);padding:28px;">
+          <table width="100%" cellpadding="0" cellspacing="0">{ticket_rows}</table>
+        </td></tr>
+        <tr><td style="padding:16px 0;">
+          <p style="font-size:12px;color:#71717a;margin:0;line-height:1.6;">Please arrive <strong style="color:white;">5 minutes early</strong>. Slots held <strong style="color:white;">15 minutes</strong> past appointment time.</p>
+        </td></tr>
+        <tr><td style="padding:8px 0 32px;">
+          <a href="{FRONTEND_URL}/dashboard" style="display:inline-block;padding:14px 28px;background:#f59e0b;color:black;font-family:'Courier New',monospace;font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:0.2em;text-decoration:none;">View My Dashboard &rarr;</a>
+        </td></tr>
+        <tr><td style="border-top:1px solid rgba(255,255,255,0.06);padding-top:24px;">
+          <p style="font-size:11px;color:#3f3f46;margin:0;line-height:1.7;">HEADZ UP Barbershop &middot; 4 Hub Dr, Hattiesburg, MS 39402<br>Mon-Sat 9AM-6PM &middot; Closed Sundays</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>"""
+
+            # Send via SendGrid HTTP API
             match        = re.search(r'<(.+?)>', from_email)
             sender_email = match.group(1) if match else from_email
             sender_name  = from_email.split("<")[0].strip() if "<" in from_email else "HEADZ UP"
@@ -81,106 +141,11 @@ def send_booking_confirmation(appointment):
             req  = urllib.request.Request(
                 "https://api.sendgrid.com/v3/mail/send",
                 data=data,
-                headers={
-                    "Authorization": f"Bearer {api_key}",
-                    "Content-Type":  "application/json",
-                },
+                headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
                 method="POST",
             )
             with urllib.request.urlopen(req, timeout=10) as resp:
-                logger.info(f"Confirmation email sent to {user_email} — SendGrid status {resp.status}")
-        except Exception as e:
-            import logging
-            logging.getLogger(__name__).error(f"Email send failed: {e}")
-
-            subject = f"Booking Confirmed - {service_name} at HEADZ UP"
-            message = (
-                f"Hey {username},\n\n"
-                f"Your appointment is confirmed.\n\n"
-                f"Service:  {service_name}\n"
-                f"Barber:   {barber_name}\n"
-                f"Date:     {appt_date}\n"
-                f"Time:     {appt_time}\n"
-                f"Payment:  {payment_label}\n\n"
-                f"Please arrive 5 minutes early.\n\n"
-                f"HEADZ UP Barbershop\n4 Hub Dr, Hattiesburg, MS 39402"
-            )
-
-            ticket_rows = ""
-            for label, value in [
-                ("Service", service_name), ("Barber", barber_name),
-                ("Date", appt_date), ("Time", appt_time), ("Payment", payment_label),
-            ]:
-                ticket_rows += f"""
-              <tr>
-                <td style="padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.05);">
-                  <p style="font-family:'Courier New',monospace;font-size:9px;letter-spacing:0.3em;color:#52525b;text-transform:uppercase;margin:0 0 4px;">{label}</p>
-                  <p style="font-size:14px;color:white;margin:0;font-weight:700;">{value}</p>
-                </td>
-              </tr>"""
-
-            html_message = f"""<!DOCTYPE html>
-<html>
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
-<body style="margin:0;padding:0;background:#050505;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;color:#ffffff;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="background:#050505;padding:40px 20px;">
-    <tr><td align="center">
-      <table width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;">
-        <tr><td style="padding-bottom:32px;">
-          <p style="font-family:'Courier New',monospace;font-size:22px;font-weight:900;letter-spacing:-0.05em;margin:0;text-transform:uppercase;">
-            HEADZ<span style="color:#f59e0b;font-style:italic;">UP</span>
-          </p>
-        </td></tr>
-        <tr><td style="padding-bottom:24px;">
-          <div style="width:52px;height:52px;border-radius:50%;background:linear-gradient(135deg,#22c55e,#16a34a);display:inline-block;text-align:center;line-height:52px;">
-            <span style="color:black;font-size:24px;font-weight:900;">&#10003;</span>
-          </div>
-        </td></tr>
-        <tr><td style="padding-bottom:8px;">
-          <h1 style="font-family:'Courier New',monospace;font-size:28px;font-weight:900;text-transform:uppercase;margin:0;">
-            Booking<br><span style="color:#f59e0b;font-style:italic;">Confirmed_</span>
-          </h1>
-        </td></tr>
-        <tr><td style="padding-bottom:32px;">
-          <p style="color:#71717a;font-size:13px;margin:0;">Hey {username}, you're all set. See you soon.</p>
-        </td></tr>
-        <tr><td style="background:#0a0a0a;border:1px solid rgba(255,255,255,0.1);padding:28px;">
-          <table width="100%" cellpadding="0" cellspacing="0">{ticket_rows}</table>
-        </td></tr>
-        <tr><td style="padding:16px 0;">
-          <p style="font-size:12px;color:#71717a;margin:0;line-height:1.6;">
-            Please arrive <strong style="color:white;">5 minutes early</strong>. Slots held <strong style="color:white;">15 minutes</strong> past appointment time.
-          </p>
-        </td></tr>
-        <tr><td style="padding:8px 0 32px;">
-          <a href="{FRONTEND_URL}/dashboard" style="display:inline-block;padding:14px 28px;background:#f59e0b;color:black;font-family:'Courier New',monospace;font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:0.2em;text-decoration:none;">
-            View My Dashboard &rarr;
-          </a>
-        </td></tr>
-        <tr><td style="border-top:1px solid rgba(255,255,255,0.06);padding-top:24px;">
-          <p style="font-size:11px;color:#3f3f46;margin:0;line-height:1.7;">
-            HEADZ UP Barbershop &middot; 4 Hub Dr, Hattiesburg, MS 39402<br>
-            Mon-Fri 9AM-6PM &middot; Sat 9AM-4PM &middot; Closed Sundays
-          </p>
-        </td></tr>
-      </table>
-    </td></tr>
-  </table>
-</body>
-</html>"""
-
-            data = json_lib.dumps(payload).encode("utf-8")
-            req  = urllib.request.Request(
-                "https://api.sendgrid.com/v3/mail/send",
-                data=data,
-                headers={
-                    "Authorization": f"Bearer {api_key}",
-                    "Content-Type":  "application/json",
-                },
-                method="POST",
-            )
-            with urllib.request.urlopen(req, timeout=10) as resp:
-                logger.info(f"Confirmation email sent to {user_email} — SendGrid status {resp.status}")
+                logger.info(f"Confirmation email sent to {user_email} — SendGrid {resp.status}")
         except Exception as e:
             import logging
             logging.getLogger(__name__).error(f"Email send failed: {e}")
