@@ -101,6 +101,240 @@ function StepItem({ n, label, active, done, onClick }) {
 }
 
 // ── Time slot grid ────────────────────────────────────────────────────────────
+function BookingCalendar({ selectedDate, onSelect }) {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const [viewYear, setViewYear] = useState(today.getFullYear());
+  const [viewMonth, setViewMonth] = useState(today.getMonth());
+
+  const sf = { fontFamily: "'Syncopate', sans-serif" };
+  const mono = { fontFamily: "'DM Mono', monospace" };
+
+  const DAYS = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
+  const MONTHS = [
+    "January",
+    "February",
+    "March",
+    "April",
+    "May",
+    "June",
+    "July",
+    "August",
+    "September",
+    "October",
+    "November",
+    "December",
+  ];
+
+  const firstDay = new Date(viewYear, viewMonth, 1).getDay();
+  const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
+
+  const prevMonth = () => {
+    if (viewMonth === 0) {
+      setViewMonth(11);
+      setViewYear((y) => y - 1);
+    } else setViewMonth((m) => m - 1);
+  };
+  const nextMonth = () => {
+    if (viewMonth === 11) {
+      setViewMonth(0);
+      setViewYear((y) => y + 1);
+    } else setViewMonth((m) => m + 1);
+  };
+
+  const toISO = (y, m, d) =>
+    `${y}-${String(m + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+
+  const cells = [];
+  for (let i = 0; i < firstDay; i++) cells.push(null);
+  for (let d = 1; d <= daysInMonth; d++) cells.push(d);
+
+  return (
+    <div
+      style={{
+        background: "#0a0a0a",
+        border: "1px solid rgba(255,255,255,0.1)",
+        padding: "16px",
+      }}
+    >
+      {/* Month nav */}
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          marginBottom: 14,
+        }}
+      >
+        <button
+          onClick={prevMonth}
+          style={{
+            width: 32,
+            height: 32,
+            background: "transparent",
+            border: "1px solid rgba(255,255,255,0.1)",
+            color: "#71717a",
+            cursor: "pointer",
+            fontSize: 14,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          ‹
+        </button>
+        <p
+          style={{
+            ...sf,
+            fontSize: 8,
+            fontWeight: 700,
+            textTransform: "uppercase",
+            letterSpacing: "0.2em",
+            color: "white",
+            margin: 0,
+          }}
+        >
+          {MONTHS[viewMonth]} {viewYear}
+        </p>
+        <button
+          onClick={nextMonth}
+          style={{
+            width: 32,
+            height: 32,
+            background: "transparent",
+            border: "1px solid rgba(255,255,255,0.1)",
+            color: "#71717a",
+            cursor: "pointer",
+            fontSize: 14,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          ›
+        </button>
+      </div>
+
+      {/* Day headers */}
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(7,1fr)",
+          gap: 2,
+          marginBottom: 4,
+        }}
+      >
+        {DAYS.map((d) => (
+          <div
+            key={d}
+            style={{
+              ...mono,
+              fontSize: 9,
+              color: "#3f3f46",
+              textAlign: "center",
+              padding: "4px 0",
+              textTransform: "uppercase",
+            }}
+          >
+            {d}
+          </div>
+        ))}
+      </div>
+
+      {/* Date cells */}
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(7,1fr)",
+          gap: 2,
+        }}
+      >
+        {cells.map((day, i) => {
+          if (!day) return <div key={`e${i}`} />;
+          const iso = toISO(viewYear, viewMonth, day);
+          const date = new Date(viewYear, viewMonth, day);
+          const isPast = date < today;
+          const isSunday = date.getDay() === 0;
+          const disabled = isPast || isSunday;
+          const isToday =
+            iso ===
+            toISO(today.getFullYear(), today.getMonth(), today.getDate());
+          const selected = iso === selectedDate;
+
+          return (
+            <button
+              key={iso}
+              onClick={() => !disabled && onSelect(iso)}
+              disabled={disabled}
+              style={{
+                aspectRatio: "1",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                ...mono,
+                fontSize: 12,
+                fontWeight: selected ? 700 : 400,
+                background: selected
+                  ? "#f59e0b"
+                  : isToday
+                    ? "rgba(245,158,11,0.1)"
+                    : "transparent",
+                color: selected
+                  ? "black"
+                  : disabled
+                    ? "#27272a"
+                    : isToday
+                      ? "#f59e0b"
+                      : "white",
+                border: selected
+                  ? "1px solid #f59e0b"
+                  : isToday
+                    ? "1px solid rgba(245,158,11,0.3)"
+                    : "1px solid transparent",
+                cursor: disabled ? "not-allowed" : "pointer",
+                borderRadius: 0,
+                transition: "all 0.15s",
+              }}
+              onMouseEnter={(e) => {
+                if (!disabled && !selected) {
+                  e.currentTarget.style.background = "rgba(245,158,11,0.15)";
+                  e.currentTarget.style.borderColor = "rgba(245,158,11,0.3)";
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (!disabled && !selected) {
+                  e.currentTarget.style.background = isToday
+                    ? "rgba(245,158,11,0.1)"
+                    : "transparent";
+                  e.currentTarget.style.borderColor = isToday
+                    ? "rgba(245,158,11,0.3)"
+                    : "transparent";
+                }
+              }}
+            >
+              {day}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Closed notice */}
+      <p
+        style={{
+          ...mono,
+          fontSize: 9,
+          color: "#27272a",
+          marginTop: 10,
+          textAlign: "center",
+        }}
+      >
+        Sundays — Closed
+      </p>
+    </div>
+  );
+}
+
 function TimeSlotGrid({
   slots,
   bookedSlots,
@@ -409,7 +643,8 @@ function BookContent() {
 
   useEffect(() => {
     if (step === 3 && selectedBarber && selectedDate && selectedService) {
-      fetchSlots();
+      const t = setTimeout(() => fetchSlots(), 300);
+      return () => clearTimeout(t);
     }
   }, [step, selectedDate, fetchSlots]);
 
@@ -426,7 +661,13 @@ function BookContent() {
         payment_method: "shop",
         client_notes: clientNotes,
       });
-      router.push("/booking-confirmed");
+      const params = new URLSearchParams({
+        service: selectedService.name,
+        barber: selectedBarber.name,
+        date: selectedDate,
+        time: selectedTime,
+      });
+      router.push(`/booking-confirmed?${params.toString()}`);
     } catch (e) {
       const msg =
         e.response?.data?.detail ||
@@ -1166,7 +1407,7 @@ function BookContent() {
                     </button>
                   </div>
 
-                  {/* Date picker */}
+                  {/* Date picker — visual calendar */}
                   <div style={{ marginBottom: 28 }}>
                     <label
                       style={{
@@ -1181,29 +1422,13 @@ function BookContent() {
                     >
                       Select Date
                     </label>
-                    <input
-                      type="date"
-                      value={selectedDate}
-                      min={todayISO()}
-                      onChange={(e) => {
-                        setSelectedDate(e.target.value);
+                    {/* v2 — visual calendar */}
+                    <BookingCalendar
+                      selectedDate={selectedDate}
+                      onSelect={(date) => {
+                        setSelectedDate(date);
                         setSelectedTime("");
                       }}
-                      style={{
-                        background: "#0a0a0a",
-                        border: "1px solid rgba(255,255,255,0.1)",
-                        padding: "14px 16px",
-                        color: "white",
-                        fontSize: 16,
-                        outline: "none",
-                        width: "100%",
-                        transition: "border-color 0.2s",
-                        fontFamily: "'DM Mono', monospace",
-                      }}
-                      onFocus={(e) => (e.target.style.borderColor = "#f59e0b")}
-                      onBlur={(e) =>
-                        (e.target.style.borderColor = "rgba(255,255,255,0.1)")
-                      }
                     />
                   </div>
 

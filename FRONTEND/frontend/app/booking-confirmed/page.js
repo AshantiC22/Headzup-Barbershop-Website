@@ -181,7 +181,7 @@ function BookingConfirmedInner() {
 
   // ── Load data — URL params first (instant), API enriches in background ────
   useEffect(() => {
-    // Step 1: read URL params immediately — these were passed by book page
+    // Step 1: read URL params immediately — passed by book page
     const urlService = searchParams.get("service");
     const urlBarber = searchParams.get("barber");
     const urlDate = searchParams.get("date");
@@ -197,16 +197,29 @@ function BookingConfirmedInner() {
       }));
     }
 
-    // Step 2: fetch username from API in background (non-blocking)
-    const loadUser = async () => {
+    // Step 2: load latest appointment from API to fill any missing data
+    const loadLatest = async () => {
       try {
-        const userRes = await API.get("dashboard/");
-        setData((prev) => ({ ...prev, username: userRes.data.user }));
+        const [userRes, apptRes] = await Promise.all([
+          API.get("dashboard/"),
+          API.get("appointments/"),
+        ]);
+        const appointments = Array.isArray(apptRes.data)
+          ? apptRes.data
+          : apptRes.data.results || [];
+        const latest = appointments[appointments.length - 1];
+        setData((prev) => ({
+          username: userRes.data.user || prev.username,
+          service: urlService || latest?.service_name || prev.service,
+          barber: urlBarber || latest?.barber_name || prev.barber,
+          date: urlDate || latest?.date || prev.date,
+          time: urlTime || latest?.time || prev.time,
+        }));
       } catch {
-        // username stays as "..." — not critical
+        // keep whatever we already have from URL params
       }
     };
-    loadUser();
+    loadLatest();
   }, []);
 
   // ── Entrance animations — fire on mount, data is already in state ────────
