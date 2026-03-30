@@ -328,6 +328,7 @@ export default function BarberLoginPage() {
 
     setLoading(true);
     try {
+      // Step 1 — create the barber account
       await API.post("barber/register/", {
         full_name: regName.trim(),
         username: regUser.trim(),
@@ -335,26 +336,12 @@ export default function BarberLoginPage() {
         password: regPass,
         invite_code: regInvite.trim(),
       });
-      const res = await API.post("token/", {
-        username: regUser.trim(),
-        password: regPass,
-      });
-      localStorage.setItem("access", res.data.access);
-      localStorage.setItem("refresh", res.data.refresh);
-      setSuccess("Account created! Taking you to your dashboard...");
-      setTimeout(() => router.replace("/barber-dashboard"), 1200);
     } catch (e) {
       const d = e.response?.data || {};
-      // Helper — safely extract first string from any error shape
       const msg = (v) =>
         Array.isArray(v) ? v[0] : typeof v === "string" ? v : JSON.stringify(v);
       if (d.invite_code)
         setFieldErrors((p) => ({ ...p, regInvite: msg(d.invite_code) }));
-      else if (
-        typeof d.error === "string" &&
-        d.error.toLowerCase().includes("invite")
-      )
-        setFieldErrors((p) => ({ ...p, regInvite: "Invalid invite code" }));
       else if (d.full_name)
         setFieldErrors((p) => ({ ...p, regName: msg(d.full_name) }));
       else if (d.username)
@@ -363,9 +350,31 @@ export default function BarberLoginPage() {
         setFieldErrors((p) => ({ ...p, regEmail: msg(d.email) }));
       else if (d.password)
         setFieldErrors((p) => ({ ...p, regPass: msg(d.password) }));
-      else if (d.detail) setError(msg(d.detail));
-      else if (d.error) setError(msg(d.error));
+      else if (d.message && typeof d.message === "string") setError(d.message);
+      else if (d.detail && typeof d.detail === "string") setError(d.detail);
       else setError("Registration failed. Check your details and invite code.");
+      setLoading(false);
+      return;
+    }
+
+    // Step 2 — log them in
+    try {
+      const res = await API.post("token/", {
+        username: regUser.trim(),
+        password: regPass,
+      });
+      localStorage.setItem("access", res.data.access);
+      localStorage.setItem("refresh", res.data.refresh);
+      setSuccess("Account created! Taking you to your dashboard...");
+      setTimeout(() => router.replace("/barber-dashboard"), 1200);
+    } catch {
+      // Account was created but auto-login failed — send them to login manually
+      setSuccess("Account created! Please sign in with your new credentials.");
+      setTimeout(() => {
+        setMode("login");
+        setUser(regUser);
+        setSuccess("");
+      }, 2000);
     } finally {
       setLoading(false);
     }
