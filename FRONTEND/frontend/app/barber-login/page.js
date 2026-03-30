@@ -2,36 +2,47 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { gsap } from "gsap";
 import API from "@/lib/api";
-
-// ── Design tokens ─────────────────────────────────────────────────────────────
-const T = {
-  bg: "#030303",
-  surface: "rgba(255,255,255,0.03)",
-  border: "rgba(255,255,255,0.07)",
-  amber: "#F59E0B",
-  amberGlow: "rgba(245,158,11,0.15)",
-  amberBorder: "rgba(245,158,11,0.35)",
-  muted: "#52525b",
-  dim: "#27272a",
-};
 
 const sf = { fontFamily: "'Syncopate', sans-serif" };
 const mono = { fontFamily: "'DM Mono', monospace" };
 
-// ── Scissors SVG ──────────────────────────────────────────────────────────────
-const ScissorIcon = ({ size = 20, color = T.amber, opacity = 1 }) => (
+// ── Icons ─────────────────────────────────────────────────────────────────────
+const Eye = ({ open }) => (
   <svg
-    width={size}
-    height={size}
+    width="15"
+    height="15"
     viewBox="0 0 24 24"
     fill="none"
-    stroke={color}
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    {open ? (
+      <>
+        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+        <circle cx="12" cy="12" r="3" />
+      </>
+    ) : (
+      <>
+        <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
+        <line x1="1" y1="1" x2="23" y2="23" />
+      </>
+    )}
+  </svg>
+);
+
+const Scissors = () => (
+  <svg
+    width="22"
+    height="22"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="#f59e0b"
     strokeWidth="1.5"
     strokeLinecap="round"
     strokeLinejoin="round"
-    style={{ opacity }}
   >
     <circle cx="6" cy="6" r="3" />
     <circle cx="6" cy="18" r="3" />
@@ -41,39 +52,6 @@ const ScissorIcon = ({ size = 20, color = T.amber, opacity = 1 }) => (
   </svg>
 );
 
-// ── Eye toggle ────────────────────────────────────────────────────────────────
-const EyeIcon = ({ open }) =>
-  open ? (
-    <svg
-      width="14"
-      height="14"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-      <circle cx="12" cy="12" r="3" />
-    </svg>
-  ) : (
-    <svg
-      width="14"
-      height="14"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
-      <line x1="1" y1="1" x2="23" y2="23" />
-    </svg>
-  );
-
-// ── Input field ───────────────────────────────────────────────────────────────
 function Field({
   label,
   type = "text",
@@ -82,26 +60,38 @@ function Field({
   onKeyDown,
   placeholder,
   error,
-  autoComplete,
   showToggle,
   showPw,
   onToggle,
+  autoComplete,
+  note,
 }) {
   const [focused, setFocused] = useState(false);
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-      <label
+    <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
+      <div
         style={{
-          ...sf,
-          fontSize: 6,
-          letterSpacing: "0.4em",
-          textTransform: "uppercase",
-          color: error ? "#f87171" : focused ? T.amber : T.muted,
-          transition: "color 0.2s",
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
         }}
       >
-        {label}
-      </label>
+        <label
+          style={{
+            ...sf,
+            fontSize: 6,
+            letterSpacing: "0.4em",
+            textTransform: "uppercase",
+            color: error ? "#f87171" : focused ? "#f59e0b" : "#52525b",
+            transition: "color 0.2s",
+          }}
+        >
+          {label}
+        </label>
+        {note && (
+          <span style={{ ...mono, fontSize: 9, color: "#27272a" }}>{note}</span>
+        )}
+      </div>
       <div style={{ position: "relative" }}>
         <input
           type={showToggle ? (showPw ? "text" : "password") : type}
@@ -117,15 +107,16 @@ function Field({
           autoCapitalize="off"
           style={{
             width: "100%",
-            background: focused ? "rgba(245,158,11,0.03)" : T.bg,
-            padding: showToggle ? "13px 44px 13px 14px" : "13px 14px",
-            border: `1px solid ${error ? "rgba(248,113,113,0.5)" : focused ? T.amberBorder : T.border}`,
+            background: focused ? "rgba(255,255,255,0.025)" : "#080808",
+            border: `1px solid ${error ? "rgba(248,113,113,0.6)" : focused ? "#f59e0b" : "rgba(255,255,255,0.1)"}`,
+            padding: showToggle ? "15px 48px 15px 16px" : "15px 16px",
             color: "white",
-            fontSize: 15,
+            fontSize: 16,
+            fontFamily: "'DM Mono', monospace",
             outline: "none",
-            ...mono,
-            transition: "all 0.2s",
-            letterSpacing: "0.02em",
+            borderRadius: 0,
+            WebkitAppearance: "none",
+            transition: "border-color 0.2s, background 0.2s",
           }}
         />
         {showToggle && (
@@ -135,208 +126,220 @@ function Field({
             tabIndex={-1}
             style={{
               position: "absolute",
-              right: 0,
-              top: 0,
-              bottom: 0,
-              width: 42,
+              right: 14,
+              top: "50%",
+              transform: "translateY(-50%)",
               background: "none",
               border: "none",
+              color: "#52525b",
               cursor: "pointer",
-              color: T.muted,
+              padding: 4,
               display: "flex",
               alignItems: "center",
-              justifyContent: "center",
               transition: "color 0.2s",
             }}
-            onMouseEnter={(e) => (e.currentTarget.style.color = T.amber)}
-            onMouseLeave={(e) => (e.currentTarget.style.color = T.muted)}
+            onMouseEnter={(e) => (e.currentTarget.style.color = "#f59e0b")}
+            onMouseLeave={(e) => (e.currentTarget.style.color = "#52525b")}
           >
-            <EyeIcon open={showPw} />
+            <Eye open={showPw} />
           </button>
         )}
       </div>
       {error && (
-        <p style={{ ...mono, fontSize: 10, color: "#f87171", margin: 0 }}>
-          ⚠ {error}
-        </p>
+        <p style={{ ...mono, fontSize: 10, color: "#f87171" }}>⚠ {error}</p>
       )}
     </div>
   );
 }
 
-// ── Main ──────────────────────────────────────────────────────────────────────
 export default function BarberLoginPage() {
   const router = useRouter();
-  const panelRef = useRef(null);
-  const [mode, setMode] = useState("login");
+  const canvasRef = useRef(null);
 
-  // Login state
-  const [username, setUsername] = useState("");
-  const [password, setPassword] = useState("");
+  const [mode, setMode] = useState("login"); // login | signup
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
   const [showPw, setShowPw] = useState(false);
 
-  // Signup state
-  const [fullName, setFullName] = useState("");
+  // Login
+  const [user, setUser] = useState("");
+  const [pass, setPass] = useState("");
+
+  // Signup
+  const [regName, setRegName] = useState("");
   const [regUser, setRegUser] = useState("");
   const [regEmail, setRegEmail] = useState("");
-  const [regPw, setRegPw] = useState("");
-  const [showRegPw, setShowRegPw] = useState(false);
-  const [inviteCode, setInviteCode] = useState("");
-  const [showCode, setShowCode] = useState(false);
-
+  const [regPass, setRegPass] = useState("");
+  const [regInvite, setRegInvite] = useState("");
   const [fieldErrors, setFieldErrors] = useState({});
-  const [apiError, setApiError] = useState("");
-  const [apiSuccess, setApiSuccess] = useState("");
-  const [loading, setLoading] = useState(false);
 
-  // Entry animation
+  // Animated scissors canvas
   useEffect(() => {
-    gsap.fromTo(
-      ".login-panel",
-      { y: 32, opacity: 0 },
-      { y: 0, opacity: 1, duration: 1.1, ease: "expo.out" },
-    );
-    gsap.fromTo(
-      ".login-side",
-      { x: -24, opacity: 0 },
-      { x: 0, opacity: 1, duration: 1.2, delay: 0.15, ease: "expo.out" },
-    );
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    let raf,
+      t = 0;
+
+    const draw = () => {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    };
+    draw();
+    window.addEventListener("resize", draw);
+
+    const animate = () => {
+      raf = requestAnimationFrame(animate);
+      t += 0.008;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // Draw floating scissors silhouettes
+      const items = [
+        {
+          x: canvas.width * 0.1,
+          y: canvas.height * 0.2,
+          size: 60,
+          rot: t * 0.3,
+        },
+        {
+          x: canvas.width * 0.85,
+          y: canvas.height * 0.15,
+          size: 40,
+          rot: -t * 0.2,
+        },
+        {
+          x: canvas.width * 0.75,
+          y: canvas.height * 0.7,
+          size: 50,
+          rot: t * 0.15,
+        },
+        {
+          x: canvas.width * 0.15,
+          y: canvas.height * 0.75,
+          size: 35,
+          rot: -t * 0.25,
+        },
+        {
+          x: canvas.width * 0.5,
+          y: canvas.height * 0.1,
+          size: 30,
+          rot: t * 0.4,
+        },
+      ];
+
+      items.forEach(({ x, y, size, rot }) => {
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.rotate(rot);
+        ctx.globalAlpha = 0.04;
+        ctx.strokeStyle = "#f59e0b";
+        ctx.lineWidth = 1;
+        // Simple scissors shape
+        ctx.beginPath();
+        ctx.arc(0, -size * 0.4, size * 0.15, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.arc(0, size * 0.4, size * 0.15, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(-size * 0.15, -size * 0.3);
+        ctx.lineTo(size * 0.7, size * 0.6);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(-size * 0.15, size * 0.3);
+        ctx.lineTo(size * 0.7, -size * 0.2);
+        ctx.stroke();
+        ctx.restore();
+      });
+
+      // Ambient particles
+      for (let i = 0; i < 3; i++) {
+        const px = (Math.sin(t * 0.5 + i * 2.1) * 0.4 + 0.5) * canvas.width;
+        const py = (Math.cos(t * 0.3 + i * 1.7) * 0.4 + 0.5) * canvas.height;
+        ctx.beginPath();
+        ctx.arc(px, py, 1.5, 0, Math.PI * 2);
+        ctx.fillStyle = "rgba(245,158,11,0.12)";
+        ctx.fill();
+      }
+    };
+    animate();
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener("resize", draw);
+    };
   }, []);
 
-  // Field re-animate on mode switch
-  useEffect(() => {
-    setApiError("");
-    setApiSuccess("");
-    setFieldErrors({});
-    gsap.fromTo(
-      ".form-field",
-      { y: 10, opacity: 0 },
-      { y: 0, opacity: 1, duration: 0.4, stagger: 0.055, ease: "expo.out" },
-    );
-  }, [mode]);
-
-  const shake = () => {
-    gsap.to(".login-panel", {
-      keyframes: [{ x: -8 }, { x: 8 }, { x: -5 }, { x: 5 }, { x: 0 }],
-      duration: 0.38,
-      ease: "power2.out",
-    });
-  };
-
-  const onEnter = (fn) => (e) => {
-    if (e.key === "Enter" && !loading) fn();
-  };
-
-  // ── Login ──
   const handleLogin = async () => {
-    const errs = {};
-    if (!username.trim()) errs.username = "Required";
-    if (!password) errs.password = "Required";
-    if (Object.keys(errs).length) {
-      setFieldErrors(errs);
-      shake();
+    setError("");
+    setSuccess("");
+    if (!user.trim() || !pass) {
+      setError("Fill in all fields.");
       return;
     }
     setLoading(true);
-    setApiError("");
-    setFieldErrors({});
     try {
       const res = await API.post("token/", {
-        username: username.trim(),
-        password,
+        username: user.trim(),
+        password: pass,
       });
       localStorage.setItem("access", res.data.access);
       localStorage.setItem("refresh", res.data.refresh);
       const dash = await API.get("dashboard/");
       if (!dash.data.is_staff) {
+        setError("This portal is for barbers only.");
         localStorage.removeItem("access");
         localStorage.removeItem("refresh");
-        setApiError("This account doesn't have barber access.");
-        shake();
         return;
       }
-      gsap.to(".login-panel", {
-        y: -28,
-        opacity: 0,
-        duration: 0.5,
-        ease: "expo.in",
-        onComplete: () => router.push("/barber-dashboard"),
-      });
-    } catch (err) {
-      if (err.response?.status === 401) {
-        setApiError("Username or password is incorrect.");
-        setFieldErrors({ password: "Check your credentials" });
-      } else {
-        setApiError("Something went wrong. Try again.");
-      }
-      shake();
+      router.replace("/barber-dashboard");
+    } catch {
+      setError("Invalid credentials. Check your username and password.");
     } finally {
       setLoading(false);
     }
   };
 
-  // ── Sign Up ──
   const handleSignup = async () => {
+    setError("");
+    setSuccess("");
+    setFieldErrors({});
     const errs = {};
-    if (!fullName.trim()) errs.fullName = "Required";
+    if (!regName.trim()) errs.regName = "Required";
     if (!regUser.trim()) errs.regUser = "Required";
-    else if (regUser.length < 3) errs.regUser = "Min. 3 characters";
-    else if (/\s/.test(regUser)) errs.regUser = "No spaces";
     if (!regEmail.trim()) errs.regEmail = "Required";
-    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(regEmail))
-      errs.regEmail = "Invalid email";
-    if (!regPw) errs.regPw = "Required";
-    else if (regPw.length < 6) errs.regPw = "Min. 6 characters";
-    if (!inviteCode.trim()) errs.inviteCode = "Required";
+    if (!regPass || regPass.length < 6) errs.regPass = "Min 6 characters";
+    if (!regInvite.trim()) errs.regInvite = "Invite code required";
     if (Object.keys(errs).length) {
       setFieldErrors(errs);
-      shake();
       return;
     }
+
     setLoading(true);
-    setApiError("");
-    setFieldErrors({});
     try {
       await API.post("barber/register/", {
-        full_name: fullName.trim(),
+        name: regName.trim(),
         username: regUser.trim(),
         email: regEmail.trim(),
-        password: regPw,
-        invite_code: inviteCode.trim(),
+        password: regPass,
+        invite_code: regInvite.trim(),
       });
-      setApiSuccess("Account created — signing you in...");
       const res = await API.post("token/", {
         username: regUser.trim(),
-        password: regPw,
+        password: regPass,
       });
       localStorage.setItem("access", res.data.access);
       localStorage.setItem("refresh", res.data.refresh);
-      setTimeout(() => router.push("/barber-dashboard"), 1200);
-    } catch (err) {
-      const data = err.response?.data || {};
-      const newErrs = {};
-      if (data.username)
-        newErrs.regUser = Array.isArray(data.username)
-          ? data.username[0]
-          : String(data.username);
-      if (data.email)
-        newErrs.regEmail = Array.isArray(data.email)
-          ? data.email[0]
-          : String(data.email);
-      if (data.invite_code)
-        newErrs.inviteCode = Array.isArray(data.invite_code)
-          ? data.invite_code[0]
-          : String(data.invite_code);
-      if (data.full_name)
-        newErrs.fullName = Array.isArray(data.full_name)
-          ? data.full_name[0]
-          : String(data.full_name);
-      if (Object.keys(newErrs).length) setFieldErrors(newErrs);
-      else
-        setApiError(
-          data.detail || "Registration failed. Check your invite code.",
-        );
-      shake();
+      setSuccess("Account created! Taking you to your dashboard...");
+      setTimeout(() => router.replace("/barber-dashboard"), 1200);
+    } catch (e) {
+      const d = e.response?.data || {};
+      if (d.invite_code || d.error?.toLowerCase().includes("invite"))
+        setFieldErrors((p) => ({ ...p, regInvite: "Invalid invite code" }));
+      else if (d.username)
+        setFieldErrors((p) => ({ ...p, regUser: d.username[0] }));
+      else if (d.email) setFieldErrors((p) => ({ ...p, regEmail: d.email[0] }));
+      else setError(d.error || "Registration failed. Check your details.");
     } finally {
       setLoading(false);
     }
@@ -345,33 +348,42 @@ export default function BarberLoginPage() {
   return (
     <>
       <style jsx global>{`
-        @import url("https://fonts.googleapis.com/css2?family=Syncopate:wght@400;700&family=DM+Mono:wght@400;500&display=swap");
+        @import url("https://fonts.googleapis.com/css2?family=Syncopate:wght@400;700&family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&display=swap");
         *,
         *::before,
         *::after {
           box-sizing: border-box;
           margin: 0;
           padding: 0;
+          -webkit-tap-highlight-color: transparent;
         }
         html,
         body {
-          background: ${T.bg};
+          background: #040404;
           color: white;
-          min-height: 100vh;
-          overflow-y: auto !important;
-          overflow-x: hidden;
           font-family: "DM Mono", monospace;
+          min-height: 100vh;
+          overflow-x: hidden;
+          -webkit-text-size-adjust: 100%;
         }
         input:-webkit-autofill,
+        input:-webkit-autofill:hover,
         input:-webkit-autofill:focus {
-          -webkit-box-shadow: 0 0 0 1000px ${T.bg} inset !important;
+          -webkit-box-shadow: 0 0 0px 1000px #080808 inset !important;
           -webkit-text-fill-color: white !important;
           caret-color: white;
         }
-        @keyframes spin {
+        @keyframes fadeUp {
           from {
-            transform: rotate(0deg);
+            opacity: 0;
+            transform: translateY(20px);
           }
+          to {
+            opacity: 1;
+            transform: none;
+          }
+        }
+        @keyframes spin {
           to {
             transform: rotate(360deg);
           }
@@ -379,42 +391,86 @@ export default function BarberLoginPage() {
         @keyframes pulse {
           0%,
           100% {
-            opacity: 0.4;
-            transform: scale(0.9);
+            opacity: 0.5;
+            transform: scaleY(0.95);
           }
           50% {
             opacity: 1;
-            transform: scale(1.1);
+            transform: scaleY(1);
           }
         }
-        @keyframes drift {
-          0% {
-            transform: translateY(0px) rotate(0deg);
+        @keyframes scandown {
+          from {
+            top: -1px;
           }
-          50% {
-            transform: translateY(-12px) rotate(2deg);
-          }
-          100% {
-            transform: translateY(0px) rotate(0deg);
+          to {
+            top: 100%;
           }
         }
-        @keyframes scanline {
-          0% {
-            top: -10%;
-          }
-          100% {
-            top: 110%;
-          }
+        .form-enter {
+          animation: fadeUp 0.45s cubic-bezier(0.16, 1, 0.3, 1) both;
         }
       `}</style>
 
-      {/* ── Background decorative elements ── */}
-      {/* Scanline sweep */}
+      {/* Animated canvas background */}
+      <canvas
+        ref={canvasRef}
+        style={{
+          position: "fixed",
+          inset: 0,
+          zIndex: 0,
+          pointerEvents: "none",
+        }}
+      />
+
+      {/* Grid */}
       <div
         style={{
           position: "fixed",
           inset: 0,
           zIndex: 0,
+          pointerEvents: "none",
+          backgroundImage:
+            "linear-gradient(rgba(255,255,255,0.016) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,0.016) 1px,transparent 1px)",
+          backgroundSize: "64px 64px",
+        }}
+      />
+
+      {/* Grain */}
+      <div
+        style={{
+          position: "fixed",
+          inset: 0,
+          zIndex: 0,
+          pointerEvents: "none",
+          opacity: 0.04,
+          backgroundImage:
+            "url('https://grainy-gradients.vercel.app/noise.svg')",
+        }}
+      />
+
+      {/* Deep amber glow — top */}
+      <div
+        style={{
+          position: "fixed",
+          top: "-20%",
+          left: "50%",
+          transform: "translateX(-50%)",
+          width: 800,
+          height: 500,
+          background:
+            "radial-gradient(ellipse,rgba(245,158,11,0.07) 0%,transparent 65%)",
+          pointerEvents: "none",
+          zIndex: 0,
+        }}
+      />
+
+      {/* Scanline */}
+      <div
+        style={{
+          position: "fixed",
+          inset: 0,
+          zIndex: 1,
           pointerEvents: "none",
           overflow: "hidden",
         }}
@@ -424,811 +480,478 @@ export default function BarberLoginPage() {
             position: "absolute",
             left: 0,
             right: 0,
-            height: "2px",
+            height: 1,
             background:
-              "linear-gradient(to bottom, transparent, rgba(245,158,11,0.04), transparent)",
-            animation: "scanline 8s linear infinite",
+              "linear-gradient(to right,transparent,rgba(245,158,11,0.2),transparent)",
+            animation: "scandown 8s linear infinite",
           }}
         />
       </div>
-      {/* Grid lines */}
-      <div
-        style={{
-          position: "fixed",
-          inset: 0,
-          zIndex: 0,
-          pointerEvents: "none",
-          backgroundImage:
-            "linear-gradient(rgba(255,255,255,0.015) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.015) 1px, transparent 1px)",
-          backgroundSize: "60px 60px",
-        }}
-      />
-      {/* Amber glow */}
-      <div
-        style={{
-          position: "fixed",
-          top: "30%",
-          left: "35%",
-          transform: "translate(-50%,-50%)",
-          width: 500,
-          height: 500,
-          background:
-            "radial-gradient(circle, rgba(245,158,11,0.04) 0%, transparent 60%)",
-          pointerEvents: "none",
-          zIndex: 0,
-        }}
-      />
-      {/* Grain */}
-      <div
-        style={{
-          position: "fixed",
-          inset: 0,
-          opacity: 0.03,
-          backgroundImage:
-            "url('https://grainy-gradients.vercel.app/noise.svg')",
-          pointerEvents: "none",
-          zIndex: 0,
-        }}
-      />
 
-      {/* ── Decorative corner marks ── */}
-      {[
-        { top: 16, left: 16 },
-        { top: 16, right: 16 },
-        { bottom: 16, left: 16 },
-        { bottom: 16, right: 16 },
-      ].map((pos, i) => (
-        <div
-          key={i}
-          style={{
-            position: "fixed",
-            ...pos,
-            zIndex: 1,
-            pointerEvents: "none",
-            width: 20,
-            height: 20,
-            opacity: 0.15,
-          }}
-        >
-          <div
-            style={{
-              position: "absolute",
-              top: 0,
-              left: 0,
-              width: 8,
-              height: 1,
-              background: T.amber,
-            }}
-          />
-          <div
-            style={{
-              position: "absolute",
-              top: 0,
-              left: 0,
-              width: 1,
-              height: 8,
-              background: T.amber,
-            }}
-          />
-          <div
-            style={{
-              position: "absolute",
-              bottom: 0,
-              right: 0,
-              width: 8,
-              height: 1,
-              background: T.amber,
-            }}
-          />
-          <div
-            style={{
-              position: "absolute",
-              bottom: 0,
-              right: 0,
-              width: 1,
-              height: 8,
-              background: T.amber,
-            }}
-          />
-        </div>
-      ))}
-
-      {/* ── Nav ── */}
-      <nav
+      <div
         style={{
-          position: "fixed",
-          top: 0,
-          left: 0,
-          right: 0,
-          zIndex: 50,
-          padding: "16px 24px",
+          position: "relative",
+          zIndex: 10,
+          minHeight: "100vh",
+          minHeight: "100dvh",
           display: "flex",
-          justifyContent: "space-between",
+          flexDirection: "column",
           alignItems: "center",
-          background: "rgba(3,3,3,0.9)",
-          backdropFilter: "blur(20px)",
-          borderBottom: "1px solid rgba(255,255,255,0.04)",
+          justifyContent: "center",
+          padding: "60px 24px",
         }}
       >
+        {/* Back link */}
         <a
           href="/"
           style={{
-            ...sf,
-            fontSize: 6,
-            letterSpacing: "0.35em",
-            color: T.muted,
+            position: "absolute",
+            top: 28,
+            left: 28,
+            ...mono,
+            fontSize: 9,
+            color: "#3f3f46",
             textDecoration: "none",
+            letterSpacing: "0.3em",
             textTransform: "uppercase",
             transition: "color 0.2s",
             display: "flex",
             alignItems: "center",
-            gap: 8,
+            gap: 6,
           }}
-          onMouseEnter={(e) => (e.currentTarget.style.color = T.amber)}
-          onMouseLeave={(e) => (e.currentTarget.style.color = T.muted)}
+          onMouseEnter={(e) => (e.currentTarget.style.color = "#f59e0b")}
+          onMouseLeave={(e) => (e.currentTarget.style.color = "#3f3f46")}
         >
           ← Home
         </a>
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <ScissorIcon size={13} />
-          <span
-            style={{
-              ...sf,
-              fontWeight: 700,
-              fontSize: 14,
-              letterSpacing: "-0.05em",
-            }}
-          >
-            HEADZ<span style={{ color: T.amber, fontStyle: "italic" }}>UP</span>
-          </span>
-          <div style={{ width: 1, height: 14, background: T.border }} />
-          <span
-            style={{
-              ...sf,
-              fontSize: 6,
-              letterSpacing: "0.35em",
-              color: T.muted,
-              textTransform: "uppercase",
-            }}
-          >
-            Staff Portal
-          </span>
-        </div>
-      </nav>
 
-      {/* ── Page layout ── */}
-      <div
-        style={{
-          minHeight: "100vh",
-          display: "flex",
-          position: "relative",
-          zIndex: 10,
-        }}
-      >
-        {/* ── LEFT SIDE PANEL (desktop only) ── */}
+        {/* Main card */}
         <div
-          className="login-side"
           style={{
-            width: 300,
-            flexShrink: 0,
-            borderRight: "1px solid rgba(255,255,255,0.04)",
-            padding: "120px 32px 48px",
-            display: "none",
-            flexDirection: "column",
-            justifyContent: "space-between",
-            background: "rgba(255,255,255,0.01)",
+            width: "100%",
+            maxWidth: 480,
+            background: "rgba(4,4,4,0.85)",
+            border: "1px solid rgba(255,255,255,0.08)",
+            backdropFilter: "blur(20px)",
+            overflow: "hidden",
           }}
-          id="login-side-panel"
         >
-          <div>
-            {/* Floating scissors decoration */}
-            <div
-              style={{
-                marginBottom: 40,
-                animation: "drift 6s ease-in-out infinite",
-              }}
-            >
-              <ScissorIcon size={48} color={T.amber} opacity={0.15} />
-            </div>
-
-            <p
-              style={{
-                ...sf,
-                fontSize: 6,
-                letterSpacing: "0.6em",
-                color: T.muted,
-                textTransform: "uppercase",
-                marginBottom: 16,
-              }}
-            >
-              Est. 2026
-            </p>
-            <h2
-              style={{
-                ...sf,
-                fontSize: "2.4rem",
-                fontWeight: 900,
-                textTransform: "uppercase",
-                lineHeight: 0.9,
-                color: "white",
-                marginBottom: 24,
-              }}
-            >
-              THE
-              <br />
-              CHAIR<span style={{ color: T.amber }}>_</span>
-              <br />
-              IS
-              <br />
-              YOURS.
-            </h2>
-            <div
-              style={{
-                width: 40,
-                height: 2,
-                background: T.amber,
-                marginBottom: 24,
-              }}
-            />
-            <p
-              style={{ ...mono, fontSize: 11, color: T.muted, lineHeight: 1.8 }}
-            >
-              Barber-only portal.
-              <br />
-              Sign in to manage your
-              <br />
-              schedule and clients.
-            </p>
-          </div>
-
-          {/* Bottom bar */}
+          {/* Card header — amber band */}
           <div
             style={{
-              paddingTop: 24,
-              borderTop: "1px solid rgba(255,255,255,0.04)",
+              background: "#f59e0b",
+              padding: "28px 36px",
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
             }}
           >
-            <p
-              style={{
-                ...sf,
-                fontSize: 6,
-                letterSpacing: "0.3em",
-                color: T.dim,
-                textTransform: "uppercase",
-              }}
-            >
-              HEADZ UP BARBERSHOP
-              <br />
-              HATTIESBURG, MS
-            </p>
-          </div>
-        </div>
-
-        {/* ── RIGHT: Form ── */}
-        <div
-          style={{
-            flex: 1,
-            display: "flex",
-            alignItems: "flex-start",
-            justifyContent: "center",
-            padding: "90px 20px 48px",
-          }}
-        >
-          <div className="login-panel" style={{ width: "100%", maxWidth: 420 }}>
-            {/* Header */}
-            <div style={{ marginBottom: 32, position: "relative" }}>
-              {/* Rule line with scissors */}
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 12,
-                  marginBottom: 24,
-                }}
-              >
-                <div
-                  style={{
-                    flex: 1,
-                    height: 1,
-                    background: `linear-gradient(to right, transparent, ${T.border})`,
-                  }}
-                />
-                <ScissorIcon size={16} opacity={0.5} />
-                <div
-                  style={{
-                    flex: 1,
-                    height: 1,
-                    background: `linear-gradient(to left, transparent, ${T.border})`,
-                  }}
-                />
-              </div>
-
+            <div>
               <p
                 style={{
-                  ...sf,
-                  fontSize: 6,
-                  letterSpacing: "0.6em",
-                  color: T.muted,
+                  ...mono,
+                  fontSize: 8,
+                  color: "rgba(0,0,0,0.5)",
+                  letterSpacing: "0.4em",
                   textTransform: "uppercase",
-                  marginBottom: 10,
+                  marginBottom: 4,
                 }}
               >
-                {mode === "login" ? "Welcome Back" : "Join The Team"}
+                Barber Portal
               </p>
               <h1
                 style={{
                   ...sf,
-                  fontSize: "clamp(1.8rem,5vw,2.6rem)",
+                  fontSize: 22,
                   fontWeight: 900,
                   textTransform: "uppercase",
-                  lineHeight: 0.9,
-                  margin: 0,
+                  letterSpacing: "-0.04em",
+                  color: "black",
+                  lineHeight: 1,
                 }}
               >
-                {mode === "login" ? (
-                  <>
-                    Barber
-                    <br />
-                    <span style={{ color: T.amber, fontStyle: "italic" }}>
-                      _Login
-                    </span>
-                  </>
-                ) : (
-                  <>
-                    New
-                    <br />
-                    <span style={{ color: T.amber, fontStyle: "italic" }}>
-                      _Barber
-                    </span>
-                  </>
-                )}
+                HEADZ<span style={{ fontStyle: "italic" }}>UP</span>
               </h1>
-              <p
+            </div>
+            <Scissors />
+          </div>
+
+          {/* Tabs */}
+          <div
+            style={{
+              display: "flex",
+              borderBottom: "1px solid rgba(255,255,255,0.07)",
+            }}
+          >
+            {[
+              ["login", "Sign In"],
+              ["signup", "Create Account"],
+            ].map(([m, label]) => (
+              <button
+                key={m}
+                onClick={() => {
+                  setMode(m);
+                  setError("");
+                  setSuccess("");
+                  setFieldErrors({});
+                }}
                 style={{
-                  ...mono,
-                  fontSize: 10,
-                  color: T.dim,
-                  marginTop: 10,
-                  lineHeight: 1.6,
+                  flex: 1,
+                  padding: "14px 0",
+                  ...sf,
+                  fontSize: 7,
+                  fontWeight: 700,
+                  letterSpacing: "0.2em",
+                  textTransform: "uppercase",
+                  background:
+                    mode === m ? "rgba(245,158,11,0.06)" : "transparent",
+                  color: mode === m ? "#f59e0b" : "#3f3f46",
+                  border: "none",
+                  borderBottom: `2px solid ${mode === m ? "#f59e0b" : "transparent"}`,
+                  cursor: "pointer",
+                  transition: "all 0.2s",
+                  marginBottom: -1,
                 }}
               >
-                {mode === "login"
-                  ? "Access your schedule, appointments & dashboard"
-                  : "Need an invite code from the shop owner to register"}
-              </p>
-            </div>
+                {label}
+              </button>
+            ))}
+          </div>
 
-            {/* Mode tabs */}
-            <div
-              style={{
-                display: "flex",
-                marginBottom: 28,
-                background: "rgba(255,255,255,0.02)",
-                border: `1px solid ${T.border}`,
-                padding: 3,
-                gap: 3,
-              }}
-            >
-              {[
-                { key: "login", label: "Sign In" },
-                { key: "signup", label: "Sign Up" },
-              ].map(({ key, label }) => (
+          {/* Form body */}
+          <div style={{ padding: "36px" }}>
+            {/* Alerts */}
+            {error && (
+              <div
+                style={{
+                  marginBottom: 20,
+                  padding: "12px 14px",
+                  background: "rgba(248,113,113,0.08)",
+                  border: "1px solid rgba(248,113,113,0.25)",
+                  display: "flex",
+                  gap: 8,
+                  alignItems: "center",
+                }}
+              >
+                <span style={{ color: "#f87171" }}>⚠</span>
+                <p style={{ ...mono, fontSize: 11, color: "#f87171" }}>
+                  {error}
+                </p>
+              </div>
+            )}
+            {success && (
+              <div
+                style={{
+                  marginBottom: 20,
+                  padding: "12px 14px",
+                  background: "rgba(74,222,128,0.08)",
+                  border: "1px solid rgba(74,222,128,0.25)",
+                  display: "flex",
+                  gap: 8,
+                  alignItems: "center",
+                }}
+              >
+                <span style={{ color: "#4ade80" }}>✓</span>
+                <p style={{ ...mono, fontSize: 11, color: "#4ade80" }}>
+                  {success}
+                </p>
+              </div>
+            )}
+
+            {/* ── LOGIN ── */}
+            {mode === "login" && (
+              <div
+                className="form-enter"
+                style={{ display: "flex", flexDirection: "column", gap: 20 }}
+              >
+                <Field
+                  label="Username"
+                  value={user}
+                  onChange={(e) => setUser(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && handleLogin()}
+                  placeholder="your_username"
+                  autoComplete="username"
+                />
+
+                <Field
+                  label="Password"
+                  value={pass}
+                  onChange={(e) => setPass(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && handleLogin()}
+                  placeholder="••••••••"
+                  showToggle
+                  showPw={showPw}
+                  onToggle={() => setShowPw(!showPw)}
+                  autoComplete="current-password"
+                />
+
                 <button
-                  key={key}
-                  onClick={() => setMode(key)}
+                  onClick={handleLogin}
+                  disabled={loading}
                   style={{
-                    flex: 1,
-                    padding: "10px",
-                    background: mode === key ? T.amber : "transparent",
-                    color: mode === key ? "black" : T.muted,
+                    padding: "17px",
+                    background: loading ? "#111" : "#f59e0b",
+                    color: loading ? "#52525b" : "black",
                     ...sf,
-                    fontSize: 7,
-                    fontWeight: mode === key ? 700 : 400,
-                    letterSpacing: "0.15em",
+                    fontSize: 9,
+                    fontWeight: 700,
+                    letterSpacing: "0.25em",
                     textTransform: "uppercase",
                     border: "none",
-                    cursor: "pointer",
-                    transition: "all 0.25s",
+                    cursor: loading ? "not-allowed" : "pointer",
+                    transition: "all 0.3s",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 10,
+                    marginTop: 4,
                   }}
                 >
-                  {label}
+                  {loading ? (
+                    <>
+                      <span
+                        style={{
+                          width: 14,
+                          height: 14,
+                          border: "2px solid #3f3f46",
+                          borderTopColor: "#71717a",
+                          borderRadius: "50%",
+                          display: "inline-block",
+                          animation: "spin 0.7s linear infinite",
+                        }}
+                      />
+                      Signing in...
+                    </>
+                  ) : (
+                    <span>Enter Dashboard →</span>
+                  )}
                 </button>
-              ))}
-            </div>
 
-            {/* Form */}
-            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-              {/* ── LOGIN ── */}
-              {mode === "login" && (
-                <>
-                  <div className="form-field">
-                    <Field
-                      label="Username"
-                      value={username}
-                      onChange={(e) => setUsername(e.target.value)}
-                      onKeyDown={onEnter(handleLogin)}
-                      placeholder="your_username"
-                      error={fieldErrors.username}
-                      autoComplete="username"
-                    />
-                  </div>
-                  <div className="form-field">
-                    <Field
-                      label="Password"
-                      type="password"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      onKeyDown={onEnter(handleLogin)}
-                      placeholder="••••••••"
-                      error={fieldErrors.password}
-                      autoComplete="current-password"
-                      showToggle
-                      showPw={showPw}
-                      onToggle={() => setShowPw((p) => !p)}
-                    />
-                  </div>
-
-                  {apiError && (
-                    <div
-                      className="form-field"
-                      style={{
-                        padding: "10px 14px",
-                        background: "rgba(248,113,113,0.05)",
-                        border: "1px solid rgba(248,113,113,0.2)",
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 8,
-                      }}
-                    >
-                      <div
-                        style={{
-                          width: 5,
-                          height: 5,
-                          borderRadius: "50%",
-                          background: "#f87171",
-                          flexShrink: 0,
-                        }}
-                      />
-                      <p
-                        style={{
-                          ...sf,
-                          fontSize: 7,
-                          color: "#f87171",
-                          textTransform: "uppercase",
-                          letterSpacing: "0.1em",
-                          margin: 0,
-                        }}
-                      >
-                        {apiError}
-                      </p>
-                    </div>
-                  )}
-
+                <div
+                  style={{
+                    paddingTop: 16,
+                    borderTop: "1px solid rgba(255,255,255,0.06)",
+                    textAlign: "center",
+                  }}
+                >
+                  <p
+                    style={{
+                      ...mono,
+                      fontSize: 10,
+                      color: "#27272a",
+                      marginBottom: 8,
+                    }}
+                  >
+                    Not a barber yet?
+                  </p>
                   <button
-                    className="form-field"
-                    onClick={handleLogin}
-                    disabled={loading}
+                    onClick={() => setMode("signup")}
                     style={{
-                      width: "100%",
-                      padding: "16px",
-                      background: loading ? T.dim : "white",
-                      color: loading ? "#3f3f46" : "black",
-                      ...sf,
-                      fontSize: 8,
-                      fontWeight: 700,
-                      letterSpacing: "0.3em",
-                      textTransform: "uppercase",
+                      ...mono,
+                      fontSize: 10,
+                      color: "#52525b",
+                      background: "none",
                       border: "none",
-                      cursor: loading ? "not-allowed" : "pointer",
-                      transition: "all 0.25s",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      gap: 10,
-                      marginTop: 4,
-                    }}
-                    onMouseEnter={(e) => {
-                      if (!loading) e.currentTarget.style.background = T.amber;
-                    }}
-                    onMouseLeave={(e) => {
-                      if (!loading) e.currentTarget.style.background = "white";
-                    }}
-                  >
-                    {loading ? (
-                      <>
-                        <span
-                          style={{
-                            width: 12,
-                            height: 12,
-                            border: "2px solid #3f3f46",
-                            borderTopColor: "#71717a",
-                            borderRadius: "50%",
-                            display: "inline-block",
-                            animation: "spin 0.7s linear infinite",
-                          }}
-                        />
-                        Signing In...
-                      </>
-                    ) : (
-                      <>
-                        Enter Dashboard <ScissorIcon size={12} color="black" />
-                      </>
-                    )}
-                  </button>
-                </>
-              )}
-
-              {/* ── SIGN UP ── */}
-              {mode === "signup" && (
-                <>
-                  {[
-                    {
-                      label: "Full Name",
-                      val: fullName,
-                      set: setFullName,
-                      key: "fullName",
-                      ph: "Jarvis Smith",
-                      ac: "name",
-                    },
-                    {
-                      label: "Username",
-                      val: regUser,
-                      set: setRegUser,
-                      key: "regUser",
-                      ph: "jarvis_cuts",
-                      ac: "username",
-                    },
-                    {
-                      label: "Email Address",
-                      val: regEmail,
-                      set: setRegEmail,
-                      key: "regEmail",
-                      ph: "you@example.com",
-                      ac: "email",
-                      type: "email",
-                    },
-                  ].map(({ label, val, set, key, ph, ac, type }) => (
-                    <div key={key} className="form-field">
-                      <Field
-                        label={label}
-                        type={type || "text"}
-                        value={val}
-                        onChange={(e) => set(e.target.value)}
-                        onKeyDown={onEnter(handleSignup)}
-                        placeholder={ph}
-                        error={fieldErrors[key]}
-                        autoComplete={ac}
-                      />
-                    </div>
-                  ))}
-
-                  <div className="form-field">
-                    <Field
-                      label="Password"
-                      type="password"
-                      value={regPw}
-                      onChange={(e) => setRegPw(e.target.value)}
-                      onKeyDown={onEnter(handleSignup)}
-                      placeholder="Min. 6 characters"
-                      error={fieldErrors.regPw}
-                      autoComplete="new-password"
-                      showToggle
-                      showPw={showRegPw}
-                      onToggle={() => setShowRegPw((p) => !p)}
-                    />
-                  </div>
-
-                  {/* Invite code — visually separated */}
-                  <div
-                    className="form-field"
-                    style={{
-                      paddingTop: 10,
-                      borderTop: `1px solid ${T.border}`,
-                    }}
-                  >
-                    <Field
-                      label="Invite Code"
-                      type="password"
-                      value={inviteCode}
-                      onChange={(e) => setInviteCode(e.target.value)}
-                      onKeyDown={onEnter(handleSignup)}
-                      placeholder="Get from the shop owner"
-                      error={fieldErrors.inviteCode}
-                      autoComplete="off"
-                      showToggle
-                      showPw={showCode}
-                      onToggle={() => setShowCode((p) => !p)}
-                    />
-                    <p
-                      style={{
-                        ...mono,
-                        fontSize: 9,
-                        color: T.dim,
-                        marginTop: 6,
-                        lineHeight: 1.6,
-                      }}
-                    >
-                      Only authorized barbers can create an account.
-                    </p>
-                  </div>
-
-                  {apiError && (
-                    <div
-                      className="form-field"
-                      style={{
-                        padding: "10px 14px",
-                        background: "rgba(248,113,113,0.05)",
-                        border: "1px solid rgba(248,113,113,0.2)",
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 8,
-                      }}
-                    >
-                      <div
-                        style={{
-                          width: 5,
-                          height: 5,
-                          borderRadius: "50%",
-                          background: "#f87171",
-                          flexShrink: 0,
-                        }}
-                      />
-                      <p
-                        style={{
-                          ...sf,
-                          fontSize: 7,
-                          color: "#f87171",
-                          textTransform: "uppercase",
-                          letterSpacing: "0.1em",
-                          margin: 0,
-                        }}
-                      >
-                        {apiError}
-                      </p>
-                    </div>
-                  )}
-
-                  {apiSuccess && (
-                    <div
-                      className="form-field"
-                      style={{
-                        padding: "10px 14px",
-                        background: "rgba(74,222,128,0.05)",
-                        border: "1px solid rgba(74,222,128,0.2)",
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 8,
-                      }}
-                    >
-                      <div
-                        style={{
-                          width: 5,
-                          height: 5,
-                          borderRadius: "50%",
-                          background: "#4ade80",
-                          animation: "pulse 1s infinite",
-                          flexShrink: 0,
-                        }}
-                      />
-                      <p
-                        style={{
-                          ...sf,
-                          fontSize: 7,
-                          color: "#4ade80",
-                          textTransform: "uppercase",
-                          letterSpacing: "0.1em",
-                          margin: 0,
-                        }}
-                      >
-                        {apiSuccess}
-                      </p>
-                    </div>
-                  )}
-
-                  <button
-                    className="form-field"
-                    onClick={handleSignup}
-                    disabled={loading || !!apiSuccess}
-                    style={{
-                      width: "100%",
-                      padding: "16px",
-                      background: loading || apiSuccess ? T.dim : T.amber,
-                      color: loading || apiSuccess ? "#3f3f46" : "black",
-                      ...sf,
-                      fontSize: 8,
-                      fontWeight: 700,
-                      letterSpacing: "0.3em",
+                      cursor: "pointer",
                       textTransform: "uppercase",
-                      border: "none",
-                      cursor: loading || apiSuccess ? "not-allowed" : "pointer",
-                      transition: "all 0.25s",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      gap: 10,
-                      marginTop: 4,
+                      letterSpacing: "0.2em",
+                      transition: "color 0.2s",
                     }}
-                    onMouseEnter={(e) => {
-                      if (!loading && !apiSuccess)
-                        e.currentTarget.style.background = "white";
-                    }}
-                    onMouseLeave={(e) => {
-                      if (!loading && !apiSuccess)
-                        e.currentTarget.style.background = T.amber;
-                    }}
+                    onMouseEnter={(e) =>
+                      (e.currentTarget.style.color = "#f59e0b")
+                    }
+                    onMouseLeave={(e) =>
+                      (e.currentTarget.style.color = "#52525b")
+                    }
                   >
-                    {loading ? (
-                      <>
-                        <span
-                          style={{
-                            width: 12,
-                            height: 12,
-                            border: "2px solid #3f3f46",
-                            borderTopColor: "#71717a",
-                            borderRadius: "50%",
-                            display: "inline-block",
-                            animation: "spin 0.7s linear infinite",
-                          }}
-                        />
-                        Creating...
-                      </>
-                    ) : (
-                      <>
-                        Create Account <ScissorIcon size={12} color="black" />
-                      </>
-                    )}
+                    Create your account →
                   </button>
-                </>
-              )}
-            </div>
+                </div>
+              </div>
+            )}
 
-            {/* Footer */}
-            <div
-              style={{
-                marginTop: 32,
-                paddingTop: 20,
-                borderTop: `1px solid ${T.border}`,
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-              }}
-            >
-              <p
-                style={{
-                  ...sf,
-                  fontSize: 6,
-                  letterSpacing: "0.3em",
-                  color: T.dim,
-                  textTransform: "uppercase",
-                }}
+            {/* ── SIGNUP ── */}
+            {mode === "signup" && (
+              <div
+                className="form-enter"
+                style={{ display: "flex", flexDirection: "column", gap: 18 }}
               >
-                HEADZ UP · 2026
-              </p>
-              <div style={{ display: "flex", gap: 3 }}>
-                {[...Array(3)].map((_, i) => (
-                  <div
-                    key={i}
+                <Field
+                  label="Full Name"
+                  value={regName}
+                  onChange={(e) => setRegName(e.target.value)}
+                  placeholder="Ashanti Cocroft"
+                  error={fieldErrors.regName}
+                  autoComplete="name"
+                />
+
+                <Field
+                  label="Username"
+                  value={regUser}
+                  onChange={(e) => setRegUser(e.target.value)}
+                  placeholder="ashanti_cuts"
+                  error={fieldErrors.regUser}
+                  autoComplete="username"
+                />
+
+                <Field
+                  label="Email"
+                  type="email"
+                  value={regEmail}
+                  onChange={(e) => setRegEmail(e.target.value)}
+                  placeholder="you@email.com"
+                  error={fieldErrors.regEmail}
+                  autoComplete="email"
+                />
+
+                <Field
+                  label="Password"
+                  value={regPass}
+                  onChange={(e) => setRegPass(e.target.value)}
+                  placeholder="Min 6 characters"
+                  error={fieldErrors.regPass}
+                  showToggle
+                  showPw={showPw}
+                  onToggle={() => setShowPw(!showPw)}
+                  autoComplete="new-password"
+                />
+
+                {/* Invite code — special styling */}
+                <div
+                  style={{ display: "flex", flexDirection: "column", gap: 7 }}
+                >
+                  <label
                     style={{
-                      width: 4,
-                      height: 4,
-                      borderRadius: "50%",
-                      background: T.amber,
-                      opacity: 0.2 + i * 0.3,
+                      ...sf,
+                      fontSize: 6,
+                      letterSpacing: "0.4em",
+                      textTransform: "uppercase",
+                      color: fieldErrors.regInvite ? "#f87171" : "#f59e0b",
+                    }}
+                  >
+                    Invite Code
+                  </label>
+                  <input
+                    type="text"
+                    value={regInvite}
+                    onChange={(e) => setRegInvite(e.target.value.toUpperCase())}
+                    onKeyDown={(e) => e.key === "Enter" && handleSignup()}
+                    placeholder="HEADZUP2026"
+                    autoComplete="off"
+                    spellCheck={false}
+                    style={{
+                      width: "100%",
+                      background: regInvite
+                        ? "rgba(245,158,11,0.06)"
+                        : "#080808",
+                      border: `1px solid ${fieldErrors.regInvite ? "rgba(248,113,113,0.6)" : regInvite ? "rgba(245,158,11,0.5)" : "rgba(245,158,11,0.2)"}`,
+                      padding: "15px 16px",
+                      color: "#f59e0b",
+                      fontSize: 16,
+                      fontFamily: "'Syncopate', sans-serif",
+                      fontWeight: 700,
+                      letterSpacing: "0.2em",
+                      textTransform: "uppercase",
+                      outline: "none",
+                      borderRadius: 0,
+                      WebkitAppearance: "none",
+                      transition: "all 0.2s",
                     }}
                   />
-                ))}
+                  {fieldErrors.regInvite ? (
+                    <p style={{ ...mono, fontSize: 10, color: "#f87171" }}>
+                      ⚠ {fieldErrors.regInvite}
+                    </p>
+                  ) : (
+                    <p style={{ ...mono, fontSize: 10, color: "#27272a" }}>
+                      Provided by HEADZ UP management
+                    </p>
+                  )}
+                </div>
+
+                <button
+                  onClick={handleSignup}
+                  disabled={loading}
+                  style={{
+                    padding: "17px",
+                    background: loading ? "#111" : "#f59e0b",
+                    color: loading ? "#52525b" : "black",
+                    ...sf,
+                    fontSize: 9,
+                    fontWeight: 700,
+                    letterSpacing: "0.25em",
+                    textTransform: "uppercase",
+                    border: "none",
+                    cursor: loading ? "not-allowed" : "pointer",
+                    transition: "all 0.3s",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 10,
+                    marginTop: 4,
+                  }}
+                >
+                  {loading ? (
+                    <>
+                      <span
+                        style={{
+                          width: 14,
+                          height: 14,
+                          border: "2px solid #3f3f46",
+                          borderTopColor: "#71717a",
+                          borderRadius: "50%",
+                          display: "inline-block",
+                          animation: "spin 0.7s linear infinite",
+                        }}
+                      />
+                      Creating account...
+                    </>
+                  ) : (
+                    <span>Join the Team →</span>
+                  )}
+                </button>
               </div>
-            </div>
+            )}
+          </div>
+
+          {/* Card footer */}
+          <div
+            style={{
+              padding: "16px 36px 24px",
+              borderTop: "1px solid rgba(255,255,255,0.05)",
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+            }}
+          >
+            <p
+              style={{
+                ...mono,
+                fontSize: 9,
+                color: "#1a1a1a",
+                letterSpacing: "0.3em",
+                textTransform: "uppercase",
+              }}
+            >
+              Barbers only
+            </p>
+            <a
+              href="/login"
+              style={{
+                ...mono,
+                fontSize: 9,
+                color: "#27272a",
+                textDecoration: "none",
+                transition: "color 0.2s",
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.color = "#52525b")}
+              onMouseLeave={(e) => (e.currentTarget.style.color = "#27272a")}
+            >
+              Client login →
+            </a>
           </div>
         </div>
       </div>
-
-      {/* Show side panel on desktop */}
-      <style>{`
-        @media (min-width: 900px) {
-          #login-side-panel { display: flex !important; }
-        }
-      `}</style>
     </>
   );
 }
