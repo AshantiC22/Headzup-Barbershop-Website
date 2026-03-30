@@ -130,11 +130,19 @@ def send_booking_confirmation(appointment):
             payload = {
                 "personalizations": [{"to": [{"email": user_email}]}],
                 "from": {"email": sender_email, "name": sender_name},
+                "reply_to": {"email": sender_email, "name": sender_name},
                 "subject": subject,
                 "content": [
                     {"type": "text/plain", "value": message},
                     {"type": "text/html",  "value": html_message},
                 ],
+                "headers": {
+                    "List-Unsubscribe": f"<mailto:{sender_email}?subject=unsubscribe>",
+                    "X-Entity-Ref-ID": f"headzup-booking-{user_email}",
+                },
+                "mail_settings": {
+                    "bypass_spam_management": {"enable": True},
+                },
             }
 
             data = json_lib.dumps(payload).encode("utf-8")
@@ -221,11 +229,18 @@ def _sendgrid_send(to_email, subject, plain, html):
     payload = {
         "personalizations": [{"to": [{"email": to_email}]}],
         "from": {"email": sender_email, "name": sender_name},
+        "reply_to": {"email": sender_email, "name": sender_name},
         "subject": subject,
         "content": [
             {"type": "text/plain", "value": plain},
             {"type": "text/html",  "value": html},
         ],
+        "headers": {
+            "List-Unsubscribe": f"<mailto:{sender_email}?subject=unsubscribe>",
+        },
+        "mail_settings": {
+            "bypass_spam_management": {"enable": True},
+        },
     }
 
     try:
