@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useRef, useState } from "react";
+import { Suspense, useEffect, useState, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import API from "@/lib/api";
 import AuthGuard from "@/lib/AuthGuard";
@@ -8,43 +8,31 @@ import useBreakpoint from "@/lib/useBreakpoint";
 
 const sf = { fontFamily: "'Syncopate', sans-serif" };
 const mono = { fontFamily: "'DM Mono', monospace" };
-const T = {
-  bg: "#040404",
-  surface: "#0a0a0a",
-  border: "rgba(255,255,255,0.08)",
-  amber: "#f59e0b",
-  amberDim: "rgba(245,158,11,0.1)",
-  amberBorder: "rgba(245,158,11,0.3)",
-  muted: "#71717a",
-  dim: "#3f3f46",
-  green: "#4ade80",
-  red: "#f87171",
-};
 
-const STATUS_CFG = {
+const STATUS = {
   confirmed: {
     label: "Confirmed",
-    color: T.green,
-    bg: "rgba(74,222,128,0.1)",
-    border: "rgba(74,222,128,0.25)",
+    color: "#4ade80",
+    bg: "rgba(74,222,128,0.08)",
+    border: "rgba(74,222,128,0.2)",
   },
   completed: {
     label: "Completed",
     color: "#a1a1aa",
-    bg: "rgba(161,161,170,0.08)",
-    border: "rgba(161,161,170,0.15)",
+    bg: "rgba(161,161,170,0.06)",
+    border: "rgba(161,161,170,0.12)",
   },
   no_show: {
     label: "No Show",
-    color: T.red,
+    color: "#f87171",
     bg: "rgba(248,113,113,0.08)",
     border: "rgba(248,113,113,0.2)",
   },
   cancelled: {
     label: "Cancelled",
-    color: T.dim,
+    color: "#52525b",
     bg: "rgba(82,82,91,0.06)",
-    border: "rgba(82,82,91,0.15)",
+    border: "rgba(82,82,91,0.12)",
   },
 };
 
@@ -56,12 +44,11 @@ function fmtDate(d) {
     year: "numeric",
   });
 }
-
 function fmtTime(t) {
   if (!t) return "";
   const [h, m] = t.split(":");
-  const hour = parseInt(h);
-  return `${hour % 12 || 12}:${m} ${hour >= 12 ? "PM" : "AM"}`;
+  const hr = parseInt(h);
+  return `${hr % 12 || 12}:${m} ${hr >= 12 ? "PM" : "AM"}`;
 }
 
 function DashboardContent() {
@@ -75,41 +62,55 @@ function DashboardContent() {
   const [activeTab, setActiveTab] = useState("upcoming");
   const [toast, setToast] = useState(null);
   const [cancelling, setCancelling] = useState(null);
+  const [time, setTime] = useState("");
 
   const showToast = (msg, type = "success") => {
     setToast({ msg, type });
     setTimeout(() => setToast(null), 3500);
   };
 
-  // Handle post-payment params
+  // Live clock
+  useEffect(() => {
+    const tick = () =>
+      setTime(
+        new Date().toLocaleTimeString("en-US", {
+          hour: "2-digit",
+          minute: "2-digit",
+          hour12: true,
+        }),
+      );
+    tick();
+    const t = setInterval(tick, 1000);
+    return () => clearInterval(t);
+  }, []);
+
+  // Params
   useEffect(() => {
     if (searchParams.get("booked") === "true") {
       showToast("🎉 Booking confirmed! See you soon.");
       window.history.replaceState({}, "", "/dashboard");
     }
     if (searchParams.get("canceled") === "true") {
-      showToast("Payment cancelled — your slot was not booked.", "error");
+      showToast("Payment cancelled.", "error");
       window.history.replaceState({}, "", "/dashboard");
     }
   }, [searchParams]);
 
-  // Load data
+  // Load
   useEffect(() => {
     const load = async () => {
       try {
-        const [dashRes, apptsRes] = await Promise.all([
+        const [d, a] = await Promise.all([
           API.get("dashboard/"),
           API.get("appointments/"),
         ]);
-        setUser(dashRes.data);
-        const appts = Array.isArray(apptsRes.data)
-          ? apptsRes.data
-          : apptsRes.data.results || [];
+        setUser(d.data);
+        const appts = Array.isArray(a.data) ? a.data : a.data.results || [];
         setAppointments(
-          appts.sort((a, b) => new Date(b.date) - new Date(a.date)),
+          appts.sort((x, y) => new Date(y.date) - new Date(x.date)),
         );
       } catch {
-        showToast("Could not load data. Please refresh.", "error");
+        showToast("Could not load data.", "error");
       } finally {
         setLoading(false);
       }
@@ -126,17 +127,17 @@ function DashboardContent() {
   const handleCancel = async (appt) => {
     if (
       !confirm(
-        `Cancel your ${appt.service_name || "appointment"} on ${fmtDate(appt.date)}?`,
+        `Cancel ${appt.service_name || "appointment"} on ${fmtDate(appt.date)}?`,
       )
     )
       return;
     setCancelling(appt.id);
     try {
       await API.delete(`appointments/${appt.id}/`);
-      setAppointments((prev) => prev.filter((a) => a.id !== appt.id));
-      showToast("Appointment cancelled.");
+      setAppointments((p) => p.filter((a) => a.id !== appt.id));
+      showToast("Cancelled.");
     } catch {
-      showToast("Could not cancel. Please try again.", "error");
+      showToast("Could not cancel.", "error");
     } finally {
       setCancelling(null);
     }
@@ -152,36 +153,29 @@ function DashboardContent() {
   );
   const shown = activeTab === "upcoming" ? upcoming : past;
   const nextAppt = upcoming[0] || null;
-
-  const memberSince =
-    appointments.length > 0
-      ? new Date(
-          appointments[appointments.length - 1].date + "T00:00:00",
-        ).getFullYear()
-      : new Date().getFullYear();
+  const completed = appointments.filter((a) => a.status === "completed").length;
 
   return (
     <>
       <style jsx global>{`
-        @import url("https://fonts.googleapis.com/css2?family=Syncopate:wght@400;700&family=DM+Mono:wght@400;500&display=swap");
+        @import url("https://fonts.googleapis.com/css2?family=Syncopate:wght@400;700&family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&display=swap");
         *,
         *::before,
         *::after {
           box-sizing: border-box;
           margin: 0;
           padding: 0;
+          -webkit-tap-highlight-color: transparent;
         }
         html,
         body {
-          background: ${T.bg};
+          background: #040404;
           color: white;
           font-family: "DM Mono", monospace;
           overflow-x: hidden;
+          -webkit-text-size-adjust: 100%;
         }
         @keyframes spin {
-          from {
-            transform: rotate(0deg);
-          }
           to {
             transform: rotate(360deg);
           }
@@ -189,85 +183,152 @@ function DashboardContent() {
         @keyframes fadeUp {
           from {
             opacity: 0;
-            transform: translateY(16px);
+            transform: translateY(20px);
           }
           to {
             opacity: 1;
-            transform: translateY(0);
+            transform: none;
           }
         }
         @keyframes toastIn {
           from {
             opacity: 0;
-            transform: translateY(12px);
+            transform: translateY(10px);
           }
           to {
             opacity: 1;
-            transform: translateY(0);
+            transform: none;
           }
         }
-        .dash-card {
-          animation: fadeUp 0.5s ease forwards;
-          opacity: 0;
+        @keyframes scandown {
+          from {
+            top: -1px;
+          }
+          to {
+            top: 100%;
+          }
         }
-        .dash-card:nth-child(1) {
+        @keyframes glow {
+          0%,
+          100% {
+            box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.5);
+          }
+          50% {
+            box-shadow: 0 0 0 8px rgba(34, 197, 94, 0);
+          }
+        }
+        .dc {
+          animation: fadeUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+        }
+        .dc:nth-child(1) {
           animation-delay: 0.05s;
         }
-        .dash-card:nth-child(2) {
-          animation-delay: 0.1s;
+        .dc:nth-child(2) {
+          animation-delay: 0.12s;
         }
-        .dash-card:nth-child(3) {
-          animation-delay: 0.15s;
+        .dc:nth-child(3) {
+          animation-delay: 0.18s;
         }
-        .dash-card:nth-child(4) {
-          animation-delay: 0.2s;
+        .dc:nth-child(4) {
+          animation-delay: 0.24s;
         }
-        .dash-card:nth-child(5) {
-          animation-delay: 0.25s;
+        .dc:nth-child(5) {
+          animation-delay: 0.3s;
+        }
+        .dc:nth-child(6) {
+          animation-delay: 0.36s;
+        }
+        .appt-row {
+          transition:
+            border-color 0.2s,
+            background 0.2s;
+        }
+        .appt-row:hover {
+          border-color: rgba(245, 158, 11, 0.3) !important;
+          background: rgba(245, 158, 11, 0.03) !important;
         }
       `}</style>
 
-      {/* Grid background */}
+      {/* Grid */}
       <div
         style={{
           position: "fixed",
           inset: 0,
           zIndex: 0,
           pointerEvents: "none",
-          backgroundImage: `linear-gradient(rgba(255,255,255,0.012) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.012) 1px, transparent 1px)`,
-          backgroundSize: "60px 60px",
+          backgroundImage:
+            "linear-gradient(rgba(255,255,255,0.016) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,0.016) 1px,transparent 1px)",
+          backgroundSize: "72px 72px",
         }}
       />
+      {/* Grain */}
       <div
         style={{
           position: "fixed",
           inset: 0,
           zIndex: 0,
           pointerEvents: "none",
-          opacity: 0.025,
+          opacity: 0.035,
           backgroundImage:
             "url('https://grainy-gradients.vercel.app/noise.svg')",
         }}
       />
+      {/* Glows */}
       <div
         style={{
           position: "fixed",
-          top: 0,
-          right: 0,
-          width: 400,
-          height: 400,
-          background: `radial-gradient(circle, ${T.amberDim} 0%, transparent 70%)`,
+          top: "-10%",
+          right: "-5%",
+          width: 600,
+          height: 600,
+          background:
+            "radial-gradient(circle,rgba(245,158,11,0.055) 0%,transparent 65%)",
           pointerEvents: "none",
           zIndex: 0,
         }}
       />
+      <div
+        style={{
+          position: "fixed",
+          bottom: "10%",
+          left: "-8%",
+          width: 400,
+          height: 400,
+          background:
+            "radial-gradient(circle,rgba(245,158,11,0.03) 0%,transparent 60%)",
+          pointerEvents: "none",
+          zIndex: 0,
+        }}
+      />
+      {/* Scanline */}
+      <div
+        style={{
+          position: "fixed",
+          inset: 0,
+          zIndex: 1,
+          pointerEvents: "none",
+          overflow: "hidden",
+        }}
+      >
+        <div
+          style={{
+            position: "absolute",
+            left: 0,
+            right: 0,
+            height: 1,
+            background:
+              "linear-gradient(to right,transparent,rgba(245,158,11,0.2),transparent)",
+            animation: "scandown 10s linear infinite",
+          }}
+        />
+      </div>
 
       {/* Toast */}
       {toast && (
         <div
           style={{
             position: "fixed",
-            bottom: isMobile ? 24 : 32,
+            bottom: isMobile ? 20 : 32,
             left: "50%",
             transform: "translateX(-50%)",
             zIndex: 9999,
@@ -290,7 +351,7 @@ function DashboardContent() {
               width: 6,
               height: 6,
               borderRadius: "50%",
-              background: toast.type === "success" ? T.green : T.red,
+              background: toast.type === "success" ? "#4ade80" : "#f87171",
               flexShrink: 0,
             }}
           />
@@ -300,7 +361,7 @@ function DashboardContent() {
               fontSize: 7,
               letterSpacing: "0.2em",
               textTransform: "uppercase",
-              color: toast.type === "success" ? T.green : T.red,
+              color: toast.type === "success" ? "#4ade80" : "#f87171",
             }}
           >
             {toast.msg}
@@ -321,200 +382,258 @@ function DashboardContent() {
           style={{
             position: "sticky",
             top: 0,
-            zIndex: 50,
-            background: "rgba(4,4,4,0.92)",
-            backdropFilter: "blur(20px)",
-            borderBottom: `1px solid ${T.border}`,
-            padding: isMobile ? "0 16px" : "0 32px",
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            height: 60,
+            zIndex: 100,
+            background: "rgba(4,4,4,0.95)",
+            backdropFilter: "blur(24px)",
+            borderBottom: "1px solid rgba(255,255,255,0.07)",
           }}
         >
-          <a
-            href="/"
-            style={{
-              ...sf,
-              fontWeight: 700,
-              fontSize: 16,
-              letterSpacing: "-0.05em",
-              textDecoration: "none",
-            }}
-          >
-            HEADZ<span style={{ color: T.amber, fontStyle: "italic" }}>UP</span>
-          </a>
           <div
             style={{
+              maxWidth: 1200,
+              margin: "0 auto",
+              padding: isMobile ? "0 16px" : "0 40px",
+              height: 60,
               display: "flex",
+              justifyContent: "space-between",
               alignItems: "center",
-              gap: isMobile ? 8 : 12,
             }}
           >
-            {user && !isMobile && (
-              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <div
-                  style={{
-                    width: 30,
-                    height: 30,
-                    background: T.amber,
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                  }}
-                >
-                  <span
+            <a
+              href="/"
+              style={{
+                ...sf,
+                fontWeight: 700,
+                fontSize: 17,
+                letterSpacing: "-0.06em",
+                textDecoration: "none",
+                color: "white",
+              }}
+            >
+              HEADZ
+              <span style={{ color: "#f59e0b", fontStyle: "italic" }}>UP</span>
+            </a>
+            {/* Live clock — desktop */}
+            {!isMobile && (
+              <span
+                style={{
+                  ...mono,
+                  fontSize: 11,
+                  color: "#27272a",
+                  letterSpacing: "0.3em",
+                }}
+              >
+                {time}
+              </span>
+            )}
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: isMobile ? 8 : 12,
+              }}
+            >
+              {user && !isMobile && (
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <div
                     style={{
-                      ...sf,
-                      fontSize: 11,
-                      fontWeight: 900,
-                      color: "black",
+                      width: 28,
+                      height: 28,
+                      background: "#f59e0b",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      flexShrink: 0,
                     }}
                   >
-                    {(user.user || "?").charAt(0).toUpperCase()}
+                    <span
+                      style={{
+                        ...sf,
+                        fontSize: 10,
+                        fontWeight: 900,
+                        color: "black",
+                      }}
+                    >
+                      {(user.user || "?").charAt(0).toUpperCase()}
+                    </span>
+                  </div>
+                  <span style={{ ...mono, fontSize: 11, color: "#52525b" }}>
+                    {user.user}
                   </span>
                 </div>
-                <span style={{ ...mono, fontSize: 11, color: T.muted }}>
-                  {user.user}
-                </span>
-              </div>
-            )}
-            <button
-              onClick={() => router.push("/book")}
-              style={{
-                padding: isMobile ? "8px 14px" : "10px 20px",
-                background: T.amber,
-                color: "black",
-                ...sf,
-                fontSize: 7,
-                fontWeight: 700,
-                letterSpacing: "0.2em",
-                textTransform: "uppercase",
-                border: "none",
-                cursor: "pointer",
-                transition: "background 0.2s",
-                whiteSpace: "nowrap",
-              }}
-              onMouseEnter={(e) => (e.currentTarget.style.background = "white")}
-              onMouseLeave={(e) => (e.currentTarget.style.background = T.amber)}
-            >
-              + Book
-            </button>
-            <button
-              onClick={handleLogout}
-              style={{
-                padding: isMobile ? "8px 10px" : "10px 16px",
-                background: "transparent",
-                color: T.muted,
-                ...sf,
-                fontSize: 7,
-                letterSpacing: "0.15em",
-                textTransform: "uppercase",
-                border: `1px solid ${T.border}`,
-                cursor: "pointer",
-                transition: "all 0.2s",
-                whiteSpace: "nowrap",
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.color = "white";
-                e.currentTarget.style.borderColor = "rgba(255,255,255,0.2)";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.color = T.muted;
-                e.currentTarget.style.borderColor = T.border;
-              }}
-            >
-              {isMobile ? "Out" : "Sign Out"}
-            </button>
+              )}
+              <button
+                onClick={() => router.push("/book")}
+                style={{
+                  padding: isMobile ? "8px 14px" : "10px 20px",
+                  background: "#f59e0b",
+                  color: "black",
+                  ...sf,
+                  fontSize: 7,
+                  fontWeight: 700,
+                  letterSpacing: "0.2em",
+                  textTransform: "uppercase",
+                  border: "none",
+                  cursor: "pointer",
+                  transition: "background 0.2s",
+                  whiteSpace: "nowrap",
+                }}
+                onMouseEnter={(e) =>
+                  (e.currentTarget.style.background = "white")
+                }
+                onMouseLeave={(e) =>
+                  (e.currentTarget.style.background = "#f59e0b")
+                }
+              >
+                + Book
+              </button>
+              <button
+                onClick={handleLogout}
+                style={{
+                  padding: isMobile ? "8px 10px" : "10px 16px",
+                  background: "transparent",
+                  color: "#52525b",
+                  ...sf,
+                  fontSize: 7,
+                  letterSpacing: "0.15em",
+                  textTransform: "uppercase",
+                  border: "1px solid rgba(255,255,255,0.08)",
+                  cursor: "pointer",
+                  transition: "all 0.2s",
+                  whiteSpace: "nowrap",
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.color = "white";
+                  e.currentTarget.style.borderColor = "rgba(255,255,255,0.2)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.color = "#52525b";
+                  e.currentTarget.style.borderColor = "rgba(255,255,255,0.08)";
+                }}
+              >
+                {isMobile ? "Out" : "Sign Out"}
+              </button>
+            </div>
           </div>
         </nav>
 
-        {/* ── MAIN ── */}
+        {/* ── CONTENT ── */}
         <div
           style={{
-            maxWidth: 1000,
+            maxWidth: 1200,
             margin: "0 auto",
             padding: isMobile
               ? "28px 16px max(48px,env(safe-area-inset-bottom))"
-              : "48px 32px 64px",
+              : "52px 40px 80px",
           }}
         >
           {loading ? (
             <div
               style={{
-                paddingTop: 80,
+                paddingTop: 100,
                 display: "flex",
                 flexDirection: "column",
                 alignItems: "center",
-                gap: 16,
+                gap: 20,
               }}
             >
+              <p
+                style={{
+                  ...sf,
+                  fontSize: 20,
+                  fontWeight: 900,
+                  textTransform: "uppercase",
+                  letterSpacing: "-0.06em",
+                }}
+              >
+                HEADZ
+                <span style={{ color: "#f59e0b", fontStyle: "italic" }}>
+                  UP
+                </span>
+              </p>
+              <div
+                style={{
+                  width: 1,
+                  height: 32,
+                  background: "linear-gradient(to bottom,#f59e0b,transparent)",
+                }}
+              />
               <div
                 style={{
                   width: 18,
                   height: 18,
-                  border: `1.5px solid ${T.amberBorder}`,
-                  borderTopColor: T.amber,
+                  border: "1.5px solid rgba(245,158,11,0.2)",
+                  borderTopColor: "#f59e0b",
                   borderRadius: "50%",
                   animation: "spin 0.8s linear infinite",
                 }}
               />
-              <p
-                style={{
-                  ...sf,
-                  fontSize: 6,
-                  letterSpacing: "0.4em",
-                  color: T.dim,
-                  textTransform: "uppercase",
-                }}
-              >
-                Loading...
-              </p>
             </div>
           ) : (
             <>
-              {/* ── GREETING ── */}
+              {/* ── HERO GREETING ── */}
               <div
-                className="dash-card"
-                style={{ marginBottom: isMobile ? 24 : 36 }}
+                className="dc"
+                style={{
+                  marginBottom: isMobile ? 32 : 48,
+                  paddingBottom: isMobile ? 32 : 48,
+                  borderBottom: "1px solid rgba(255,255,255,0.07)",
+                }}
               >
                 <p
                   style={{
-                    ...sf,
-                    fontSize: 7,
-                    letterSpacing: "0.4em",
-                    color: T.amber,
+                    ...mono,
+                    fontSize: 9,
+                    color: "#f59e0b",
+                    letterSpacing: "0.5em",
                     textTransform: "uppercase",
-                    marginBottom: 8,
+                    marginBottom: 12,
                   }}
                 >
-                  Welcome Back
+                  Client Dashboard
                 </p>
                 <h1
                   style={{
                     ...sf,
-                    fontSize: "clamp(1.6rem,5vw,2.8rem)",
+                    fontSize: "clamp(2rem,6vw,4rem)",
                     fontWeight: 900,
                     textTransform: "uppercase",
-                    lineHeight: 1,
-                    margin: 0,
+                    lineHeight: 0.88,
+                    letterSpacing: "-0.04em",
+                    marginBottom: 16,
                   }}
                 >
-                  {user?.user || "Client"}
-                  <span style={{ color: T.amber, fontStyle: "italic" }}>_</span>
+                  Hey,
+                  <br />
+                  <span style={{ color: "#f59e0b", fontStyle: "italic" }}>
+                    {user?.user || "Client"}_
+                  </span>
                 </h1>
+                <p
+                  style={{
+                    ...mono,
+                    fontSize: 13,
+                    color: "#52525b",
+                    maxWidth: 400,
+                    lineHeight: 1.7,
+                  }}
+                >
+                  {upcoming.length > 0
+                    ? `You have ${upcoming.length} upcoming appointment${upcoming.length !== 1 ? "s" : ""}. We'll see you soon.`
+                    : "No upcoming appointments. Ready to book your next cut?"}
+                </p>
               </div>
 
-              {/* ── STATS ── */}
+              {/* ── STATS ROW ── */}
               <div
-                className="dash-card"
+                className="dc"
                 style={{
                   display: "grid",
                   gridTemplateColumns: isMobile
                     ? "repeat(2,1fr)"
                     : "repeat(4,1fr)",
                   gap: 8,
-                  marginBottom: isMobile ? 24 : 36,
+                  marginBottom: isMobile ? 32 : 48,
                 }}
               >
                 {[
@@ -525,20 +644,27 @@ function DashboardContent() {
                     accent: false,
                   },
                   { label: "Upcoming", value: upcoming.length, accent: true },
+                  { label: "Completed", value: completed, accent: false },
                   {
-                    label: "Completed",
-                    value: appointments.filter((a) => a.status === "completed")
-                      .length,
+                    label: "Member Since",
+                    value:
+                      appointments.length > 0
+                        ? new Date(
+                            appointments[appointments.length - 1].date +
+                              "T00:00:00",
+                          ).getFullYear()
+                        : new Date().getFullYear(),
                     accent: false,
                   },
-                  { label: "Member Since", value: memberSince, accent: false },
                 ].map(({ label, value, accent }) => (
                   <div
                     key={label}
                     style={{
-                      padding: isMobile ? "16px 14px" : "22px 18px",
-                      background: accent ? T.amberDim : T.surface,
-                      border: `1px solid ${accent ? T.amberBorder : T.border}`,
+                      padding: isMobile ? "16px 14px" : "24px 20px",
+                      background: accent
+                        ? "rgba(245,158,11,0.07)"
+                        : "rgba(255,255,255,0.02)",
+                      border: `1px solid ${accent ? "rgba(245,158,11,0.3)" : "rgba(255,255,255,0.07)"}`,
                       position: "relative",
                       overflow: "hidden",
                     }}
@@ -560,7 +686,7 @@ function DashboardContent() {
                         ...sf,
                         fontSize: 5,
                         letterSpacing: "0.3em",
-                        color: accent ? T.amber : T.muted,
+                        color: accent ? "#f59e0b" : "#52525b",
                         textTransform: "uppercase",
                         marginBottom: 10,
                       }}
@@ -570,9 +696,9 @@ function DashboardContent() {
                     <p
                       style={{
                         ...sf,
-                        fontSize: isMobile ? 24 : 32,
+                        fontSize: isMobile ? 22 : 30,
                         fontWeight: 900,
-                        color: accent ? T.amber : "white",
+                        color: accent ? "#f59e0b" : "white",
                         lineHeight: 1,
                       }}
                     >
@@ -582,15 +708,16 @@ function DashboardContent() {
                 ))}
               </div>
 
-              {/* ── NEXT APPOINTMENT ── */}
+              {/* ── NEXT APPOINTMENT BANNER ── */}
               {nextAppt && (
                 <div
-                  className="dash-card"
+                  className="dc"
                   style={{
-                    marginBottom: isMobile ? 24 : 36,
-                    padding: isMobile ? "20px 16px" : "24px 28px",
-                    background: `linear-gradient(135deg, rgba(245,158,11,0.08), rgba(245,158,11,0.03))`,
-                    border: `1px solid ${T.amberBorder}`,
+                    marginBottom: isMobile ? 32 : 48,
+                    padding: isMobile ? "20px 18px" : "28px 32px",
+                    background:
+                      "linear-gradient(135deg,rgba(245,158,11,0.07),rgba(245,158,11,0.02))",
+                    border: "1px solid rgba(245,158,11,0.25)",
                     display: "flex",
                     flexWrap: "wrap",
                     justifyContent: "space-between",
@@ -601,10 +728,10 @@ function DashboardContent() {
                   <div>
                     <p
                       style={{
-                        ...sf,
-                        fontSize: 6,
-                        letterSpacing: "0.4em",
-                        color: T.amber,
+                        ...mono,
+                        fontSize: 8,
+                        color: "#f59e0b",
+                        letterSpacing: "0.5em",
                         textTransform: "uppercase",
                         marginBottom: 8,
                       }}
@@ -614,20 +741,23 @@ function DashboardContent() {
                     <h2
                       style={{
                         ...sf,
-                        fontSize: "clamp(1rem,2.5vw,1.4rem)",
+                        fontSize: "clamp(1rem,2.5vw,1.5rem)",
                         fontWeight: 900,
                         textTransform: "uppercase",
-                        marginBottom: 6,
+                        marginBottom: 8,
+                        letterSpacing: "-0.03em",
                       }}
                     >
                       {nextAppt.service_name || "Appointment"}
                     </h2>
                     <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-                      <span style={{ ...mono, fontSize: 12, color: T.muted }}>
+                      <span style={{ ...mono, fontSize: 12, color: "#a1a1aa" }}>
                         {fmtDate(nextAppt.date)}
                       </span>
                       {nextAppt.time && (
-                        <span style={{ ...mono, fontSize: 12, color: T.amber }}>
+                        <span
+                          style={{ ...mono, fontSize: 12, color: "#f59e0b" }}
+                        >
                           {fmtTime(nextAppt.time)}
                         </span>
                       )}
@@ -638,18 +768,18 @@ function DashboardContent() {
                   >
                     <div
                       style={{
-                        width: 7,
-                        height: 7,
-                        background: T.green,
+                        width: 8,
+                        height: 8,
+                        background: "#22c55e",
                         borderRadius: "50%",
-                        boxShadow: `0 0 8px ${T.green}`,
+                        animation: "glow 2s infinite",
                       }}
                     />
                     <span
                       style={{
                         ...sf,
                         fontSize: 7,
-                        color: T.green,
+                        color: "#4ade80",
                         textTransform: "uppercase",
                         letterSpacing: "0.2em",
                       }}
@@ -660,50 +790,74 @@ function DashboardContent() {
                 </div>
               )}
 
-              {/* ── APPOINTMENTS LIST ── */}
-              <div className="dash-card">
+              {/* ── APPOINTMENTS ── */}
+              <div className="dc">
+                {/* Section header */}
                 <div
                   style={{
                     display: "flex",
-                    justifyContent: "space-between",
                     alignItems: "center",
-                    marginBottom: 16,
+                    gap: 20,
+                    marginBottom: 20,
                     flexWrap: "wrap",
-                    gap: 10,
+                    gap: 12,
                   }}
                 >
-                  <h2
+                  <div
                     style={{
-                      ...sf,
-                      fontSize: "clamp(0.8rem,2vw,1rem)",
-                      fontWeight: 900,
-                      textTransform: "uppercase",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 14,
+                      flex: 1,
+                      minWidth: 200,
                     }}
                   >
-                    Your_
-                    <span style={{ color: T.amber, fontStyle: "italic" }}>
-                      Appointments
-                    </span>
-                  </h2>
+                    <div
+                      style={{
+                        width: 32,
+                        height: 1,
+                        background: "rgba(245,158,11,0.5)",
+                      }}
+                    />
+                    <h2
+                      style={{
+                        ...sf,
+                        fontSize: "clamp(0.75rem,1.5vw,0.9rem)",
+                        fontWeight: 900,
+                        textTransform: "uppercase",
+                        letterSpacing: "-0.02em",
+                      }}
+                    >
+                      Your_
+                      <span style={{ color: "#f59e0b", fontStyle: "italic" }}>
+                        Appointments
+                      </span>
+                    </h2>
+                  </div>
+                  {/* Tab toggle */}
                   <div
-                    style={{ display: "flex", border: `1px solid ${T.border}` }}
+                    style={{
+                      display: "flex",
+                      border: "1px solid rgba(255,255,255,0.08)",
+                    }}
                   >
                     {["upcoming", "past"].map((tab) => (
                       <button
                         key={tab}
                         onClick={() => setActiveTab(tab)}
                         style={{
-                          padding: isMobile ? "8px 12px" : "9px 16px",
+                          padding: isMobile ? "8px 12px" : "9px 18px",
                           ...sf,
                           fontSize: 6,
                           letterSpacing: "0.15em",
                           textTransform: "uppercase",
                           background:
-                            activeTab === tab ? T.amber : "transparent",
-                          color: activeTab === tab ? "black" : T.muted,
+                            activeTab === tab ? "#f59e0b" : "transparent",
+                          color: activeTab === tab ? "black" : "#52525b",
                           border: "none",
                           cursor: "pointer",
                           transition: "all 0.2s",
+                          whiteSpace: "nowrap",
                         }}
                       >
                         {tab} (
@@ -713,86 +867,111 @@ function DashboardContent() {
                   </div>
                 </div>
 
+                {/* Appointment list */}
                 {shown.length === 0 ? (
                   <div
                     style={{
-                      padding: isMobile ? "48px 16px" : "64px 24px",
+                      padding: isMobile ? "48px 16px" : "80px 24px",
                       textAlign: "center",
-                      border: `1px solid ${T.border}`,
+                      border: "1px solid rgba(255,255,255,0.06)",
                       background: "rgba(255,255,255,0.01)",
+                      position: "relative",
+                      overflow: "hidden",
                     }}
                   >
                     <p
                       style={{
+                        position: "absolute",
+                        inset: 0,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
                         ...sf,
-                        fontSize: "clamp(1.5rem,5vw,3rem)",
+                        fontSize: "clamp(4rem,12vw,8rem)",
                         fontWeight: 900,
-                        color: "rgba(255,255,255,0.04)",
+                        color: "rgba(255,255,255,0.025)",
                         textTransform: "uppercase",
-                        marginBottom: 16,
+                        letterSpacing: "-0.06em",
+                        userSelect: "none",
                       }}
                     >
-                      No {activeTab} cuts
+                      {activeTab === "upcoming" ? "FRESH" : "DONE"}
                     </p>
-                    {activeTab === "upcoming" && (
-                      <button
-                        onClick={() => router.push("/book")}
+                    <div style={{ position: "relative", zIndex: 1 }}>
+                      <p
                         style={{
-                          padding: "14px 32px",
-                          background: T.amber,
-                          color: "black",
                           ...sf,
-                          fontSize: 8,
-                          fontWeight: 700,
-                          letterSpacing: "0.2em",
+                          fontSize: 9,
+                          color: "rgba(255,255,255,0.08)",
                           textTransform: "uppercase",
-                          border: "none",
-                          cursor: "pointer",
-                          transition: "background 0.2s",
+                          marginBottom: 12,
                         }}
-                        onMouseEnter={(e) =>
-                          (e.currentTarget.style.background = "white")
-                        }
-                        onMouseLeave={(e) =>
-                          (e.currentTarget.style.background = T.amber)
-                        }
                       >
-                        Book Now →
-                      </button>
-                    )}
+                        {activeTab === "upcoming"
+                          ? "No upcoming cuts"
+                          : "No past appointments"}
+                      </p>
+                      {activeTab === "upcoming" && (
+                        <button
+                          onClick={() => router.push("/book")}
+                          style={{
+                            padding: "14px 28px",
+                            background: "#f59e0b",
+                            color: "black",
+                            ...sf,
+                            fontSize: 8,
+                            fontWeight: 700,
+                            letterSpacing: "0.2em",
+                            textTransform: "uppercase",
+                            border: "none",
+                            cursor: "pointer",
+                            transition: "background 0.2s",
+                          }}
+                          onMouseEnter={(e) =>
+                            (e.currentTarget.style.background = "white")
+                          }
+                          onMouseLeave={(e) =>
+                            (e.currentTarget.style.background = "#f59e0b")
+                          }
+                        >
+                          Book Now →
+                        </button>
+                      )}
+                    </div>
                   </div>
                 ) : (
                   <div
-                    style={{ display: "flex", flexDirection: "column", gap: 6 }}
+                    style={{ display: "flex", flexDirection: "column", gap: 5 }}
                   >
                     {shown.map((appt) => {
-                      const sCfg =
-                        STATUS_CFG[appt.status] || STATUS_CFG.confirmed;
+                      const s = STATUS[appt.status] || STATUS.confirmed;
                       return (
                         <div
                           key={appt.id}
+                          className="appt-row"
                           style={{
                             display: "flex",
                             alignItems: "center",
                             gap: isMobile ? 10 : 16,
                             padding: isMobile ? "14px 12px" : "16px 20px",
-                            background: T.surface,
-                            border: `1px solid ${T.border}`,
-                            transition: "all 0.2s",
-                          }}
-                          onMouseEnter={(e) => {
-                            e.currentTarget.style.borderColor = T.amberBorder;
-                            e.currentTarget.style.background = T.amberDim;
-                          }}
-                          onMouseLeave={(e) => {
-                            e.currentTarget.style.borderColor = T.border;
-                            e.currentTarget.style.background = T.surface;
+                            background: "rgba(255,255,255,0.02)",
+                            border: "1px solid rgba(255,255,255,0.07)",
                           }}
                         >
+                          {/* Left accent */}
+                          <div
+                            style={{
+                              width: 2,
+                              height: 40,
+                              background: s.color,
+                              flexShrink: 0,
+                              opacity: 0.8,
+                            }}
+                          />
                           {/* Date block */}
                           <div
                             style={{
-                              width: isMobile ? 40 : 50,
+                              width: isMobile ? 44 : 52,
                               flexShrink: 0,
                               textAlign: "center",
                             }}
@@ -804,8 +983,8 @@ function DashboardContent() {
                                 fontWeight: 900,
                                 color:
                                   appt.status === "confirmed"
-                                    ? T.amber
-                                    : T.muted,
+                                    ? "#f59e0b"
+                                    : "#52525b",
                                 lineHeight: 1,
                               }}
                             >
@@ -815,8 +994,9 @@ function DashboardContent() {
                               style={{
                                 ...sf,
                                 fontSize: 6,
-                                color: T.dim,
+                                color: "#3f3f46",
                                 textTransform: "uppercase",
+                                letterSpacing: "0.1em",
                               }}
                             >
                               {new Date(
@@ -824,16 +1004,14 @@ function DashboardContent() {
                               ).toLocaleDateString("en-US", { month: "short" })}
                             </p>
                           </div>
-
                           <div
                             style={{
                               width: 1,
                               height: 32,
-                              background: T.border,
+                              background: "rgba(255,255,255,0.07)",
                               flexShrink: 0,
                             }}
                           />
-
                           {/* Info */}
                           <div style={{ flex: 1, minWidth: 0 }}>
                             <p
@@ -861,7 +1039,7 @@ function DashboardContent() {
                                 style={{
                                   ...mono,
                                   fontSize: 10,
-                                  color: T.muted,
+                                  color: "#52525b",
                                 }}
                               >
                                 {fmtDate(appt.date)}
@@ -871,7 +1049,7 @@ function DashboardContent() {
                                   style={{
                                     ...mono,
                                     fontSize: 10,
-                                    color: T.amber,
+                                    color: "#f59e0b",
                                   }}
                                 >
                                   {fmtTime(appt.time)}
@@ -879,8 +1057,7 @@ function DashboardContent() {
                               )}
                             </div>
                           </div>
-
-                          {/* Status badge */}
+                          {/* Status */}
                           <span
                             style={{
                               ...sf,
@@ -888,27 +1065,26 @@ function DashboardContent() {
                               letterSpacing: "0.1em",
                               textTransform: "uppercase",
                               padding: "4px 10px",
-                              background: sCfg.bg,
-                              color: sCfg.color,
-                              border: `1px solid ${sCfg.border}`,
+                              background: s.bg,
+                              color: s.color,
+                              border: `1px solid ${s.border}`,
                               flexShrink: 0,
                             }}
                           >
-                            {sCfg.label}
+                            {s.label}
                           </span>
-
-                          {/* Cancel button — upcoming only */}
+                          {/* Cancel */}
                           {appt.status === "confirmed" &&
                             activeTab === "upcoming" && (
                               <button
                                 onClick={() => handleCancel(appt)}
                                 disabled={cancelling === appt.id}
                                 style={{
-                                  width: isMobile ? 32 : 28,
-                                  height: isMobile ? 32 : 28,
+                                  width: isMobile ? 34 : 28,
+                                  height: isMobile ? 34 : 28,
                                   background: "transparent",
                                   border: "1px solid rgba(248,113,113,0.2)",
-                                  color: T.dim,
+                                  color: "#52525b",
                                   cursor: "pointer",
                                   display: "flex",
                                   alignItems: "center",
@@ -918,20 +1094,20 @@ function DashboardContent() {
                                   flexShrink: 0,
                                 }}
                                 onMouseEnter={(e) => {
-                                  e.currentTarget.style.borderColor = T.red;
-                                  e.currentTarget.style.color = T.red;
+                                  e.currentTarget.style.borderColor = "#f87171";
+                                  e.currentTarget.style.color = "#f87171";
                                   e.currentTarget.style.background =
                                     "rgba(248,113,113,0.08)";
                                 }}
                                 onMouseLeave={(e) => {
                                   e.currentTarget.style.borderColor =
                                     "rgba(248,113,113,0.2)";
-                                  e.currentTarget.style.color = T.dim;
+                                  e.currentTarget.style.color = "#52525b";
                                   e.currentTarget.style.background =
                                     "transparent";
                                 }}
                               >
-                                {cancelling === appt.id ? "..." : "✕"}
+                                {cancelling === appt.id ? "·" : "✕"}
                               </button>
                             )}
                         </div>
@@ -943,9 +1119,9 @@ function DashboardContent() {
 
               {/* ── QUICK ACTIONS ── */}
               <div
-                className="dash-card"
+                className="dc"
                 style={{
-                  marginTop: isMobile ? 24 : 36,
+                  marginTop: isMobile ? 32 : 48,
                   display: "grid",
                   gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr",
                   gap: 10,
@@ -954,8 +1130,8 @@ function DashboardContent() {
                 <button
                   onClick={() => router.push("/book")}
                   style={{
-                    padding: "16px 24px",
-                    background: T.amber,
+                    padding: "18px 24px",
+                    background: "#f59e0b",
                     color: "black",
                     ...sf,
                     fontSize: 8,
@@ -965,12 +1141,13 @@ function DashboardContent() {
                     border: "none",
                     cursor: "pointer",
                     transition: "background 0.2s",
+                    textAlign: "center",
                   }}
                   onMouseEnter={(e) =>
                     (e.currentTarget.style.background = "white")
                   }
                   onMouseLeave={(e) =>
-                    (e.currentTarget.style.background = T.amber)
+                    (e.currentTarget.style.background = "#f59e0b")
                   }
                 >
                   Book New Appointment →
@@ -978,14 +1155,14 @@ function DashboardContent() {
                 <button
                   onClick={() => router.push("/")}
                   style={{
-                    padding: "16px 24px",
+                    padding: "18px 24px",
                     background: "transparent",
-                    color: T.muted,
+                    color: "#52525b",
                     ...sf,
                     fontSize: 8,
                     letterSpacing: "0.2em",
                     textTransform: "uppercase",
-                    border: `1px solid ${T.border}`,
+                    border: "1px solid rgba(255,255,255,0.08)",
                     cursor: "pointer",
                     transition: "all 0.2s",
                   }}
@@ -994,11 +1171,12 @@ function DashboardContent() {
                     e.currentTarget.style.borderColor = "rgba(255,255,255,0.2)";
                   }}
                   onMouseLeave={(e) => {
-                    e.currentTarget.style.color = T.muted;
-                    e.currentTarget.style.borderColor = T.border;
+                    e.currentTarget.style.color = "#52525b";
+                    e.currentTarget.style.borderColor =
+                      "rgba(255,255,255,0.08)";
                   }}
                 >
-                  Return to Site
+                  Return to Home
                 </button>
               </div>
             </>
@@ -1021,8 +1199,21 @@ export default function Dashboard() {
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
+              flexDirection: "column",
+              gap: 16,
             }}
           >
+            <p
+              style={{
+                fontFamily: "'Syncopate',sans-serif",
+                fontSize: 18,
+                fontWeight: 900,
+                letterSpacing: "-0.06em",
+              }}
+            >
+              HEADZ
+              <span style={{ color: "#f59e0b", fontStyle: "italic" }}>UP</span>
+            </p>
             <div
               style={{
                 width: 18,
@@ -1033,7 +1224,7 @@ export default function Dashboard() {
                 animation: "spin 0.8s linear infinite",
               }}
             />
-            <style>{`@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}} body{background:#040404;margin:0}`}</style>
+            <style>{`@keyframes spin{to{transform:rotate(360deg)}} body{background:#040404;margin:0}`}</style>
           </div>
         }
       >
