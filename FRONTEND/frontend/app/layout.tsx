@@ -1,20 +1,13 @@
 import type { Metadata, Viewport } from "next";
-import { Syncopate } from "next/font/google";
 import "./globals.css";
-
-const syncopate = Syncopate({
-  weight: ["400", "700"],
-  subsets: ["latin"],
-  variable: "--font-syncopate",
-  display: "swap",
-});
+import PWAProvider from "@/lib/PWAProvider";
 
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
   userScalable: false,
-  viewportFit: "cover", // critical for iPhone notch/home bar
+  viewportFit: "cover",
   themeColor: "#040404",
 };
 
@@ -24,13 +17,9 @@ export const metadata: Metadata = {
   manifest: "/site.webmanifest",
   appleWebApp: {
     capable: true,
-    statusBarStyle: "black-translucent", // makes status bar transparent on iOS
+    statusBarStyle: "black-translucent",
     title: "HEADZ UP",
-    startupImage: [
-      {
-        url: "/apple-touch-icon.png",
-      },
-    ],
+    startupImage: [{ url: "/apple-touch-icon.png" }],
   },
   icons: {
     apple: "/apple-touch-icon.png",
@@ -49,21 +38,24 @@ export const metadata: Metadata = {
 
 export default function RootLayout({
   children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
+}: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" className={syncopate.variable}>
+    <html lang="en">
       <head>
-        {/* Preconnect to Google Fonts for faster load */}
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link
           rel="preconnect"
           href="https://fonts.gstatic.com"
           crossOrigin="anonymous"
         />
+        <link
+          href="https://fonts.googleapis.com/css2?family=Syncopate:wght@400;700&family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300;1,400;1,500&display=swap"
+          rel="stylesheet"
+        />
       </head>
-      <body>{children}</body>
+      <body>
+        <PWAProvider>{children}</PWAProvider>
+      </body>
     </html>
   );
 }
