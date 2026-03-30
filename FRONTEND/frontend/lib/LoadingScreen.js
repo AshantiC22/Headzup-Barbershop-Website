@@ -1,30 +1,89 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
+
+const CUTS = ["FADE", "TAPER", "LINEUP", "SHAPE UP", "CLEAN CUT"];
+const WORDS = ["PRECISION.", "FRESH.", "SHARP.", "CLEAN.", "LEGENDARY."];
 
 export default function LoadingScreen({ onComplete }) {
   const [progress, setProgress] = useState(0);
-  const [phase, setPhase] = useState("in"); // in | out
+  const [phase, setPhase] = useState("in");
   const [visible, setVisible] = useState(true);
+  const [wordIdx, setWordIdx] = useState(0);
+  const [cutIdx, setCutIdx] = useState(0);
+  const [scissors, setScissors] = useState(false);
+  const canvasRef = useRef(null);
 
-  const STATUS = ["Initializing", "Loading assets", "Almost ready", "Let's go"];
-  const statusIdx =
-    progress < 30 ? 0 : progress < 65 ? 1 : progress < 90 ? 2 : 3;
+  // Rotating words
+  useEffect(() => {
+    const t = setInterval(() => {
+      setWordIdx((i) => (i + 1) % WORDS.length);
+      setCutIdx((i) => (i + 1) % CUTS.length);
+    }, 420);
+    return () => clearInterval(t);
+  }, []);
 
+  // Scissors open/close animation
+  useEffect(() => {
+    const t = setInterval(() => setScissors((s) => !s), 600);
+    return () => clearInterval(t);
+  }, []);
+
+  // Canvas: animated barbershop pole stripes
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    canvas.width = 3;
+    canvas.height = 200;
+    let offset = 0;
+    let raf;
+    const draw = () => {
+      ctx.clearRect(0, 0, 3, 200);
+      const stripeH = 20;
+      for (
+        let y = -stripeH + (offset % (stripeH * 3));
+        y < 220;
+        y += stripeH * 3
+      ) {
+        ctx.fillStyle = "#f59e0b";
+        ctx.fillRect(0, y, 3, stripeH);
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(0, y + stripeH, 3, stripeH);
+        ctx.fillStyle = "#040404";
+        ctx.fillRect(0, y + stripeH * 2, 3, stripeH);
+      }
+      offset += 0.6;
+      raf = requestAnimationFrame(draw);
+    };
+    draw();
+    return () => cancelAnimationFrame(raf);
+  }, []);
+
+  // Progress bar
   useEffect(() => {
     let prog = 0;
+    // Realistic loading — fast at start, slight pause at 70%, burst to 100
+    const phases = [
+      { speed: 15, target: 40 },
+      { speed: 4, target: 70 },
+      { speed: 18, target: 100 },
+    ];
+    let phaseIdx = 0;
     const tick = setInterval(() => {
-      prog = Math.min(prog + Math.random() * 14 + 3, 100);
-      setProgress(prog);
+      const p = phases[phaseIdx];
+      prog = Math.min(prog + Math.random() * p.speed + 2, p.target);
+      setProgress(Math.round(prog));
+      if (prog >= p.target && phaseIdx < phases.length - 1) phaseIdx++;
       if (prog >= 100) {
         clearInterval(tick);
-        setTimeout(() => setPhase("out"), 300);
+        setTimeout(() => setPhase("out"), 400);
         setTimeout(() => {
           setVisible(false);
           onComplete?.();
-        }, 1000);
+        }, 1100);
       }
-    }, 75);
+    }, 60);
     return () => clearInterval(tick);
   }, [onComplete]);
 
@@ -42,89 +101,156 @@ export default function LoadingScreen({ onComplete }) {
         alignItems: "center",
         justifyContent: "center",
         opacity: phase === "out" ? 0 : 1,
-        transition: "opacity 0.7s cubic-bezier(0.4,0,0.2,1)",
+        transform: phase === "out" ? "scale(1.015)" : "scale(1)",
+        transition:
+          "opacity 0.7s cubic-bezier(0.4,0,0.2,1), transform 0.7s cubic-bezier(0.4,0,0.2,1)",
         pointerEvents: phase === "out" ? "none" : "all",
+        overflow: "hidden",
       }}
     >
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Syncopate:wght@400;700&family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@400;500&display=swap');
-        @keyframes ls-spin    { to { transform: rotate(360deg); } }
-        @keyframes ls-unspin  { to { transform: rotate(-360deg); } }
-        @keyframes ls-breathe { 0%,100%{opacity:.45} 50%{opacity:1} }
-        @keyframes ls-glow    { 0%,100%{opacity:.5;transform:translate(-50%,-50%) scale(1)} 50%{opacity:.85;transform:translate(-50%,-50%) scale(1.1)} }
-        @keyframes ls-up      { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:translateY(0)} }
-        @keyframes ls-bounce  { 0%,100%{opacity:.2;transform:translateY(0)} 50%{opacity:.9;transform:translateY(-5px)} }
-        @keyframes ls-shimmer { 0%{transform:translateX(-200%)} 100%{transform:translateX(300%)} }
-        @keyframes ls-corner  { from{opacity:0;transform:scale(0.6)} to{opacity:1;transform:scale(1)} }
+        @import url('https://fonts.googleapis.com/css2?family=Syncopate:wght@400;700&family=DM+Mono:wght@400;500&display=swap');
+        @keyframes ls-flicker { 0%,100%{opacity:1} 92%{opacity:1} 93%{opacity:0.3} 94%{opacity:1} 97%{opacity:0.7} 98%{opacity:1} }
+        @keyframes ls-scan { 0%{top:-2px} 100%{top:102%} }
+        @keyframes ls-pop { from{opacity:0;transform:scale(0.85) translateY(8px)} to{opacity:1;transform:scale(1) translateY(0)} }
+        @keyframes ls-word { 0%{opacity:0;transform:translateY(-6px)} 15%{opacity:1;transform:translateY(0)} 85%{opacity:1;transform:translateY(0)} 100%{opacity:0;transform:translateY(6px)} }
+        @keyframes ls-glitch {
+          0%,100%{clip-path:inset(50% 0 30% 0);transform:translate(-3px,0)}
+          10%{clip-path:inset(15% 0 60% 0);transform:translate(3px,0)}
+          20%{clip-path:inset(80% 0 5% 0);transform:translate(-2px,0)}
+          30%{clip-path:inset(0% 0 0% 0);transform:translate(0,0)}
+        }
+        @keyframes ls-bar { from{width:0} }
+        @keyframes ls-pulse { 0%,100%{opacity:0.4} 50%{opacity:1} }
       `}</style>
 
-      {/* Grain */}
+      {/* Grain overlay */}
       <div
         style={{
           position: "absolute",
           inset: 0,
-          pointerEvents: "none",
-          opacity: 0.03,
+          opacity: 0.04,
           backgroundImage:
             "url('https://grainy-gradients.vercel.app/noise.svg')",
+          pointerEvents: "none",
         }}
       />
 
-      {/* Amber glow */}
+      {/* Scanline */}
       <div
         style={{
           position: "absolute",
-          top: "50%",
-          left: "50%",
-          width: 520,
-          height: 520,
+          left: 0,
+          right: 0,
+          height: "2px",
           background:
-            "radial-gradient(circle, rgba(245,158,11,0.09) 0%, transparent 65%)",
+            "linear-gradient(to right, transparent, rgba(245,158,11,0.4), transparent)",
+          animation: "ls-scan 3s linear infinite",
           pointerEvents: "none",
-          animation: "ls-glow 2.5s ease-in-out infinite",
+          zIndex: 2,
         }}
       />
+
+      {/* Ambient amber bleed — top right */}
+      <div
+        style={{
+          position: "absolute",
+          top: -100,
+          right: -100,
+          width: 400,
+          height: 400,
+          background:
+            "radial-gradient(circle, rgba(245,158,11,0.07) 0%, transparent 60%)",
+          pointerEvents: "none",
+        }}
+      />
+      {/* Bottom left */}
+      <div
+        style={{
+          position: "absolute",
+          bottom: -80,
+          left: -80,
+          width: 300,
+          height: 300,
+          background:
+            "radial-gradient(circle, rgba(245,158,11,0.05) 0%, transparent 60%)",
+          pointerEvents: "none",
+        }}
+      />
+
+      {/* Barber pole — left */}
+      <div
+        style={{
+          position: "absolute",
+          left: 32,
+          top: "50%",
+          transform: "translateY(-50%)",
+          width: 3,
+          height: 200,
+          overflow: "hidden",
+          opacity: 0.6,
+        }}
+      >
+        <canvas ref={canvasRef} style={{ width: 3, height: 200 }} />
+      </div>
+      {/* Barber pole — right (mirrored) */}
+      <div
+        style={{
+          position: "absolute",
+          right: 32,
+          top: "50%",
+          transform: "translateY(-50%)",
+          width: 3,
+          height: 200,
+          overflow: "hidden",
+          opacity: 0.6,
+          transform: "translateY(-50%) scaleY(-1)",
+        }}
+      >
+        <canvas
+          style={{
+            width: 3,
+            height: 200,
+            background:
+              "linear-gradient(to bottom, #f59e0b 33%, white 33% 66%, #040404 66%)",
+          }}
+        />
+      </div>
 
       {/* Corner brackets */}
       {[
         {
-          top: 20,
-          left: 20,
-          borderTop: "1px solid rgba(245,158,11,0.3)",
-          borderLeft: "1px solid rgba(245,158,11,0.3)",
+          top: 16,
+          left: 16,
+          borderTop: "1px solid rgba(245,158,11,0.35)",
+          borderLeft: "1px solid rgba(245,158,11,0.35)",
         },
         {
-          top: 20,
-          right: 20,
-          borderTop: "1px solid rgba(245,158,11,0.3)",
-          borderRight: "1px solid rgba(245,158,11,0.3)",
+          top: 16,
+          right: 16,
+          borderTop: "1px solid rgba(245,158,11,0.35)",
+          borderRight: "1px solid rgba(245,158,11,0.35)",
         },
         {
-          bottom: 20,
-          left: 20,
-          borderBottom: "1px solid rgba(245,158,11,0.3)",
-          borderLeft: "1px solid rgba(245,158,11,0.3)",
+          bottom: 16,
+          left: 16,
+          borderBottom: "1px solid rgba(245,158,11,0.35)",
+          borderLeft: "1px solid rgba(245,158,11,0.35)",
         },
         {
-          bottom: 20,
-          right: 20,
-          borderBottom: "1px solid rgba(245,158,11,0.3)",
-          borderRight: "1px solid rgba(245,158,11,0.3)",
+          bottom: 16,
+          right: 16,
+          borderBottom: "1px solid rgba(245,158,11,0.35)",
+          borderRight: "1px solid rgba(245,158,11,0.35)",
         },
       ].map((s, i) => (
         <div
           key={i}
-          style={{
-            position: "absolute",
-            width: 26,
-            height: 26,
-            ...s,
-            animation: `ls-corner 0.5s ease ${i * 0.07}s both`,
-          }}
+          style={{ position: "absolute", width: 20, height: 20, ...s }}
         />
       ))}
 
-      {/* Content */}
+      {/* Main content */}
       <div
         style={{
           position: "relative",
@@ -132,118 +258,138 @@ export default function LoadingScreen({ onComplete }) {
           display: "flex",
           flexDirection: "column",
           alignItems: "center",
-          gap: 32,
+          gap: 0,
+          userSelect: "none",
         }}
       >
-        {/* Spinner ring */}
+        {/* Scissors icon */}
+        <div style={{ marginBottom: 28, animation: "ls-pop 0.5s ease both" }}>
+          <svg width="36" height="36" viewBox="0 0 36 36" fill="none">
+            {/* Blade 1 */}
+            <line
+              x1={scissors ? 6 : 2}
+              y1={scissors ? 8 : 18}
+              x2="30"
+              y2="30"
+              stroke="#f59e0b"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              style={{ transition: "all 0.25s" }}
+            />
+            {/* Blade 2 */}
+            <line
+              x1={scissors ? 6 : 2}
+              y1={scissors ? 28 : 18}
+              x2="30"
+              y2="6"
+              stroke="#f59e0b"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              style={{ transition: "all 0.25s" }}
+            />
+            {/* Handle circles */}
+            <circle
+              cx={scissors ? 4 : 2}
+              cy={scissors ? 7 : 18}
+              r="3"
+              stroke="#f59e0b"
+              strokeWidth="1"
+              fill="transparent"
+              style={{ transition: "all 0.25s" }}
+            />
+            <circle
+              cx={scissors ? 4 : 2}
+              cy={scissors ? 29 : 18}
+              r="3"
+              stroke="#f59e0b"
+              strokeWidth="1"
+              fill="transparent"
+              style={{ transition: "all 0.25s" }}
+            />
+          </svg>
+        </div>
+
+        {/* Wordmark with glitch effect */}
         <div
           style={{
             position: "relative",
-            width: 104,
-            height: 104,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
+            marginBottom: 4,
+            animation: "ls-flicker 8s ease infinite",
           }}
         >
-          <div
+          <h1
             style={{
-              position: "absolute",
-              inset: 0,
-              borderRadius: "50%",
-              border: "1px solid transparent",
-              borderTopColor: "#f59e0b",
-              borderRightColor: "rgba(245,158,11,0.2)",
-              animation: "ls-spin 1.1s linear infinite",
-            }}
-          />
-          <div
-            style={{
-              position: "absolute",
-              inset: 13,
-              borderRadius: "50%",
-              border: "1px solid transparent",
-              borderBottomColor: "rgba(245,158,11,0.4)",
-              borderLeftColor: "rgba(245,158,11,0.15)",
-              animation: "ls-unspin 1.9s linear infinite",
-            }}
-          />
-          {/* Dot on ring */}
-          <div
-            style={{
-              position: "absolute",
-              top: 0,
-              left: "50%",
-              width: 5,
-              height: 5,
-              marginLeft: -2.5,
-              background: "#f59e0b",
-              borderRadius: "50%",
-              animation: "ls-spin 1.1s linear infinite",
-            }}
-          />
-          {/* HZ inside */}
-          <span
-            style={{
-              fontFamily: "'Syncopate',sans-serif",
+              fontFamily: "'Syncopate', sans-serif",
+              fontSize: "clamp(2.4rem, 8vw, 3.6rem)",
               fontWeight: 900,
-              fontSize: 12,
-              color: "white",
-              letterSpacing: "-0.02em",
-              animation: "ls-breathe 2.2s ease-in-out infinite",
-            }}
-          >
-            HZ
-          </span>
-        </div>
-
-        {/* Wordmark */}
-        <div
-          style={{
-            textAlign: "center",
-            animation: "ls-up 0.7s ease 0.1s both",
-          }}
-        >
-          <p
-            style={{
-              fontFamily: "'Syncopate',sans-serif",
-              fontWeight: 900,
-              fontSize: "clamp(1.8rem,6vw,3rem)",
-              letterSpacing: "-0.05em",
+              letterSpacing: "-0.06em",
               textTransform: "uppercase",
-              lineHeight: 1,
+              color: "white",
               margin: 0,
+              lineHeight: 1,
             }}
           >
             HEADZ
             <span style={{ color: "#f59e0b", fontStyle: "italic" }}>UP</span>
-          </p>
-          <p
+          </h1>
+          {/* Glitch copy — red */}
+          <h1
+            aria-hidden
             style={{
-              fontFamily: "'DM Serif Display',serif",
-              fontStyle: "italic",
-              fontSize: 13,
-              color: "#3f3f46",
-              marginTop: 8,
+              position: "absolute",
+              inset: 0,
+              fontFamily: "'Syncopate', sans-serif",
+              fontSize: "clamp(2.4rem, 8vw, 3.6rem)",
+              fontWeight: 900,
+              letterSpacing: "-0.06em",
+              textTransform: "uppercase",
+              color: "#f87171",
+              margin: 0,
+              lineHeight: 1,
+              animation: "ls-glitch 6s steps(1) infinite",
+              opacity: 0.6,
             }}
           >
-            Barbershop · Hattiesburg, MS
+            HEADZ<span style={{ color: "#fbbf24" }}>UP</span>
+          </h1>
+        </div>
+
+        {/* Location */}
+        <p
+          style={{
+            fontFamily: "'DM Mono', monospace",
+            fontSize: 9,
+            color: "#52525b",
+            letterSpacing: "0.5em",
+            textTransform: "uppercase",
+            marginBottom: 40,
+          }}
+        >
+          Hattiesburg, MS
+        </p>
+
+        {/* Rotating service type */}
+        <div style={{ height: 20, marginBottom: 32, overflow: "hidden" }}>
+          <p
+            key={cutIdx}
+            style={{
+              fontFamily: "'DM Mono', monospace",
+              fontSize: 9,
+              color: "rgba(245,158,11,0.6)",
+              letterSpacing: "0.6em",
+              textTransform: "uppercase",
+              margin: 0,
+              animation: "ls-word 0.42s ease forwards",
+            }}
+          >
+            {CUTS[cutIdx]}
           </p>
         </div>
 
-        {/* Progress */}
-        <div
-          style={{
-            width: 252,
-            display: "flex",
-            flexDirection: "column",
-            gap: 10,
-            animation: "ls-up 0.7s ease 0.25s both",
-          }}
-        >
+        {/* Progress bar */}
+        <div style={{ width: "min(280px, 72vw)", marginBottom: 14 }}>
           <div
             style={{
-              width: "100%",
               height: 1,
               background: "rgba(255,255,255,0.06)",
               position: "relative",
@@ -253,89 +399,90 @@ export default function LoadingScreen({ onComplete }) {
             <div
               style={{
                 position: "absolute",
-                top: 0,
-                left: 0,
-                height: "100%",
-                width: `${progress}%`,
+                inset: 0,
                 background:
-                  "linear-gradient(90deg, rgba(245,158,11,0.5), #f59e0b)",
+                  "linear-gradient(to right, transparent, rgba(245,158,11,0.15), transparent)",
+                animation: "ls-glitch 3s steps(1) infinite",
+              }}
+            />
+            <div
+              style={{
+                height: "100%",
+                background: "#f59e0b",
+                width: `${progress}%`,
                 transition: "width 0.1s linear",
-                overflow: "hidden",
+                position: "relative",
               }}
             >
+              {/* Shimmer on fill */}
               <div
                 style={{
                   position: "absolute",
                   inset: 0,
                   background:
-                    "linear-gradient(90deg, transparent, rgba(255,255,255,0.5), transparent)",
-                  animation: "ls-shimmer 1.2s ease-in-out infinite",
+                    "linear-gradient(to right, transparent, rgba(255,255,255,0.4), transparent)",
+                  transform: "translateX(-100%)",
+                  animation: "ls-bar 0.8s ease infinite",
                 }}
               />
             </div>
           </div>
-          <div style={{ display: "flex", justifyContent: "space-between" }}>
-            <span
-              style={{
-                fontFamily: "'DM Mono',monospace",
-                fontStyle: "italic",
-                fontSize: 9,
-                color: "#3f3f46",
-                letterSpacing: "0.1em",
-              }}
-            >
-              {STATUS[statusIdx]}
-            </span>
-            <span
-              style={{
-                fontFamily: "'DM Mono',monospace",
-                fontSize: 10,
-                color: "#f59e0b",
-                fontWeight: 500,
-              }}
-            >
-              {Math.floor(progress)}%
-            </span>
-          </div>
         </div>
 
-        {/* Bounce dots */}
-        <div
-          style={{
-            display: "flex",
-            gap: 7,
-            animation: "ls-up 0.7s ease 0.4s both",
-          }}
-        >
-          {[0, 1, 2].map((i) => (
-            <div
-              key={i}
+        {/* Percent + rotating word */}
+        <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+          <span
+            style={{
+              fontFamily: "'DM Mono', monospace",
+              fontSize: 11,
+              color: "#f59e0b",
+              fontWeight: 500,
+              minWidth: 36,
+              textAlign: "right",
+            }}
+          >
+            {progress}%
+          </span>
+          <div
+            style={{
+              width: 1,
+              height: 10,
+              background: "rgba(255,255,255,0.1)",
+            }}
+          />
+          <div style={{ height: 14, overflow: "hidden" }}>
+            <p
+              key={wordIdx}
               style={{
-                width: 4,
-                height: 4,
-                borderRadius: "50%",
-                background: "#f59e0b",
-                animation: `ls-bounce 1.3s ease-in-out ${i * 0.18}s infinite`,
+                fontFamily: "'DM Mono', monospace",
+                fontSize: 9,
+                color: "#3f3f46",
+                letterSpacing: "0.4em",
+                textTransform: "uppercase",
+                margin: 0,
+                animation: "ls-word 0.42s ease forwards",
               }}
-            />
-          ))}
+            >
+              {WORDS[wordIdx]}
+            </p>
+          </div>
         </div>
       </div>
 
-      {/* Bottom tag */}
+      {/* Bottom tagline */}
       <p
         style={{
           position: "absolute",
           bottom: 24,
-          fontFamily: "'Syncopate',sans-serif",
-          fontSize: 7,
-          letterSpacing: "0.55em",
+          fontFamily: "'DM Mono', monospace",
+          fontSize: 8,
+          color: "#27272a",
+          letterSpacing: "0.5em",
           textTransform: "uppercase",
-          color: "#1a1a1a",
-          animation: "ls-up 0.7s ease 0.6s both",
+          animation: "ls-pulse 3s ease infinite",
         }}
       >
-        ESTD. 2026 · HATTIESBURG
+        4 Hub Dr · Hattiesburg, MS 39402
       </p>
     </div>
   );

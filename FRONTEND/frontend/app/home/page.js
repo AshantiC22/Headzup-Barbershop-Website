@@ -3,109 +3,123 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import * as THREE from "three";
-import { gsap } from "gsap";
-import { ScrollTrigger } from "gsap/ScrollTrigger";
 import LoadingScreen from "@/lib/LoadingScreen";
 
-// All 11 services from the screenshot
-const FEATURED_SERVICES = [
+const sf = { fontFamily: "'Syncopate', sans-serif" };
+const mono = { fontFamily: "'DM Mono', monospace" };
+
+const SERVICES = [
   {
-    tag: "Signature",
     name: "Haircut & Shave",
-    desc: "Precision cut paired with a clean razor shave.",
-    price: "$35.00",
+    price: "$35",
     duration: "30 min",
-    white: false,
+    tag: "Signature",
+  },
+  { name: "Haircut", price: "$30", duration: "30 min", tag: "Classic" },
+  {
+    name: "Senior Cut and Shave",
+    price: "$30",
+    duration: "30 min",
+    tag: "Senior",
+  },
+  { name: "Kids Cutz (1–12)", price: "$25", duration: "30 min", tag: "Kids" },
+  { name: "Line and Shave", price: "$25", duration: "30 min", tag: "Combo" },
+  { name: "Senior Cut", price: "$25", duration: "30 min", tag: "Senior" },
+  { name: "Beard Trim", price: "$20", duration: "15 min", tag: "Beard" },
+  { name: "Line", price: "$20", duration: "15 min", tag: "Clean Up" },
+  { name: "Shave", price: "$20", duration: "30 min", tag: "Shave" },
+  { name: "Kids Line", price: "$15", duration: "30 min", tag: "Kids" },
+  { name: "Senior Line", price: "$15", duration: "30 min", tag: "Senior" },
+];
+
+const REVIEWS = [
+  {
+    quote:
+      "This man is an amazing barber with great energy and a great personality. Most importantly the cuts are fire!! Go book with him.",
+    name: "Ronnie E.",
+    rating: 5,
   },
   {
-    tag: "Classic",
-    name: "Haircut",
-    desc: "Hattiesburg's premier precision cut.",
-    price: "$30.00",
-    duration: "30 min",
-    white: false,
+    quote:
+      "Best fade in Hattiesburg, hands down. I drive 40 minutes just to sit in that chair. Worth every mile.",
+    name: "Marcus T.",
+    rating: 5,
   },
   {
-    tag: "Kids",
-    name: "Kids Cutz",
-    desc: "Ages 1-12. Sharp styles for legends.",
-    price: "$25.00",
-    duration: "30 min",
-    white: true,
+    quote:
+      "Came in first time, walked out looking like a new man. The lineup was immaculate. Already booked my next one.",
+    name: "DeShawn K.",
+    rating: 5,
+  },
+  {
+    quote:
+      "My son has been going here since he was 3. Fantastic with kids and the cut is always perfect. Love this place.",
+    name: "Tanya W.",
+    rating: 5,
   },
 ];
 
-const EXTRA_SERVICES = [
-  ["Beard Trim", "$20.00", "15 min"],
-  ["Line", "$20.00", "15 min"],
-  ["Line and Shave", "$25.00", "30 min"],
-  ["Senior Cut", "$25.00", "30 min"],
-  ["Senior Cut and Shave", "$30.00", "30 min"],
-  ["Kids Line", "$15.00", "30 min"],
-  ["Senior Line", "$15.00", "30 min"],
-  ["Shave", "$20.00", "30 min"],
-];
-
-const ALL_BARBER_SERVICES = [
-  ["Haircut & Shave", "$35.00"],
-  ["Haircut", "$30.00"],
-  ["Senior Cut and Shave", "$30.00"],
-  ["Kids Cutz", "$25.00"],
-  ["Line and Shave", "$25.00"],
-  ["Senior Cut", "$25.00"],
-  ["Beard Trim", "$20.00"],
-  ["Line", "$20.00"],
-  ["Shave", "$20.00"],
-  ["Kids Line", "$15.00"],
-  ["Senior Line", "$15.00"],
+const TICKER_ITEMS = [
+  "PRECISION FADES",
+  "CLEAN LINEUPS",
+  "KIDS CUTZ",
+  "BEARD TRIMS",
+  "SENIOR CUTS",
+  "SHAVES",
+  "BOOK ONLINE",
+  "HATTIESBURG MS",
 ];
 
 export default function HomePage() {
   const canvasRef = useRef(null);
+  const heroRef = useRef(null);
   const router = useRouter();
+
   const [pageReady, setPageReady] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [isStaff, setIsStaff] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [homeBarbers, setHomeBarbers] = useState([]);
+  const [activeReview, setActiveReview] = useState(0);
+  const [hoveredSvc, setHoveredSvc] = useState(null);
+  const [scrollY, setScrollY] = useState(0);
+  const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
 
-  // Check login state — runs on mount and whenever window regains focus
+  // Auth check
   const checkAuth = useCallback(() => {
-    const token =
-      typeof window !== "undefined" && localStorage.getItem("access");
+    const token = localStorage.getItem("access");
     if (!token) {
       setIsLoggedIn(false);
       setIsStaff(false);
       return;
     }
-    setIsLoggedIn(true);
-    import("@/lib/api").then(({ default: API }) => {
-      API.get("dashboard/")
-        .then((res) => {
-          setIsStaff(!!res.data.is_staff);
-        })
-        .catch(() => {
-          localStorage.removeItem("access");
-          localStorage.removeItem("refresh");
-          setIsLoggedIn(false);
-          setIsStaff(false);
-        });
-    });
+    fetch(
+      `${process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000"}/api/dashboard/`,
+      {
+        headers: { Authorization: `Bearer ${token}` },
+      },
+    )
+      .then((r) => r.json())
+      .then((d) => {
+        setIsLoggedIn(true);
+        setIsStaff(!!d.is_staff);
+      })
+      .catch(() => {
+        setIsLoggedIn(false);
+        setIsStaff(false);
+      });
   }, []);
 
   useEffect(() => {
     checkAuth();
-    // Re-check when user switches back to this tab
     window.addEventListener("focus", checkAuth);
     document.addEventListener("visibilitychange", () => {
       if (!document.hidden) checkAuth();
     });
-    return () => {
-      window.removeEventListener("focus", checkAuth);
-    };
+    return () => window.removeEventListener("focus", checkAuth);
   }, [checkAuth]);
 
-  // Load barbers from API for the barber section — no auth needed
+  // Load barbers
   useEffect(() => {
     fetch(
       `${process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000"}/api/barbers/`,
@@ -116,99 +130,75 @@ export default function HomePage() {
       },
     )
       .then((r) => r.json())
-      .then((data) =>
-        setHomeBarbers(Array.isArray(data) ? data : data.results || []),
-      )
+      .then((d) => setHomeBarbers(Array.isArray(d) ? d : d.results || []))
       .catch(() => {});
   }, []);
 
-  // Smart Book Now
-  const handleBookNow = (e) => {
-    e.preventDefault();
-    const token = localStorage.getItem("access");
-    router.push(token ? "/book" : "/login");
-  };
-
-  // Admin / barber dashboard nav
-  const handleAdminNav = (e) => {
-    e.preventDefault();
-    router.push(isStaff ? "/barber-dashboard" : "/login");
-  };
-
-  const sf = { fontFamily: "'Syncopate', sans-serif" };
-
-  // ── Three.js particles — only after loading screen done ───────────────────
+  // Scroll tracking
   useEffect(() => {
-    if (!pageReady) return;
+    const onScroll = () => setScrollY(window.scrollY);
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
+  // Mouse tracking for parallax
+  useEffect(() => {
+    const onMouse = (e) =>
+      setMousePos({
+        x: e.clientX / window.innerWidth - 0.5,
+        y: e.clientY / window.innerHeight - 0.5,
+      });
+    window.addEventListener("mousemove", onMouse, { passive: true });
+    return () => window.removeEventListener("mousemove", onMouse);
+  }, []);
+
+  // THREE.js particles
+  useEffect(() => {
     const container = canvasRef.current;
     if (!container) return;
-
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(
-      75,
+      70,
       window.innerWidth / window.innerHeight,
       0.1,
-      1000,
+      100,
     );
     const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.setSize(window.innerWidth, window.innerHeight);
     container.appendChild(renderer.domElement);
 
-    const count = window.innerWidth < 768 ? 1200 : 3000;
-    const dotSize = window.innerWidth < 768 ? 0.012 : 0.007;
-    const verts = [];
-    for (let i = 0; i < count; i++) {
-      verts.push(THREE.MathUtils.randFloatSpread(10));
-      verts.push(THREE.MathUtils.randFloatSpread(10));
-      verts.push(THREE.MathUtils.randFloatSpread(10));
+    // Particle geometry — scattered starfield
+    const count = window.innerWidth < 768 ? 800 : 2000;
+    const positions = new Float32Array(count * 3);
+    for (let i = 0; i < count * 3; i++) {
+      positions[i] = (Math.random() - 0.5) * 20;
     }
     const geo = new THREE.BufferGeometry();
-    geo.setAttribute("position", new THREE.Float32BufferAttribute(verts, 3));
+    geo.setAttribute(
+      "position",
+      new THREE.Float32BufferAttribute(positions, 3),
+    );
     const mat = new THREE.PointsMaterial({
-      size: dotSize,
+      size: 0.025,
       color: 0xf59e0b,
       transparent: true,
-      opacity: 0.3,
+      opacity: 0.25,
     });
     const points = new THREE.Points(geo, mat);
     scene.add(points);
-    camera.position.z = 3;
-
-    let mouseX = 0,
-      mouseY = 0;
-    const onMouse = (e) => {
-      mouseX = (e.clientX - window.innerWidth / 2) / 100;
-      mouseY = (e.clientY - window.innerHeight / 2) / 100;
-      // Move cursor dots
-      const cur = document.getElementById("cursor");
-      const out = document.getElementById("cursor-outline");
-      if (cur)
-        gsap.to(cur, {
-          left: e.clientX - 5,
-          top: e.clientY - 5,
-          duration: 0.08,
-          ease: "none",
-        });
-      if (out)
-        gsap.to(out, {
-          left: e.clientX - 18,
-          top: e.clientY - 18,
-          duration: 0.22,
-          ease: "power2.out",
-        });
-    };
-    document.addEventListener("mousemove", onMouse);
+    camera.position.z = 5;
 
     let raf;
-    const tick = () => {
-      raf = requestAnimationFrame(tick);
-      points.rotation.y += 0.001;
-      points.position.x += (mouseX - points.position.x) * 0.02;
-      points.position.y += (-mouseY - points.position.y) * 0.02;
+    let time = 0;
+    const animate = () => {
+      raf = requestAnimationFrame(animate);
+      time += 0.0005;
+      points.rotation.y = time;
+      points.rotation.x = time * 0.4;
       renderer.render(scene, camera);
     };
-    tick();
+    animate();
 
     const onResize = () => {
       camera.aspect = window.innerWidth / window.innerHeight;
@@ -216,407 +206,396 @@ export default function HomePage() {
       renderer.setSize(window.innerWidth, window.innerHeight);
     };
     window.addEventListener("resize", onResize);
-
     return () => {
       cancelAnimationFrame(raf);
-      document.removeEventListener("mousemove", onMouse);
       window.removeEventListener("resize", onResize);
       renderer.dispose();
       if (container.contains(renderer.domElement))
         container.removeChild(renderer.domElement);
     };
-  }, [pageReady]);
+  }, []);
 
-  // ── GSAP — only after loading screen done ─────────────────────────────────
+  // Review auto-rotate
+  useEffect(() => {
+    const t = setInterval(
+      () => setActiveReview((i) => (i + 1) % REVIEWS.length),
+      5000,
+    );
+    return () => clearInterval(t);
+  }, []);
+
+  // Scroll reveal
   useEffect(() => {
     if (!pageReady) return;
-    gsap.registerPlugin(ScrollTrigger);
-
-    // Hero entrance
-    const tl = gsap.timeline({ defaults: { ease: "expo.out" } });
-    tl.to(".hero-line", { y: 0, opacity: 1, duration: 1.5, stagger: 0.2 }).to(
-      ".hero-fade",
-      { opacity: 1, duration: 1.2, stagger: 0.15 },
-      "-=1",
-    );
-
-    // Scroll reveals
-    gsap.utils
-      .toArray(".menu-card, .gallery-item, .review-card, .scroll-reveal")
-      .forEach((el) => {
-        gsap.from(el, {
-          scrollTrigger: { trigger: el, start: "top 95%" },
-          y: 24,
-          opacity: 0,
-          duration: 0.9,
-          ease: "expo.out",
+    const els = document.querySelectorAll(".reveal");
+    const io = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((e) => {
+          if (e.isIntersecting) {
+            e.target.classList.add("revealed");
+            io.unobserve(e.target);
+          }
         });
-      });
-
-    return () => ScrollTrigger.getAll().forEach((t) => t.kill());
+      },
+      { threshold: 0.15 },
+    );
+    els.forEach((el) => io.observe(el));
+    return () => io.disconnect();
   }, [pageReady]);
+
+  const handleBookNow = (e) => {
+    e.preventDefault();
+    const token = localStorage.getItem("access");
+    router.push(token ? "/book" : "/login");
+  };
 
   return (
     <>
-      {/* ── Global styles — background set to #050505 immediately to kill white flash ── */}
-      <style jsx global>{`
-        @import url("https://fonts.googleapis.com/css2?family=Syncopate:wght@400;700&family=Inter:wght@400;900&display=swap");
+      {!pageReady && <LoadingScreen onComplete={() => setPageReady(true)} />}
 
-        html,
-        body {
-          background: #050505 !important;
-          margin: 0;
-          padding: 0;
-          overflow-x: hidden;
-          overflow-y: auto;
-          color: white;
-          font-family: "Inter", sans-serif;
-        }
+      <style jsx global>{`
+        @import url("https://fonts.googleapis.com/css2?family=Syncopate:wght@400;700&family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&display=swap");
+
         *,
         *::before,
         *::after {
           box-sizing: border-box;
+          margin: 0;
+          padding: 0;
         }
         html {
-          scroll-behavior: smooth;
+          background: #040404;
+          overflow-x: hidden;
+        }
+        body {
+          background: #040404;
+          color: white;
+          font-family: "DM Mono", monospace;
+          overflow-x: hidden;
         }
 
-        /* Desktop only — hidden on mobile */
-        .desktop-only {
-          display: none;
-        }
-        @media (min-width: 640px) {
-          .desktop-only {
-            display: inline-block;
-          }
-        }
-
-        /* Custom cursor */
-        #cursor,
-        #cursor-outline {
-          display: none;
-        }
-        @media (pointer: fine) {
-          * {
-            cursor: none !important;
-          }
-          #cursor {
-            display: block;
-            width: 10px;
-            height: 10px;
-            background: #f59e0b;
-            border-radius: 50%;
-            position: fixed;
-            pointer-events: none;
-            z-index: 9999;
-            top: 0;
-            left: 0;
-            will-change: transform;
-          }
-          #cursor-outline {
-            display: block;
-            width: 36px;
-            height: 36px;
-            border: 1px solid rgba(245, 158, 11, 0.5);
-            border-radius: 50%;
-            position: fixed;
-            pointer-events: none;
-            z-index: 9998;
-            top: 0;
-            left: 0;
-            will-change: transform;
-            transition:
-              width 0.2s,
-              height 0.2s,
-              border-color 0.2s;
-          }
-        }
-
-        /* Hero typography */
-        .hero-title {
-          font-size: clamp(2.5rem, 12vw, 10rem);
-          line-height: 0.82;
-          letter-spacing: -0.06em;
-          font-family: "Syncopate", sans-serif;
-          font-weight: 900;
-          text-transform: uppercase;
-        }
-        .hero-line {
+        /* Reveal animations */
+        .reveal {
           opacity: 0;
-          transform: translateY(100%);
-        }
-        .hero-fade {
-          opacity: 0;
-        }
-
-        /* Service cards */
-        .menu-card {
-          background: linear-gradient(
-            145deg,
-            rgba(20, 20, 20, 0.85),
-            rgba(5, 5, 5, 0.95)
-          );
-          border: 1px solid rgba(255, 255, 255, 0.05);
+          transform: translateY(32px);
           transition:
-            border-color 0.3s ease,
-            transform 0.3s ease;
+            opacity 0.9s cubic-bezier(0.16, 1, 0.3, 1),
+            transform 0.9s cubic-bezier(0.16, 1, 0.3, 1);
         }
-        @media (min-width: 1024px) {
-          .menu-card:hover {
-            border-color: #f59e0b;
-            transform: translateY(-5px);
+        .reveal.delay-1 {
+          transition-delay: 0.1s;
+        }
+        .reveal.delay-2 {
+          transition-delay: 0.2s;
+        }
+        .reveal.delay-3 {
+          transition-delay: 0.3s;
+        }
+        .reveal.delay-4 {
+          transition-delay: 0.4s;
+        }
+        .reveal.revealed {
+          opacity: 1;
+          transform: translateY(0);
+        }
+
+        /* Ticker */
+        @keyframes ticker {
+          from {
+            transform: translateX(0);
+          }
+          to {
+            transform: translateX(-50%);
+          }
+        }
+        .ticker-track {
+          display: flex;
+          animation: ticker 20s linear infinite;
+          width: max-content;
+        }
+        .ticker-track:hover {
+          animation-play-state: paused;
+        }
+
+        /* Hero text flicker */
+        @keyframes flicker {
+          0%,
+          100% {
+            opacity: 1;
+          }
+          41% {
+            opacity: 1;
+          }
+          42% {
+            opacity: 0.8;
+          }
+          43% {
+            opacity: 1;
+          }
+          77% {
+            opacity: 1;
+          }
+          78% {
+            opacity: 0.85;
+          }
+          79% {
+            opacity: 1;
           }
         }
 
-        /* Outline headings */
-        .outline-text {
-          color: transparent;
-          -webkit-text-stroke: 1px rgba(255, 255, 255, 0.25);
-        }
-
-        /* Vertical sidebar text */
-        .vertical-text {
-          writing-mode: vertical-rl;
-          text-orientation: mixed;
-        }
-
-        /* Gallery */
-        .gallery-item {
-          position: relative;
-          overflow: hidden;
-          background: #111;
-          border: 1px solid rgba(255, 255, 255, 0.05);
-          aspect-ratio: 1/1;
-        }
-        .gallery-item img {
-          transition:
-            transform 0.8s cubic-bezier(0.2, 1, 0.3, 1),
-            filter 0.5s ease;
-          filter: grayscale(1);
-          width: 100%;
-          height: 100%;
-          object-fit: cover;
-          display: block;
-        }
-        @media (hover: hover) {
-          .gallery-item:hover img {
-            transform: scale(1.08);
-            filter: grayscale(0);
+        /* Pulse green dot */
+        @keyframes pulse-green {
+          0%,
+          100% {
+            box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.6);
           }
-        }
-        @media (max-width: 768px) {
-          .gallery-item img {
-            filter: grayscale(0);
+          50% {
+            box-shadow: 0 0 0 8px rgba(34, 197, 94, 0);
           }
         }
 
-        /* Noise grain overlay */
-        .noise-overlay {
-          position: fixed;
-          inset: 0;
-          pointer-events: none;
-          z-index: 90;
-          background-image: url("https://grainy-gradients.vercel.app/noise.svg");
-          opacity: 0.04;
-        }
-
-        /* Pulse dot animation */
-        @keyframes pulse-dot {
+        /* Shimmer on price tags */
+        @keyframes shimmer {
           0% {
-            transform: scale(0.95);
-            box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7);
-          }
-          70% {
-            transform: scale(1);
-            box-shadow: 0 0 0 10px rgba(34, 197, 94, 0);
+            background-position: -200% center;
           }
           100% {
-            transform: scale(0.95);
-            box-shadow: 0 0 0 0 rgba(34, 197, 94, 0);
+            background-position: 200% center;
           }
         }
-        .pulse-green {
-          animation: pulse-dot 2s infinite;
+
+        /* Mobile menu */
+        @keyframes menuIn {
+          from {
+            opacity: 0;
+            transform: translateY(-8px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
         }
 
-        /* CTA button */
+        @media (max-width: 639px) {
+          .desktop-only {
+            display: none !important;
+          }
+        }
+        @media (min-width: 640px) {
+          .mobile-only {
+            display: none !important;
+          }
+        }
+
+        /* Book button */
         .book-btn {
           display: inline-block;
-          position: relative;
-          overflow: hidden;
-          padding: 20px 48px;
-          border: 1px solid rgba(255, 255, 255, 0.2);
+          padding: 16px 40px;
+          background: #f59e0b;
+          color: black;
           font-family: "Syncopate", sans-serif;
           font-size: 10px;
           font-weight: 700;
-          letter-spacing: 0.2em;
+          letter-spacing: 0.25em;
           text-transform: uppercase;
           text-decoration: none;
+          border: none;
           cursor: pointer;
-          background: transparent;
-          color: white;
-          transition: color 0.3s;
+          position: relative;
+          overflow: hidden;
+          transition: all 0.3s;
+        }
+        .book-btn::before {
+          content: "";
+          position: absolute;
+          top: 0;
+          left: -100%;
+          right: 0;
+          bottom: 0;
+          background: white;
+          transition: left 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+          z-index: 0;
+        }
+        .book-btn:hover::before {
+          left: 0;
         }
         .book-btn span {
           position: relative;
           z-index: 1;
-          transition: color 0.3s ease;
-        }
-        .book-btn::after {
-          content: "";
-          position: absolute;
-          inset: 0;
-          background: white;
-          transform: scaleX(0);
-          transform-origin: left;
-          transition: transform 0.45s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-        @media (min-width: 768px) {
-          .book-btn:hover span {
-            color: black;
-          }
-          .book-btn:hover::after {
-            transform: scaleX(1);
-          }
         }
 
-        /* Smooth page-in fade after loading screen */
-        .page-root {
-          opacity: 0;
-          animation: pageIn 0.7s ease 0.05s forwards;
+        /* Service row hover */
+        .svc-row {
+          transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
         }
-        @keyframes pageIn {
-          from {
-            opacity: 0;
-          }
-          to {
-            opacity: 1;
-          }
+        .svc-row:hover {
+          padding-left: 16px !important;
+          border-color: rgba(245, 158, 11, 0.4) !important;
+        }
+
+        /* Nav link */
+        .nav-link {
+          transition: color 0.2s;
+        }
+        .nav-link:hover {
+          color: #f59e0b !important;
+        }
+
+        /* Outline text */
+        .outline-text {
+          -webkit-text-stroke: 1px rgba(255, 255, 255, 0.15);
+          color: transparent;
         }
       `}</style>
 
-      {/* ── Loading screen — renders on top of dark bg, no white flash ── */}
-      <LoadingScreen onComplete={() => setPageReady(true)} />
+      {/* ── PARTICLE CANVAS ── */}
+      <div
+        ref={canvasRef}
+        style={{
+          position: "fixed",
+          inset: 0,
+          zIndex: 0,
+          pointerEvents: "none",
+        }}
+      />
 
-      {/* ── Page content — hidden until loading done ── */}
-      {pageReady && (
-        <div className="page-root">
-          {/* Custom cursor — shown/hidden purely via CSS @media (pointer: fine) */}
-          <div id="cursor" />
-          <div id="cursor-outline" />
+      {/* ── GRID ── */}
+      <div
+        style={{
+          position: "fixed",
+          inset: 0,
+          zIndex: 0,
+          pointerEvents: "none",
+          backgroundImage:
+            "linear-gradient(rgba(255,255,255,0.018) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.018) 1px, transparent 1px)",
+          backgroundSize: "80px 80px",
+        }}
+      />
 
-          {/* Grain overlay */}
-          <div className="noise-overlay" />
+      {/* ── GRAIN ── */}
+      <div
+        style={{
+          position: "fixed",
+          inset: 0,
+          zIndex: 0,
+          pointerEvents: "none",
+          opacity: 0.035,
+          backgroundImage:
+            "url('https://grainy-gradients.vercel.app/noise.svg')",
+        }}
+      />
 
-          {/* Particle canvas */}
+      {/* ── AMBIENT GLOWS ── */}
+      <div
+        style={{
+          position: "fixed",
+          top: "-20%",
+          right: "-10%",
+          width: 600,
+          height: 600,
+          background:
+            "radial-gradient(circle, rgba(245,158,11,0.06) 0%, transparent 60%)",
+          pointerEvents: "none",
+          zIndex: 0,
+        }}
+      />
+      <div
+        style={{
+          position: "fixed",
+          bottom: "30%",
+          left: "-15%",
+          width: 500,
+          height: 500,
+          background:
+            "radial-gradient(circle, rgba(245,158,11,0.04) 0%, transparent 60%)",
+          pointerEvents: "none",
+          zIndex: 0,
+        }}
+      />
+
+      <div style={{ position: "relative", zIndex: 10 }}>
+        {/* ════════════════ NAV ════════════════ */}
+        <nav
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            zIndex: 100,
+            background: scrollY > 60 ? "rgba(4,4,4,0.95)" : "transparent",
+            backdropFilter: scrollY > 60 ? "blur(20px)" : "none",
+            borderBottom:
+              scrollY > 60 ? "1px solid rgba(255,255,255,0.06)" : "none",
+            transition: "all 0.4s cubic-bezier(0.4,0,0.2,1)",
+          }}
+        >
           <div
-            ref={canvasRef}
             style={{
-              position: "fixed",
-              inset: 0,
-              zIndex: 0,
-              pointerEvents: "none",
-            }}
-          />
-
-          {/* Vertical sidebar */}
-          <div
-            style={{
-              position: "fixed",
-              right: 32,
-              top: "50%",
-              transform: "translateY(-50%)",
-              opacity: 0.18,
-              zIndex: 40,
-              pointerEvents: "none",
-              display: "none",
-            }}
-            className="lg:block"
-          >
-            <p
-              className="vertical-text"
-              style={{
-                ...sf,
-                fontSize: 10,
-                letterSpacing: "1.5em",
-                textTransform: "uppercase",
-              }}
-            >
-              ESTD. BARBERSHOP . 2026
-            </p>
-          </div>
-
-          {/* ── NAV ── */}
-          <nav
-            style={{
-              position: "fixed",
-              width: "100%",
-              zIndex: 100,
-              padding: "20px 28px",
+              maxWidth: 1280,
+              margin: "0 auto",
+              padding: "0 28px",
+              height: 64,
               display: "flex",
               justifyContent: "space-between",
               alignItems: "center",
-              background: "rgba(5,5,5,0.85)",
-              backdropFilter: "blur(12px)",
-              borderBottom: "1px solid rgba(255,255,255,0.04)",
             }}
           >
-            <div
+            {/* Logo */}
+            <a
+              href="/"
               style={{
                 ...sf,
                 fontWeight: 700,
                 fontSize: 18,
-                letterSpacing: "-0.05em",
+                letterSpacing: "-0.06em",
+                textDecoration: "none",
+                color: "white",
+                animation: "flicker 8s ease-in-out infinite",
               }}
             >
               HEADZ
               <span style={{ color: "#f59e0b", fontStyle: "italic" }}>UP</span>
-            </div>
+            </a>
 
-            {/* Desktop links */}
-            <div style={{ display: "flex", gap: 28, alignItems: "center" }}>
+            {/* Desktop nav */}
+            <div
+              className="desktop-only"
+              style={{ display: "flex", gap: 32, alignItems: "center" }}
+            >
               {["services", "barber", "reviews", "location"].map((id) => (
                 <a
                   key={id}
                   href={`#${id}`}
-                  className="desktop-only"
+                  className="nav-link"
                   style={{
                     ...sf,
-                    fontSize: 8,
-                    letterSpacing: "0.25em",
+                    fontSize: 7,
+                    letterSpacing: "0.3em",
                     textTransform: "uppercase",
-                    color: "#a1a1aa",
+                    color: "#71717a",
                     textDecoration: "none",
-                    transition: "color 0.2s",
                   }}
-                  onMouseEnter={(e) => (e.target.style.color = "#f59e0b")}
-                  onMouseLeave={(e) => (e.target.style.color = "#a1a1aa")}
                 >
                   {id.charAt(0).toUpperCase() + id.slice(1)}
                 </a>
               ))}
-              <a
-                href="/book"
-                onClick={handleBookNow}
-                className="book-btn desktop-only"
-                style={{ padding: "14px 28px" }}
-              >
-                <span>Book_Now</span>
-              </a>
+            </div>
+
+            {/* CTA group */}
+            <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
               {isLoggedIn && isStaff && (
                 <a
                   href="/barber-dashboard"
-                  onClick={handleAdminNav}
                   className="desktop-only"
                   style={{
                     ...sf,
-                    fontSize: 8,
+                    fontSize: 7,
                     letterSpacing: "0.2em",
                     textTransform: "uppercase",
                     color: "#f59e0b",
                     textDecoration: "none",
                     border: "1px solid rgba(245,158,11,0.3)",
-                    padding: "10px 18px",
+                    padding: "9px 16px",
                     transition: "all 0.2s",
                   }}
                   onMouseEnter={(e) => {
@@ -637,13 +616,13 @@ export default function HomePage() {
                   className="desktop-only"
                   style={{
                     ...sf,
-                    fontSize: 8,
+                    fontSize: 7,
                     letterSpacing: "0.2em",
                     textTransform: "uppercase",
                     color: "#52525b",
                     textDecoration: "none",
-                    border: "1px solid rgba(255,255,255,0.07)",
-                    padding: "10px 18px",
+                    border: "1px solid rgba(255,255,255,0.08)",
+                    padding: "9px 16px",
                     transition: "all 0.2s",
                   }}
                   onMouseEnter={(e) => {
@@ -653,26 +632,35 @@ export default function HomePage() {
                   onMouseLeave={(e) => {
                     e.currentTarget.style.color = "#52525b";
                     e.currentTarget.style.borderColor =
-                      "rgba(255,255,255,0.07)";
+                      "rgba(255,255,255,0.08)";
                   }}
                 >
                   Barber Login
                 </a>
               )}
+              <a
+                href="/book"
+                onClick={handleBookNow}
+                className="book-btn desktop-only"
+                style={{ padding: "12px 24px", fontSize: 8 }}
+              >
+                <span>Book Now</span>
+              </a>
 
-              {/* Hamburger — mobile only */}
+              {/* Hamburger */}
               <button
                 onClick={() => setMenuOpen(!menuOpen)}
                 className="mobile-only"
                 style={{
+                  display: "flex",
                   flexDirection: "column",
                   gap: 5,
                   background: "none",
                   border: "none",
                   cursor: "pointer",
-                  padding: 4,
-                  display: "flex",
+                  padding: 8,
                   minHeight: 44,
+                  minWidth: 44,
                   alignItems: "center",
                   justifyContent: "center",
                 }}
@@ -685,7 +673,7 @@ export default function HomePage() {
                     background: menuOpen ? "#f59e0b" : "white",
                     transition: "all 0.3s",
                     transform: menuOpen
-                      ? "rotate(45deg) translate(4px, 5px)"
+                      ? "rotate(45deg) translate(4.5px, 4.5px)"
                       : "none",
                   }}
                 />
@@ -707,1229 +695,1257 @@ export default function HomePage() {
                     background: menuOpen ? "#f59e0b" : "white",
                     transition: "all 0.3s",
                     transform: menuOpen
-                      ? "rotate(-45deg) translate(4px, -5px)"
+                      ? "rotate(-45deg) translate(4.5px, -4.5px)"
                       : "none",
                   }}
                 />
               </button>
             </div>
-          </nav>
+          </div>
 
-          {/* Mobile menu overlay */}
+          {/* Mobile menu */}
           {menuOpen && (
             <div
               style={{
-                position: "fixed",
-                inset: 0,
-                zIndex: 99,
-                background: "rgba(5,5,5,0.97)",
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: 40,
+                background: "rgba(4,4,4,0.98)",
+                backdropFilter: "blur(20px)",
+                borderTop: "1px solid rgba(255,255,255,0.06)",
+                padding: "20px 28px 28px",
+                animation: "menuIn 0.25s ease",
               }}
             >
-              <button
-                onClick={() => setMenuOpen(false)}
-                style={{
-                  position: "absolute",
-                  top: 24,
-                  right: 28,
-                  background: "none",
-                  border: "none",
-                  color: "#71717a",
-                  cursor: "pointer",
-                  ...sf,
-                  fontSize: 9,
-                  letterSpacing: "0.2em",
-                  textTransform: "uppercase",
-                }}
-              >
-                Close ✕
-              </button>
               {["services", "barber", "reviews", "location"].map((id) => (
                 <a
                   key={id}
                   href={`#${id}`}
                   onClick={() => setMenuOpen(false)}
                   style={{
+                    display: "block",
                     ...sf,
-                    fontSize: "clamp(1.4rem, 6vw, 2rem)",
-                    fontWeight: 900,
+                    fontSize: 8,
+                    letterSpacing: "0.3em",
                     textTransform: "uppercase",
-                    color: "white",
+                    color: "#71717a",
                     textDecoration: "none",
-                    letterSpacing: "-0.03em",
-                    transition: "color 0.2s",
+                    padding: "14px 0",
+                    borderBottom: "1px solid rgba(255,255,255,0.05)",
                   }}
-                  onMouseEnter={(e) => (e.target.style.color = "#f59e0b")}
-                  onMouseLeave={(e) => (e.target.style.color = "white")}
+                  onMouseEnter={(e) =>
+                    (e.currentTarget.style.color = "#f59e0b")
+                  }
+                  onMouseLeave={(e) =>
+                    (e.currentTarget.style.color = "#71717a")
+                  }
                 >
                   {id.charAt(0).toUpperCase() + id.slice(1)}
                 </a>
               ))}
-              <a
-                href="/book"
-                onClick={(e) => {
-                  handleBookNow(e);
-                  setMenuOpen(false);
-                }}
-                style={{
-                  marginTop: 16,
-                  ...sf,
-                  fontSize: 11,
-                  fontWeight: 700,
-                  letterSpacing: "0.25em",
-                  textTransform: "uppercase",
-                  color: "black",
-                  background: "#f59e0b",
-                  padding: "18px 40px",
-                  textDecoration: "none",
-                }}
-              >
-                Book Now →
-              </a>
-              {isStaff ? (
-                <a
-                  href="/barber-dashboard"
-                  onClick={(e) => {
-                    handleAdminNav(e);
-                    setMenuOpen(false);
-                  }}
-                  style={{
-                    ...sf,
-                    fontSize: 10,
-                    fontWeight: 700,
-                    letterSpacing: "0.25em",
-                    textTransform: "uppercase",
-                    color: "#f59e0b",
-                    background: "transparent",
-                    border: "1px solid rgba(245,158,11,0.4)",
-                    padding: "16px 40px",
-                    textDecoration: "none",
-                  }}
-                >
-                  My Dashboard →
-                </a>
-              ) : (
-                <a
-                  href="/barber-login"
-                  onClick={() => setMenuOpen(false)}
-                  style={{
-                    ...sf,
-                    fontSize: 10,
-                    fontWeight: 700,
-                    letterSpacing: "0.25em",
-                    textTransform: "uppercase",
-                    color: "#52525b",
-                    background: "transparent",
-                    border: "1px solid rgba(255,255,255,0.1)",
-                    padding: "16px 40px",
-                    textDecoration: "none",
-                  }}
-                >
-                  Barber Login →
-                </a>
-              )}
-            </div>
-          )}
-
-          <main style={{ position: "relative", zIndex: 10 }}>
-            {/* ══ HERO ══ */}
-            <section
-              style={{
-                minHeight: "100vh",
-                display: "flex",
-                flexDirection: "column",
-                justifyContent: "center",
-                padding: "96px 28px 40px",
-                maxWidth: 1400,
-                margin: "0 auto",
-              }}
-            >
-              {/* Status badge */}
               <div
-                className="hero-fade"
                 style={{
+                  marginTop: 20,
                   display: "flex",
-                  alignItems: "center",
-                  gap: 16,
-                  marginBottom: 28,
+                  flexDirection: "column",
+                  gap: 10,
                 }}
               >
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 8,
-                    background: "rgba(24,24,27,0.9)",
-                    border: "1px solid rgba(255,255,255,0.08)",
-                    padding: "8px 18px",
-                    borderRadius: 999,
-                  }}
+                <a
+                  href="/book"
+                  onClick={handleBookNow}
+                  className="book-btn"
+                  style={{ textAlign: "center" }}
                 >
-                  <div
-                    className="pulse-green"
-                    style={{
-                      width: 8,
-                      height: 8,
-                      background: "#22c55e",
-                      borderRadius: "50%",
-                      flexShrink: 0,
-                    }}
-                  />
-                  <span
+                  <span>Book Now</span>
+                </a>
+                {!isLoggedIn && (
+                  <a
+                    href="/barber-login"
                     style={{
                       ...sf,
-                      fontSize: 9,
+                      fontSize: 7,
                       letterSpacing: "0.2em",
                       textTransform: "uppercase",
+                      color: "#52525b",
+                      textDecoration: "none",
+                      border: "1px solid rgba(255,255,255,0.08)",
+                      padding: "14px",
+                      textAlign: "center",
+                      transition: "all 0.2s",
                     }}
                   >
-                    Walk-ins Welcome
-                  </span>
-                </div>
-                <div
-                  style={{
-                    width: 28,
-                    height: 1,
-                    background: "rgba(245,158,11,0.5)",
-                  }}
-                />
-                <span
-                  style={{
-                    ...sf,
-                    fontSize: 9,
-                    color: "#f59e0b",
-                    letterSpacing: "0.35em",
-                    textTransform: "uppercase",
-                  }}
-                >
-                  Barbershop
-                </span>
+                    Barber Login
+                  </a>
+                )}
               </div>
+            </div>
+          )}
+        </nav>
 
-              {/* Title lines */}
-              <div style={{ overflow: "hidden" }}>
-                <h1 className="hero-line hero-title">HEADZUP</h1>
-              </div>
-              <div
-                style={{
-                  overflow: "hidden",
-                  display: "flex",
-                  flexWrap: "wrap",
-                  alignItems: "center",
-                  gap: "0 40px",
-                }}
-              >
-                <h1
-                  className="hero-line hero-title"
-                  style={{ color: "#f59e0b", fontStyle: "italic" }}
-                >
-                  BARBERSHOP_
-                </h1>
-                <p
-                  className="hero-fade"
-                  style={{
-                    color: "#d4d4d8",
-                    maxWidth: 260,
-                    fontSize: 11,
-                    textTransform: "uppercase",
-                    letterSpacing: "0.18em",
-                    lineHeight: 1.9,
-                    marginTop: 16,
-                  }}
-                >
-                  10/10 cuts. Hattiesburg&apos;s highest rated grooming
-                  experience.
-                </p>
-              </div>
+        {/* ════════════════ HERO ════════════════ */}
+        <section
+          ref={heroRef}
+          style={{
+            minHeight: "100vh",
+            minHeight: "100dvh",
+            display: "flex",
+            flexDirection: "column",
+            justifyContent: "center",
+            padding: "0 28px",
+            position: "relative",
+            overflow: "hidden",
+          }}
+        >
+          {/* Issue number — editorial feel */}
+          <div
+            style={{
+              position: "absolute",
+              top: 80,
+              right: 28,
+              ...mono,
+              fontSize: 8,
+              color: "#27272a",
+              letterSpacing: "0.4em",
+              textTransform: "uppercase",
+              writingMode: "vertical-rl",
+              transform: "rotate(180deg)",
+            }}
+          >
+            Vol.01 — Est. Hattiesburg MS
+          </div>
 
-              <div className="hero-fade" style={{ marginTop: 52 }}>
-                <a href="/book" onClick={handleBookNow} className="book-btn">
-                  <span>Initiate Booking</span>
-                </a>
-              </div>
+          {/* Decorative lines */}
+          <div
+            style={{
+              position: "absolute",
+              left: 0,
+              top: "20%",
+              width: 1,
+              height: "60%",
+              background:
+                "linear-gradient(to bottom, transparent, rgba(245,158,11,0.3), transparent)",
+            }}
+          />
+          <div
+            style={{
+              position: "absolute",
+              right: 0,
+              top: "20%",
+              width: 1,
+              height: "60%",
+              background:
+                "linear-gradient(to bottom, transparent, rgba(245,158,11,0.15), transparent)",
+            }}
+          />
 
-              {/* Scroll hint */}
-              <div
-                className="hero-fade"
-                style={{
-                  marginTop: 64,
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 12,
-                }}
-              >
-                <div
-                  style={{
-                    width: 1,
-                    height: 40,
-                    background: "rgba(245,158,11,0.3)",
-                  }}
-                />
-                <span
-                  style={{
-                    ...sf,
-                    fontSize: 8,
-                    color: "#52525b",
-                    letterSpacing: "0.4em",
-                    textTransform: "uppercase",
-                  }}
-                >
-                  Scroll
-                </span>
-              </div>
-            </section>
-
-            {/* ══ SERVICES ══ */}
-            <section
-              id="services"
-              style={{ padding: "96px 28px", maxWidth: 1200, margin: "0 auto" }}
+          <div
+            style={{
+              maxWidth: 1280,
+              margin: "0 auto",
+              width: "100%",
+              paddingTop: 80,
+            }}
+          >
+            {/* Pre-heading */}
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 14,
+                marginBottom: 24,
+              }}
             >
-              <div className="scroll-reveal" style={{ marginBottom: 64 }}>
-                <p
+              <div
+                style={{
+                  width: 7,
+                  height: 7,
+                  background: "#22c55e",
+                  borderRadius: "50%",
+                  animation: "pulse-green 2s infinite",
+                  flexShrink: 0,
+                }}
+              />
+              <p
+                style={{
+                  ...mono,
+                  fontSize: 9,
+                  color: "#4ade80",
+                  letterSpacing: "0.5em",
+                  textTransform: "uppercase",
+                }}
+              >
+                Now Accepting Clients — Hattiesburg, MS
+              </p>
+            </div>
+
+            {/* Main headline — editorial split layout */}
+            <div style={{ position: "relative", marginBottom: 40 }}>
+              {/* Big outline background word */}
+              <p
+                className="outline-text"
+                style={{
+                  ...sf,
+                  fontSize: "clamp(5rem,18vw,16rem)",
+                  fontWeight: 900,
+                  textTransform: "uppercase",
+                  lineHeight: 0.85,
+                  letterSpacing: "-0.06em",
+                  position: "absolute",
+                  top: "50%",
+                  left: "50%",
+                  transform: `translate(-50%,-50%) translate(${mousePos.x * -15}px, ${mousePos.y * -10}px)`,
+                  whiteSpace: "nowrap",
+                  pointerEvents: "none",
+                  transition: "transform 0.1s ease",
+                  userSelect: "none",
+                }}
+              >
+                CUT
+              </p>
+
+              <h1
+                style={{
+                  ...sf,
+                  fontSize: "clamp(2.8rem,8vw,7rem)",
+                  fontWeight: 900,
+                  textTransform: "uppercase",
+                  lineHeight: 0.88,
+                  letterSpacing: "-0.04em",
+                  position: "relative",
+                  zIndex: 1,
+                }}
+              >
+                <span style={{ display: "block", color: "white" }}>Fresh</span>
+                <span
                   style={{
-                    ...sf,
-                    fontSize: 8,
-                    letterSpacing: "0.5em",
-                    color: "#71717a",
-                    textTransform: "uppercase",
-                    marginBottom: 16,
-                  }}
-                >
-                  What We Offer
-                </p>
-                <h2
-                  className="outline-text"
-                  style={{
-                    ...sf,
-                    fontSize: "clamp(2rem,6vw,4rem)",
-                    textTransform: "uppercase",
+                    display: "block",
+                    color: "#f59e0b",
                     fontStyle: "italic",
                   }}
                 >
-                  The_Menu
+                  Cuts,
+                </span>
+                <span style={{ display: "block", color: "white" }}>Sharp</span>
+                <span style={{ display: "block" }}>
+                  <span style={{ color: "white" }}>Lines</span>
+                  <span style={{ color: "#f59e0b" }}>.</span>
+                </span>
+              </h1>
+            </div>
+
+            <p
+              style={{
+                ...mono,
+                fontSize: "clamp(12px,1.8vw,15px)",
+                color: "#71717a",
+                maxWidth: 440,
+                lineHeight: 1.8,
+                marginBottom: 44,
+              }}
+            >
+              Hattiesburg's premier barbershop. Walk in looking regular, walk
+              out looking legendary. Book your slot before it's gone.
+            </p>
+
+            <div
+              style={{
+                display: "flex",
+                gap: 12,
+                flexWrap: "wrap",
+                alignItems: "center",
+              }}
+            >
+              <a href="/book" onClick={handleBookNow} className="book-btn">
+                <span>Book Your Cut →</span>
+              </a>
+              <a
+                href="#services"
+                style={{
+                  ...sf,
+                  fontSize: 8,
+                  letterSpacing: "0.25em",
+                  textTransform: "uppercase",
+                  color: "#52525b",
+                  textDecoration: "none",
+                  padding: "16px 24px",
+                  border: "1px solid rgba(255,255,255,0.08)",
+                  transition: "all 0.3s",
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.color = "#f59e0b";
+                  e.currentTarget.style.borderColor = "rgba(245,158,11,0.3)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.color = "#52525b";
+                  e.currentTarget.style.borderColor = "rgba(255,255,255,0.08)";
+                }}
+              >
+                See Services
+              </a>
+            </div>
+
+            {/* Stats row */}
+            <div
+              style={{
+                display: "flex",
+                gap: 0,
+                marginTop: 60,
+                borderTop: "1px solid rgba(255,255,255,0.06)",
+                paddingTop: 32,
+                flexWrap: "wrap",
+              }}
+            >
+              {[
+                { value: "5★", label: "Rating" },
+                { value: "100+", label: "Happy Clients" },
+                { value: "11", label: "Services" },
+                { value: "24/7", label: "Online Booking" },
+              ].map(({ value, label }, i) => (
+                <div
+                  key={label}
+                  style={{
+                    flex: 1,
+                    minWidth: 120,
+                    padding: "0 24px 0 0",
+                    borderRight:
+                      i < 3 ? "1px solid rgba(255,255,255,0.06)" : "none",
+                    paddingLeft: i > 0 ? 24 : 0,
+                    marginBottom: 16,
+                  }}
+                >
+                  <p
+                    style={{
+                      ...sf,
+                      fontSize: "clamp(1.4rem,3vw,2rem)",
+                      fontWeight: 900,
+                      color: "#f59e0b",
+                      margin: "0 0 4px",
+                    }}
+                  >
+                    {value}
+                  </p>
+                  <p
+                    style={{
+                      ...mono,
+                      fontSize: 9,
+                      color: "#52525b",
+                      letterSpacing: "0.3em",
+                      textTransform: "uppercase",
+                    }}
+                  >
+                    {label}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Scroll hint */}
+          <div
+            style={{
+              position: "absolute",
+              bottom: 32,
+              left: "50%",
+              transform: "translateX(-50%)",
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              gap: 8,
+            }}
+          >
+            <p
+              style={{
+                ...mono,
+                fontSize: 8,
+                color: "#27272a",
+                letterSpacing: "0.4em",
+                textTransform: "uppercase",
+              }}
+            >
+              Scroll
+            </p>
+            <div
+              style={{
+                width: 1,
+                height: 40,
+                background:
+                  "linear-gradient(to bottom, rgba(245,158,11,0.5), transparent)",
+              }}
+            />
+          </div>
+        </section>
+
+        {/* ════════════════ TICKER ════════════════ */}
+        <div
+          style={{
+            borderTop: "1px solid rgba(255,255,255,0.06)",
+            borderBottom: "1px solid rgba(255,255,255,0.06)",
+            background: "rgba(245,158,11,0.04)",
+            overflow: "hidden",
+            padding: "14px 0",
+          }}
+        >
+          <div className="ticker-track">
+            {[...TICKER_ITEMS, ...TICKER_ITEMS].map((item, i) => (
+              <span
+                key={i}
+                style={{
+                  ...sf,
+                  fontSize: 8,
+                  letterSpacing: "0.5em",
+                  textTransform: "uppercase",
+                  color: "#f59e0b",
+                  padding: "0 32px",
+                  flexShrink: 0,
+                  opacity: 0.7,
+                }}
+              >
+                ✦ {item}
+              </span>
+            ))}
+          </div>
+        </div>
+
+        {/* ════════════════ SERVICES ════════════════ */}
+        <section id="services" style={{ padding: "100px 28px" }}>
+          <div style={{ maxWidth: 1280, margin: "0 auto" }}>
+            <div
+              className="reveal"
+              style={{
+                display: "flex",
+                alignItems: "flex-end",
+                justifyContent: "space-between",
+                marginBottom: 56,
+                flexWrap: "wrap",
+                gap: 20,
+              }}
+            >
+              <div>
+                <p
+                  style={{
+                    ...mono,
+                    fontSize: 8,
+                    color: "#f59e0b",
+                    letterSpacing: "0.5em",
+                    textTransform: "uppercase",
+                    marginBottom: 12,
+                  }}
+                >
+                  What We Do
+                </p>
+                <h2
+                  style={{
+                    ...sf,
+                    fontSize: "clamp(2rem,5vw,3.5rem)",
+                    fontWeight: 900,
+                    textTransform: "uppercase",
+                    lineHeight: 1,
+                    letterSpacing: "-0.04em",
+                  }}
+                >
+                  The_Menu<span style={{ color: "#f59e0b" }}>.</span>
                 </h2>
               </div>
-
-              {/* Featured 3 */}
-              <div
+              <p
                 style={{
-                  display: "grid",
-                  gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
-                  gap: 16,
-                  marginBottom: 12,
+                  ...mono,
+                  fontSize: 12,
+                  color: "#52525b",
+                  maxWidth: 280,
+                  lineHeight: 1.7,
                 }}
               >
-                {FEATURED_SERVICES.map((svc) => (
+                Every cut done with intention. Pick your service, pick your
+                barber, lock in your time.
+              </p>
+            </div>
+
+            {/* Service list */}
+            <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
+              {SERVICES.map((svc, i) => (
+                <div
+                  key={svc.name}
+                  className="svc-row reveal"
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    padding: "20px 0",
+                    borderBottom: "1px solid rgba(255,255,255,0.05)",
+                    cursor: "pointer",
+                    gap: 12,
+                    transitionDelay: `${i * 0.04}s`,
+                  }}
+                  onMouseEnter={() => setHoveredSvc(svc.name)}
+                  onMouseLeave={() => setHoveredSvc(null)}
+                  onClick={handleBookNow}
+                >
                   <div
-                    key={svc.name}
-                    className={
-                      svc.white ? "scroll-reveal" : "menu-card scroll-reveal"
-                    }
                     style={{
-                      padding: "40px",
                       display: "flex",
-                      flexDirection: "column",
-                      justifyContent: "space-between",
-                      minHeight: 280,
-                      background: svc.white ? "white" : undefined,
-                      color: svc.white ? "black" : undefined,
-                      border: svc.white ? "none" : undefined,
+                      alignItems: "center",
+                      gap: 16,
+                      flex: 1,
+                      minWidth: 0,
                     }}
                   >
-                    <div>
-                      <span
-                        style={{
-                          ...sf,
-                          color: svc.white ? "#71717a" : "#f59e0b",
-                          fontSize: 9,
-                          letterSpacing: "0.25em",
-                          textTransform: "uppercase",
-                        }}
-                      >
-                        {svc.tag}
-                      </span>
-                      <h3
-                        style={{
-                          ...sf,
-                          fontSize: 20,
-                          marginTop: 14,
-                          marginBottom: 8,
-                          textTransform: "uppercase",
-                        }}
-                      >
-                        {svc.name}
-                      </h3>
-                      <p
-                        style={{
-                          color: svc.white ? "#52525b" : "#a1a1aa",
-                          fontSize: 12,
-                          fontStyle: svc.white ? "italic" : undefined,
-                          lineHeight: 1.6,
-                        }}
-                      >
-                        {svc.desc}
-                      </p>
-                    </div>
-                    <div
+                    <span
                       style={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                        alignItems: "flex-end",
-                        marginTop: 24,
+                        ...mono,
+                        fontSize: 9,
+                        color: hoveredSvc === svc.name ? "#f59e0b" : "#27272a",
+                        minWidth: 28,
+                        transition: "color 0.2s",
                       }}
                     >
-                      <span
-                        style={{
-                          color: svc.white ? "#a1a1aa" : "#71717a",
-                          fontSize: 11,
-                        }}
-                      >
-                        {svc.duration}
-                      </span>
-                      <span
-                        style={{
-                          ...sf,
-                          fontSize: 20,
-                          color: svc.white ? "black" : "white",
-                        }}
-                      >
-                        {svc.price}
-                      </span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              {/* All remaining 8 services */}
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
-                  gap: 1,
-                  background: "rgba(255,255,255,0.04)",
-                  border: "1px solid rgba(255,255,255,0.04)",
-                }}
-              >
-                {EXTRA_SERVICES.map(([name, price, dur]) => (
-                  <div
-                    key={name}
-                    className="scroll-reveal"
-                    style={{
-                      padding: "20px 24px",
-                      background: "#050505",
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "center",
-                      transition: "background 0.25s",
-                    }}
-                    onMouseEnter={(e) =>
-                      (e.currentTarget.style.background =
-                        "rgba(245,158,11,0.04)")
-                    }
-                    onMouseLeave={(e) =>
-                      (e.currentTarget.style.background = "#050505")
-                    }
-                  >
-                    <div>
-                      <span
-                        style={{
-                          ...sf,
-                          fontSize: 10,
-                          textTransform: "uppercase",
-                          letterSpacing: "0.05em",
-                          color: "white",
-                        }}
-                      >
-                        {name}
-                      </span>
-                      <span
-                        style={{
-                          ...sf,
-                          fontSize: 8,
-                          color: "#52525b",
-                          display: "block",
-                          marginTop: 3,
-                          letterSpacing: "0.1em",
-                        }}
-                      >
-                        {dur}
-                      </span>
-                    </div>
+                      {String(i + 1).padStart(2, "0")}
+                    </span>
                     <span
                       style={{
                         ...sf,
-                        fontSize: 14,
-                        color: "#f59e0b",
+                        fontSize: "clamp(10px,1.5vw,13px)",
+                        textTransform: "uppercase",
                         fontWeight: 700,
-                        flexShrink: 0,
-                        marginLeft: 16,
+                        color: hoveredSvc === svc.name ? "white" : "#d4d4d4",
+                        transition: "color 0.2s",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
                       }}
                     >
-                      {price}
+                      {svc.name}
+                    </span>
+                    <span
+                      style={{
+                        ...mono,
+                        fontSize: 8,
+                        color: "#3f3f46",
+                        padding: "2px 8px",
+                        border: "1px solid rgba(255,255,255,0.05)",
+                        flexShrink: 0,
+                      }}
+                    >
+                      {svc.tag}
                     </span>
                   </div>
-                ))}
-              </div>
-            </section>
 
-            {/* ══ BARBER ══ */}
-            <section
-              id="barber"
-              style={{ padding: "96px 28px", background: "rgba(9,9,11,0.6)" }}
-            >
-              <div style={{ maxWidth: 1200, margin: "0 auto" }}>
-                <div className="scroll-reveal" style={{ marginBottom: 64 }}>
-                  <p
-                    style={{
-                      ...sf,
-                      fontSize: 8,
-                      letterSpacing: "0.5em",
-                      color: "#71717a",
-                      textTransform: "uppercase",
-                      marginBottom: 16,
-                    }}
-                  >
-                    Behind The Chair
-                  </p>
-                  <h2
-                    className="outline-text"
-                    style={{
-                      ...sf,
-                      fontSize: "clamp(2rem,6vw,4rem)",
-                      textTransform: "uppercase",
-                      fontStyle: "italic",
-                    }}
-                  >
-                    The_Barber
-                  </h2>
-                </div>
-
-                <div
-                  style={{
-                    display: "flex",
-                    flexWrap: "wrap",
-                    gap: 64,
-                    alignItems: "flex-start",
-                  }}
-                >
-                  {/* Barber cards — dynamic from API */}
                   <div
                     style={{
                       display: "flex",
-                      flexWrap: "wrap",
-                      gap: 32,
+                      alignItems: "center",
+                      gap: 24,
                       flexShrink: 0,
                     }}
                   >
-                    {homeBarbers.length === 0 ? (
-                      <div
-                        style={{
-                          width: 160,
-                          height: 160,
-                          background: "linear-gradient(145deg,#1c1c1e,#111)",
-                          border: "1px solid rgba(245,158,11,0.2)",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                        }}
-                      >
-                        <span
-                          style={{
-                            ...sf,
-                            fontSize: 48,
-                            fontWeight: 900,
-                            color: "rgba(245,158,11,0.3)",
-                          }}
-                        >
-                          ✂
-                        </span>
-                      </div>
-                    ) : (
-                      homeBarbers.map((barber) => (
-                        <div key={barber.id} className="scroll-reveal">
-                          <div
-                            style={{
-                              width: 160,
-                              height: 160,
-                              background:
-                                "linear-gradient(145deg, #1c1c1e, #111)",
-                              border: "1px solid rgba(245,158,11,0.2)",
-                              display: "flex",
-                              alignItems: "center",
-                              justifyContent: "center",
-                              position: "relative",
-                              overflow: "hidden",
-                            }}
-                          >
-                            <div
-                              style={{
-                                position: "absolute",
-                                top: 0,
-                                left: 0,
-                                width: 32,
-                                height: 32,
-                                borderTop: "2px solid #f59e0b",
-                                borderLeft: "2px solid #f59e0b",
-                              }}
-                            />
-                            <div
-                              style={{
-                                position: "absolute",
-                                bottom: 0,
-                                right: 0,
-                                width: 32,
-                                height: 32,
-                                borderBottom: "2px solid #f59e0b",
-                                borderRight: "2px solid #f59e0b",
-                              }}
-                            />
-                            {barber.photo ? (
-                              <img
-                                src={barber.photo}
-                                alt={barber.name}
-                                style={{
-                                  width: "100%",
-                                  height: "100%",
-                                  objectFit: "cover",
-                                }}
-                              />
-                            ) : (
-                              <span
-                                style={{
-                                  ...sf,
-                                  fontSize: 64,
-                                  fontWeight: 900,
-                                  color: "#f59e0b",
-                                  lineHeight: 1,
-                                }}
-                              >
-                                {barber.name.charAt(0).toUpperCase()}
-                              </span>
-                            )}
-                          </div>
-                          <div style={{ marginTop: 16 }}>
-                            <p
-                              style={{
-                                ...sf,
-                                fontSize: 8,
-                                letterSpacing: "0.5em",
-                                color: "#71717a",
-                                textTransform: "uppercase",
-                              }}
-                            >
-                              Your Barber
-                            </p>
-                            <h3
-                              style={{
-                                ...sf,
-                                fontSize: 22,
-                                fontWeight: 900,
-                                textTransform: "uppercase",
-                                marginTop: 6,
-                                color: "white",
-                              }}
-                            >
-                              {barber.name}
-                            </h3>
-                            {barber.bio && (
-                              <p
-                                style={{
-                                  fontSize: 12,
-                                  color: "#71717a",
-                                  marginTop: 6,
-                                  lineHeight: 1.6,
-                                  maxWidth: 180,
-                                }}
-                              >
-                                {barber.bio}
-                              </p>
-                            )}
-                            <div
-                              style={{
-                                display: "flex",
-                                alignItems: "center",
-                                gap: 8,
-                                marginTop: 10,
-                              }}
-                            >
-                              <div
-                                className="pulse-green"
-                                style={{
-                                  width: 7,
-                                  height: 7,
-                                  background: "#22c55e",
-                                  borderRadius: "50%",
-                                  flexShrink: 0,
-                                }}
-                              />
-                              <span
-                                style={{
-                                  ...sf,
-                                  fontSize: 8,
-                                  color: "#4ade80",
-                                  textTransform: "uppercase",
-                                  letterSpacing: "0.2em",
-                                }}
-                              >
-                                Accepting Clients
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-                      ))
-                    )}
-                  </div>
-
-                  {/* Full service list */}
-                  <div
-                    className="scroll-reveal"
-                    style={{ flex: 1, minWidth: 280 }}
-                  >
-                    <p
+                    <span style={{ ...mono, fontSize: 10, color: "#52525b" }}>
+                      {svc.duration}
+                    </span>
+                    <span
                       style={{
                         ...sf,
-                        fontSize: 8,
-                        letterSpacing: "0.5em",
-                        color: "#71717a",
-                        textTransform: "uppercase",
+                        fontSize: "clamp(14px,2vw,20px)",
+                        fontWeight: 900,
+                        color: hoveredSvc === svc.name ? "#f59e0b" : "white",
+                        transition: "color 0.2s",
+                      }}
+                    >
+                      {svc.price}
+                    </span>
+                    <span
+                      style={{
+                        fontSize: 14,
+                        color: hoveredSvc === svc.name ? "#f59e0b" : "#3f3f46",
+                        transition: "all 0.2s",
+                        transform:
+                          hoveredSvc === svc.name ? "translateX(4px)" : "none",
+                      }}
+                    >
+                      →
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div
+              className="reveal"
+              style={{ marginTop: 40, textAlign: "center" }}
+            >
+              <a href="/book" onClick={handleBookNow} className="book-btn">
+                <span>Book Any Service →</span>
+              </a>
+            </div>
+          </div>
+        </section>
+
+        {/* ════════════════ BARBER ════════════════ */}
+        <section
+          id="barber"
+          style={{
+            padding: "100px 28px",
+            background: "rgba(255,255,255,0.015)",
+            borderTop: "1px solid rgba(255,255,255,0.06)",
+            borderBottom: "1px solid rgba(255,255,255,0.06)",
+          }}
+        >
+          <div style={{ maxWidth: 1280, margin: "0 auto" }}>
+            <div className="reveal" style={{ marginBottom: 56 }}>
+              <p
+                style={{
+                  ...mono,
+                  fontSize: 8,
+                  color: "#f59e0b",
+                  letterSpacing: "0.5em",
+                  textTransform: "uppercase",
+                  marginBottom: 12,
+                }}
+              >
+                In The Chair
+              </p>
+              <h2
+                style={{
+                  ...sf,
+                  fontSize: "clamp(2rem,5vw,3.5rem)",
+                  fontWeight: 900,
+                  textTransform: "uppercase",
+                  lineHeight: 1,
+                  letterSpacing: "-0.04em",
+                }}
+              >
+                Meet The
+                <br />
+                <span style={{ color: "#f59e0b", fontStyle: "italic" }}>
+                  Barber_
+                </span>
+              </h2>
+            </div>
+
+            {homeBarbers.length === 0 ? (
+              <div
+                className="reveal"
+                style={{ padding: "64px 0", textAlign: "center" }}
+              >
+                <div
+                  style={{
+                    width: 80,
+                    height: 80,
+                    margin: "0 auto 20px",
+                    background: "rgba(245,158,11,0.08)",
+                    border: "1px solid rgba(245,158,11,0.2)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <span style={{ fontSize: 32 }}>✂️</span>
+                </div>
+                <p style={{ ...mono, fontSize: 12, color: "#52525b" }}>
+                  Barber profiles coming soon. Check back shortly.
+                </p>
+              </div>
+            ) : (
+              <div style={{ display: "flex", gap: 24, flexWrap: "wrap" }}>
+                {homeBarbers.map((b, i) => (
+                  <div
+                    key={b.id}
+                    className={`reveal delay-${i + 1}`}
+                    style={{
+                      flex: "1 1 300px",
+                      background: "rgba(255,255,255,0.02)",
+                      border: "1px solid rgba(255,255,255,0.08)",
+                      padding: "32px 28px",
+                      position: "relative",
+                      overflow: "hidden",
+                      transition: "all 0.3s",
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.borderColor =
+                        "rgba(245,158,11,0.3)";
+                      e.currentTarget.style.background =
+                        "rgba(245,158,11,0.04)";
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.borderColor =
+                        "rgba(255,255,255,0.08)";
+                      e.currentTarget.style.background =
+                        "rgba(255,255,255,0.02)";
+                    }}
+                  >
+                    {/* Corner accent */}
+                    <div
+                      style={{
+                        position: "absolute",
+                        top: 0,
+                        right: 0,
+                        width: 0,
+                        height: 0,
+                        borderStyle: "solid",
+                        borderWidth: "0 48px 48px 0",
+                        borderColor: `transparent rgba(245,158,11,0.2) transparent transparent`,
+                      }}
+                    />
+
+                    {/* Avatar */}
+                    <div
+                      style={{
+                        width: 80,
+                        height: 80,
+                        background: "#0a0a0a",
+                        border: "1px solid rgba(245,158,11,0.3)",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
                         marginBottom: 20,
                       }}
                     >
-                      Full Service Menu
-                    </p>
-                    <div>
-                      {ALL_BARBER_SERVICES.map(([name, price], i) => (
-                        <div
-                          key={name}
+                      {b.photo ? (
+                        <img
+                          src={b.photo}
+                          alt={b.name}
                           style={{
-                            display: "flex",
-                            justifyContent: "space-between",
-                            alignItems: "center",
-                            padding: "14px 0",
-                            borderBottom: "1px solid rgba(255,255,255,0.05)",
-                            transition: "all 0.2s",
+                            width: "100%",
+                            height: "100%",
+                            objectFit: "cover",
                           }}
-                          onMouseEnter={(e) => {
-                            e.currentTarget.style.paddingLeft = "8px";
-                            e.currentTarget.style.borderBottomColor =
-                              "rgba(245,158,11,0.3)";
-                          }}
-                          onMouseLeave={(e) => {
-                            e.currentTarget.style.paddingLeft = "0";
-                            e.currentTarget.style.borderBottomColor =
-                              "rgba(255,255,255,0.05)";
+                        />
+                      ) : (
+                        <span
+                          style={{
+                            ...sf,
+                            fontSize: 28,
+                            fontWeight: 900,
+                            color: "#f59e0b",
                           }}
                         >
-                          <div
-                            style={{
-                              display: "flex",
-                              alignItems: "center",
-                              gap: 14,
-                            }}
-                          >
-                            <span
-                              style={{
-                                ...sf,
-                                fontSize: 9,
-                                color: "rgba(245,158,11,0.35)",
-                                minWidth: 20,
-                              }}
-                            >
-                              {String(i + 1).padStart(2, "0")}
-                            </span>
-                            <span
-                              style={{
-                                ...sf,
-                                fontSize: 11,
-                                textTransform: "uppercase",
-                                color: "white",
-                                letterSpacing: "0.05em",
-                              }}
-                            >
-                              {name}
-                            </span>
-                          </div>
-                          <span
-                            style={{
-                              ...sf,
-                              color: "#f59e0b",
-                              fontSize: 12,
-                              fontWeight: 700,
-                            }}
-                          >
-                            {price}
-                          </span>
-                        </div>
-                      ))}
+                          {b.name.charAt(0).toUpperCase()}
+                        </span>
+                      )}
                     </div>
-                    <div style={{ marginTop: 36 }}>
-                      <a
-                        href="/book"
-                        onClick={handleBookNow}
-                        className="book-btn"
-                      >
-                        <span>Book Now</span>
-                      </a>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </section>
 
-            {/* ══ REVIEWS ══ */}
-            <section
-              id="reviews"
-              style={{ padding: "96px 28px", background: "rgba(5,5,5,0.8)" }}
-            >
-              <div style={{ maxWidth: 1200, margin: "0 auto" }}>
-                <div
-                  className="scroll-reveal"
-                  style={{
-                    display: "flex",
-                    flexWrap: "wrap",
-                    alignItems: "center",
-                    gap: 24,
-                    marginBottom: 64,
-                  }}
-                >
-                  <h2
-                    className="outline-text"
-                    style={{
-                      ...sf,
-                      fontSize: "clamp(2.5rem,6vw,4.5rem)",
-                      textTransform: "uppercase",
-                      fontStyle: "italic",
-                    }}
-                  >
-                    5.0
-                  </h2>
-                  <div
-                    style={{
-                      fontSize: 22,
-                      color: "#f59e0b",
-                      letterSpacing: "0.1em",
-                    }}
-                  >
-                    ★★★★★
-                  </div>
-                  <p
-                    style={{
-                      ...sf,
-                      fontSize: 9,
-                      letterSpacing: "0.3em",
-                      textTransform: "uppercase",
-                      color: "#71717a",
-                    }}
-                  >
-                    155+ Verified 5-Star Booksy Reviews
-                  </p>
-                </div>
-
-                <div
-                  style={{
-                    display: "grid",
-                    gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
-                    gap: 16,
-                  }}
-                >
-                  {[
-                    {
-                      quote:
-                        "This man is an amazing barber with great energy and a great personality. Most importantly the cuts are fire!! Go book with him.",
-                      name: "Ronnie E.",
-                      date: "Dec 7, 2025",
-                      border: "#f59e0b",
-                    },
-                    {
-                      quote:
-                        "My son loves his hair cut. Great experience every time we come in. Best atmosphere and professional staff!",
-                      name: "Dunn L.",
-                      date: "Jul 2, 2025",
-                      border: "#52525b",
-                    },
-                    {
-                      quote:
-                        "Great atmosphere and a 10/10 cut. Professional staff and amazing service!",
-                      name: "Dorian C.",
-                      date: "Sep 7, 2024",
-                      border: "#52525b",
-                    },
-                    {
-                      quote:
-                        "Great atmosphere and professional staff! Always feel welcome when I walk through the door.",
-                      name: "Shameka H.",
-                      date: "Sep 18, 2025",
-                      border: "#f59e0b",
-                    },
-                  ].map((r) => (
-                    <div
-                      key={r.name}
-                      className="review-card"
-                      style={{
-                        padding: 32,
-                        borderLeft: `2px solid ${r.border}`,
-                        background: "rgba(255,255,255,0.03)",
-                        transition: "background 0.3s",
-                      }}
-                      onMouseEnter={(e) =>
-                        (e.currentTarget.style.background =
-                          "rgba(255,255,255,0.06)")
-                      }
-                      onMouseLeave={(e) =>
-                        (e.currentTarget.style.background =
-                          "rgba(255,255,255,0.03)")
-                      }
-                    >
-                      <div
-                        style={{
-                          color: "#f59e0b",
-                          fontSize: 12,
-                          marginBottom: 16,
-                          letterSpacing: "0.1em",
-                        }}
-                      >
-                        ★★★★★
-                      </div>
-                      <p
-                        style={{
-                          fontStyle: "italic",
-                          color: "#d4d4d8",
-                          marginBottom: 24,
-                          fontSize: 13,
-                          lineHeight: 1.85,
-                        }}
-                      >
-                        &ldquo;{r.quote}&rdquo;
-                      </p>
-                      <div
-                        style={{
-                          display: "flex",
-                          justifyContent: "space-between",
-                          ...sf,
-                          fontSize: 8,
-                          textTransform: "uppercase",
-                        }}
-                      >
-                        <span style={{ color: "white" }}>{r.name}</span>
-                        <span style={{ color: "#52525b" }}>{r.date}</span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </section>
-
-            {/* ══ LOCATION ══ */}
-            <section
-              id="location"
-              style={{ padding: "96px 28px", background: "rgba(9,9,11,0.7)" }}
-            >
-              <div style={{ maxWidth: 1200, margin: "0 auto" }}>
-                <div className="scroll-reveal" style={{ marginBottom: 64 }}>
-                  <p
-                    style={{
-                      ...sf,
-                      fontSize: 8,
-                      letterSpacing: "0.5em",
-                      color: "#71717a",
-                      textTransform: "uppercase",
-                      marginBottom: 16,
-                    }}
-                  >
-                    Come See Us
-                  </p>
-                  <h2
-                    className="outline-text"
-                    style={{
-                      ...sf,
-                      fontSize: "clamp(2rem,6vw,4rem)",
-                      textTransform: "uppercase",
-                      fontStyle: "italic",
-                    }}
-                  >
-                    Find_Us
-                  </h2>
-                </div>
-
-                <div
-                  style={{
-                    display: "grid",
-                    gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))",
-                    gap: 64,
-                  }}
-                >
-                  <div className="scroll-reveal">
                     <p
                       style={{
-                        ...sf,
+                        ...mono,
                         fontSize: 8,
-                        letterSpacing: "0.5em",
-                        color: "#71717a",
+                        color: "#f59e0b",
+                        letterSpacing: "0.4em",
                         textTransform: "uppercase",
-                        marginBottom: 16,
+                        marginBottom: 8,
                       }}
                     >
-                      Address
+                      Barber
                     </p>
                     <h3
                       style={{
                         ...sf,
-                        fontSize: "clamp(1.2rem,3vw,1.8rem)",
+                        fontSize: 20,
                         fontWeight: 900,
                         textTransform: "uppercase",
-                        marginBottom: 8,
-                        color: "white",
+                        marginBottom: 12,
                       }}
                     >
-                      Hattiesburg, MS
+                      {b.name}
                     </h3>
-                    <p style={{ color: "#a1a1aa", fontSize: 15, marginTop: 4 }}>
-                      4 Hub Dr, Hattiesburg, MS 39402
-                    </p>
 
-                    <div style={{ marginTop: 36 }}>
+                    {b.bio && (
                       <p
                         style={{
-                          ...sf,
-                          fontSize: 8,
-                          letterSpacing: "0.5em",
+                          ...mono,
+                          fontSize: 12,
                           color: "#71717a",
-                          textTransform: "uppercase",
-                          marginBottom: 16,
+                          lineHeight: 1.7,
+                          marginBottom: 24,
                         }}
                       >
-                        Hours
+                        {b.bio}
                       </p>
-                      {[
-                        ["Mon – Fri", "9:00 AM – 6:00 PM", false],
-                        ["Saturday", "9:00 AM – 4:00 PM", false],
-                        ["Sunday", "Closed", true],
-                      ].map(([day, hrs, closed]) => (
-                        <div
-                          key={day}
-                          style={{
-                            display: "flex",
-                            justifyContent: "space-between",
-                            maxWidth: 340,
-                            marginBottom: 10,
-                            ...sf,
-                            fontSize: 10,
-                            letterSpacing: "0.1em",
-                            textTransform: "uppercase",
-                          }}
-                        >
-                          <span style={{ color: "#a1a1aa" }}>{day}</span>
-                          <span style={{ color: closed ? "#3f3f46" : "white" }}>
-                            {hrs}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
+                    )}
 
-                    <div style={{ marginTop: 36, display: "flex", gap: 24 }}>
-                      {[
-                        [
-                          "Instagram",
-                          "https://www.instagram.com/headz_up_inthe_burg",
-                        ],
-                        [
-                          "Facebook",
-                          "https://www.facebook.com/p/Headz-Up-Barber-Shop-100054366606015/",
-                        ],
-                      ].map(([label, href]) => (
-                        <a
-                          key={label}
-                          href={href}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          style={{
-                            ...sf,
-                            fontSize: 9,
-                            textTransform: "uppercase",
-                            letterSpacing: "0.2em",
-                            color: "#71717a",
-                            textDecoration: "underline",
-                            transition: "color 0.2s",
-                          }}
-                          onMouseEnter={(e) =>
-                            (e.target.style.color = "#f59e0b")
-                          }
-                          onMouseLeave={(e) =>
-                            (e.target.style.color = "#71717a")
-                          }
-                        >
-                          {label}
-                        </a>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Map */}
-                  <div
-                    className="scroll-reveal"
-                    style={{
-                      width: "100%",
-                      minHeight: 320,
-                      border: "1px solid rgba(255,255,255,0.08)",
-                      overflow: "hidden",
-                    }}
-                  >
-                    <iframe
-                      src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3366.5!2d-89.3985!3d31.3271!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x0%3A0x0!2s4+Hub+Dr%2C+Hattiesburg%2C+MS+39402!5e0!3m2!1sen!2sus!4v1"
-                      width="100%"
-                      height="320"
+                    <div
                       style={{
-                        border: 0,
-                        filter: "grayscale(1) invert(0.88) contrast(0.9)",
-                        display: "block",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 8,
+                        marginBottom: 24,
                       }}
-                      allowFullScreen
-                      loading="lazy"
-                      referrerPolicy="no-referrer-when-downgrade"
-                    />
-                  </div>
-                </div>
-              </div>
-            </section>
+                    >
+                      <div
+                        style={{
+                          width: 6,
+                          height: 6,
+                          background: "#22c55e",
+                          borderRadius: "50%",
+                          animation: "pulse-green 2s infinite",
+                        }}
+                      />
+                      <span
+                        style={{
+                          ...sf,
+                          fontSize: 7,
+                          color: "#4ade80",
+                          textTransform: "uppercase",
+                          letterSpacing: "0.2em",
+                        }}
+                      >
+                        Accepting Clients
+                      </span>
+                    </div>
 
-            {/* ══ GALLERY ══ */}
-            <section
-              id="gallery"
-              style={{ padding: "96px 28px", maxWidth: 1200, margin: "0 auto" }}
-            >
-              <div className="scroll-reveal" style={{ marginBottom: 48 }}>
-                <p
-                  style={{
-                    ...sf,
-                    fontSize: 8,
-                    letterSpacing: "0.5em",
-                    color: "#71717a",
-                    textTransform: "uppercase",
-                    marginBottom: 16,
-                  }}
-                >
-                  The Portfolio
-                </p>
-                <h2
-                  className="outline-text"
-                  style={{
-                    ...sf,
-                    fontSize: "clamp(2rem,6vw,4rem)",
-                    textTransform: "uppercase",
-                    fontStyle: "italic",
-                  }}
-                >
-                  The_Work
-                </h2>
-              </div>
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
-                  gap: 12,
-                }}
-              >
-                {["pic2.jpeg", "pic3.jpeg", "pic4.jpeg"].map((src) => (
-                  <div key={src} className="gallery-item">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={`/${src}`} alt="Fresh cut" />
+                    <a
+                      href="/book"
+                      onClick={handleBookNow}
+                      style={{
+                        ...sf,
+                        fontSize: 7,
+                        letterSpacing: "0.2em",
+                        textTransform: "uppercase",
+                        color: "#f59e0b",
+                        textDecoration: "none",
+                        padding: "10px 0",
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: 8,
+                        borderBottom: "1px solid rgba(245,158,11,0.3)",
+                        transition: "gap 0.2s",
+                      }}
+                      onMouseEnter={(e) => (e.currentTarget.style.gap = "14px")}
+                      onMouseLeave={(e) => (e.currentTarget.style.gap = "8px")}
+                    >
+                      Book Now →
+                    </a>
                   </div>
                 ))}
               </div>
-            </section>
+            )}
+          </div>
+        </section>
 
-            {/* ══ FOOTER ══ */}
-            <footer
-              style={{
-                padding: "64px 28px",
-                borderTop: "1px solid rgba(255,255,255,0.05)",
-                background: "rgba(5,5,5,0.95)",
-              }}
-            >
-              <div
+        {/* ════════════════ REVIEWS ════════════════ */}
+        <section id="reviews" style={{ padding: "100px 28px" }}>
+          <div style={{ maxWidth: 1280, margin: "0 auto" }}>
+            <div className="reveal" style={{ marginBottom: 56 }}>
+              <p
                 style={{
-                  maxWidth: 1200,
-                  margin: "0 auto",
-                  display: "flex",
-                  flexWrap: "wrap",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                  gap: 32,
+                  ...mono,
+                  fontSize: 8,
+                  color: "#f59e0b",
+                  letterSpacing: "0.5em",
+                  textTransform: "uppercase",
+                  marginBottom: 12,
                 }}
               >
-                <div>
+                Word on The Street
+              </p>
+              <h2
+                style={{
+                  ...sf,
+                  fontSize: "clamp(2rem,5vw,3.5rem)",
+                  fontWeight: 900,
+                  textTransform: "uppercase",
+                  lineHeight: 1,
+                  letterSpacing: "-0.04em",
+                }}
+              >
+                They Said
+                <br />
+                <span style={{ color: "#f59e0b", fontStyle: "italic" }}>
+                  It,
+                </span>{" "}
+                Not Us.
+              </h2>
+            </div>
+
+            {/* Review carousel */}
+            <div className="reveal" style={{ position: "relative" }}>
+              <div style={{ overflow: "hidden" }}>
+                {REVIEWS.map((r, i) => (
                   <div
+                    key={i}
                     style={{
-                      ...sf,
-                      fontWeight: 700,
-                      fontSize: 20,
-                      letterSpacing: "-0.05em",
-                      marginBottom: 6,
+                      display: i === activeReview ? "block" : "none",
+                      animation: "menuIn 0.5s ease",
                     }}
                   >
-                    HEADZ
-                    <span style={{ color: "#f59e0b", fontStyle: "italic" }}>
-                      UP
-                    </span>
-                  </div>
-                  <p
-                    style={{ color: "#a1a1aa", fontSize: 13, marginBottom: 20 }}
-                  >
-                    4 Hub Dr, Hattiesburg, MS 39402
-                  </p>
-                  <div style={{ display: "flex", gap: 24 }}>
-                    {[
-                      [
-                        "Instagram",
-                        "https://www.instagram.com/headz_up_inthe_burg",
-                      ],
-                      [
-                        "Facebook",
-                        "https://www.facebook.com/p/Headz-Up-Barber-Shop-100054366606015/",
-                      ],
-                    ].map(([label, href]) => (
-                      <a
-                        key={label}
-                        href={href}
-                        target="_blank"
-                        rel="noopener noreferrer"
+                    <div
+                      style={{
+                        padding: "40px 0",
+                        borderLeft: "2px solid #f59e0b",
+                        paddingLeft: 32,
+                      }}
+                    >
+                      {/* Stars */}
+                      <div
+                        style={{ display: "flex", gap: 4, marginBottom: 20 }}
+                      >
+                        {Array.from({ length: r.rating }).map((_, j) => (
+                          <span
+                            key={j}
+                            style={{ color: "#f59e0b", fontSize: 14 }}
+                          >
+                            ★
+                          </span>
+                        ))}
+                      </div>
+
+                      <p
                         style={{
                           ...sf,
-                          fontSize: 8,
+                          fontSize: "clamp(1rem,2.5vw,1.4rem)",
+                          fontWeight: 700,
                           textTransform: "uppercase",
-                          letterSpacing: "0.2em",
-                          color: "#71717a",
-                          textDecoration: "underline",
-                          transition: "color 0.2s",
+                          lineHeight: 1.4,
+                          letterSpacing: "-0.02em",
+                          maxWidth: 700,
+                          marginBottom: 24,
+                          color: "white",
                         }}
-                        onMouseEnter={(e) => (e.target.style.color = "#f59e0b")}
-                        onMouseLeave={(e) => (e.target.style.color = "#71717a")}
+                      >
+                        "{r.quote}"
+                      </p>
+
+                      <p
+                        style={{
+                          ...mono,
+                          fontSize: 10,
+                          color: "#52525b",
+                          letterSpacing: "0.3em",
+                          textTransform: "uppercase",
+                        }}
+                      >
+                        — {r.name}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Dots */}
+              <div style={{ display: "flex", gap: 8, marginTop: 28 }}>
+                {REVIEWS.map((_, i) => (
+                  <button
+                    key={i}
+                    onClick={() => setActiveReview(i)}
+                    style={{
+                      width: i === activeReview ? 24 : 6,
+                      height: 6,
+                      background:
+                        i === activeReview
+                          ? "#f59e0b"
+                          : "rgba(255,255,255,0.15)",
+                      border: "none",
+                      cursor: "pointer",
+                      transition: "all 0.3s",
+                      padding: 0,
+                    }}
+                  />
+                ))}
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* ════════════════ LOCATION ════════════════ */}
+        <section
+          id="location"
+          style={{
+            padding: "100px 28px",
+            borderTop: "1px solid rgba(255,255,255,0.06)",
+            background: "rgba(255,255,255,0.01)",
+          }}
+        >
+          <div
+            style={{
+              maxWidth: 1280,
+              margin: "0 auto",
+              display: "grid",
+              gridTemplateColumns: "1fr 1fr",
+              gap: 64,
+              alignItems: "center",
+            }}
+          >
+            <div className="reveal">
+              <p
+                style={{
+                  ...mono,
+                  fontSize: 8,
+                  color: "#f59e0b",
+                  letterSpacing: "0.5em",
+                  textTransform: "uppercase",
+                  marginBottom: 12,
+                }}
+              >
+                Find Us
+              </p>
+              <h2
+                style={{
+                  ...sf,
+                  fontSize: "clamp(2rem,4vw,3rem)",
+                  fontWeight: 900,
+                  textTransform: "uppercase",
+                  lineHeight: 1,
+                  letterSpacing: "-0.04em",
+                  marginBottom: 36,
+                }}
+              >
+                Come
+                <br />
+                <span style={{ color: "#f59e0b", fontStyle: "italic" }}>
+                  Through_
+                </span>
+              </h2>
+
+              <div
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 20,
+                  marginBottom: 40,
+                }}
+              >
+                {[
+                  {
+                    icon: "📍",
+                    label: "Address",
+                    value: "4 Hub Dr, Hattiesburg, MS 39402",
+                  },
+                  {
+                    icon: "🕐",
+                    label: "Hours",
+                    value: "Mon–Fri 9AM–6PM · Sat 9AM–4PM",
+                  },
+                  { icon: "📵", label: "Sunday", value: "Closed — Rest Day" },
+                ].map(({ icon, label, value }) => (
+                  <div
+                    key={label}
+                    style={{
+                      display: "flex",
+                      gap: 16,
+                      alignItems: "flex-start",
+                    }}
+                  >
+                    <span style={{ fontSize: 16, flexShrink: 0, marginTop: 2 }}>
+                      {icon}
+                    </span>
+                    <div>
+                      <p
+                        style={{
+                          ...mono,
+                          fontSize: 8,
+                          color: "#52525b",
+                          letterSpacing: "0.3em",
+                          textTransform: "uppercase",
+                          marginBottom: 4,
+                        }}
                       >
                         {label}
-                      </a>
-                    ))}
+                      </p>
+                      <p
+                        style={{
+                          ...mono,
+                          fontSize: 13,
+                          color: "#d4d4d4",
+                          lineHeight: 1.6,
+                        }}
+                      >
+                        {value}
+                      </p>
+                    </div>
                   </div>
+                ))}
+              </div>
+
+              <a href="/book" onClick={handleBookNow} className="book-btn">
+                <span>Reserve Your Spot →</span>
+              </a>
+            </div>
+
+            {/* Map-style graphic */}
+            <div
+              className="reveal delay-2"
+              style={{
+                position: "relative",
+                height: 320,
+                background: "rgba(255,255,255,0.02)",
+                border: "1px solid rgba(255,255,255,0.08)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                overflow: "hidden",
+              }}
+            >
+              {/* Grid lines inside box */}
+              <div
+                style={{
+                  position: "absolute",
+                  inset: 0,
+                  backgroundImage:
+                    "linear-gradient(rgba(255,255,255,0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.04) 1px, transparent 1px)",
+                  backgroundSize: "40px 40px",
+                }}
+              />
+              {/* Center pin */}
+              <div
+                style={{ position: "relative", zIndex: 1, textAlign: "center" }}
+              >
+                <div
+                  style={{
+                    width: 48,
+                    height: 48,
+                    background: "#f59e0b",
+                    margin: "0 auto 14px",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    boxShadow: "0 0 40px rgba(245,158,11,0.4)",
+                  }}
+                >
+                  <span style={{ fontSize: 20 }}>📍</span>
                 </div>
                 <p
                   style={{
                     ...sf,
-                    fontSize: 8,
-                    color: "#3f3f46",
-                    letterSpacing: "0.5em",
+                    fontSize: 9,
+                    fontWeight: 700,
                     textTransform: "uppercase",
+                    color: "white",
+                    marginBottom: 4,
                   }}
                 >
-                  ©2026 HEADZUP BARBERSHOP
+                  HEADZ UP
                 </p>
+                <p style={{ ...mono, fontSize: 10, color: "#71717a" }}>
+                  4 Hub Dr, Hattiesburg
+                </p>
+                {/* Ripple rings */}
+                <div
+                  style={{
+                    position: "absolute",
+                    top: "50%",
+                    left: "50%",
+                    transform: "translate(-50%,-50%)",
+                    width: 120,
+                    height: 120,
+                    border: "1px solid rgba(245,158,11,0.15)",
+                    borderRadius: "50%",
+                    zIndex: -1,
+                  }}
+                />
+                <div
+                  style={{
+                    position: "absolute",
+                    top: "50%",
+                    left: "50%",
+                    transform: "translate(-50%,-50%)",
+                    width: 200,
+                    height: 200,
+                    border: "1px solid rgba(245,158,11,0.08)",
+                    borderRadius: "50%",
+                    zIndex: -1,
+                  }}
+                />
+                <div
+                  style={{
+                    position: "absolute",
+                    top: "50%",
+                    left: "50%",
+                    transform: "translate(-50%,-50%)",
+                    width: 300,
+                    height: 300,
+                    border: "1px solid rgba(245,158,11,0.04)",
+                    borderRadius: "50%",
+                    zIndex: -1,
+                  }}
+                />
               </div>
-            </footer>
-          </main>
-        </div>
-      )}
+            </div>
+          </div>
+        </section>
+
+        {/* ════════════════ FOOTER ════════════════ */}
+        <footer
+          style={{
+            borderTop: "1px solid rgba(255,255,255,0.06)",
+            padding: "40px 28px",
+          }}
+        >
+          <div
+            style={{
+              maxWidth: 1280,
+              margin: "0 auto",
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              flexWrap: "wrap",
+              gap: 16,
+            }}
+          >
+            <p
+              style={{
+                ...sf,
+                fontWeight: 700,
+                fontSize: 16,
+                letterSpacing: "-0.06em",
+              }}
+            >
+              HEADZ
+              <span style={{ color: "#f59e0b", fontStyle: "italic" }}>UP</span>
+            </p>
+            <p
+              style={{
+                ...mono,
+                fontSize: 9,
+                color: "#27272a",
+                letterSpacing: "0.3em",
+                textTransform: "uppercase",
+              }}
+            >
+              © {new Date().getFullYear()} HEADZ UP Barbershop · Hattiesburg, MS
+            </p>
+            <div style={{ display: "flex", gap: 20 }}>
+              <a
+                href="/book"
+                onClick={handleBookNow}
+                style={{
+                  ...mono,
+                  fontSize: 10,
+                  color: "#52525b",
+                  textDecoration: "none",
+                  transition: "color 0.2s",
+                }}
+                onMouseEnter={(e) => (e.currentTarget.style.color = "#f59e0b")}
+                onMouseLeave={(e) => (e.currentTarget.style.color = "#52525b")}
+              >
+                Book
+              </a>
+              <a
+                href="/barber-login"
+                style={{
+                  ...mono,
+                  fontSize: 10,
+                  color: "#52525b",
+                  textDecoration: "none",
+                  transition: "color 0.2s",
+                }}
+                onMouseEnter={(e) => (e.currentTarget.style.color = "#f59e0b")}
+                onMouseLeave={(e) => (e.currentTarget.style.color = "#52525b")}
+              >
+                Barbers
+              </a>
+              <a
+                href="/login"
+                style={{
+                  ...mono,
+                  fontSize: 10,
+                  color: "#52525b",
+                  textDecoration: "none",
+                  transition: "color 0.2s",
+                }}
+                onMouseEnter={(e) => (e.currentTarget.style.color = "#f59e0b")}
+                onMouseLeave={(e) => (e.currentTarget.style.color = "#52525b")}
+              >
+                Login
+              </a>
+            </div>
+          </div>
+        </footer>
+      </div>
     </>
   );
 }
