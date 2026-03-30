@@ -273,8 +273,12 @@ export default function BarberLoginPage() {
   const handleLogin = async () => {
     setError("");
     setSuccess("");
-    if (!user.trim() || !pass) {
-      setError("Fill in all fields.");
+    if (!user.trim()) {
+      setError("Username is required.");
+      return;
+    }
+    if (!pass) {
+      setError("Password is required.");
       return;
     }
     setLoading(true);
@@ -287,14 +291,20 @@ export default function BarberLoginPage() {
       localStorage.setItem("refresh", res.data.refresh);
       const dash = await API.get("dashboard/");
       if (!dash.data.is_staff) {
-        setError("This portal is for barbers only.");
+        setError(
+          "This account is not a barber account. Use the client login instead.",
+        );
         localStorage.removeItem("access");
         localStorage.removeItem("refresh");
         return;
       }
       router.replace("/barber-dashboard");
-    } catch {
-      setError("Invalid credentials. Check your username and password.");
+    } catch (e) {
+      if (e.response?.status === 401) {
+        setError("Wrong username or password. Try again.");
+      } else {
+        setError("Login failed. Please try again.");
+      }
     } finally {
       setLoading(false);
     }
@@ -318,7 +328,7 @@ export default function BarberLoginPage() {
     setLoading(true);
     try {
       await API.post("barber/register/", {
-        name: regName.trim(),
+        full_name: regName.trim(),
         username: regUser.trim(),
         email: regEmail.trim(),
         password: regPass,
@@ -334,12 +344,22 @@ export default function BarberLoginPage() {
       setTimeout(() => router.replace("/barber-dashboard"), 1200);
     } catch (e) {
       const d = e.response?.data || {};
-      if (d.invite_code || d.error?.toLowerCase().includes("invite"))
+      if (d.invite_code)
+        setFieldErrors((p) => ({
+          ...p,
+          regInvite: d.invite_code[0] || "Invalid invite code",
+        }));
+      else if (d.error?.toLowerCase().includes("invite"))
         setFieldErrors((p) => ({ ...p, regInvite: "Invalid invite code" }));
+      else if (d.full_name)
+        setFieldErrors((p) => ({ ...p, regName: d.full_name[0] }));
       else if (d.username)
         setFieldErrors((p) => ({ ...p, regUser: d.username[0] }));
       else if (d.email) setFieldErrors((p) => ({ ...p, regEmail: d.email[0] }));
-      else setError(d.error || "Registration failed. Check your details.");
+      else if (d.password)
+        setFieldErrors((p) => ({ ...p, regPass: d.password[0] }));
+      else if (d.detail) setError(d.detail);
+      else setError("Registration failed. Check your details and invite code.");
     } finally {
       setLoading(false);
     }
