@@ -344,21 +344,26 @@ export default function BarberLoginPage() {
       setTimeout(() => router.replace("/barber-dashboard"), 1200);
     } catch (e) {
       const d = e.response?.data || {};
+      // Helper — safely extract first string from any error shape
+      const msg = (v) =>
+        Array.isArray(v) ? v[0] : typeof v === "string" ? v : JSON.stringify(v);
       if (d.invite_code)
-        setFieldErrors((p) => ({
-          ...p,
-          regInvite: d.invite_code[0] || "Invalid invite code",
-        }));
-      else if (d.error?.toLowerCase().includes("invite"))
+        setFieldErrors((p) => ({ ...p, regInvite: msg(d.invite_code) }));
+      else if (
+        typeof d.error === "string" &&
+        d.error.toLowerCase().includes("invite")
+      )
         setFieldErrors((p) => ({ ...p, regInvite: "Invalid invite code" }));
       else if (d.full_name)
-        setFieldErrors((p) => ({ ...p, regName: d.full_name[0] }));
+        setFieldErrors((p) => ({ ...p, regName: msg(d.full_name) }));
       else if (d.username)
-        setFieldErrors((p) => ({ ...p, regUser: d.username[0] }));
-      else if (d.email) setFieldErrors((p) => ({ ...p, regEmail: d.email[0] }));
+        setFieldErrors((p) => ({ ...p, regUser: msg(d.username) }));
+      else if (d.email)
+        setFieldErrors((p) => ({ ...p, regEmail: msg(d.email) }));
       else if (d.password)
-        setFieldErrors((p) => ({ ...p, regPass: d.password[0] }));
-      else if (d.detail) setError(d.detail);
+        setFieldErrors((p) => ({ ...p, regPass: msg(d.password) }));
+      else if (d.detail) setError(msg(d.detail));
+      else if (d.error) setError(msg(d.error));
       else setError("Registration failed. Check your details and invite code.");
     } finally {
       setLoading(false);
