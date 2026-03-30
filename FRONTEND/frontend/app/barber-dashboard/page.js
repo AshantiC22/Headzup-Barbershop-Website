@@ -1764,11 +1764,12 @@ export default function BarberDashboard() {
         style={{
           background: T.bg,
           minHeight: "100vh",
+          minHeight: "100dvh",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
           flexDirection: "column",
-          gap: 16,
+          gap: 20,
         }}
       >
         <style jsx global>{`
@@ -1784,20 +1785,55 @@ export default function BarberDashboard() {
               transform: rotate(360deg);
             }
           }
+          @keyframes pulse {
+            0%,
+            100% {
+              opacity: 0.3;
+            }
+            50% {
+              opacity: 1;
+            }
+          }
         `}</style>
-        <Scissors size={28} />
+        {/* Logo */}
+        <div style={{ textAlign: "center", marginBottom: 8 }}>
+          <p
+            style={{
+              fontFamily: "'Syncopate',sans-serif",
+              fontSize: 22,
+              fontWeight: 900,
+              letterSpacing: "-0.05em",
+              margin: 0,
+              textTransform: "uppercase",
+            }}
+          >
+            HEADZ<span style={{ color: T.amber, fontStyle: "italic" }}>UP</span>
+          </p>
+          <p
+            style={{
+              fontFamily: "'DM Mono',monospace",
+              fontSize: 9,
+              color: T.dim,
+              letterSpacing: "0.4em",
+              textTransform: "uppercase",
+              marginTop: 6,
+            }}
+          >
+            Barber Portal
+          </p>
+        </div>
         <div
           style={{
             width: 1,
-            height: 40,
+            height: 32,
             background: `linear-gradient(to bottom, ${T.amber}, transparent)`,
           }}
         />
         <div
           style={{
-            width: 20,
-            height: 20,
-            border: `1.5px solid rgba(245,158,11,0.3)`,
+            width: 18,
+            height: 18,
+            border: `1.5px solid rgba(245,158,11,0.2)`,
             borderTopColor: T.amber,
             borderRadius: "50%",
             animation: "spin 0.8s linear infinite",
@@ -2158,7 +2194,7 @@ export default function BarberDashboard() {
           style={{
             maxWidth: 1200,
             margin: "0 auto",
-            padding: isMobile ? "0 14px" : "0 24px",
+            padding: isMobile ? "0" : "0 24px",
             display: "flex",
             borderTop: `1px solid ${T.border}`,
             overflowX: "auto",
@@ -2179,10 +2215,10 @@ export default function BarberDashboard() {
               onClick={() => setActiveTab(key)}
               className="tab-pill"
               style={{
-                padding: isMobile ? "10px 12px" : "10px 20px",
+                padding: isMobile ? "8px 14px" : "10px 20px",
                 ...sf,
-                fontSize: isMobile ? 6 : 7,
-                letterSpacing: "0.15em",
+                fontSize: isMobile ? 5 : 7,
+                letterSpacing: isMobile ? "0.05em" : "0.15em",
                 textTransform: "uppercase",
                 background: "transparent",
                 border: "none",
@@ -2192,14 +2228,16 @@ export default function BarberDashboard() {
                 marginBottom: -1,
                 transition: "all 0.2s",
                 display: "flex",
+                flexDirection: isMobile ? "column" : "row",
                 alignItems: "center",
-                gap: 4,
+                gap: isMobile ? 3 : 4,
                 whiteSpace: "nowrap",
                 flexShrink: 0,
+                minWidth: isMobile ? 60 : "auto",
               }}
             >
-              {!isMobile && <span style={{ fontSize: 10 }}>{icon}</span>}
-              {label}
+              <span style={{ fontSize: isMobile ? 16 : 10 }}>{icon}</span>
+              <span>{label}</span>
             </button>
           ))}
         </div>
@@ -2212,7 +2250,9 @@ export default function BarberDashboard() {
           position: "relative",
           zIndex: 10,
           minHeight: "100vh",
-          padding: isMobile ? "104px 12px 40px" : "108px 24px 48px",
+          padding: isMobile
+            ? "104px 12px max(40px, env(safe-area-inset-bottom))"
+            : "108px 24px 48px",
           maxWidth: 1200,
           margin: "0 auto",
         }}

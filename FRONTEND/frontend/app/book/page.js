@@ -6,6 +6,7 @@ import * as THREE from "three";
 import { gsap } from "gsap";
 import API from "@/lib/api";
 import AuthGuard from "@/lib/AuthGuard";
+import useBreakpoint from "@/lib/useBreakpoint";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function to24Hour(t) {
@@ -494,6 +495,7 @@ function TimeSlotGrid({
 // ── Main booking content ──────────────────────────────────────────────────────
 function BookContent() {
   const router = useRouter();
+  const { isMobile } = useBreakpoint();
   const canvasRef = useRef(null);
 
   const [services, setServices] = useState([]);
@@ -937,7 +939,7 @@ function BookContent() {
         <div
           style={{
             flex: 1,
-            padding: "48px 28px",
+            padding: isMobile ? "24px 16px 48px" : "48px 28px",
             maxWidth: 700,
             margin: "0 auto",
             width: "100%",
