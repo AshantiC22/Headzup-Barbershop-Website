@@ -1,54 +1,64 @@
 "use client";
+// HEADZ UP — Barber Dashboard v4
 
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { gsap } from "gsap";
 import API from "@/lib/api";
 import useBreakpoint from "@/lib/useBreakpoint";
 
-// ── Design tokens ─────────────────────────────────────────────────────────────
+/* ─────────────────────────────── tokens ─────────────────────────── */
 const T = {
   bg: "#040404",
-  surface: "rgba(255,255,255,0.025)",
+  surface: "#0a0a0a",
+  surface2: "#0f0f0f",
   border: "rgba(255,255,255,0.07)",
-  amber: "#F59E0B",
-  amberDim: "rgba(245,158,11,0.12)",
+  borderHover: "rgba(255,255,255,0.14)",
+  amber: "#f59e0b",
+  amberDim: "rgba(245,158,11,0.1)",
   amberBorder: "rgba(245,158,11,0.3)",
-  muted: "#52525b",
-  dim: "#27272a",
-  deepDim: "#1c1c1e",
+  green: "#4ade80",
+  greenDim: "rgba(74,222,128,0.1)",
+  greenBorder: "rgba(74,222,128,0.2)",
+  red: "#f87171",
+  redDim: "rgba(248,113,113,0.08)",
+  redBorder: "rgba(248,113,113,0.2)",
+  purple: "#a78bfa",
+  muted: "#71717a",
+  dim: "#3f3f46",
+  deep: "#27272a",
 };
 const sf = { fontFamily: "'Syncopate', sans-serif" };
 const mono = { fontFamily: "'DM Mono', monospace" };
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
-function todayISO() {
-  return new Date().toISOString().split("T")[0];
-}
-function addDays(d, n) {
+/* ─────────────────────────────── helpers ────────────────────────── */
+const todayISO = () => new Date().toISOString().split("T")[0];
+const addDays = (d, n) => {
   const dt = new Date(d + "T00:00:00");
   dt.setDate(dt.getDate() + n);
   return dt.toISOString().split("T")[0];
-}
-function fmtTime(t) {
+};
+const fmtTime = (t) => {
   if (!t) return "—";
   const [h, m] = t.split(":");
   const hr = parseInt(h);
   return `${hr % 12 || 12}:${m}${hr >= 12 ? "pm" : "am"}`;
-}
-function fmtDayFull(d) {
-  return new Date(d + "T00:00:00").toLocaleDateString("en-US", {
+};
+const fmtFull = (d) =>
+  new Date(d + "T00:00:00").toLocaleDateString("en-US", {
     weekday: "long",
     month: "long",
     day: "numeric",
   });
-}
-function fmtMonthYear(y, m) {
-  return new Date(y, m, 1).toLocaleDateString("en-US", {
+const fmtShort = (d) =>
+  new Date(d + "T00:00:00").toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+  });
+const fmtMY = (y, m) =>
+  new Date(y, m, 1).toLocaleDateString("en-US", {
     month: "long",
     year: "numeric",
   });
-}
 function to24Hour(t) {
   const [time, mod] = t.split(" ");
   let [h, m] = time.split(":");
@@ -75,45 +85,31 @@ const HOURS = Array.from({ length: 19 }, (_, i) => {
 const STATUS_CFG = {
   confirmed: {
     label: "Confirmed",
-    color: "#4ade80",
-    bg: "rgba(74,222,128,0.1)",
-    border: "rgba(74,222,128,0.2)",
+    color: T.green,
+    bg: T.greenDim,
+    border: T.greenBorder,
   },
   completed: {
     label: "Completed",
     color: "#a1a1aa",
-    bg: "rgba(161,161,170,0.08)",
-    border: "rgba(161,161,170,0.15)",
+    bg: "rgba(161,161,170,0.06)",
+    border: "rgba(161,161,170,0.12)",
   },
   no_show: {
     label: "No Show",
-    color: "#f87171",
-    bg: "rgba(248,113,113,0.08)",
-    border: "rgba(248,113,113,0.2)",
+    color: T.red,
+    bg: T.redDim,
+    border: T.redBorder,
   },
   cancelled: {
     label: "Cancelled",
-    color: "#52525b",
-    bg: "rgba(82,82,91,0.06)",
-    border: "rgba(82,82,91,0.15)",
-  },
-};
-const PAY_CFG = {
-  online: {
-    label: "Online",
-    color: "#F59E0B",
-    bg: T.amberDim,
-    border: T.amberBorder,
-  },
-  shop: {
-    label: "In Shop",
-    color: "#71717a",
-    bg: "rgba(113,113,122,0.06)",
-    border: "rgba(113,113,122,0.15)",
+    color: T.dim,
+    bg: "rgba(82,82,91,0.05)",
+    border: "rgba(82,82,91,0.1)",
   },
 };
 
-// ── Scissor SVG ───────────────────────────────────────────────────────────────
+/* ─────────────────────────────── icons ──────────────────────────── */
 const Scissors = ({ size = 16, color = T.amber }) => (
   <svg
     width={size}
@@ -133,27 +129,27 @@ const Scissors = ({ size = 16, color = T.amber }) => (
   </svg>
 );
 
-// ── Toast ─────────────────────────────────────────────────────────────────────
+/* ─────────────────────────────── toast ──────────────────────────── */
 function Toast({ toast }) {
   if (!toast) return null;
-  const isErr = toast.type === "error";
+  const ok = toast.type !== "error";
   return (
     <div
       style={{
         position: "fixed",
-        bottom: 32,
+        bottom: 28,
         left: "50%",
         transform: "translateX(-50%)",
         zIndex: 9999,
-        padding: "12px 24px",
-        background: isErr ? "rgba(248,113,113,0.08)" : "rgba(74,222,128,0.08)",
-        border: `1px solid ${isErr ? "rgba(248,113,113,0.3)" : "rgba(74,222,128,0.3)"}`,
+        padding: "11px 22px",
+        background: ok ? T.greenDim : T.redDim,
+        border: `1px solid ${ok ? T.greenBorder : T.redBorder}`,
         backdropFilter: "blur(20px)",
-        animation: "toastIn 0.3s ease",
-        whiteSpace: "nowrap",
         display: "flex",
         alignItems: "center",
         gap: 10,
+        animation: "toastIn 0.3s ease",
+        whiteSpace: "nowrap",
       }}
     >
       <div
@@ -161,7 +157,7 @@ function Toast({ toast }) {
           width: 6,
           height: 6,
           borderRadius: "50%",
-          background: isErr ? "#f87171" : "#4ade80",
+          background: ok ? T.green : T.red,
           flexShrink: 0,
         }}
       />
@@ -169,7 +165,7 @@ function Toast({ toast }) {
         style={{
           ...sf,
           fontSize: 7,
-          color: isErr ? "#f87171" : "#4ade80",
+          color: ok ? T.green : T.red,
           letterSpacing: "0.2em",
           textTransform: "uppercase",
           margin: 0,
@@ -181,336 +177,7 @@ function Toast({ toast }) {
   );
 }
 
-// ── Stat card ─────────────────────────────────────────────────────────────────
-function StatCard({ label, value, accent, icon }) {
-  return (
-    <div
-      style={{
-        padding: "20px 16px",
-        background: accent ? T.amberDim : T.surface,
-        border: `1px solid ${accent ? T.amberBorder : T.border}`,
-        position: "relative",
-        overflow: "hidden",
-        transition: "all 0.25s",
-        cursor: "default",
-      }}
-      onMouseEnter={(e) => {
-        e.currentTarget.style.borderColor = T.amber;
-        e.currentTarget.style.background = T.amberDim;
-      }}
-      onMouseLeave={(e) => {
-        e.currentTarget.style.borderColor = accent ? T.amberBorder : T.border;
-        e.currentTarget.style.background = accent ? T.amberDim : T.surface;
-      }}
-    >
-      {/* Corner gradient */}
-      <div
-        style={{
-          position: "absolute",
-          top: 0,
-          right: 0,
-          width: 50,
-          height: 50,
-          background: accent
-            ? "linear-gradient(225deg,rgba(245,158,11,0.25),transparent)"
-            : "linear-gradient(225deg,rgba(255,255,255,0.04),transparent)",
-        }}
-      />
-      {/* Label row */}
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          marginBottom: 12,
-        }}
-      >
-        <p
-          style={{
-            ...sf,
-            fontSize: 5,
-            letterSpacing: "0.4em",
-            color: accent ? T.amber : T.muted,
-            textTransform: "uppercase",
-            margin: 0,
-          }}
-        >
-          {label}
-        </p>
-        {icon && <span style={{ fontSize: 14, opacity: 0.4 }}>{icon}</span>}
-      </div>
-      {/* Value */}
-      <p
-        style={{
-          ...sf,
-          fontSize: 28,
-          fontWeight: 900,
-          color: accent ? T.amber : "white",
-          lineHeight: 1,
-          margin: 0,
-        }}
-      >
-        {value ?? "—"}
-      </p>
-    </div>
-  );
-}
-
-// ── Monthly Calendar ──────────────────────────────────────────────────────────
-function MonthCalendar({
-  year,
-  month,
-  selectedDate,
-  appointmentDates,
-  onSelectDate,
-  onPrevMonth,
-  onNextMonth,
-}) {
-  const today = todayISO();
-  const firstDay = new Date(year, month, 1).getDay();
-  const daysInMonth = new Date(year, month + 1, 0).getDate();
-  const cells = [];
-  for (let i = 0; i < firstDay; i++) cells.push(null);
-  for (let d = 1; d <= daysInMonth; d++) cells.push(d);
-  const DAY_LABELS = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
-
-  return (
-    <div
-      style={{
-        background: T.surface,
-        border: `1px solid ${T.border}`,
-        padding: "18px 16px",
-      }}
-    >
-      {/* Month header */}
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          marginBottom: 16,
-        }}
-      >
-        <button
-          onClick={onPrevMonth}
-          style={{
-            width: 28,
-            height: 28,
-            background: "transparent",
-            border: `1px solid ${T.border}`,
-            color: T.muted,
-            cursor: "pointer",
-            fontSize: 14,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            transition: "all 0.2s",
-            flexShrink: 0,
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.borderColor = T.amber;
-            e.currentTarget.style.color = T.amber;
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.borderColor = T.border;
-            e.currentTarget.style.color = T.muted;
-          }}
-        >
-          ‹
-        </button>
-        <h3
-          style={{
-            ...sf,
-            fontSize: 8,
-            fontWeight: 700,
-            textTransform: "uppercase",
-            letterSpacing: "0.2em",
-            color: "white",
-            margin: 0,
-          }}
-        >
-          {fmtMonthYear(year, month)}
-        </h3>
-        <button
-          onClick={onNextMonth}
-          style={{
-            width: 28,
-            height: 28,
-            background: "transparent",
-            border: `1px solid ${T.border}`,
-            color: T.muted,
-            cursor: "pointer",
-            fontSize: 14,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            transition: "all 0.2s",
-            flexShrink: 0,
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.borderColor = T.amber;
-            e.currentTarget.style.color = T.amber;
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.borderColor = T.border;
-            e.currentTarget.style.color = T.muted;
-          }}
-        >
-          ›
-        </button>
-      </div>
-
-      {/* Day labels */}
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(7,1fr)",
-          marginBottom: 6,
-        }}
-      >
-        {DAY_LABELS.map((d) => (
-          <div
-            key={d}
-            style={{
-              ...sf,
-              fontSize: 6,
-              textAlign: "center",
-              color: T.dim,
-              letterSpacing: "0.05em",
-              padding: "2px 0",
-            }}
-          >
-            {d}
-          </div>
-        ))}
-      </div>
-
-      {/* Date cells */}
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(7,1fr)",
-          gap: 2,
-        }}
-      >
-        {cells.map((day, i) => {
-          if (!day) return <div key={`e-${i}`} />;
-          const ds = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-          const isToday = ds === today;
-          const isSelected = ds === selectedDate;
-          const count = appointmentDates[ds] || 0;
-          const isSun = new Date(ds + "T00:00:00").getDay() === 0;
-
-          return (
-            <button
-              key={ds}
-              onClick={() => onSelectDate(ds)}
-              style={{
-                aspectRatio: "1",
-                background: isSelected
-                  ? T.amber
-                  : isToday
-                    ? T.amberDim
-                    : "transparent",
-                border: `1px solid ${isSelected ? T.amber : isToday ? T.amberBorder : "transparent"}`,
-                color: isSelected
-                  ? "black"
-                  : isSun
-                    ? T.deepDim
-                    : isToday
-                      ? T.amber
-                      : "white",
-                cursor: "pointer",
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: 1,
-                transition: "all 0.15s",
-                padding: 1,
-                borderRadius: 0,
-              }}
-              onMouseEnter={(e) => {
-                if (!isSelected) {
-                  e.currentTarget.style.background = T.amberDim;
-                  e.currentTarget.style.borderColor = T.amberBorder;
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (!isSelected) {
-                  e.currentTarget.style.background = isToday
-                    ? T.amberDim
-                    : "transparent";
-                  e.currentTarget.style.borderColor = isToday
-                    ? T.amberBorder
-                    : "transparent";
-                }
-              }}
-            >
-              <span
-                style={{
-                  ...sf,
-                  fontSize: 9,
-                  fontWeight: isToday || isSelected ? 900 : 400,
-                  lineHeight: 1,
-                }}
-              >
-                {day}
-              </span>
-              {count > 0 && (
-                <span
-                  style={{
-                    width: 3,
-                    height: 3,
-                    borderRadius: "50%",
-                    background: isSelected ? "rgba(0,0,0,0.5)" : T.amber,
-                    display: "block",
-                  }}
-                />
-              )}
-            </button>
-          );
-        })}
-      </div>
-
-      {/* Legend */}
-      <div
-        style={{
-          marginTop: 14,
-          paddingTop: 12,
-          borderTop: `1px solid ${T.border}`,
-          display: "flex",
-          gap: 14,
-        }}
-      >
-        <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
-          <div
-            style={{
-              width: 4,
-              height: 4,
-              borderRadius: "50%",
-              background: T.amber,
-            }}
-          />
-          <span style={{ ...mono, fontSize: 8, color: T.muted }}>Booked</span>
-        </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
-          <div
-            style={{
-              width: 10,
-              height: 10,
-              border: `1px solid ${T.amberBorder}`,
-              background: T.amberDim,
-            }}
-          />
-          <span style={{ ...mono, fontSize: 8, color: T.muted }}>Today</span>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ── Appointment ticket card ───────────────────────────────────────────────────
+/* ─────────────────────────── appointment ticket ─────────────────── */
 function ApptTicket({
   appt,
   onStatusChange,
@@ -519,465 +186,419 @@ function ApptTicket({
   onNotes,
   isMobile,
 }) {
-  const [menuOpen, setMenuOpen] = useState(false);
-  const [status, setStatus] = useState(appt.status || "confirmed");
-  const menuRef = useRef(null);
+  const [open, setOpen] = useState(false);
+  const [note, setNote] = useState(appt.barber_notes || "");
+  const [saving, setSaving] = useState(false);
+  const status = appt.status || "confirmed";
   const sCfg = STATUS_CFG[status] || STATUS_CFG.confirmed;
-  const pCfg = PAY_CFG[appt.payment_method] || PAY_CFG.shop;
+  const isOnline = appt.payment_method === "online";
 
-  useEffect(() => {
-    if (!menuOpen) return;
-    const handler = (e) => {
-      if (menuRef.current && !menuRef.current.contains(e.target))
-        setMenuOpen(false);
-    };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, [menuOpen]);
-
-  const handleStatus = async (newStatus) => {
-    setMenuOpen(false);
-    const prev = status;
-    setStatus(newStatus);
+  const saveNote = async () => {
+    setSaving(true);
     try {
-      await onStatusChange(appt.id, newStatus);
+      await API.patch(`barber/appointments/${appt.id}/`, {
+        barber_notes: note,
+      });
+      onNotes && onNotes(appt.id, note);
     } catch {
-      setStatus(prev);
+    } finally {
+      setSaving(false);
     }
   };
 
   return (
     <div
       style={{
-        display: "flex",
-        gap: 0,
         background: T.surface,
         border: `1px solid ${T.border}`,
-        transition: "all 0.2s",
-        position: "relative",
         overflow: "hidden",
+        transition: "border-color 0.2s",
       }}
-      onMouseEnter={(e) => {
-        e.currentTarget.style.borderColor = "rgba(245,158,11,0.2)";
-        e.currentTarget.style.background = "rgba(245,158,11,0.018)";
-      }}
-      onMouseLeave={(e) => {
-        e.currentTarget.style.borderColor = T.border;
-        e.currentTarget.style.background = T.surface;
-      }}
+      onMouseEnter={(e) => (e.currentTarget.style.borderColor = T.amberBorder)}
+      onMouseLeave={(e) => (e.currentTarget.style.borderColor = T.border)}
     >
-      {/* Left accent strip */}
+      {/* Top color strip */}
       <div
         style={{
-          width: 3,
-          background: sCfg.color,
-          flexShrink: 0,
-          opacity: 0.9,
+          height: 2,
+          background: `linear-gradient(to right,${sCfg.color},transparent)`,
+          opacity: 0.7,
         }}
       />
 
-      {/* Time block */}
+      {/* Main row */}
       <div
         style={{
-          width: isMobile ? 58 : 64,
-          flexShrink: 0,
-          padding: isMobile ? "16px 8px" : "14px 10px",
+          padding: isMobile ? "12px 14px" : "14px 20px",
           display: "flex",
-          flexDirection: "column",
-          justifyContent: "center",
           alignItems: "center",
-          background: "rgba(255,255,255,0.015)",
-          borderRight: `1px solid ${T.border}`,
+          gap: isMobile ? 10 : 16,
+          flexWrap: "wrap",
         }}
       >
-        <p
+        {/* Time block */}
+        <div
           style={{
-            ...mono,
-            fontSize: isMobile ? 12 : 13,
-            color: T.amber,
-            fontWeight: 500,
-            margin: 0,
-            lineHeight: 1.1,
+            width: isMobile ? 52 : 64,
+            flexShrink: 0,
             textAlign: "center",
+            padding: "8px 0",
+            background: T.surface2,
+            border: `1px solid ${T.border}`,
           }}
         >
-          {fmtTime(appt.time)}
-        </p>
-        {appt.service_duration && (
           <p
             style={{
-              ...mono,
-              fontSize: 8,
-              color: T.muted,
-              margin: "4px 0 0",
-              textAlign: "center",
+              ...sf,
+              fontSize: isMobile ? 13 : 16,
+              fontWeight: 900,
+              color: T.amber,
+              lineHeight: 1,
+              margin: 0,
             }}
           >
-            {appt.service_duration}m
+            {fmtTime(appt.time) || "—"}
           </p>
-        )}
-      </div>
+          <p style={{ ...mono, fontSize: 8, color: T.dim, marginTop: 3 }}>
+            {fmtShort(appt.date)}
+          </p>
+        </div>
 
-      {/* Main content */}
-      <div
-        style={{
-          flex: 1,
-          padding: isMobile ? "14px 10px" : "12px 14px",
-          minWidth: 0,
-        }}
-      >
+        {/* Info */}
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <p
+            style={{
+              ...sf,
+              fontSize: isMobile ? 9 : 11,
+              fontWeight: 700,
+              textTransform: "uppercase",
+              marginBottom: 4,
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+            }}
+          >
+            {appt.service_name || "Appointment"}
+          </p>
+          <div
+            style={{
+              display: "flex",
+              gap: 8,
+              alignItems: "center",
+              flexWrap: "wrap",
+            }}
+          >
+            <span style={{ ...mono, fontSize: 10, color: "#a1a1aa" }}>
+              {appt.client_name || appt.username || "Client"}
+            </span>
+            {appt.client_notes && (
+              <span
+                style={{
+                  ...mono,
+                  fontSize: 9,
+                  color: T.amber,
+                  fontStyle: "italic",
+                }}
+              >
+                "{appt.client_notes}"
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* Badges */}
         <div
           style={{
             display: "flex",
+            gap: 6,
             alignItems: "center",
-            gap: 8,
-            marginBottom: isMobile ? 6 : 5,
+            flexShrink: 0,
             flexWrap: "wrap",
           }}
         >
-          <p
-            style={{
-              ...sf,
-              fontSize: isMobile ? 9 : 9,
-              fontWeight: 700,
-              textTransform: "uppercase",
-              color: "white",
-              margin: 0,
-              letterSpacing: "0.05em",
-            }}
-          >
-            {appt.client}
-          </p>
-          <span
-            style={{
-              ...sf,
-              fontSize: 6,
-              letterSpacing: "0.1em",
-              textTransform: "uppercase",
-              padding: "2px 7px",
-              background: pCfg.bg,
-              color: pCfg.color,
-              border: `1px solid ${pCfg.border}`,
-            }}
-          >
-            {pCfg.label}
-          </span>
           {appt.is_walk_in && (
             <span
               style={{
                 ...sf,
-                fontSize: 6,
-                letterSpacing: "0.1em",
-                textTransform: "uppercase",
-                padding: "2px 7px",
-                background: "rgba(139,92,246,0.1)",
-                color: "#a78bfa",
-                border: "1px solid rgba(139,92,246,0.25)",
+                fontSize: 5,
+                letterSpacing: "0.15em",
+                padding: "3px 8px",
+                background: T.amberDim,
+                border: `1px solid ${T.amberBorder}`,
+                color: T.amber,
               }}
             >
-              Walk-In
+              WALK-IN
             </span>
           )}
-          {appt.barber_notes && (
-            <span style={{ fontSize: 9, color: T.amber }}>📝</span>
+          {isOnline && (
+            <span
+              style={{
+                ...sf,
+                fontSize: 5,
+                letterSpacing: "0.15em",
+                padding: "3px 8px",
+                background: T.amberDim,
+                border: `1px solid ${T.amberBorder}`,
+                color: T.amber,
+              }}
+            >
+              PAID
+            </span>
           )}
-        </div>
-        <p
-          style={{
-            ...mono,
-            fontSize: isMobile ? 12 : 11,
-            color: "#a1a1aa",
-            margin: 0,
-          }}
-        >
-          {appt.service}
-          {appt.service_price ? (
-            <span style={{ color: T.muted }}> · ${appt.service_price}</span>
-          ) : (
-            ""
-          )}
-        </p>
-        {appt.client_notes && (
-          <p
+          <span
             style={{
-              ...mono,
-              fontSize: 10,
-              color: T.amber,
-              marginTop: 4,
-              fontStyle: "italic",
-            }}
-          >
-            💬 {appt.client_notes}
-          </p>
-        )}
-        {!isMobile && appt.client_email && (
-          <p style={{ ...mono, fontSize: 9, color: T.dim, marginTop: 4 }}>
-            {appt.client_email}
-          </p>
-        )}
-      </div>
-
-      {/* Actions */}
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: isMobile ? 6 : 6,
-          padding: isMobile ? "0 10px" : "0 10px",
-          flexShrink: 0,
-        }}
-      >
-        {/* Status pill — always shows label */}
-        <div ref={menuRef} style={{ position: "relative" }}>
-          <button
-            onClick={() => setMenuOpen((o) => !o)}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 6,
               ...sf,
-              fontSize: 6,
+              fontSize: 5,
               letterSpacing: "0.1em",
-              textTransform: "uppercase",
-              padding: isMobile ? "8px 10px" : "5px 10px",
+              padding: "3px 8px",
               background: sCfg.bg,
-              color: sCfg.color,
               border: `1px solid ${sCfg.border}`,
-              cursor: "pointer",
-              transition: "all 0.15s",
-              whiteSpace: "nowrap",
-              minHeight: isMobile ? 36 : "auto",
+              color: sCfg.color,
             }}
           >
-            <span
-              style={{
-                width: 6,
-                height: 6,
-                borderRadius: "50%",
-                background: sCfg.color,
-                flexShrink: 0,
-              }}
-            />
-            <span>{sCfg.label}</span>
-            <span
-              style={{
-                fontSize: 8,
-                opacity: 0.5,
-                transform: menuOpen ? "rotate(180deg)" : "none",
-                transition: "transform 0.2s",
-                display: "inline-block",
-              }}
-            >
-              ▾
-            </span>
-          </button>
-          {menuOpen && (
-            <div
-              style={{
-                position: "absolute",
-                top: "calc(100% + 4px)",
-                right: 0,
-                zIndex: 200,
-                background: "#0a0a0a",
-                border: `1px solid ${T.border}`,
-                minWidth: 150,
-                boxShadow: "0 20px 60px rgba(0,0,0,0.9)",
-              }}
-            >
-              {Object.entries(STATUS_CFG).map(([key, cfg]) => (
-                <button
-                  key={key}
-                  onClick={() => handleStatus(key)}
-                  style={{
-                    width: "100%",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 10,
-                    padding: isMobile ? "14px 16px" : "10px 14px",
-                    background: status === key ? T.amberDim : "transparent",
-                    border: "none",
-                    cursor: "pointer",
-                    transition: "background 0.15s",
-                  }}
-                  onMouseEnter={(e) => {
-                    if (status !== key)
-                      e.currentTarget.style.background = T.surface;
-                  }}
-                  onMouseLeave={(e) => {
-                    if (status !== key)
-                      e.currentTarget.style.background = "transparent";
-                  }}
-                >
-                  <div
-                    style={{
-                      width: 8,
-                      height: 8,
-                      borderRadius: "50%",
-                      background: cfg.color,
-                      flexShrink: 0,
-                    }}
-                  />
-                  <span
-                    style={{
-                      ...sf,
-                      fontSize: 7,
-                      letterSpacing: "0.1em",
-                      textTransform: "uppercase",
-                      color: status === key ? T.amber : "#a1a1aa",
-                    }}
-                  >
-                    {cfg.label}
-                  </span>
-                  {status === key && (
-                    <span
-                      style={{
-                        marginLeft: "auto",
-                        color: T.amber,
-                        fontSize: 10,
-                      }}
-                    >
-                      ✓
-                    </span>
-                  )}
-                </button>
-              ))}
-            </div>
-          )}
+            {sCfg.label}
+          </span>
         </div>
 
-        {/* Notes */}
+        {/* Expand toggle */}
         <button
-          onClick={() => onNotes(appt)}
-          title="Add notes"
+          onClick={() => setOpen(!open)}
           style={{
-            width: isMobile ? 36 : 28,
-            height: isMobile ? 36 : 28,
-            background: appt.barber_notes ? T.amberDim : "transparent",
-            border: `1px solid ${appt.barber_notes ? T.amberBorder : T.border}`,
-            color: appt.barber_notes ? T.amber : T.muted,
+            width: 28,
+            height: 28,
+            background: "transparent",
+            border: `1px solid ${T.border}`,
+            color: T.muted,
             cursor: "pointer",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            fontSize: isMobile ? 13 : 10,
             transition: "all 0.2s",
             flexShrink: 0,
+            fontSize: 10,
+            transform: open ? "rotate(180deg)" : "none",
           }}
           onMouseEnter={(e) => {
-            e.currentTarget.style.borderColor = T.amberBorder;
+            e.currentTarget.style.borderColor = T.amber;
             e.currentTarget.style.color = T.amber;
           }}
           onMouseLeave={(e) => {
-            e.currentTarget.style.borderColor = appt.barber_notes
-              ? T.amberBorder
-              : T.border;
-            e.currentTarget.style.color = appt.barber_notes ? T.amber : T.muted;
+            e.currentTarget.style.borderColor = T.border;
+            e.currentTarget.style.color = T.muted;
           }}
         >
-          📝
-        </button>
-
-        {/* Reschedule */}
-        <button
-          onClick={() => onReschedule(appt)}
-          title="Reschedule"
-          style={{
-            width: isMobile ? 36 : 28,
-            height: isMobile ? 36 : 28,
-            background: "transparent",
-            border: `1px solid ${T.amberBorder}`,
-            color: T.amber,
-            cursor: "pointer",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            fontSize: isMobile ? 14 : 11,
-            transition: "all 0.2s",
-            flexShrink: 0,
-          }}
-          onMouseEnter={(e) => (e.currentTarget.style.background = T.amberDim)}
-          onMouseLeave={(e) =>
-            (e.currentTarget.style.background = "transparent")
-          }
-        >
-          ↻
-        </button>
-
-        {/* Cancel */}
-        <button
-          onClick={() => onCancel(appt)}
-          title="Cancel"
-          style={{
-            width: isMobile ? 36 : 28,
-            height: isMobile ? 36 : 28,
-            background: "transparent",
-            border: "1px solid rgba(248,113,113,0.2)",
-            color: T.dim,
-            cursor: "pointer",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            fontSize: isMobile ? 14 : 11,
-            transition: "all 0.2s",
-            flexShrink: 0,
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.borderColor = "#f87171";
-            e.currentTarget.style.color = "#f87171";
-            e.currentTarget.style.background = "rgba(248,113,113,0.08)";
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.borderColor = "rgba(248,113,113,0.2)";
-            e.currentTarget.style.color = T.dim;
-            e.currentTarget.style.background = "transparent";
-          }}
-        >
-          ✕
+          ▾
         </button>
       </div>
+
+      {/* Expanded panel */}
+      {open && (
+        <div
+          style={{
+            borderTop: `1px solid ${T.border}`,
+            padding: "16px 20px",
+            background: T.amberDim,
+          }}
+        >
+          {/* Status selector */}
+          <p
+            style={{
+              ...sf,
+              fontSize: 6,
+              letterSpacing: "0.4em",
+              color: T.muted,
+              textTransform: "uppercase",
+              marginBottom: 10,
+            }}
+          >
+            Update Status
+          </p>
+          <div
+            style={{
+              display: "flex",
+              gap: 6,
+              flexWrap: "wrap",
+              marginBottom: 16,
+            }}
+          >
+            {Object.entries(STATUS_CFG).map(([key, cfg]) => (
+              <button
+                key={key}
+                onClick={() => onStatusChange && onStatusChange(appt.id, key)}
+                style={{
+                  padding: "7px 12px",
+                  ...sf,
+                  fontSize: 6,
+                  letterSpacing: "0.1em",
+                  textTransform: "uppercase",
+                  background: status === key ? cfg.bg : "transparent",
+                  border: `1px solid ${status === key ? cfg.color : T.border}`,
+                  color: status === key ? cfg.color : T.muted,
+                  cursor: "pointer",
+                  transition: "all 0.2s",
+                }}
+              >
+                {cfg.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Notes */}
+          <p
+            style={{
+              ...sf,
+              fontSize: 6,
+              letterSpacing: "0.4em",
+              color: T.muted,
+              textTransform: "uppercase",
+              marginBottom: 8,
+            }}
+          >
+            Barber Notes
+          </p>
+          <textarea
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            rows={2}
+            placeholder="Add notes about this appointment..."
+            style={{
+              width: "100%",
+              background: T.bg,
+              border: `1px solid ${T.border}`,
+              padding: "10px 12px",
+              color: "white",
+              fontSize: 13,
+              ...mono,
+              outline: "none",
+              resize: "vertical",
+              marginBottom: 10,
+              borderRadius: 0,
+            }}
+            onFocus={(e) => (e.target.style.borderColor = T.amber)}
+            onBlur={(e) => (e.target.style.borderColor = T.border)}
+          />
+
+          {/* Actions */}
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <button
+              onClick={saveNote}
+              disabled={saving}
+              style={{
+                padding: "8px 16px",
+                background: saving ? T.deep : T.amber,
+                color: saving ? T.dim : "black",
+                ...sf,
+                fontSize: 7,
+                fontWeight: 700,
+                letterSpacing: "0.15em",
+                textTransform: "uppercase",
+                border: "none",
+                cursor: saving ? "not-allowed" : "pointer",
+                transition: "all 0.2s",
+              }}
+            >
+              {saving ? "Saving..." : "Save Notes →"}
+            </button>
+            <button
+              onClick={() => onReschedule && onReschedule(appt)}
+              style={{
+                padding: "8px 14px",
+                ...sf,
+                fontSize: 7,
+                letterSpacing: "0.15em",
+                textTransform: "uppercase",
+                background: "transparent",
+                border: `1px solid ${T.border}`,
+                color: T.muted,
+                cursor: "pointer",
+                transition: "all 0.2s",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.borderColor = T.amber;
+                e.currentTarget.style.color = T.amber;
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.borderColor = T.border;
+                e.currentTarget.style.color = T.muted;
+              }}
+            >
+              Reschedule
+            </button>
+            <button
+              onClick={() => onCancel && onCancel(appt.id)}
+              style={{
+                padding: "8px 14px",
+                ...sf,
+                fontSize: 7,
+                letterSpacing: "0.15em",
+                textTransform: "uppercase",
+                background: "transparent",
+                border: `1px solid ${T.redBorder}`,
+                color: T.red,
+                cursor: "pointer",
+                transition: "all 0.2s",
+              }}
+              onMouseEnter={(e) =>
+                (e.currentTarget.style.background = T.redDim)
+              }
+              onMouseLeave={(e) =>
+                (e.currentTarget.style.background = "transparent")
+              }
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
-// ── Reschedule Modal ──────────────────────────────────────────────────────────
+/* ────────────────────────── reschedule modal ────────────────────── */
 function RescheduleModal({ appt, onClose, onDone }) {
   const [newDate, setNewDate] = useState("");
   const [newTime, setNewTime] = useState("");
-  const [saving, setSaving] = useState(false);
+  const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
-  const [done, setDone] = useState(false);
-  const slots = HOURS.map((h) => {
-    const [hr, mn] = h.split(":");
-    const hour = parseInt(hr);
-    return `${hour % 12 || 12}:${mn} ${hour >= 12 ? "PM" : "AM"}`;
-  });
+  const today = todayISO();
+  const SLOTS = [
+    "9:00 AM",
+    "9:30 AM",
+    "10:00 AM",
+    "10:30 AM",
+    "11:00 AM",
+    "11:30 AM",
+    "12:00 PM",
+    "12:30 PM",
+    "1:00 PM",
+    "1:30 PM",
+    "2:00 PM",
+    "2:30 PM",
+    "3:00 PM",
+    "3:30 PM",
+    "4:00 PM",
+    "4:30 PM",
+  ];
 
-  const handle = async () => {
+  const submit = async () => {
     if (!newDate || !newTime) {
       setErr("Pick a date and time.");
       return;
     }
-    setSaving(true);
+    setBusy(true);
     setErr("");
     try {
-      // Send reschedule proposal to client via email
       await API.post(`barber/appointments/${appt.id}/reschedule/`, {
         new_date: newDate,
         new_time: to24Hour(newTime),
       });
-      setDone(true);
-      setTimeout(() => {
-        onDone(appt.id, newDate, to24Hour(newTime));
-        onClose();
-      }, 1500);
+      onDone && onDone();
+      onClose();
     } catch (e) {
-      setErr(
-        e.response?.data?.error ||
-          e.response?.data?.message ||
-          "Could not send reschedule request.",
-      );
+      setErr(e.response?.data?.error || "Could not reschedule.");
     } finally {
-      setSaving(false);
+      setBusy(false);
     }
   };
 
@@ -992,570 +613,591 @@ function RescheduleModal({ appt, onClose, onDone }) {
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        padding: 24,
+        padding: 20,
       }}
     >
       <div
         style={{
           width: "100%",
-          maxWidth: 460,
-          background: "#060606",
-          border: `1px solid ${T.border}`,
-          padding: "28px 24px",
-          maxHeight: "90vh",
-          overflowY: "auto",
+          maxWidth: 440,
+          background: T.surface,
+          border: `1px solid ${T.amberBorder}`,
         }}
       >
-        {done ? (
-          <div style={{ textAlign: "center", padding: "32px 0" }}>
-            <div
-              style={{
-                width: 52,
-                height: 52,
-                borderRadius: "50%",
-                background: "linear-gradient(135deg,#22c55e,#16a34a)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                margin: "0 auto 16px",
-              }}
-            >
-              <svg
-                width="24"
-                height="24"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="black"
-                strokeWidth="3"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <polyline points="20 6 9 17 4 12" />
-              </svg>
-            </div>
-            <p
-              style={{
-                ...sf,
-                fontSize: 8,
-                color: "#4ade80",
-                textTransform: "uppercase",
-                letterSpacing: "0.3em",
-                marginBottom: 8,
-              }}
-            >
-              Request Sent
-            </p>
+        {/* Header */}
+        <div
+          style={{
+            padding: "20px 24px",
+            borderBottom: `1px solid ${T.border}`,
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+          }}
+        >
+          <div>
             <p
               style={{
                 ...mono,
-                fontSize: 11,
-                color: "#52525b",
-                lineHeight: 1.6,
+                fontSize: 8,
+                color: T.amber,
+                letterSpacing: "0.4em",
+                textTransform: "uppercase",
+                marginBottom: 4,
               }}
             >
-              Client will receive an email to accept or reject the new time.
+              Reschedule
+            </p>
+            <p
+              style={{
+                ...sf,
+                fontSize: 11,
+                fontWeight: 700,
+                textTransform: "uppercase",
+                margin: 0,
+              }}
+            >
+              {appt.service_name || "Appointment"}
             </p>
           </div>
-        ) : (
-          <>
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 12,
-                marginBottom: 20,
-              }}
+          <button
+            onClick={onClose}
+            style={{
+              width: 32,
+              height: 32,
+              background: "transparent",
+              border: `1px solid ${T.border}`,
+              color: T.muted,
+              cursor: "pointer",
+              fontSize: 14,
+            }}
+          >
+            ✕
+          </button>
+        </div>
+        <div style={{ padding: "20px 24px" }}>
+          {err && (
+            <p
+              style={{ ...mono, fontSize: 11, color: T.red, marginBottom: 12 }}
             >
-              <Scissors size={18} />
-              <div>
-                <p
-                  style={{
-                    ...sf,
-                    fontSize: 6,
-                    letterSpacing: "0.4em",
-                    color: T.muted,
-                    textTransform: "uppercase",
-                    margin: 0,
-                  }}
-                >
-                  Reschedule
-                </p>
-                <h2
-                  style={{
-                    ...sf,
-                    fontSize: 16,
-                    fontWeight: 900,
-                    textTransform: "uppercase",
-                    color: "white",
-                    margin: 0,
-                  }}
-                >
-                  {appt.client}
-                  <span style={{ color: T.amber }}>_</span>
-                </h2>
-              </div>
-            </div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-              <div>
-                <label
-                  style={{
-                    ...sf,
-                    fontSize: 7,
-                    letterSpacing: "0.3em",
-                    color: T.muted,
-                    textTransform: "uppercase",
-                    display: "block",
-                    marginBottom: 8,
-                  }}
-                >
-                  New Date
-                </label>
-                <input
-                  type="date"
-                  value={newDate}
-                  min={todayISO()}
-                  onChange={(e) => setNewDate(e.target.value)}
-                  style={{
-                    width: "100%",
-                    background: "#050505",
-                    border: `1px solid ${T.border}`,
-                    padding: "12px 14px",
-                    color: "white",
-                    fontSize: 14,
-                    outline: "none",
-                    fontFamily: "'DM Mono', monospace",
-                  }}
-                  onFocus={(e) => (e.target.style.borderColor = T.amber)}
-                  onBlur={(e) => (e.target.style.borderColor = T.border)}
-                />
-              </div>
-              <div>
-                <label
-                  style={{
-                    ...sf,
-                    fontSize: 7,
-                    letterSpacing: "0.3em",
-                    color: T.muted,
-                    textTransform: "uppercase",
-                    display: "block",
-                    marginBottom: 8,
-                  }}
-                >
-                  New Time
-                </label>
-                <div
-                  style={{
-                    display: "grid",
-                    gridTemplateColumns: "repeat(4,1fr)",
-                    gap: 5,
-                  }}
-                >
-                  {slots.map((s) => (
-                    <button
-                      key={s}
-                      onClick={() => setNewTime(s)}
-                      style={{
-                        padding: "7px 2px",
-                        ...sf,
-                        fontSize: 6,
-                        letterSpacing: "0.05em",
-                        textTransform: "uppercase",
-                        border: `1px solid ${newTime === s ? T.amber : T.border}`,
-                        background: newTime === s ? T.amberDim : "transparent",
-                        color: newTime === s ? T.amber : T.muted,
-                        cursor: "pointer",
-                        transition: "all 0.15s",
-                      }}
-                    >
-                      {s}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              {err && (
-                <p
-                  style={{ ...mono, fontSize: 11, color: "#f87171", margin: 0 }}
-                >
-                  ⚠ {err}
-                </p>
-              )}
-              <div style={{ display: "flex", gap: 10, paddingTop: 4 }}>
-                <button
-                  onClick={onClose}
-                  style={{
-                    flex: 1,
-                    padding: "12px",
-                    background: "transparent",
-                    border: `1px solid ${T.border}`,
-                    color: T.muted,
-                    ...sf,
-                    fontSize: 7,
-                    textTransform: "uppercase",
-                    letterSpacing: "0.15em",
-                    cursor: "pointer",
-                    transition: "all 0.2s",
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.borderColor = "rgba(255,255,255,0.3)";
-                    e.currentTarget.style.color = "white";
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.borderColor = T.border;
-                    e.currentTarget.style.color = T.muted;
-                  }}
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handle}
-                  disabled={!newDate || !newTime || saving}
-                  style={{
-                    flex: 2,
-                    padding: "12px",
-                    background:
-                      !newDate || !newTime || saving ? T.deepDim : T.amber,
-                    color: !newDate || !newTime || saving ? T.dim : "black",
-                    ...sf,
-                    fontSize: 7,
-                    fontWeight: 700,
-                    textTransform: "uppercase",
-                    letterSpacing: "0.2em",
-                    border: "none",
-                    cursor:
-                      !newDate || !newTime || saving
-                        ? "not-allowed"
-                        : "pointer",
-                    transition: "all 0.25s",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    gap: 8,
-                  }}
-                >
-                  {saving ? (
-                    <>
-                      <span
-                        style={{
-                          width: 11,
-                          height: 11,
-                          border: "2px solid #3f3f46",
-                          borderTopColor: "#71717a",
-                          borderRadius: "50%",
-                          display: "inline-block",
-                          animation: "spin 0.7s linear infinite",
-                        }}
-                      />
-                      Saving...
-                    </>
-                  ) : (
-                    "Confirm →"
-                  )}
-                </button>
-              </div>
-            </div>
-          </>
-        )}
+              ⚠ {err}
+            </p>
+          )}
+          <label
+            style={{
+              ...sf,
+              fontSize: 6,
+              letterSpacing: "0.3em",
+              color: T.muted,
+              textTransform: "uppercase",
+              display: "block",
+              marginBottom: 8,
+            }}
+          >
+            New Date
+          </label>
+          <input
+            type="date"
+            value={newDate}
+            min={today}
+            onChange={(e) => setNewDate(e.target.value)}
+            style={{
+              width: "100%",
+              background: T.bg,
+              border: `1px solid ${T.border}`,
+              padding: "11px 12px",
+              color: "white",
+              fontSize: 14,
+              outline: "none",
+              ...mono,
+              marginBottom: 16,
+              colorScheme: "dark",
+            }}
+            onFocus={(e) => (e.target.style.borderColor = T.amber)}
+            onBlur={(e) => (e.target.style.borderColor = T.border)}
+          />
+          <label
+            style={{
+              ...sf,
+              fontSize: 6,
+              letterSpacing: "0.3em",
+              color: T.muted,
+              textTransform: "uppercase",
+              display: "block",
+              marginBottom: 8,
+            }}
+          >
+            New Time
+          </label>
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(4,1fr)",
+              gap: 5,
+              marginBottom: 20,
+            }}
+          >
+            {SLOTS.map((s) => (
+              <button
+                key={s}
+                onClick={() => setNewTime(s)}
+                style={{
+                  padding: "7px 4px",
+                  ...sf,
+                  fontSize: 6,
+                  letterSpacing: "0.05em",
+                  textTransform: "uppercase",
+                  border: `1px solid ${newTime === s ? T.amber : T.border}`,
+                  background: newTime === s ? T.amberDim : "transparent",
+                  color: newTime === s ? T.amber : T.muted,
+                  cursor: "pointer",
+                  transition: "all 0.15s",
+                }}
+              >
+                {s}
+              </button>
+            ))}
+          </div>
+          <button
+            onClick={submit}
+            disabled={busy || !newDate || !newTime}
+            style={{
+              width: "100%",
+              padding: "14px",
+              ...sf,
+              fontSize: 8,
+              fontWeight: 700,
+              letterSpacing: "0.2em",
+              textTransform: "uppercase",
+              background: busy || !newDate || !newTime ? T.deep : T.amber,
+              color: busy || !newDate || !newTime ? T.dim : "black",
+              border: "none",
+              cursor: busy || !newDate || !newTime ? "not-allowed" : "pointer",
+              transition: "all 0.2s",
+            }}
+          >
+            {busy ? "Sending Request..." : "Propose New Time →"}
+          </button>
+        </div>
       </div>
     </div>
   );
 }
 
-// ── Main ──────────────────────────────────────────────────────────────────────
+/* ────────────────────────── month calendar ─────────────────────── */
+function MonthCal({
+  year,
+  month,
+  selectedDate,
+  apptDates,
+  onSelect,
+  onPrev,
+  onNext,
+}) {
+  const today = todayISO();
+  const first = new Date(year, month, 1).getDay();
+  const days = new Date(year, month + 1, 0).getDate();
+  const cells = [];
+  for (let i = 0; i < first; i++) cells.push(null);
+  for (let d = 1; d <= days; d++) cells.push(d);
+  const DAY_L = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
+  return (
+    <div
+      style={{
+        background: T.surface,
+        border: `1px solid ${T.border}`,
+        padding: "16px",
+      }}
+    >
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          marginBottom: 12,
+        }}
+      >
+        <button
+          onClick={onPrev}
+          style={{
+            width: 28,
+            height: 28,
+            background: "transparent",
+            border: `1px solid ${T.border}`,
+            color: T.muted,
+            cursor: "pointer",
+            fontSize: 12,
+          }}
+        >
+          ‹
+        </button>
+        <p
+          style={{
+            ...sf,
+            fontSize: 8,
+            fontWeight: 700,
+            textTransform: "uppercase",
+            letterSpacing: "0.15em",
+          }}
+        >
+          {fmtMY(year, month)}
+        </p>
+        <button
+          onClick={onNext}
+          style={{
+            width: 28,
+            height: 28,
+            background: "transparent",
+            border: `1px solid ${T.border}`,
+            color: T.muted,
+            cursor: "pointer",
+            fontSize: 12,
+          }}
+        >
+          ›
+        </button>
+      </div>
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(7,1fr)",
+          gap: 2,
+          marginBottom: 4,
+        }}
+      >
+        {DAY_L.map((d) => (
+          <p
+            key={d}
+            style={{
+              ...sf,
+              fontSize: 5,
+              textAlign: "center",
+              color: T.dim,
+              letterSpacing: "0.1em",
+              padding: "4px 0",
+            }}
+          >
+            {d}
+          </p>
+        ))}
+      </div>
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(7,1fr)",
+          gap: 2,
+        }}
+      >
+        {cells.map((d, i) => {
+          if (!d) return <div key={i} />;
+          const iso = `${year}-${String(month + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+          const isToday = iso === today;
+          const isSel = iso === selectedDate;
+          const hasAppt = (apptDates || []).includes(iso);
+          return (
+            <button
+              key={i}
+              onClick={() => onSelect(iso)}
+              style={{
+                padding: "6px 2px",
+                background: isSel
+                  ? T.amber
+                  : isToday
+                    ? T.amberDim
+                    : "transparent",
+                border: `1px solid ${isSel ? T.amber : isToday ? T.amberBorder : "transparent"}`,
+                cursor: "pointer",
+                position: "relative",
+                transition: "all 0.15s",
+              }}
+            >
+              <p
+                style={{
+                  ...sf,
+                  fontSize: 10,
+                  fontWeight: isSel || isToday ? 900 : 400,
+                  color: isSel ? "black" : isToday ? T.amber : "#a1a1aa",
+                  textAlign: "center",
+                  margin: 0,
+                }}
+              >
+                {d}
+              </p>
+              {hasAppt && !isSel && (
+                <div
+                  style={{
+                    width: 3,
+                    height: 3,
+                    borderRadius: "50%",
+                    background: T.amber,
+                    margin: "2px auto 0",
+                  }}
+                />
+              )}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════ MAIN ══════════════════════════════ */
 export default function BarberDashboard() {
   const router = useRouter();
   const { isMobile } = useBreakpoint();
 
+  /* state */
   const [barber, setBarber] = useState(null);
-  const [activeTab, setActiveTab] = useState("schedule");
   const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState("schedule");
   const [toast, setToast] = useState(null);
+  const [reschedModal, setReschedModal] = useState(null);
+  const [time, setTime] = useState("");
 
-  const today = todayISO();
-  const [selectedDate, setSelectedDate] = useState(today);
+  /* schedule */
+  const [selectedDate, setSelectedDate] = useState(todayISO());
+  const [schedule, setSchedule] = useState([]);
+  const [schedLoading, setSchedLoading] = useState(false);
+  const [allApptDates, setAllApptDates] = useState([]);
   const [calYear, setCalYear] = useState(new Date().getFullYear());
   const [calMonth, setCalMonth] = useState(new Date().getMonth());
-  const [apptDots, setApptDots] = useState({});
 
-  const [schedule, setSchedule] = useState([]);
-  const [summary, setSummary] = useState({
-    total: 0,
-    paid_online: 0,
-    pay_in_shop: 0,
-    online_revenue: "0.00",
-  });
-  const [loadingSched, setLoadingSched] = useState(false);
+  /* walk-in */
+  const [services, setServices] = useState([]);
+  const [wiSvc, setWiSvc] = useState("");
+  const [wiName, setWiName] = useState("");
+  const [wiPhone, setWiPhone] = useState("");
+  const [wiNotes, setWiNotes] = useState("");
+  const [wiLoading, setWiLoading] = useState(false);
 
-  const [rescheduleAppt, setRescheduleAppt] = useState(null);
-  const [cancelTarget, setCancelTarget] = useState(null);
-  const [cancelling, setCancelling] = useState(false);
+  /* waitlist */
+  const [waitlist, setWaitlist] = useState([]);
 
+  /* clients */
+  const [clients, setClients] = useState([]);
+  const [clientSearch, setClientSearch] = useState("");
+  const [clientDetail, setClientDetail] = useState(null);
+  const [clientNotes, setClientNotes] = useState("");
+  const [savingCN, setSavingCN] = useState(false);
+
+  /* reports */
+  const [reports, setReports] = useState(null);
+  const [reportPeriod, setReportPeriod] = useState("month");
+
+  /* availability */
   const [availability, setAvailability] = useState([]);
   const [editingDay, setEditingDay] = useState(null);
+  const [editWorking, setEditWorking] = useState(true);
   const [editStart, setEditStart] = useState("09:00");
   const [editEnd, setEditEnd] = useState("18:00");
-  const [editWorking, setEditWorking] = useState(true);
   const [savingAvail, setSavingAvail] = useState(false);
 
+  /* time off */
   const [timeOff, setTimeOff] = useState([]);
   const [newTimeOffDate, setNewTimeOffDate] = useState("");
   const [newTimeOffReason, setNewTimeOffReason] = useState("");
   const [addingTimeOff, setAddingTimeOff] = useState(false);
 
-  // Walk-in state
-  const [wiClientName, setWiClientName] = useState("");
-  const [wiService, setWiService] = useState("");
-  const [wiDate, setWiDate] = useState(today);
-  const [wiTime, setWiTime] = useState("");
-  const [wiPayment, setWiPayment] = useState("shop");
-  const [wiNotes, setWiNotes] = useState("");
-  const [wiSubmitting, setWiSubmitting] = useState(false);
-  const [services, setServices] = useState([]);
+  const showToast = (msg, type = "success") => {
+    setToast({ msg, type });
+    setTimeout(() => setToast(null), 3500);
+  };
+  const today = todayISO();
 
-  // Waitlist state
-  const [waitlist, setWaitlist] = useState([]);
-  const [wlName, setWlName] = useState("");
-  const [wlPhone, setWlPhone] = useState("");
-  const [wlEmail, setWlEmail] = useState("");
-  const [wlService, setWlService] = useState("");
-  const [wlDate, setWlDate] = useState(today);
-  const [wlNotes, setWlNotes] = useState("");
-  const [wlSubmitting, setWlSubmitting] = useState(false);
-
-  // Notes modal state
-  const [notesAppt, setNotesAppt] = useState(null);
-  const [notesText, setNotesText] = useState("");
-  const [savingNotes, setSavingNotes] = useState(false);
-
-  // Reminders
-  const [sendingReminders, setSendingReminders] = useState(false);
-
-  // Client management state
-  const [clients, setClients] = useState([]);
-  const [clientSearch, setClientSearch] = useState("");
-  const [loadingClients, setLoadingClients] = useState(false);
-  const [selectedClient, setSelectedClient] = useState(null); // full profile view
-  const [loadingClient, setLoadingClient] = useState(false);
-  const [savingClient, setSavingClient] = useState(false);
-
-  // Reports state
-  const [reports, setReports] = useState(null);
-  const [reportPeriod, setReportPeriod] = useState("month");
-  const [loadingReports, setLoadingReports] = useState(false);
-
-  // Auth
+  /* Live clock */
   useEffect(() => {
-    API.get("barber/me/")
-      .then((res) => setBarber(res.data))
-      .catch((e) => {
-        if (e.response?.status === 403 || e.response?.status === 401)
-          router.push("/barber-login");
-      })
-      .finally(() => setLoading(false));
+    const tick = () =>
+      setTime(
+        new Date().toLocaleTimeString("en-US", {
+          hour: "2-digit",
+          minute: "2-digit",
+          second: "2-digit",
+          hour12: true,
+        }),
+      );
+    tick();
+    const t = setInterval(tick, 1000);
+    return () => clearInterval(t);
   }, []);
 
-  // Schedule
-  const loadSchedule = useCallback(async () => {
-    if (!barber) return;
-    setLoadingSched(true);
+  /* load barber */
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const res = await API.get("barber/me/");
+        setBarber(res.data);
+      } catch {
+        router.replace("/barber-login");
+      } finally {
+        setLoading(false);
+      }
+    };
+    load();
+  }, []);
+
+  /* load schedule */
+  const loadSchedule = useCallback(async (date) => {
+    setSchedLoading(true);
     try {
-      const res = await API.get(`barber/schedule/?date=${selectedDate}`);
-      setSchedule(res.data.appointments || []);
-      setSummary(
-        res.data.summary || {
-          total: 0,
-          paid_online: 0,
-          pay_in_shop: 0,
-          online_revenue: "0.00",
-        },
-      );
+      const res = await API.get(`barber/schedule/?date=${date}`);
+      setSchedule(Array.isArray(res.data) ? res.data : res.data.results || []);
     } catch {
-      showToast("Could not load schedule.", "error");
     } finally {
-      setLoadingSched(false);
+      setSchedLoading(false);
     }
-  }, [barber, selectedDate]);
-  useEffect(() => {
-    loadSchedule();
-  }, [loadSchedule]);
+  }, []);
 
-  // Month dots
-  const loadMonthDots = useCallback(async () => {
-    if (!barber) return;
-    try {
-      const firstDay = `${calYear}-${String(calMonth + 1).padStart(2, "0")}-01`;
-      const res = await API.get(`barber/schedule/?date=${firstDay}&month=true`);
-      const counts = {};
-      (res.data.appointments || []).forEach((a) => {
-        counts[a.date] = (counts[a.date] || 0) + 1;
-      });
-      setApptDots(counts);
-    } catch {}
-  }, [barber, calYear, calMonth]);
   useEffect(() => {
-    loadMonthDots();
-  }, [loadMonthDots]);
+    if (activeTab === "schedule") loadSchedule(selectedDate);
+  }, [selectedDate, activeTab, loadSchedule]);
 
-  // Availability
-  const loadAvailability = useCallback(async () => {
-    if (!barber) return;
-    try {
-      const res = await API.get("barber/availability/");
-      setAvailability(res.data);
-    } catch {}
-  }, [barber]);
+  /* load all appt dates for calendar dots */
   useEffect(() => {
-    loadAvailability();
-  }, [loadAvailability]);
+    API.get("barber/schedule/?days=60")
+      .then((r) => {
+        const arr = Array.isArray(r.data) ? r.data : r.data.results || [];
+        setAllApptDates([...new Set(arr.map((a) => a.date))]);
+      })
+      .catch(() => {});
+  }, []);
 
-  // Time off
-  const loadTimeOff = useCallback(async () => {
-    if (!barber) return;
-    try {
-      const res = await API.get("barber/time-off/");
-      setTimeOff(res.data);
-    } catch {}
-  }, [barber]);
-  useEffect(() => {
-    if (activeTab === "timeoff") loadTimeOff();
-  }, [activeTab, loadTimeOff]);
-
-  // Services (for walk-in and waitlist)
+  /* load services */
   useEffect(() => {
     API.get("services/")
-      .then((res) =>
-        setServices(
-          Array.isArray(res.data) ? res.data : res.data.results || [],
-        ),
+      .then((r) =>
+        setServices(Array.isArray(r.data) ? r.data : r.data.results || []),
       )
       .catch(() => {});
   }, []);
 
-  // Waitlist
-  const loadWaitlist = useCallback(async () => {
-    if (!barber) return;
+  /* load availability */
+  const loadAvailability = useCallback(async () => {
     try {
-      const res = await API.get("barber/waitlist/");
-      setWaitlist(res.data);
+      const r = await API.get("barber/availability/");
+      setAvailability(r.data);
     } catch {}
-  }, [barber]);
+  }, []);
+  useEffect(() => {
+    if (activeTab === "availability") loadAvailability();
+  }, [activeTab, loadAvailability]);
+
+  /* load time off */
+  const loadTimeOff = useCallback(async () => {
+    try {
+      const r = await API.get("barber/time-off/");
+      setTimeOff(r.data);
+    } catch {}
+  }, []);
+  useEffect(() => {
+    if (activeTab === "timeoff") loadTimeOff();
+  }, [activeTab, loadTimeOff]);
+
+  /* load waitlist */
+  const loadWaitlist = useCallback(async () => {
+    try {
+      const r = await API.get("barber/waitlist/");
+      setWaitlist(r.data);
+    } catch {}
+  }, []);
   useEffect(() => {
     if (activeTab === "waitlist") loadWaitlist();
   }, [activeTab, loadWaitlist]);
 
-  // Clients
+  /* load clients */
   const loadClients = useCallback(async () => {
-    if (!barber) return;
-    setLoadingClients(true);
     try {
-      const url = clientSearch
-        ? `barber/clients/?search=${encodeURIComponent(clientSearch)}`
-        : "barber/clients/";
-      const res = await API.get(url);
-      setClients(res.data);
-    } catch {
-      showToast("Could not load clients.", "error");
-    } finally {
-      setLoadingClients(false);
-    }
-  }, [barber, clientSearch]);
+      const r = await API.get("barber/clients/");
+      setClients(r.data);
+    } catch {}
+  }, []);
   useEffect(() => {
     if (activeTab === "clients") loadClients();
   }, [activeTab, loadClients]);
 
-  // Reports
-  const loadReports = useCallback(async () => {
-    if (!barber) return;
-    setLoadingReports(true);
+  /* load reports */
+  const loadReports = useCallback(async (period) => {
     try {
-      const res = await API.get(`barber/reports/?period=${reportPeriod}`);
-      setReports(res.data);
-    } catch {
-      showToast("Could not load reports.", "error");
-    } finally {
-      setLoadingReports(false);
-    }
-  }, [barber, reportPeriod]);
+      const r = await API.get(`barber/reports/?period=${period}`);
+      setReports(r.data);
+    } catch {}
+  }, []);
   useEffect(() => {
-    if (activeTab === "reports") loadReports();
-  }, [activeTab, loadReports]);
+    if (activeTab === "reports") loadReports(reportPeriod);
+  }, [activeTab, reportPeriod, loadReports]);
 
-  // Entry animation
-  useEffect(() => {
-    if (!loading && barber)
-      gsap.from(".bd-enter", {
-        y: 20,
-        opacity: 0,
-        duration: 0.8,
-        stagger: 0.06,
-        ease: "expo.out",
-      });
-  }, [loading, barber]);
-
-  const handleLogout = () => {
-    localStorage.removeItem("access");
-    localStorage.removeItem("refresh");
-    router.push("/barber-login");
-  };
-
-  const handleStatusChange = async (apptId, newStatus) => {
+  /* handlers */
+  const handleStatusChange = async (id, status) => {
     try {
-      await API.patch(`barber/appointments/${apptId}/`, { status: newStatus });
-      setSchedule((prev) =>
-        prev.map((a) => (a.id === apptId ? { ...a, status: newStatus } : a)),
-      );
-      showToast(`Marked ${STATUS_CFG[newStatus].label}`);
+      await API.patch(`barber/appointments/${id}/`, { status });
+      setSchedule((p) => p.map((a) => (a.id === id ? { ...a, status } : a)));
+      showToast("Status updated.");
     } catch {
       showToast("Could not update.", "error");
-      throw new Error("failed");
     }
   };
 
-  const handleCancel = async () => {
-    if (!cancelTarget) return;
-    setCancelling(true);
+  const handleCancel = async (id) => {
+    if (!confirm("Cancel this appointment?")) return;
     try {
-      await API.delete(`barber/appointments/${cancelTarget.id}/`);
-      setSchedule((prev) => prev.filter((a) => a.id !== cancelTarget.id));
-      setSummary((prev) => ({ ...prev, total: Math.max(0, prev.total - 1) }));
-      setApptDots((prev) => ({
-        ...prev,
-        [cancelTarget.date]: Math.max(0, (prev[cancelTarget.date] || 1) - 1),
-      }));
-      setCancelTarget(null);
+      await API.patch(`barber/appointments/${id}/`, { status: "cancelled" });
+      setSchedule((p) =>
+        p.map((a) => (a.id === id ? { ...a, status: "cancelled" } : a)),
+      );
       showToast("Appointment cancelled.");
     } catch {
       showToast("Could not cancel.", "error");
-    } finally {
-      setCancelling(false);
     }
   };
 
-  const handleRescheduleDone = (apptId, newDate, newTime) => {
-    // Remove from current day's schedule
-    setSchedule((prev) => prev.filter((a) => a.id !== apptId));
-    setSummary((prev) => ({ ...prev, total: Math.max(0, prev.total - 1) }));
-    // Navigate to the new date so barber sees the rescheduled appointment
-    handleSelectDate(newDate);
-    showToast("Rescheduled — viewing new date.");
+  const handleWalkIn = async () => {
+    if (!wiName.trim() || !wiSvc) {
+      showToast("Name and service required.", "error");
+      return;
+    }
+    setWiLoading(true);
+    try {
+      const payload = {
+        client_name: wiName.trim(),
+        service_id: wiSvc,
+        date: today,
+        time: "00:00:00",
+        notes: wiNotes,
+        phone: wiPhone,
+        is_walk_in: true,
+      };
+      await API.post("barber/walk-in/", payload);
+      showToast("Walk-in added!");
+      setWiName("");
+      setWiPhone("");
+      setWiNotes("");
+      setWiSvc("");
+      loadSchedule(selectedDate);
+    } catch (e) {
+      showToast(e.response?.data?.error || "Could not add walk-in.", "error");
+    } finally {
+      setWiLoading(false);
+    }
   };
 
-  const saveAvailability = async () => {
-    if (editingDay === null) return;
-    setSavingAvail(true);
+  const notifyWaitlist = async (id) => {
     try {
-      await API.post("barber/availability/", {
-        day_of_week: editingDay,
-        start_time: editWorking ? editStart : "09:00",
-        end_time: editWorking ? editEnd : "18:00",
-        is_working: editWorking,
-      });
-      await loadAvailability();
-      setEditingDay(null);
-      showToast("Hours saved.");
+      await API.patch(`barber/waitlist/${id}/`, {});
+      setWaitlist((p) =>
+        p.map((w) => (w.id === id ? { ...w, notified: true } : w)),
+      );
+      showToast("Notified!");
     } catch {
-      showToast("Could not save.", "error");
-    } finally {
-      setSavingAvail(false);
+      showToast("Error.", "error");
+    }
+  };
+
+  const removeTimeOff = async (id) => {
+    try {
+      await API.delete(`barber/time-off/${id}/`);
+      setTimeOff((p) => p.filter((t) => t.id !== id));
+      showToast("Removed.");
+    } catch {
+      showToast("Error.", "error");
     }
   };
 
@@ -1563,210 +1205,65 @@ export default function BarberDashboard() {
     if (!newTimeOffDate) return;
     setAddingTimeOff(true);
     try {
-      await API.post("barber/time-off/", {
+      const r = await API.post("barber/time-off/", {
         date: newTimeOffDate,
         reason: newTimeOffReason,
       });
+      setTimeOff((p) => [...p, r.data]);
       setNewTimeOffDate("");
       setNewTimeOffReason("");
-      await loadTimeOff();
       showToast("Date blocked.");
     } catch {
-      showToast("Could not add.", "error");
+      showToast("Error.", "error");
     } finally {
       setAddingTimeOff(false);
     }
   };
 
-  const removeTimeOff = async (id) => {
+  const saveAvailability = async () => {
+    setSavingAvail(true);
     try {
-      await API.delete(`barber/time-off/${id}/`);
-      setTimeOff((prev) => prev.filter((t) => t.id !== id));
-      showToast("Removed.");
-    } catch {
-      showToast("Could not remove.", "error");
-    }
-  };
-
-  // Walk-in booking
-  const handleWalkIn = async () => {
-    if (!wiClientName.trim() || !wiService || !wiDate || !wiTime) {
-      showToast("Fill in all required fields.", "error");
-      return;
-    }
-    setWiSubmitting(true);
-    try {
-      await API.post("barber/walk-in/", {
-        client_name: wiClientName.trim(),
-        service: wiService,
-        date: wiDate,
-        time: to24Hour(wiTime),
-        payment_method: wiPayment,
-        notes: wiNotes,
+      await API.post("barber/availability/", {
+        day_of_week: editingDay,
+        is_working: editWorking,
+        start_time: editWorking ? editStart + ":00" : "09:00:00",
+        end_time: editWorking ? editEnd + ":00" : "18:00:00",
       });
-      setWiClientName("");
-      setWiService("");
-      setWiTime("");
-      setWiNotes("");
-      setWiPayment("shop");
-      showToast("Walk-in booked!");
-      // Refresh schedule if date matches
-      if (wiDate === selectedDate) loadSchedule();
-      loadMonthDots();
-    } catch (e) {
-      showToast(e.response?.data?.error || "Could not book walk-in.", "error");
+      await loadAvailability();
+      setEditingDay(null);
+      showToast("Hours saved.");
+    } catch {
+      showToast("Error saving.", "error");
     } finally {
-      setWiSubmitting(false);
+      setSavingAvail(false);
     }
   };
 
-  // Waitlist
-  const handleAddWaitlist = async () => {
-    if (!wlName.trim() || !wlDate) {
-      showToast("Name and date are required.", "error");
-      return;
-    }
-    setWlSubmitting(true);
-    try {
-      await API.post("barber/waitlist/", {
-        client_name: wlName.trim(),
-        client_phone: wlPhone.trim(),
-        client_email: wlEmail.trim(),
-        service: wlService || undefined,
-        date: wlDate,
-        notes: wlNotes,
-      });
-      setWlName("");
-      setWlPhone("");
-      setWlEmail("");
-      setWlService("");
-      setWlNotes("");
-      await loadWaitlist();
-      showToast("Added to waitlist.");
-    } catch {
-      showToast("Could not add to waitlist.", "error");
-    } finally {
-      setWlSubmitting(false);
-    }
+  const handleLogout = () => {
+    localStorage.removeItem("access");
+    localStorage.removeItem("refresh");
+    router.replace("/barber-login");
   };
 
-  const removeWaitlist = async (id) => {
-    try {
-      await API.delete(`barber/waitlist/${id}/`);
-      setWaitlist((prev) => prev.filter((w) => w.id !== id));
-      showToast("Removed from waitlist.");
-    } catch {
-      showToast("Could not remove.", "error");
-    }
+  const summary = {
+    today_online: schedule.filter(
+      (a) => a.payment_method === "online" && a.status !== "cancelled",
+    ).length,
+    today_total: schedule.filter((a) => a.status !== "cancelled").length,
+    confirmed: schedule.filter((a) => a.status === "confirmed").length,
+    revenue: schedule
+      .filter((a) => a.payment_method === "online" && a.status !== "cancelled")
+      .reduce((s, a) => s + parseFloat(a.service_price || 0), 0)
+      .toFixed(2),
   };
 
-  const markWaitlistNotified = async (id) => {
-    try {
-      await API.patch(`barber/waitlist/${id}/`, {});
-      setWaitlist((prev) =>
-        prev.map((w) => (w.id === id ? { ...w, notified: true } : w)),
-      );
-      showToast("Marked as notified.");
-    } catch {
-      showToast("Could not update.", "error");
-    }
-  };
-
-  // Client management handlers
-  const openClientProfile = async (clientId) => {
-    setLoadingClient(true);
-    try {
-      const res = await API.get(`barber/clients/${clientId}/`);
-      setSelectedClient(res.data);
-    } catch {
-      showToast("Could not load client profile.", "error");
-    } finally {
-      setLoadingClient(false);
-    }
-  };
-
-  const updateClient = async (clientId, updates) => {
-    setSavingClient(true);
-    try {
-      const res = await API.patch(`barber/clients/${clientId}/`, updates);
-      setSelectedClient((prev) => ({ ...prev, ...res.data }));
-      setClients((prev) =>
-        prev.map((c) => (c.id === clientId ? { ...c, ...updates } : c)),
-      );
-      showToast("Client updated.");
-    } catch {
-      showToast("Could not update.", "error");
-    } finally {
-      setSavingClient(false);
-    }
-  };
-
-  // Notes
-  const openNotes = (appt) => {
-    setNotesAppt(appt);
-    setNotesText(appt.barber_notes || "");
-  };
-  const saveNotes = async () => {
-    if (!notesAppt) return;
-    setSavingNotes(true);
-    try {
-      await API.patch(`barber/appointments/${notesAppt.id}/`, {
-        barber_notes: notesText,
-      });
-      setSchedule((prev) =>
-        prev.map((a) =>
-          a.id === notesAppt.id ? { ...a, barber_notes: notesText } : a,
-        ),
-      );
-      setNotesAppt(null);
-      showToast("Notes saved.");
-    } catch {
-      showToast("Could not save notes.", "error");
-    } finally {
-      setSavingNotes(false);
-    }
-  };
-
-  // Send reminders
-  const handleSendReminders = async () => {
-    setSendingReminders(true);
-    try {
-      const res = await API.post("barber/send-reminders/");
-      showToast(res.data.message || "Reminders sent.");
-    } catch {
-      showToast("Could not send reminders.", "error");
-    } finally {
-      setSendingReminders(false);
-    }
-  };
-
-  const prevMonth = () => {
-    if (calMonth === 0) {
-      setCalMonth(11);
-      setCalYear((y) => y - 1);
-    } else setCalMonth((m) => m - 1);
-  };
-  const nextMonth = () => {
-    if (calMonth === 11) {
-      setCalMonth(0);
-      setCalYear((y) => y + 1);
-    } else setCalMonth((m) => m + 1);
-  };
-  const handleSelectDate = (ds) => {
-    setSelectedDate(ds);
-    const d = new Date(ds + "T00:00:00");
-    setCalYear(d.getFullYear());
-    setCalMonth(d.getMonth());
-    if (activeTab !== "schedule") setActiveTab("schedule");
-  };
-
+  /* ── LOADING ── */
   if (loading)
     return (
       <div
         style={{
           background: T.bg,
           minHeight: "100vh",
-          minHeight: "100dvh",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
@@ -1776,31 +1273,7 @@ export default function BarberDashboard() {
           overflow: "hidden",
         }}
       >
-        <style jsx global>{`
-          body {
-            background: ${T.bg};
-            margin: 0;
-          }
-          @keyframes spin {
-            to {
-              transform: rotate(360deg);
-            }
-          }
-          @keyframes fadeIn {
-            to {
-              opacity: 1;
-            }
-          }
-          @keyframes scandown {
-            from {
-              top: -1px;
-            }
-            to {
-              top: 100%;
-            }
-          }
-        `}</style>
-        {/* Grid */}
+        <style>{`body{background:${T.bg};margin:0;font-family:'DM Mono',monospace;} @keyframes spin{to{transform:rotate(360deg)}} @keyframes fadeIn{to{opacity:1}} @keyframes scandown{from{top:-1px}to{top:100%}}`}</style>
         <div
           style={{
             position: "absolute",
@@ -1811,20 +1284,6 @@ export default function BarberDashboard() {
             pointerEvents: "none",
           }}
         />
-        {/* Scanline */}
-        <div
-          style={{
-            position: "absolute",
-            left: 0,
-            right: 0,
-            height: 1,
-            background:
-              "linear-gradient(to right,transparent,rgba(245,158,11,0.25),transparent)",
-            animation: "scandown 6s linear infinite",
-            pointerEvents: "none",
-          }}
-        />
-        {/* Amber glow */}
         <div
           style={{
             position: "absolute",
@@ -1838,35 +1297,44 @@ export default function BarberDashboard() {
             pointerEvents: "none",
           }}
         />
-        {/* Content */}
         <div
           style={{
-            position: "relative",
-            zIndex: 1,
+            position: "absolute",
+            left: 0,
+            right: 0,
+            height: 1,
+            background:
+              "linear-gradient(to right,transparent,rgba(245,158,11,0.3),transparent)",
+            animation: "scandown 6s linear infinite",
+          }}
+        />
+        <div
+          style={{
             textAlign: "center",
             opacity: 0,
             animation: "fadeIn 0.5s ease 0.1s forwards",
+            position: "relative",
           }}
         >
           <p
             style={{
-              ...sf,
-              fontSize: 24,
+              fontFamily: "'Syncopate',sans-serif",
+              fontSize: 26,
               fontWeight: 900,
               letterSpacing: "-0.06em",
-              textTransform: "uppercase",
-              marginBottom: 4,
+              margin: 0,
             }}
           >
             HEADZ<span style={{ color: T.amber, fontStyle: "italic" }}>UP</span>
           </p>
           <p
             style={{
-              ...mono,
-              fontSize: 8,
+              fontFamily: "'DM Mono',monospace",
+              fontSize: 9,
               color: T.dim,
               letterSpacing: "0.5em",
               textTransform: "uppercase",
+              marginTop: 8,
             }}
           >
             Barber Portal
@@ -1874,23 +1342,21 @@ export default function BarberDashboard() {
         </div>
         <div
           style={{
-            position: "relative",
-            zIndex: 1,
             width: 1,
             height: 40,
             background: `linear-gradient(to bottom,${T.amber},transparent)`,
+            position: "relative",
           }}
         />
         <div
           style={{
-            position: "relative",
-            zIndex: 1,
             width: 16,
             height: 16,
-            border: `1.5px solid rgba(245,158,11,0.2)`,
+            border: `1.5px solid ${T.amberBorder}`,
             borderTopColor: T.amber,
             borderRadius: "50%",
             animation: "spin 0.8s linear infinite",
+            position: "relative",
           }}
         />
       </div>
@@ -1898,94 +1364,148 @@ export default function BarberDashboard() {
 
   if (!barber) return null;
 
+  const TABS = [
+    { key: "schedule", label: "Schedule", icon: "📅" },
+    { key: "walkin", label: "Walk-In", icon: "✂️" },
+    { key: "waitlist", label: "Waitlist", icon: "⏳" },
+    { key: "clients", label: "Clients", icon: "👤" },
+    { key: "reports", label: "Reports", icon: "📊" },
+    { key: "availability", label: "My Hours", icon: "⏰" },
+    { key: "timeoff", label: "Time Off", icon: "🏖" },
+  ];
+
   return (
     <>
       <style jsx global>{`
-        @import url("https://fonts.googleapis.com/css2?family=Syncopate:wght@400;700&family=DM+Mono:wght@400;500&display=swap");
+        @import url("https://fonts.googleapis.com/css2?family=Syncopate:wght@400;700&family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&display=swap");
         *,
         *::before,
         *::after {
           box-sizing: border-box;
           margin: 0;
           padding: 0;
+          -webkit-tap-highlight-color: transparent;
         }
         html,
         body {
           background: ${T.bg};
           color: white;
-          overflow-y: auto !important;
+          font-family: "DM Mono", monospace;
           overflow-x: hidden;
-        }
-        ::-webkit-scrollbar {
-          width: 0;
+          -webkit-text-size-adjust: 100%;
         }
         @keyframes spin {
-          from {
-            transform: rotate(0deg);
-          }
           to {
             transform: rotate(360deg);
+          }
+        }
+        @keyframes fadeUp {
+          from {
+            opacity: 0;
+            transform: translateY(16px);
+          }
+          to {
+            opacity: 1;
+            transform: none;
           }
         }
         @keyframes toastIn {
           from {
             opacity: 0;
-            transform: translateX(-50%) translateY(8px);
+            transform: translateY(10px);
           }
           to {
             opacity: 1;
-            transform: translateX(-50%) translateY(0);
+            transform: none;
           }
         }
-        @keyframes pageIn {
+        @keyframes scandown {
           from {
-            opacity: 0;
-            transform: translateY(6px);
+            top: -1px;
           }
           to {
-            opacity: 1;
-            transform: translateY(0);
+            top: 100%;
           }
         }
-        .bd-page {
-          animation: pageIn 0.5s ease forwards;
-        }
-        input[type="date"]::-webkit-calendar-picker-indicator,
-        input[type="time"]::-webkit-calendar-picker-indicator {
-          filter: invert(1) opacity(0.35);
-          cursor: pointer;
-        }
-        .tab-pill {
-          transition: all 0.2s;
-        }
-        .tab-pill:hover {
-          color: white !important;
-        }
-        @keyframes scanline {
-          0% {
-            top: -10%;
-          }
-          100% {
-            top: 110%;
-          }
-        }
-        @keyframes drift {
+        @keyframes pulse {
           0%,
           100% {
-            transform: translateY(0) rotate(0deg);
+            opacity: 0.4;
           }
           50% {
-            transform: translateY(-8px) rotate(2deg);
+            opacity: 1;
           }
+        }
+        @keyframes glow {
+          0%,
+          100% {
+            box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.5);
+          }
+          50% {
+            box-shadow: 0 0 0 8px rgba(34, 197, 94, 0);
+          }
+        }
+        .bd-enter {
+          animation: fadeUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+        }
+        input[type="date"] {
+          color-scheme: dark;
+        }
+        input[type="time"] {
+          color-scheme: dark;
+        }
+        ::-webkit-scrollbar {
+          width: 0;
+          height: 0;
+        }
+        * {
+          scrollbar-width: none;
         }
       `}</style>
 
-      {/* Scanline sweep */}
+      {/* ── BACKGROUNDS ── */}
       <div
         style={{
           position: "fixed",
           inset: 0,
           zIndex: 0,
+          pointerEvents: "none",
+          backgroundImage:
+            "linear-gradient(rgba(255,255,255,0.014) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,0.014) 1px,transparent 1px)",
+          backgroundSize: "72px 72px",
+        }}
+      />
+      <div
+        style={{
+          position: "fixed",
+          top: "-10%",
+          right: "-5%",
+          width: 700,
+          height: 700,
+          background:
+            "radial-gradient(circle,rgba(245,158,11,0.05) 0%,transparent 65%)",
+          pointerEvents: "none",
+          zIndex: 0,
+        }}
+      />
+      <div
+        style={{
+          position: "fixed",
+          bottom: "10%",
+          left: "-5%",
+          width: 500,
+          height: 500,
+          background:
+            "radial-gradient(circle,rgba(245,158,11,0.03) 0%,transparent 60%)",
+          pointerEvents: "none",
+          zIndex: 0,
+        }}
+      />
+      <div
+        style={{
+          position: "fixed",
+          inset: 0,
+          zIndex: 1,
           pointerEvents: "none",
           overflow: "hidden",
         }}
@@ -1995,271 +1515,202 @@ export default function BarberDashboard() {
             position: "absolute",
             left: 0,
             right: 0,
-            height: 2,
+            height: 1,
             background:
-              "linear-gradient(to bottom, transparent, rgba(245,158,11,0.03), transparent)",
-            animation: "scanline 12s linear infinite",
+              "linear-gradient(to right,transparent,rgba(245,158,11,0.18),transparent)",
+            animation: "scandown 12s linear infinite",
           }}
         />
       </div>
 
-      {/* Grid lines */}
-      <div
-        style={{
-          position: "fixed",
-          inset: 0,
-          zIndex: 0,
-          pointerEvents: "none",
-          backgroundImage:
-            "linear-gradient(rgba(255,255,255,0.012) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.012) 1px, transparent 1px)",
-          backgroundSize: "64px 64px",
-        }}
-      />
-      {/* Amber glow top-right */}
-      <div
-        style={{
-          position: "fixed",
-          top: 0,
-          right: 0,
-          width: 500,
-          height: 500,
-          background:
-            "radial-gradient(circle, rgba(245,158,11,0.04) 0%, transparent 60%)",
-          pointerEvents: "none",
-          zIndex: 0,
-        }}
-      />
-      {/* Amber glow bottom-left */}
-      <div
-        style={{
-          position: "fixed",
-          bottom: 0,
-          left: 0,
-          width: 400,
-          height: 400,
-          background:
-            "radial-gradient(circle, rgba(245,158,11,0.025) 0%, transparent 60%)",
-          pointerEvents: "none",
-          zIndex: 0,
-        }}
-      />
-      {/* Grain */}
-      {/* grain overlay */}
-      {/* Corner marks */}
-      {[
-        { top: 68, left: 16 },
-        { top: 68, right: 16 },
-        { bottom: 16, left: 16 },
-        { bottom: 16, right: 16 },
-      ].map((pos, i) => (
-        <div
-          key={i}
-          style={{
-            position: "fixed",
-            ...pos,
-            zIndex: 1,
-            pointerEvents: "none",
-            width: 16,
-            height: 16,
-            opacity: 0.12,
-          }}
-        >
-          <div
-            style={{
-              position: "absolute",
-              top: 0,
-              left: 0,
-              width: 7,
-              height: 1,
-              background: T.amber,
-            }}
-          />
-          <div
-            style={{
-              position: "absolute",
-              top: 0,
-              left: 0,
-              width: 1,
-              height: 7,
-              background: T.amber,
-            }}
-          />
-          <div
-            style={{
-              position: "absolute",
-              bottom: 0,
-              right: 0,
-              width: 7,
-              height: 1,
-              background: T.amber,
-            }}
-          />
-          <div
-            style={{
-              position: "absolute",
-              bottom: 0,
-              right: 0,
-              width: 1,
-              height: 7,
-              background: T.amber,
-            }}
-          />
-        </div>
-      ))}
-
       <Toast toast={toast} />
+      {reschedModal && (
+        <RescheduleModal
+          appt={reschedModal}
+          onClose={() => setReschedModal(null)}
+          onDone={() => loadSchedule(selectedDate)}
+        />
+      )}
 
-      {/* ── NAV ── */}
+      {/* ══════════════════════════ NAV ══════════════════════════ */}
       <nav
         style={{
           position: "fixed",
           top: 0,
           left: 0,
           right: 0,
-          zIndex: 50,
-          background: "rgba(4,4,4,0.94)",
-          backdropFilter: "blur(20px)",
+          zIndex: 100,
+          background: "rgba(4,4,4,0.96)",
+          backdropFilter: "blur(24px)",
           borderBottom: `1px solid ${T.border}`,
         }}
       >
+        {/* Top bar */}
         <div
           style={{
-            maxWidth: 1200,
+            maxWidth: 1280,
             margin: "0 auto",
-            padding: isMobile ? "0 14px" : "0 24px",
-            height: 56,
+            padding: isMobile ? "0 14px" : "0 32px",
+            height: 60,
             display: "flex",
             justifyContent: "space-between",
             alignItems: "center",
           }}
         >
-          {/* Left */}
-          <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <Scissors size={14} />
-              <span
-                style={{
-                  ...sf,
-                  fontWeight: 700,
-                  fontSize: 14,
-                  letterSpacing: "-0.05em",
-                }}
-              >
-                HEADZ
-                <span style={{ color: T.amber, fontStyle: "italic" }}>UP</span>
-              </span>
-            </div>
+          {/* Left — logo + name */}
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: isMobile ? 12 : 20,
+            }}
+          >
+            <a
+              href="/"
+              style={{
+                ...sf,
+                fontWeight: 700,
+                fontSize: 17,
+                letterSpacing: "-0.06em",
+                textDecoration: "none",
+                color: "white",
+              }}
+            >
+              HEADZ
+              <span style={{ color: T.amber, fontStyle: "italic" }}>UP</span>
+            </a>
             {!isMobile && (
               <>
-                <div style={{ width: 1, height: 14, background: T.border }} />
-                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                  <div
+                <div style={{ width: 1, height: 20, background: T.border }} />
+                <div>
+                  <p
                     style={{
-                      width: 6,
-                      height: 6,
-                      borderRadius: "50%",
-                      background: "#22c55e",
-                      boxShadow: "0 0 8px rgba(34,197,94,0.6)",
-                    }}
-                  />
-                  <span
-                    style={{
-                      ...sf,
-                      fontSize: 6,
-                      letterSpacing: "0.3em",
-                      color: T.amber,
-                      textTransform: "uppercase",
+                      ...mono,
+                      fontSize: 9,
+                      color: T.muted,
+                      letterSpacing: "0.2em",
                     }}
                   >
-                    {barber.name}
-                  </span>
+                    Barber Portal
+                  </p>
                 </div>
               </>
             )}
           </div>
 
-          {/* Right */}
-          <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-            <button
-              onClick={() => handleSelectDate(today)}
-              style={{
-                ...sf,
-                fontSize: 6,
-                letterSpacing: "0.2em",
-                textTransform: "uppercase",
-                color: T.muted,
-                background: "none",
-                border: `1px solid ${T.border}`,
-                padding: "6px 12px",
-                cursor: "pointer",
-                transition: "all 0.2s",
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.borderColor = T.amberBorder;
-                e.currentTarget.style.color = T.amber;
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.borderColor = T.border;
-                e.currentTarget.style.color = T.muted;
-              }}
-            >
-              Today
-            </button>
+          {/* Center — live time (desktop) */}
+          {!isMobile && (
+            <div style={{ textAlign: "center" }}>
+              <p
+                style={{
+                  ...mono,
+                  fontSize: 13,
+                  color: "white",
+                  letterSpacing: "0.15em",
+                }}
+              >
+                {time}
+              </p>
+              <p
+                style={{
+                  ...mono,
+                  fontSize: 8,
+                  color: T.dim,
+                  letterSpacing: "0.3em",
+                  marginTop: 2,
+                }}
+              >
+                {new Date().toLocaleDateString("en-US", {
+                  weekday: "long",
+                  month: "long",
+                  day: "numeric",
+                })}
+              </p>
+            </div>
+          )}
+
+          {/* Right — barber + signout */}
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: isMobile ? 8 : 14,
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <div
+                style={{
+                  width: 30,
+                  height: 30,
+                  background: T.amber,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  flexShrink: 0,
+                }}
+              >
+                <span
+                  style={{
+                    ...sf,
+                    fontSize: 11,
+                    fontWeight: 900,
+                    color: "black",
+                  }}
+                >
+                  {barber.name?.charAt(0)?.toUpperCase() || "B"}
+                </span>
+              </div>
+              {!isMobile && (
+                <span style={{ ...mono, fontSize: 11, color: T.muted }}>
+                  {barber.name}
+                </span>
+              )}
+            </div>
             <button
               onClick={handleLogout}
               style={{
+                padding: isMobile ? "7px 10px" : "9px 16px",
                 ...sf,
-                fontSize: 6,
-                letterSpacing: "0.2em",
+                fontSize: 7,
+                letterSpacing: "0.15em",
                 textTransform: "uppercase",
-                color: T.muted,
-                background: "none",
+                background: "transparent",
                 border: `1px solid ${T.border}`,
-                padding: "6px 12px",
+                color: T.muted,
                 cursor: "pointer",
                 transition: "all 0.2s",
               }}
               onMouseEnter={(e) => {
-                e.currentTarget.style.borderColor = "#f87171";
-                e.currentTarget.style.color = "#f87171";
+                e.currentTarget.style.color = "white";
+                e.currentTarget.style.borderColor = "rgba(255,255,255,0.2)";
               }}
               onMouseLeave={(e) => {
-                e.currentTarget.style.borderColor = T.border;
                 e.currentTarget.style.color = T.muted;
+                e.currentTarget.style.borderColor = T.border;
               }}
             >
-              Sign Out
+              {isMobile ? "Out" : "Sign Out"}
             </button>
           </div>
         </div>
 
-        {/* Tabs in nav */}
+        {/* Tab strip */}
         <div
           style={{
-            maxWidth: 1200,
+            maxWidth: 1280,
             margin: "0 auto",
-            padding: isMobile ? "0" : "0 24px",
-            display: "flex",
             borderTop: `1px solid ${T.border}`,
+            display: "flex",
             overflowX: "auto",
             WebkitOverflowScrolling: "touch",
           }}
         >
-          {[
-            { key: "schedule", label: "Schedule", icon: "📅" },
-            { key: "walkin", label: "Walk-In", icon: "✂️" },
-            { key: "waitlist", label: "Waitlist", icon: "⏳" },
-            { key: "clients", label: "Clients", icon: "👤" },
-            { key: "reports", label: "Reports", icon: "📊" },
-            { key: "availability", label: "My Hours", icon: "⏰" },
-            { key: "timeoff", label: "Time Off", icon: "🏖" },
-          ].map(({ key, label, icon }) => (
+          {TABS.map(({ key, label, icon }) => (
             <button
               key={key}
               onClick={() => setActiveTab(key)}
-              className="tab-pill"
               style={{
-                padding: isMobile ? "8px 14px" : "10px 20px",
+                padding: isMobile ? "10px 14px" : "11px 22px",
                 ...sf,
                 fontSize: isMobile ? 5 : 7,
                 letterSpacing: isMobile ? "0.05em" : "0.15em",
@@ -2269,147 +1720,180 @@ export default function BarberDashboard() {
                 borderBottom: `2px solid ${activeTab === key ? T.amber : "transparent"}`,
                 color: activeTab === key ? T.amber : T.muted,
                 cursor: "pointer",
-                marginBottom: -1,
                 transition: "all 0.2s",
                 display: "flex",
                 flexDirection: isMobile ? "column" : "row",
                 alignItems: "center",
-                gap: isMobile ? 3 : 4,
+                gap: isMobile ? 3 : 6,
                 whiteSpace: "nowrap",
                 flexShrink: 0,
-                minWidth: isMobile ? 60 : "auto",
+                minWidth: isMobile ? 56 : "auto",
               }}
             >
-              <span style={{ fontSize: isMobile ? 16 : 10 }}>{icon}</span>
+              <span style={{ fontSize: isMobile ? 16 : 11 }}>{icon}</span>
               <span>{label}</span>
             </button>
           ))}
         </div>
       </nav>
 
-      {/* ── MAIN ── */}
+      {/* ══════════════════════════ MAIN ══════════════════════════ */}
       <div
-        className="bd-page"
         style={{
           position: "relative",
           zIndex: 10,
-          minHeight: "100vh",
-          padding: isMobile
-            ? "104px 12px max(40px, env(safe-area-inset-bottom))"
-            : "108px 24px 48px",
-          maxWidth: 1200,
+          maxWidth: 1280,
           margin: "0 auto",
+          padding: isMobile
+            ? "116px 14px max(40px,env(safe-area-inset-bottom))"
+            : "120px 32px 64px",
         }}
       >
-        {/* ── HEADER ── */}
+        {/* ── GREETING + STATS ── */}
         <div
           className="bd-enter"
           style={{
             marginBottom: 28,
             paddingBottom: 28,
             borderBottom: `1px solid ${T.border}`,
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "flex-end",
-            flexWrap: "wrap",
-            gap: 12,
           }}
         >
-          <div>
-            <p
-              style={{
-                ...mono,
-                fontSize: 8,
-                color: T.amber,
-                letterSpacing: "0.5em",
-                textTransform: "uppercase",
-                marginBottom: 10,
-              }}
-            >
-              Barber Portal
-            </p>
-            <h1
-              style={{
-                ...sf,
-                fontSize: "clamp(1.6rem,3vw,2.4rem)",
-                fontWeight: 900,
-                textTransform: "uppercase",
-                lineHeight: 0.88,
-                letterSpacing: "-0.04em",
-                margin: 0,
-              }}
-            >
-              Hey,
-              <br />
-              <span style={{ color: T.amber, fontStyle: "italic" }}>
-                {barber.name}_
-              </span>
-            </h1>
-          </div>
           <div
             style={{
               display: "flex",
-              alignItems: "center",
-              gap: 10,
-              opacity: 0.3,
+              justifyContent: "space-between",
+              alignItems: "flex-end",
+              flexWrap: "wrap",
+              gap: 16,
+              marginBottom: 24,
             }}
           >
+            <div>
+              <p
+                style={{
+                  ...mono,
+                  fontSize: 9,
+                  color: T.amber,
+                  letterSpacing: "0.5em",
+                  textTransform: "uppercase",
+                  marginBottom: 10,
+                }}
+              >
+                Barber Dashboard
+              </p>
+              <h1
+                style={{
+                  ...sf,
+                  fontSize: "clamp(1.6rem,3.5vw,2.8rem)",
+                  fontWeight: 900,
+                  textTransform: "uppercase",
+                  lineHeight: 0.88,
+                  letterSpacing: "-0.04em",
+                  margin: 0,
+                }}
+              >
+                Hey,
+                <br />
+                <span style={{ color: T.amber, fontStyle: "italic" }}>
+                  {barber.name}_
+                </span>
+              </h1>
+            </div>
             <div
               style={{
-                width: isMobile ? 28 : 80,
-                height: 1,
-                background: `linear-gradient(to right,transparent,${T.amber})`,
+                display: "flex",
+                alignItems: "center",
+                gap: 10,
+                opacity: 0.3,
               }}
-            />
-            <Scissors size={14} />
-            <div
-              style={{
-                width: isMobile ? 28 : 80,
-                height: 1,
-                background: `linear-gradient(to left,transparent,${T.amber})`,
-              }}
-            />
+            >
+              <div
+                style={{
+                  width: isMobile ? 20 : 60,
+                  height: 1,
+                  background: `linear-gradient(to right,transparent,${T.amber})`,
+                }}
+              />
+              <Scissors size={14} />
+              <div
+                style={{
+                  width: isMobile ? 20 : 60,
+                  height: 1,
+                  background: `linear-gradient(to left,transparent,${T.amber})`,
+                }}
+              />
+            </div>
           </div>
-        </div>
 
-        {/* ── STATS ── */}
-        <div
-          className="bd-enter"
-          style={{
-            marginBottom: 24,
-            overflowX: isMobile ? "auto" : "visible",
-            WebkitOverflowScrolling: "touch",
-          }}
-        >
+          {/* Stats grid */}
           <div
             style={{
               display: "grid",
-              gridTemplateColumns: isMobile
-                ? "repeat(4, minmax(100px, 1fr))"
-                : "repeat(4,1fr)",
+              gridTemplateColumns: isMobile ? "repeat(2,1fr)" : "repeat(4,1fr)",
               gap: 8,
-              minWidth: isMobile ? 420 : "auto",
             }}
           >
-            <StatCard
-              label="Today"
-              value={barber.today_count}
-              accent
-              icon="✂️"
-            />
-            <StatCard label="All Time" value={barber.total_count} />
-            <StatCard label="Online Rev" value={`$${summary.online_revenue}`} />
-            <StatCard label="Pay In Shop" value={summary.pay_in_shop} />
-          </div>
-        </div>
-
-        {/* ── SCHEDULE TAB ── */}
-        {activeTab === "schedule" && (
-          <>
-            {/* ── MOBILE: Week strip ── */}
-            {isMobile && (
-              <div className="bd-enter" style={{ marginBottom: 16 }}>
-                {/* Month label + calendar toggle */}
+            {[
+              {
+                label: "Today's Clients",
+                value: barber.today_count ?? 0,
+                accent: true,
+                icon: "✂️",
+              },
+              {
+                label: "All Time",
+                value: barber.total_count ?? 0,
+                accent: false,
+                icon: "🏆",
+              },
+              {
+                label: "Online Paid",
+                value: `$${barber.online_revenue || "0.00"}`,
+                accent: false,
+                icon: "💳",
+              },
+              {
+                label: "Pay In Shop",
+                value: barber.pay_in_shop ?? 0,
+                accent: false,
+                icon: "💵",
+              },
+            ].map(({ label, value, accent, icon }) => (
+              <div
+                key={label}
+                style={{
+                  padding: isMobile ? "16px 14px" : "22px 18px",
+                  background: accent ? T.amberDim : T.surface,
+                  border: `1px solid ${accent ? T.amberBorder : T.border}`,
+                  position: "relative",
+                  overflow: "hidden",
+                  transition: "all 0.25s",
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.borderColor = T.amber;
+                  e.currentTarget.style.background = T.amberDim;
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.borderColor = accent
+                    ? T.amberBorder
+                    : T.border;
+                  e.currentTarget.style.background = accent
+                    ? T.amberDim
+                    : T.surface;
+                }}
+              >
+                <div
+                  style={{
+                    position: "absolute",
+                    top: 0,
+                    right: 0,
+                    width: 50,
+                    height: 50,
+                    background: accent
+                      ? "linear-gradient(225deg,rgba(245,158,11,0.25),transparent)"
+                      : "linear-gradient(225deg,rgba(255,255,255,0.04),transparent)",
+                  }}
+                />
                 <div
                   style={{
                     display: "flex",
@@ -2418,451 +1902,227 @@ export default function BarberDashboard() {
                     marginBottom: 10,
                   }}
                 >
-                  <div
-                    style={{ display: "flex", alignItems: "center", gap: 8 }}
-                  >
-                    <button
-                      onClick={prevMonth}
-                      style={{
-                        width: 26,
-                        height: 26,
-                        background: "transparent",
-                        border: `1px solid ${T.border}`,
-                        color: T.muted,
-                        cursor: "pointer",
-                        fontSize: 12,
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        transition: "all 0.2s",
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.borderColor = T.amberBorder;
-                        e.currentTarget.style.color = T.amber;
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.borderColor = T.border;
-                        e.currentTarget.style.color = T.muted;
-                      }}
-                    >
-                      ‹
-                    </button>
-                    <p
-                      style={{
-                        ...sf,
-                        fontSize: 7,
-                        letterSpacing: "0.2em",
-                        textTransform: "uppercase",
-                        color: "white",
-                        margin: 0,
-                      }}
-                    >
-                      {fmtMonthYear(calYear, calMonth)}
-                    </p>
-                    <button
-                      onClick={nextMonth}
-                      style={{
-                        width: 26,
-                        height: 26,
-                        background: "transparent",
-                        border: `1px solid ${T.border}`,
-                        color: T.muted,
-                        cursor: "pointer",
-                        fontSize: 12,
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        transition: "all 0.2s",
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.borderColor = T.amberBorder;
-                        e.currentTarget.style.color = T.amber;
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.borderColor = T.border;
-                        e.currentTarget.style.color = T.muted;
-                      }}
-                    >
-                      ›
-                    </button>
-                  </div>
-                  <button
-                    onClick={() => handleSelectDate(today)}
+                  <p
                     style={{
                       ...sf,
-                      fontSize: 6,
-                      letterSpacing: "0.15em",
+                      fontSize: 5,
+                      letterSpacing: "0.35em",
+                      color: accent ? T.amber : T.muted,
                       textTransform: "uppercase",
-                      color: selectedDate === today ? T.amber : T.muted,
-                      background:
-                        selectedDate === today ? T.amberDim : "transparent",
-                      border: `1px solid ${selectedDate === today ? T.amberBorder : T.border}`,
-                      padding: "5px 10px",
+                      margin: 0,
+                    }}
+                  >
+                    {label}
+                  </p>
+                  <span style={{ fontSize: 14, opacity: 0.4 }}>{icon}</span>
+                </div>
+                <p
+                  style={{
+                    ...sf,
+                    fontSize: 28,
+                    fontWeight: 900,
+                    color: accent ? T.amber : "white",
+                    lineHeight: 1,
+                    margin: 0,
+                  }}
+                >
+                  {value}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* ══ SCHEDULE TAB ══ */}
+        {activeTab === "schedule" && (
+          <div className="bd-enter">
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: isMobile ? "1fr" : "280px 1fr",
+                gap: 20,
+                alignItems: "start",
+              }}
+            >
+              {/* Calendar */}
+              <div
+                style={{ display: "flex", flexDirection: "column", gap: 12 }}
+              >
+                <MonthCal
+                  year={calYear}
+                  month={calMonth}
+                  selectedDate={selectedDate}
+                  apptDates={allApptDates}
+                  onSelect={(d) => setSelectedDate(d)}
+                  onPrev={() => {
+                    if (calMonth === 0) {
+                      setCalMonth(11);
+                      setCalYear((y) => y - 1);
+                    } else setCalMonth((m) => m - 1);
+                  }}
+                  onNext={() => {
+                    if (calMonth === 11) {
+                      setCalMonth(0);
+                      setCalYear((y) => y + 1);
+                    } else setCalMonth((m) => m + 1);
+                  }}
+                />
+                {/* Today button */}
+                {selectedDate !== today && (
+                  <button
+                    onClick={() => {
+                      setSelectedDate(today);
+                      setCalYear(new Date().getFullYear());
+                      setCalMonth(new Date().getMonth());
+                    }}
+                    style={{
+                      padding: "10px",
+                      ...sf,
+                      fontSize: 7,
+                      letterSpacing: "0.2em",
+                      textTransform: "uppercase",
+                      background: T.amberDim,
+                      border: `1px solid ${T.amberBorder}`,
+                      color: T.amber,
                       cursor: "pointer",
                       transition: "all 0.2s",
                     }}
                   >
-                    Today
+                    ← Back to Today
                   </button>
-                </div>
-
-                {/* 7-day scrollable strip */}
-                <div
+                )}
+                {/* Send reminders */}
+                <button
+                  onClick={async () => {
+                    try {
+                      await API.post("barber/send-reminders/");
+                      showToast("Reminders sent!");
+                    } catch {
+                      showToast("Error.", "error");
+                    }
+                  }}
                   style={{
-                    display: "flex",
-                    gap: 5,
-                    overflowX: "auto",
-                    paddingBottom: 4,
-                    WebkitOverflowScrolling: "touch",
+                    padding: "10px",
+                    ...sf,
+                    fontSize: 7,
+                    letterSpacing: "0.15em",
+                    textTransform: "uppercase",
+                    background: "transparent",
+                    border: `1px solid ${T.border}`,
+                    color: T.muted,
+                    cursor: "pointer",
+                    transition: "all 0.2s",
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.borderColor = T.amber;
+                    e.currentTarget.style.color = T.amber;
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.borderColor = T.border;
+                    e.currentTarget.style.color = T.muted;
                   }}
                 >
-                  {Array.from({ length: 14 }, (_, i) => {
-                    const ds = addDays(today, i - 3);
-                    const d = new Date(ds + "T00:00:00");
-                    const isToday = ds === today;
-                    const isSelected = ds === selectedDate;
-                    const hasAppts = (apptDots[ds] || 0) > 0;
-                    const dayNames = [
-                      "Sun",
-                      "Mon",
-                      "Tue",
-                      "Wed",
-                      "Thu",
-                      "Fri",
-                      "Sat",
-                    ];
-                    return (
-                      <button
-                        key={ds}
-                        onClick={() => handleSelectDate(ds)}
-                        style={{
-                          flexShrink: 0,
-                          width: 52,
-                          padding: "10px 4px",
-                          display: "flex",
-                          flexDirection: "column",
-                          alignItems: "center",
-                          gap: 4,
-                          background: isSelected
-                            ? T.amber
-                            : isToday
-                              ? T.amberDim
-                              : T.surface,
-                          border: `1px solid ${isSelected ? T.amber : isToday ? T.amberBorder : T.border}`,
-                          color: isSelected
-                            ? "black"
-                            : isToday
-                              ? T.amber
-                              : "white",
-                          cursor: "pointer",
-                          transition: "all 0.15s",
-                        }}
-                      >
-                        <span
-                          style={{
-                            ...sf,
-                            fontSize: 6,
-                            textTransform: "uppercase",
-                            letterSpacing: "0.05em",
-                            opacity: 0.7,
-                          }}
-                        >
-                          {dayNames[d.getDay()]}
-                        </span>
-                        <span
-                          style={{
-                            ...sf,
-                            fontSize: 18,
-                            fontWeight: 900,
-                            lineHeight: 1,
-                          }}
-                        >
-                          {d.getDate()}
-                        </span>
-                        {hasAppts && (
-                          <span
-                            style={{
-                              width: 4,
-                              height: 4,
-                              borderRadius: "50%",
-                              background: isSelected
-                                ? "rgba(0,0,0,0.4)"
-                                : T.amber,
-                              display: "block",
-                            }}
-                          />
-                        )}
-                        {!hasAppts && (
-                          <span
-                            style={{ width: 4, height: 4, display: "block" }}
-                          />
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
+                  📧 Send Reminders
+                </button>
               </div>
-            )}
 
-            {/* ── Layout: calendar left + day right (desktop) / stacked (mobile) ── */}
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: isMobile ? "1fr" : "260px 1fr",
-                gap: isMobile ? 0 : 20,
-                alignItems: "start",
-              }}
-            >
-              {/* LEFT: Full calendar — desktop only */}
-              {!isMobile && (
-                <div
-                  className="bd-enter"
-                  style={{ display: "flex", flexDirection: "column", gap: 10 }}
-                >
-                  <MonthCalendar
-                    year={calYear}
-                    month={calMonth}
-                    selectedDate={selectedDate}
-                    appointmentDates={apptDots}
-                    onSelectDate={handleSelectDate}
-                    onPrevMonth={prevMonth}
-                    onNextMonth={nextMonth}
-                  />
-                  <div
-                    style={{
-                      display: "grid",
-                      gridTemplateColumns: "1fr 1fr",
-                      gap: 6,
-                    }}
-                  >
-                    {[
-                      {
-                        label: "← Prev",
-                        fn: () => handleSelectDate(addDays(selectedDate, -1)),
-                      },
-                      {
-                        label: "Next →",
-                        fn: () => handleSelectDate(addDays(selectedDate, 1)),
-                      },
-                    ].map(({ label, fn }) => (
-                      <button
-                        key={label}
-                        onClick={fn}
-                        style={{
-                          padding: "8px",
-                          background: T.surface,
-                          border: `1px solid ${T.border}`,
-                          color: T.muted,
-                          cursor: "pointer",
-                          ...sf,
-                          fontSize: 6,
-                          letterSpacing: "0.1em",
-                          textTransform: "uppercase",
-                          transition: "all 0.2s",
-                        }}
-                        onMouseEnter={(e) => {
-                          e.currentTarget.style.borderColor = T.amberBorder;
-                          e.currentTarget.style.color = T.amber;
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.borderColor = T.border;
-                          e.currentTarget.style.color = T.muted;
-                        }}
-                      >
-                        {label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* RIGHT / MAIN: Day panel */}
-              <div className="bd-enter">
-                {/* Day header */}
+              {/* Appointments */}
+              <div>
                 <div
                   style={{
                     display: "flex",
                     justifyContent: "space-between",
                     alignItems: "center",
-                    marginBottom: isMobile ? 12 : 14,
+                    marginBottom: 16,
                     flexWrap: "wrap",
-                    gap: 8,
-                    paddingBottom: isMobile ? 12 : 14,
-                    borderBottom: `1px solid ${T.border}`,
+                    gap: 10,
                   }}
                 >
                   <div>
-                    <h2
-                      style={{
-                        ...sf,
-                        fontSize: isMobile
-                          ? "0.85rem"
-                          : "clamp(0.75rem,1.5vw,0.9rem)",
-                        fontWeight: 900,
-                        textTransform: "uppercase",
-                        color: selectedDate === today ? T.amber : "white",
-                        margin: 0,
-                      }}
-                    >
-                      {fmtDayFull(selectedDate)}
-                      {selectedDate === today && (
-                        <span style={{ color: T.amber, fontStyle: "italic" }}>
-                          {" "}
-                          — Today
-                        </span>
-                      )}
-                    </h2>
                     <p
                       style={{
                         ...mono,
-                        fontSize: 10,
-                        color: T.muted,
-                        marginTop: 3,
+                        fontSize: 8,
+                        color: T.amber,
+                        letterSpacing: "0.4em",
+                        textTransform: "uppercase",
+                        marginBottom: 4,
                       }}
                     >
-                      {summary.total} {summary.total === 1 ? "appt" : "appts"}
-                      {summary.total > 0 && (
-                        <span style={{ color: T.amber }}>
-                          {" "}
-                          · ${summary.online_revenue} online
-                        </span>
-                      )}
+                      {selectedDate === today ? "Today" : "Selected Day"}
                     </p>
+                    <h2
+                      style={{
+                        ...sf,
+                        fontSize: "clamp(0.9rem,2vw,1.2rem)",
+                        fontWeight: 900,
+                        textTransform: "uppercase",
+                        letterSpacing: "-0.03em",
+                        color: selectedDate === today ? T.amber : "white",
+                      }}
+                    >
+                      {fmtFull(selectedDate)}
+                    </h2>
                   </div>
                   <div
-                    style={{ display: "flex", gap: 6, alignItems: "center" }}
+                    style={{ display: "flex", gap: 10, alignItems: "center" }}
                   >
-                    {isMobile && (
-                      <>
-                        <button
-                          onClick={() =>
-                            handleSelectDate(addDays(selectedDate, -1))
-                          }
-                          style={{
-                            width: 32,
-                            height: 32,
-                            background: T.surface,
-                            border: `1px solid ${T.border}`,
-                            color: T.muted,
-                            cursor: "pointer",
-                            fontSize: 14,
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            transition: "all 0.2s",
-                          }}
-                          onMouseEnter={(e) => {
-                            e.currentTarget.style.borderColor = T.amberBorder;
-                            e.currentTarget.style.color = T.amber;
-                          }}
-                          onMouseLeave={(e) => {
-                            e.currentTarget.style.borderColor = T.border;
-                            e.currentTarget.style.color = T.muted;
-                          }}
-                        >
-                          ←
-                        </button>
-                        <button
-                          onClick={() =>
-                            handleSelectDate(addDays(selectedDate, 1))
-                          }
-                          style={{
-                            width: 32,
-                            height: 32,
-                            background: T.surface,
-                            border: `1px solid ${T.border}`,
-                            color: T.muted,
-                            cursor: "pointer",
-                            fontSize: 14,
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            transition: "all 0.2s",
-                          }}
-                          onMouseEnter={(e) => {
-                            e.currentTarget.style.borderColor = T.amberBorder;
-                            e.currentTarget.style.color = T.amber;
-                          }}
-                          onMouseLeave={(e) => {
-                            e.currentTarget.style.borderColor = T.border;
-                            e.currentTarget.style.color = T.muted;
-                          }}
-                        >
-                          →
-                        </button>
-                      </>
-                    )}
+                    <span style={{ ...mono, fontSize: 11, color: T.muted }}>
+                      {summary.confirmed} confirmed
+                    </span>
                     <button
-                      onClick={loadSchedule}
+                      onClick={() => loadSchedule(selectedDate)}
                       style={{
+                        padding: "7px 14px",
                         ...sf,
                         fontSize: 6,
                         letterSpacing: "0.2em",
                         textTransform: "uppercase",
-                        color: T.muted,
-                        background: "none",
+                        background: "transparent",
                         border: `1px solid ${T.border}`,
-                        padding: "6px 10px",
+                        color: T.muted,
                         cursor: "pointer",
                         transition: "all 0.2s",
-                        height: 32,
-                        display: "flex",
-                        alignItems: "center",
                       }}
                       onMouseEnter={(e) => {
+                        e.currentTarget.style.borderColor = T.amber;
                         e.currentTarget.style.color = T.amber;
-                        e.currentTarget.style.borderColor = T.amberBorder;
                       }}
                       onMouseLeave={(e) => {
-                        e.currentTarget.style.color = T.muted;
                         e.currentTarget.style.borderColor = T.border;
+                        e.currentTarget.style.color = T.muted;
                       }}
                     >
-                      ↻
+                      ↻ Refresh
                     </button>
                   </div>
                 </div>
 
-                {/* Appointments */}
-                {loadingSched ? (
+                {schedLoading ? (
                   <div
                     style={{
                       padding: "40px 0",
                       display: "flex",
-                      flexDirection: "column",
-                      alignItems: "center",
-                      gap: 12,
+                      justifyContent: "center",
                     }}
                   >
                     <div
                       style={{
-                        width: 20,
-                        height: 20,
-                        border: `1.5px solid rgba(245,158,11,0.2)`,
+                        width: 18,
+                        height: 18,
+                        border: `1.5px solid ${T.amberBorder}`,
                         borderTopColor: T.amber,
                         borderRadius: "50%",
                         animation: "spin 0.8s linear infinite",
                       }}
                     />
-                    <p
-                      style={{
-                        ...sf,
-                        fontSize: 6,
-                        color: T.dim,
-                        letterSpacing: "0.3em",
-                        textTransform: "uppercase",
-                      }}
-                    >
-                      Loading...
-                    </p>
                   </div>
                 ) : schedule.length === 0 ? (
                   <div
                     style={{
-                      padding: isMobile ? "40px 16px" : "56px 20px",
+                      padding: "60px 20px",
                       textAlign: "center",
                       border: `1px solid ${T.border}`,
-                      background: "rgba(255,255,255,0.01)",
                       position: "relative",
                       overflow: "hidden",
                     }}
@@ -2877,277 +2137,589 @@ export default function BarberDashboard() {
                         ...sf,
                         fontSize: "clamp(3rem,8vw,6rem)",
                         fontWeight: 900,
-                        color: "rgba(255,255,255,0.02)",
+                        color: "rgba(255,255,255,0.025)",
                         textTransform: "uppercase",
-                        letterSpacing: "-0.05em",
+                        letterSpacing: "-0.06em",
                         userSelect: "none",
-                        pointerEvents: "none",
                       }}
                     >
                       FREE
                     </p>
-                    <div style={{ position: "relative", zIndex: 1 }}>
-                      <div
-                        style={{
-                          marginBottom: 12,
-                          display: "flex",
-                          justifyContent: "center",
-                        }}
-                      >
-                        <Scissors size={24} color="rgba(255,255,255,0.07)" />
-                      </div>
-                      <p
-                        style={{
-                          ...sf,
-                          fontSize: "0.85rem",
-                          fontWeight: 900,
-                          color: "rgba(255,255,255,0.05)",
-                          textTransform: "uppercase",
-                          marginBottom: 6,
-                        }}
-                      >
-                        No Bookings
-                      </p>
-                      <p style={{ ...mono, color: T.dim, fontSize: 11 }}>
-                        Nothing scheduled — enjoy the day off.
-                      </p>
-                    </div>
+                    <p
+                      style={{
+                        ...sf,
+                        fontSize: 9,
+                        color: "rgba(255,255,255,0.08)",
+                        textTransform: "uppercase",
+                        position: "relative",
+                      }}
+                    >
+                      No appointments this day
+                    </p>
                   </div>
                 ) : (
                   <div
-                    style={{
-                      display: "flex",
-                      flexDirection: "column",
-                      gap: isMobile ? 6 : 5,
-                    }}
+                    style={{ display: "flex", flexDirection: "column", gap: 6 }}
                   >
-                    {schedule
-                      .slice()
-                      .sort((a, b) =>
-                        (a.time || "").localeCompare(b.time || ""),
-                      )
-                      .map((appt) => (
-                        <ApptTicket
-                          key={appt.id}
-                          appt={appt}
-                          onStatusChange={handleStatusChange}
-                          onReschedule={setRescheduleAppt}
-                          onCancel={setCancelTarget}
-                          onNotes={openNotes}
-                          isMobile={isMobile}
-                        />
-                      ))}
-                  </div>
-                )}
-
-                {/* Timeline — desktop only */}
-                {!isMobile && schedule.length > 0 && (
-                  <div style={{ marginTop: 28 }}>
-                    <div
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 12,
-                        marginBottom: 12,
-                      }}
-                    >
-                      <p
-                        style={{
-                          ...sf,
-                          fontSize: 6,
-                          letterSpacing: "0.4em",
-                          color: T.dim,
-                          textTransform: "uppercase",
-                          margin: 0,
-                        }}
-                      >
-                        Timeline
-                      </p>
-                      <div
-                        style={{ flex: 1, height: 1, background: T.border }}
+                    {schedule.map((appt) => (
+                      <ApptTicket
+                        key={appt.id}
+                        appt={appt}
+                        isMobile={isMobile}
+                        onStatusChange={handleStatusChange}
+                        onReschedule={(a) => setReschedModal(a)}
+                        onCancel={handleCancel}
+                        onNotes={(id, note) =>
+                          setSchedule((p) =>
+                            p.map((a) =>
+                              a.id === id ? { ...a, barber_notes: note } : a,
+                            ),
+                          )
+                        }
                       />
-                    </div>
-                    <div style={{ position: "relative", paddingLeft: 52 }}>
-                      {Array.from({ length: 10 }, (_, i) => {
-                        const hour = 9 + i;
-                        return (
-                          <div
-                            key={hour}
-                            style={{
-                              position: "absolute",
-                              left: 0,
-                              top: i * 48,
-                              height: 48,
-                              display: "flex",
-                              alignItems: "flex-start",
-                              paddingTop: 2,
-                            }}
-                          >
-                            <span
-                              style={{
-                                ...mono,
-                                fontSize: 8,
-                                color: T.dim,
-                                whiteSpace: "nowrap",
-                              }}
-                            >{`${hour % 12 || 12}${hour < 12 ? "a" : "p"}`}</span>
-                          </div>
-                        );
-                      })}
-                      {Array.from({ length: 10 }, (_, i) => (
-                        <div
-                          key={i}
-                          style={{
-                            position: "absolute",
-                            left: 44,
-                            right: 0,
-                            top: i * 48,
-                            height: 1,
-                            background: T.border,
-                          }}
-                        />
-                      ))}
-                      <div
-                        style={{ position: "relative", height: 9 * 48 + 24 }}
-                      >
-                        {schedule.map((appt) => {
-                          if (!appt.time) return null;
-                          const [h, m] = appt.time.split(":");
-                          const top =
-                            (parseInt(h) - 9) * 48 + (parseInt(m) / 60) * 48;
-                          const sCfg = STATUS_CFG[appt.status || "confirmed"];
-                          const height = Math.max(
-                            30,
-                            ((appt.service_duration || 30) / 60) * 48 - 3,
-                          );
-                          return (
-                            <div
-                              key={appt.id}
-                              style={{
-                                position: "absolute",
-                                left: 0,
-                                right: 0,
-                                top,
-                                height,
-                                background: sCfg.bg,
-                                borderLeft: `2px solid ${sCfg.color}`,
-                                padding: "4px 10px",
-                                display: "flex",
-                                alignItems: "center",
-                                gap: 8,
-                                overflow: "hidden",
-                              }}
-                            >
-                              <span
-                                style={{
-                                  ...mono,
-                                  fontSize: 8,
-                                  color: sCfg.color,
-                                  flexShrink: 0,
-                                }}
-                              >
-                                {fmtTime(appt.time)}
-                              </span>
-                              <span
-                                style={{
-                                  ...sf,
-                                  fontSize: 7,
-                                  textTransform: "uppercase",
-                                  letterSpacing: "0.08em",
-                                  color: "white",
-                                  overflow: "hidden",
-                                  textOverflow: "ellipsis",
-                                  whiteSpace: "nowrap",
-                                }}
-                              >
-                                {appt.client} — {appt.service}
-                              </span>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
+                    ))}
                   </div>
                 )}
               </div>
             </div>
-          </>
+          </div>
         )}
 
-        {/* ── CLIENTS TAB ── */}
-        {activeTab === "clients" && (
-          <div className="bd-enter">
-            {/* Client detail modal */}
-            {selectedClient && (
+        {/* ══ WALK-IN TAB ══ */}
+        {activeTab === "walkin" && (
+          <div className="bd-enter" style={{ maxWidth: 560 }}>
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 14,
+                marginBottom: 24,
+              }}
+            >
               <div
                 style={{
-                  position: "fixed",
-                  inset: 0,
-                  zIndex: 300,
-                  background: "rgba(4,4,4,0.96)",
-                  backdropFilter: "blur(12px)",
-                  display: "flex",
-                  flexDirection: "column",
-                  overflowY: "auto",
-                  zIndex: 400,
+                  width: 32,
+                  height: 1,
+                  background: `rgba(245,158,11,0.5)`,
+                }}
+              />
+              <p
+                style={{
+                  ...mono,
+                  fontSize: 8,
+                  color: T.amber,
+                  letterSpacing: "0.5em",
+                  textTransform: "uppercase",
+                }}
+              >
+                Walk-In Booking
+              </p>
+            </div>
+            <p
+              style={{
+                ...mono,
+                fontSize: 13,
+                color: T.muted,
+                lineHeight: 1.7,
+                marginBottom: 28,
+              }}
+            >
+              Add a walk-in client instantly. They'll be added to today's
+              schedule.
+            </p>
+            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+              {[
+                {
+                  label: "Client Name *",
+                  type: "text",
+                  val: wiName,
+                  set: setWiName,
+                  placeholder: "John Smith",
+                },
+                {
+                  label: "Phone",
+                  type: "tel",
+                  val: wiPhone,
+                  set: setWiPhone,
+                  placeholder: "601-555-0100",
+                },
+                {
+                  label: "Notes",
+                  type: "text",
+                  val: wiNotes,
+                  set: setWiNotes,
+                  placeholder: "Style request, preferences...",
+                },
+              ].map(({ label, type, val, set, placeholder }) => (
+                <div key={label}>
+                  <label
+                    style={{
+                      ...sf,
+                      fontSize: 6,
+                      letterSpacing: "0.4em",
+                      color: T.muted,
+                      textTransform: "uppercase",
+                      display: "block",
+                      marginBottom: 8,
+                    }}
+                  >
+                    {label}
+                  </label>
+                  <input
+                    type={type}
+                    value={val}
+                    onChange={(e) => set(e.target.value)}
+                    placeholder={placeholder}
+                    style={{
+                      width: "100%",
+                      background: T.bg,
+                      border: `1px solid ${T.border}`,
+                      padding: "13px 14px",
+                      color: "white",
+                      fontSize: 16,
+                      ...mono,
+                      outline: "none",
+                    }}
+                    onFocus={(e) => (e.target.style.borderColor = T.amber)}
+                    onBlur={(e) => (e.target.style.borderColor = T.border)}
+                  />
+                </div>
+              ))}
+              <div>
+                <label
+                  style={{
+                    ...sf,
+                    fontSize: 6,
+                    letterSpacing: "0.4em",
+                    color: T.muted,
+                    textTransform: "uppercase",
+                    display: "block",
+                    marginBottom: 8,
+                  }}
+                >
+                  Service *
+                </label>
+                <select
+                  value={wiSvc}
+                  onChange={(e) => setWiSvc(e.target.value)}
+                  style={{
+                    width: "100%",
+                    background: T.bg,
+                    border: `1px solid ${T.border}`,
+                    padding: "13px 14px",
+                    color: wiSvc ? "white" : T.muted,
+                    fontSize: 16,
+                    ...mono,
+                    outline: "none",
+                    cursor: "pointer",
+                  }}
+                  onFocus={(e) => (e.target.style.borderColor = T.amber)}
+                  onBlur={(e) => (e.target.style.borderColor = T.border)}
+                >
+                  <option value="">Select a service...</option>
+                  {services.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.name} — ${s.price}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <button
+                onClick={handleWalkIn}
+                disabled={wiLoading || !wiName.trim() || !wiSvc}
+                style={{
+                  padding: "16px",
+                  ...sf,
+                  fontSize: 9,
+                  fontWeight: 700,
+                  letterSpacing: "0.25em",
+                  textTransform: "uppercase",
+                  background:
+                    wiLoading || !wiName.trim() || !wiSvc ? T.deep : T.amber,
+                  color:
+                    wiLoading || !wiName.trim() || !wiSvc ? T.dim : "black",
+                  border: "none",
+                  cursor:
+                    wiLoading || !wiName.trim() || !wiSvc
+                      ? "not-allowed"
+                      : "pointer",
+                  transition: "all 0.2s",
+                  marginTop: 4,
+                }}
+              >
+                {wiLoading ? "Adding Walk-In..." : "Add Walk-In →"}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* ══ WAITLIST TAB ══ */}
+        {activeTab === "waitlist" && (
+          <div className="bd-enter">
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 14,
+                marginBottom: 24,
+              }}
+            >
+              <div
+                style={{
+                  width: 32,
+                  height: 1,
+                  background: `rgba(245,158,11,0.5)`,
+                }}
+              />
+              <p
+                style={{
+                  ...mono,
+                  fontSize: 8,
+                  color: T.amber,
+                  letterSpacing: "0.5em",
+                  textTransform: "uppercase",
+                }}
+              >
+                Waitlist
+              </p>
+            </div>
+            {waitlist.length === 0 ? (
+              <div
+                style={{
+                  padding: "60px 20px",
+                  textAlign: "center",
+                  border: `1px solid ${T.border}`,
+                }}
+              >
+                <p
+                  style={{
+                    ...sf,
+                    fontSize: 9,
+                    color: "rgba(255,255,255,0.08)",
+                    textTransform: "uppercase",
+                  }}
+                >
+                  Waitlist is empty
+                </p>
+              </div>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                {waitlist.map((w) => (
+                  <div
+                    key={w.id}
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      padding: "14px 18px",
+                      background: T.surface,
+                      border: `1px solid ${w.notified ? T.border : T.amberBorder}`,
+                      flexWrap: "wrap",
+                      gap: 12,
+                    }}
+                  >
+                    <div>
+                      <p
+                        style={{
+                          ...sf,
+                          fontSize: 10,
+                          fontWeight: 700,
+                          textTransform: "uppercase",
+                          marginBottom: 4,
+                        }}
+                      >
+                        {w.client_name}
+                      </p>
+                      <div
+                        style={{ display: "flex", gap: 12, flexWrap: "wrap" }}
+                      >
+                        <span style={{ ...mono, fontSize: 10, color: T.muted }}>
+                          {w.service_name}
+                        </span>
+                        {w.phone && (
+                          <span
+                            style={{ ...mono, fontSize: 10, color: T.muted }}
+                          >
+                            {w.phone}
+                          </span>
+                        )}
+                        {w.date && (
+                          <span
+                            style={{ ...mono, fontSize: 10, color: T.amber }}
+                          >
+                            {fmtShort(w.date)}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => !w.notified && notifyWaitlist(w.id)}
+                      disabled={w.notified}
+                      style={{
+                        padding: "8px 16px",
+                        ...sf,
+                        fontSize: 7,
+                        letterSpacing: "0.15em",
+                        textTransform: "uppercase",
+                        background: w.notified ? T.deep : T.amberDim,
+                        border: `1px solid ${w.notified ? T.border : T.amberBorder}`,
+                        color: w.notified ? T.dim : T.amber,
+                        cursor: w.notified ? "default" : "pointer",
+                        transition: "all 0.2s",
+                      }}
+                    >
+                      {w.notified ? "✓ Notified" : "Notify →"}
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ══ CLIENTS TAB ══ */}
+        {activeTab === "clients" && (
+          <div className="bd-enter">
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 14,
+                marginBottom: 24,
+              }}
+            >
+              <div
+                style={{
+                  width: 32,
+                  height: 1,
+                  background: `rgba(245,158,11,0.5)`,
+                }}
+              />
+              <p
+                style={{
+                  ...mono,
+                  fontSize: 8,
+                  color: T.amber,
+                  letterSpacing: "0.5em",
+                  textTransform: "uppercase",
+                }}
+              >
+                Client Book
+              </p>
+            </div>
+
+            {/* Search */}
+            <input
+              value={clientSearch}
+              onChange={(e) => setClientSearch(e.target.value)}
+              placeholder="Search clients..."
+              style={{
+                width: "100%",
+                background: T.surface,
+                border: `1px solid ${T.border}`,
+                padding: "13px 16px",
+                color: "white",
+                fontSize: 16,
+                ...mono,
+                outline: "none",
+                marginBottom: 16,
+              }}
+              onFocus={(e) => (e.target.style.borderColor = T.amber)}
+              onBlur={(e) => (e.target.style.borderColor = T.border)}
+            />
+
+            {clientDetail ? (
+              /* Client detail */
+              <div
+                style={{
+                  background: T.surface,
+                  border: `1px solid ${T.amberBorder}`,
+                  padding: "24px 20px",
                 }}
               >
                 <div
                   style={{
-                    maxWidth: 640,
-                    width: "100%",
-                    margin: "0 auto",
-                    padding: isMobile ? "20px 14px 48px" : "32px 24px 48px",
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    marginBottom: 20,
                   }}
                 >
-                  {/* Header */}
                   <div
-                    style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "flex-start",
-                      marginBottom: 24,
-                    }}
+                    style={{ display: "flex", alignItems: "center", gap: 14 }}
                   >
-                    <div>
-                      <button
-                        onClick={() => setSelectedClient(null)}
+                    <div
+                      style={{
+                        width: 48,
+                        height: 48,
+                        background: T.amber,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                      }}
+                    >
+                      <span
                         style={{
                           ...sf,
-                          fontSize: 6,
-                          letterSpacing: "0.3em",
-                          textTransform: "uppercase",
-                          color: T.muted,
-                          background: "none",
-                          border: "none",
-                          cursor: "pointer",
-                          marginBottom: 12,
-                          padding: 0,
-                          transition: "color 0.2s",
+                          fontSize: 18,
+                          fontWeight: 900,
+                          color: "black",
                         }}
-                        onMouseEnter={(e) =>
-                          (e.currentTarget.style.color = T.amber)
-                        }
-                        onMouseLeave={(e) =>
-                          (e.currentTarget.style.color = T.muted)
-                        }
                       >
-                        ← All Clients
-                      </button>
+                        {clientDetail.name?.charAt(0)?.toUpperCase() || "?"}
+                      </span>
+                    </div>
+                    <div>
+                      <p
+                        style={{
+                          ...sf,
+                          fontSize: 12,
+                          fontWeight: 700,
+                          textTransform: "uppercase",
+                        }}
+                      >
+                        {clientDetail.name}
+                      </p>
+                      <p style={{ ...mono, fontSize: 10, color: T.muted }}>
+                        {clientDetail.total_visits || 0} visits
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setClientDetail(null)}
+                    style={{
+                      ...sf,
+                      fontSize: 7,
+                      letterSpacing: "0.15em",
+                      textTransform: "uppercase",
+                      padding: "7px 14px",
+                      background: "transparent",
+                      border: `1px solid ${T.border}`,
+                      color: T.muted,
+                      cursor: "pointer",
+                    }}
+                  >
+                    ← Back
+                  </button>
+                </div>
+                <label
+                  style={{
+                    ...sf,
+                    fontSize: 6,
+                    letterSpacing: "0.4em",
+                    color: T.muted,
+                    textTransform: "uppercase",
+                    display: "block",
+                    marginBottom: 8,
+                  }}
+                >
+                  Notes
+                </label>
+                <textarea
+                  value={clientNotes}
+                  onChange={(e) => setClientNotes(e.target.value)}
+                  rows={4}
+                  placeholder="VIP client, preferred style, allergies..."
+                  style={{
+                    width: "100%",
+                    background: T.bg,
+                    border: `1px solid ${T.border}`,
+                    padding: "12px 14px",
+                    color: "white",
+                    fontSize: 14,
+                    ...mono,
+                    outline: "none",
+                    resize: "vertical",
+                    marginBottom: 12,
+                    borderRadius: 0,
+                  }}
+                  onFocus={(e) => (e.target.style.borderColor = T.amber)}
+                  onBlur={(e) => (e.target.style.borderColor = T.border)}
+                />
+                <button
+                  onClick={async () => {
+                    setSavingCN(true);
+                    try {
+                      await API.patch(`barber/clients/${clientDetail.id}/`, {
+                        notes: clientNotes,
+                      });
+                      showToast("Notes saved.");
+                    } catch {
+                      showToast("Error.", "error");
+                    } finally {
+                      setSavingCN(false);
+                    }
+                  }}
+                  disabled={savingCN}
+                  style={{
+                    padding: "12px 24px",
+                    background: savingCN ? T.deep : T.amber,
+                    color: savingCN ? T.dim : "black",
+                    ...sf,
+                    fontSize: 8,
+                    fontWeight: 700,
+                    letterSpacing: "0.2em",
+                    textTransform: "uppercase",
+                    border: "none",
+                    cursor: savingCN ? "not-allowed" : "pointer",
+                    transition: "all 0.2s",
+                  }}
+                >
+                  {savingCN ? "Saving..." : "Save Notes →"}
+                </button>
+              </div>
+            ) : (
+              /* Client list */
+              <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+                {clients
+                  .filter(
+                    (c) =>
+                      !clientSearch ||
+                      c.name
+                        ?.toLowerCase()
+                        .includes(clientSearch.toLowerCase()),
+                  )
+                  .map((c) => (
+                    <div
+                      key={c.id}
+                      onClick={() => {
+                        setClientDetail(c);
+                        setClientNotes(c.notes || "");
+                      }}
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        padding: "14px 18px",
+                        background: T.surface,
+                        border: `1px solid ${c.is_vip ? T.amberBorder : T.border}`,
+                        cursor: "pointer",
+                        transition: "all 0.2s",
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.borderColor = T.amber;
+                        e.currentTarget.style.background = T.amberDim;
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.borderColor = c.is_vip
+                          ? T.amberBorder
+                          : T.border;
+                        e.currentTarget.style.background = T.surface;
+                      }}
+                    >
                       <div
                         style={{
                           display: "flex",
                           alignItems: "center",
-                          gap: 10,
+                          gap: 14,
                         }}
                       >
                         <div
                           style={{
-                            width: 44,
-                            height: 44,
-                            borderRadius: "50%",
-                            background: T.amberDim,
-                            border: `1px solid ${T.amberBorder}`,
+                            width: 36,
+                            height: 36,
+                            background: c.is_vip ? T.amber : T.surface2,
+                            border: `1px solid ${c.is_vip ? T.amber : T.border}`,
                             display: "flex",
                             alignItems: "center",
                             justifyContent: "center",
@@ -3157,789 +2729,151 @@ export default function BarberDashboard() {
                           <span
                             style={{
                               ...sf,
-                              fontSize: 16,
+                              fontSize: 13,
                               fontWeight: 900,
-                              color: T.amber,
+                              color: c.is_vip ? "black" : T.muted,
                             }}
                           >
-                            {(selectedClient.name || "?")
-                              .charAt(0)
-                              .toUpperCase()}
+                            {c.name?.charAt(0)?.toUpperCase() || "?"}
                           </span>
                         </div>
                         <div>
-                          <div
+                          <p
                             style={{
-                              display: "flex",
-                              alignItems: "center",
-                              gap: 8,
+                              ...sf,
+                              fontSize: 10,
+                              fontWeight: 700,
+                              textTransform: "uppercase",
+                              marginBottom: 2,
                             }}
                           >
-                            <h2
-                              style={{
-                                ...sf,
-                                fontSize: "clamp(1rem,2.5vw,1.3rem)",
-                                fontWeight: 900,
-                                textTransform: "uppercase",
-                                color: "white",
-                                margin: 0,
-                              }}
-                            >
-                              {selectedClient.name}
-                            </h2>
-                            {selectedClient.is_vip && (
+                            {c.name}
+                            {c.is_vip && (
                               <span
                                 style={{
-                                  ...sf,
-                                  fontSize: 6,
+                                  ...mono,
+                                  fontSize: 7,
                                   color: T.amber,
-                                  padding: "2px 8px",
-                                  background: T.amberDim,
-                                  border: `1px solid ${T.amberBorder}`,
+                                  marginLeft: 8,
                                 }}
                               >
                                 VIP
                               </span>
                             )}
-                            {selectedClient.is_blocked && (
-                              <span
-                                style={{
-                                  ...sf,
-                                  fontSize: 6,
-                                  color: "#f87171",
-                                  padding: "2px 8px",
-                                  background: "rgba(248,113,113,0.08)",
-                                  border: "1px solid rgba(248,113,113,0.2)",
-                                }}
-                              >
-                                Blocked
-                              </span>
-                            )}
-                          </div>
-                          <p
-                            style={{
-                              ...mono,
-                              fontSize: 11,
-                              color: T.muted,
-                              margin: 0,
-                            }}
-                          >
-                            {selectedClient.email}
+                          </p>
+                          <p style={{ ...mono, fontSize: 9, color: T.muted }}>
+                            {c.total_visits || 0} visits
                           </p>
                         </div>
                       </div>
-                    </div>
-
-                    {/* VIP + Block toggles */}
-                    <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
-                      <button
-                        onClick={() =>
-                          updateClient(selectedClient.id, {
-                            is_vip: !selectedClient.is_vip,
-                          })
-                        }
-                        disabled={savingClient}
-                        style={{
-                          ...sf,
-                          fontSize: 6,
-                          letterSpacing: "0.1em",
-                          textTransform: "uppercase",
-                          padding: "7px 12px",
-                          background: selectedClient.is_vip
-                            ? T.amberDim
-                            : "transparent",
-                          border: `1px solid ${selectedClient.is_vip ? T.amberBorder : T.border}`,
-                          color: selectedClient.is_vip ? T.amber : T.muted,
-                          cursor: "pointer",
-                          transition: "all 0.2s",
-                        }}
-                      >
-                        ★ {selectedClient.is_vip ? "VIP" : "VIP?"}
-                      </button>
-                      <button
-                        onClick={() =>
-                          updateClient(selectedClient.id, {
-                            is_blocked: !selectedClient.is_blocked,
-                          })
-                        }
-                        disabled={savingClient}
-                        style={{
-                          ...sf,
-                          fontSize: 6,
-                          letterSpacing: "0.1em",
-                          textTransform: "uppercase",
-                          padding: "7px 12px",
-                          background: selectedClient.is_blocked
-                            ? "rgba(248,113,113,0.08)"
-                            : "transparent",
-                          border: `1px solid ${selectedClient.is_blocked ? "rgba(248,113,113,0.3)" : T.border}`,
-                          color: selectedClient.is_blocked
-                            ? "#f87171"
-                            : T.muted,
-                          cursor: "pointer",
-                          transition: "all 0.2s",
-                        }}
-                      >
-                        {selectedClient.is_blocked ? "🚫 Blocked" : "Block"}
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Stats row */}
-                  <div
-                    style={{
-                      display: "grid",
-                      gridTemplateColumns: "repeat(4, 1fr)",
-                      gap: 8,
-                      marginBottom: 24,
-                    }}
-                  >
-                    {[
-                      {
-                        label: "Visits",
-                        value: selectedClient.total_visits,
-                        accent: true,
-                      },
-                      { label: "Completed", value: selectedClient.completed },
-                      { label: "No-Shows", value: selectedClient.no_shows },
-                      {
-                        label: "Spent",
-                        value: `$${selectedClient.total_spent}`,
-                      },
-                    ].map(({ label, value, accent }) => (
-                      <div
-                        key={label}
-                        style={{
-                          padding: "12px 10px",
-                          background: accent ? T.amberDim : T.surface,
-                          border: `1px solid ${accent ? T.amberBorder : T.border}`,
-                        }}
-                      >
-                        <p
-                          style={{
-                            ...sf,
-                            fontSize: 5,
-                            letterSpacing: "0.25em",
-                            color: accent ? T.amber : T.muted,
-                            textTransform: "uppercase",
-                            marginBottom: 4,
-                          }}
-                        >
-                          {label}
-                        </p>
-                        <p
-                          style={{
-                            ...sf,
-                            fontSize: 18,
-                            fontWeight: 900,
-                            color: accent ? T.amber : "white",
-                            margin: 0,
-                          }}
-                        >
-                          {value}
-                        </p>
-                      </div>
-                    ))}
-                  </div>
-
-                  {/* Notes */}
-                  <div style={{ marginBottom: 20 }}>
-                    <label
-                      style={{
-                        ...sf,
-                        fontSize: 6,
-                        letterSpacing: "0.3em",
-                        color: T.muted,
-                        textTransform: "uppercase",
-                        display: "block",
-                        marginBottom: 8,
-                      }}
-                    >
-                      Client Notes
-                    </label>
-                    <textarea
-                      key={selectedClient.id}
-                      defaultValue={selectedClient.notes}
-                      placeholder="Hair texture, preferred style, allergies, preferences..."
-                      rows={3}
-                      style={{
-                        width: "100%",
-                        background: T.bg,
-                        border: `1px solid ${T.border}`,
-                        padding: "12px 14px",
-                        color: "white",
-                        fontSize: 14,
-                        outline: "none",
-                        ...mono,
-                        resize: "vertical",
-                        lineHeight: 1.6,
-                      }}
-                      onFocus={(e) => (e.target.style.borderColor = T.amber)}
-                      onBlur={(e) => {
-                        e.target.style.borderColor = T.border;
-                        if (e.target.value !== selectedClient.notes)
-                          updateClient(selectedClient.id, {
-                            notes: e.target.value,
-                          });
-                      }}
-                    />
-                    <p
-                      style={{
-                        ...mono,
-                        fontSize: 9,
-                        color: T.dim,
-                        marginTop: 4,
-                      }}
-                    >
-                      Auto-saves on blur
-                    </p>
-                  </div>
-
-                  {/* Appointment history */}
-                  <div
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 12,
-                      marginBottom: 14,
-                    }}
-                  >
-                    <p
-                      style={{
-                        ...sf,
-                        fontSize: 6,
-                        letterSpacing: "0.4em",
-                        color: T.dim,
-                        textTransform: "uppercase",
-                        margin: 0,
-                      }}
-                    >
-                      Visit History
-                    </p>
-                    <div style={{ flex: 1, height: 1, background: T.border }} />
-                  </div>
-
-                  {selectedClient.history?.length === 0 ? (
-                    <p style={{ ...mono, color: T.dim, fontSize: 12 }}>
-                      No visits yet.
-                    </p>
-                  ) : (
-                    <div
-                      style={{
-                        display: "flex",
-                        flexDirection: "column",
-                        gap: 5,
-                      }}
-                    >
-                      {selectedClient.history?.map((h) => {
-                        const sCfg =
-                          STATUS_CFG[h.status] || STATUS_CFG.confirmed;
-                        return (
-                          <div
-                            key={h.id}
-                            style={{
-                              display: "flex",
-                              alignItems: "center",
-                              gap: 10,
-                              padding: "12px 14px",
-                              background: T.surface,
-                              border: `1px solid ${T.border}`,
-                              flexWrap: "wrap",
-                            }}
-                          >
-                            <div
-                              style={{
-                                width: 3,
-                                height: 36,
-                                background: sCfg.color,
-                                flexShrink: 0,
-                                borderRadius: 2,
-                              }}
-                            />
-                            <div style={{ flex: 1, minWidth: 0 }}>
-                              <div
-                                style={{
-                                  display: "flex",
-                                  alignItems: "center",
-                                  gap: 8,
-                                  flexWrap: "wrap",
-                                }}
-                              >
-                                <p
-                                  style={{
-                                    ...mono,
-                                    fontSize: 12,
-                                    color: T.amber,
-                                    margin: 0,
-                                  }}
-                                >
-                                  {new Date(
-                                    h.date + "T00:00:00",
-                                  ).toLocaleDateString("en-US", {
-                                    month: "short",
-                                    day: "numeric",
-                                    year: "numeric",
-                                  })}
-                                </p>
-                                <span
-                                  style={{
-                                    ...sf,
-                                    fontSize: 6,
-                                    color: sCfg.color,
-                                    padding: "2px 7px",
-                                    background: sCfg.bg,
-                                    border: `1px solid ${sCfg.border}`,
-                                  }}
-                                >
-                                  {sCfg.label}
-                                </span>
-                                {h.walk_in && (
-                                  <span
-                                    style={{
-                                      ...sf,
-                                      fontSize: 6,
-                                      color: "#a78bfa",
-                                      padding: "2px 7px",
-                                      background: "rgba(139,92,246,0.08)",
-                                      border: "1px solid rgba(139,92,246,0.2)",
-                                    }}
-                                  >
-                                    Walk-In
-                                  </span>
-                                )}
-                              </div>
-                              <p
-                                style={{
-                                  ...mono,
-                                  fontSize: 11,
-                                  color: "#a1a1aa",
-                                  margin: "3px 0 0",
-                                }}
-                              >
-                                {h.service}
-                                {h.price ? ` · $${h.price}` : ""}
-                              </p>
-                              {h.notes && (
-                                <p
-                                  style={{
-                                    ...mono,
-                                    fontSize: 10,
-                                    color: T.muted,
-                                    marginTop: 3,
-                                  }}
-                                >
-                                  📝 {h.notes}
-                                </p>
-                              )}
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* Client list */}
-            <div
-              style={{
-                display: "flex",
-                gap: 10,
-                marginBottom: 20,
-                alignItems: "center",
-                flexWrap: "wrap",
-              }}
-            >
-              <div style={{ flex: 1, position: "relative", minWidth: 200 }}>
-                <input
-                  value={clientSearch}
-                  onChange={(e) => setClientSearch(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && loadClients()}
-                  placeholder="Search clients..."
-                  style={{
-                    width: "100%",
-                    background: T.bg,
-                    border: `1px solid ${T.border}`,
-                    padding: "11px 14px",
-                    color: "white",
-                    fontSize: 15,
-                    outline: "none",
-                    ...mono,
-                  }}
-                  onFocus={(e) => (e.target.style.borderColor = T.amber)}
-                  onBlur={(e) => (e.target.style.borderColor = T.border)}
-                />
-              </div>
-              <button
-                onClick={loadClients}
-                disabled={loadingClients}
-                style={{
-                  padding: "11px 18px",
-                  background: T.amberDim,
-                  border: `1px solid ${T.amberBorder}`,
-                  color: T.amber,
-                  ...sf,
-                  fontSize: 7,
-                  letterSpacing: "0.15em",
-                  textTransform: "uppercase",
-                  cursor: "pointer",
-                  transition: "all 0.2s",
-                  flexShrink: 0,
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.background = T.amber;
-                  e.currentTarget.style.color = "black";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background = T.amberDim;
-                  e.currentTarget.style.color = T.amber;
-                }}
-              >
-                {loadingClients ? "..." : "Search"}
-              </button>
-            </div>
-
-            {/* Summary */}
-            {clients.length > 0 && (
-              <p
-                style={{
-                  ...mono,
-                  fontSize: 10,
-                  color: T.dim,
-                  marginBottom: 14,
-                }}
-              >
-                {clients.length} client{clients.length !== 1 ? "s" : ""}
-                {" · "}
-                {clients.filter((c) => c.is_vip).length} VIP
-                {" · "}
-                {clients.filter((c) => c.is_blocked).length} blocked
-              </p>
-            )}
-
-            {loadingClients ? (
-              <div
-                style={{
-                  padding: "40px 0",
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "center",
-                  gap: 12,
-                }}
-              >
-                <div
-                  style={{
-                    width: 20,
-                    height: 20,
-                    border: `1.5px solid rgba(245,158,11,0.2)`,
-                    borderTopColor: T.amber,
-                    borderRadius: "50%",
-                    animation: "spin 0.8s linear infinite",
-                  }}
-                />
-                <p
-                  style={{
-                    ...sf,
-                    fontSize: 6,
-                    color: T.dim,
-                    letterSpacing: "0.3em",
-                    textTransform: "uppercase",
-                  }}
-                >
-                  Loading clients...
-                </p>
-              </div>
-            ) : clients.length === 0 ? (
-              <div
-                style={{
-                  padding: "40px 0",
-                  textAlign: "center",
-                  border: `1px solid ${T.border}`,
-                }}
-              >
-                <p
-                  style={{
-                    ...sf,
-                    fontSize: "1.2rem",
-                    fontWeight: 900,
-                    color: "rgba(255,255,255,0.04)",
-                    textTransform: "uppercase",
-                  }}
-                >
-                  No Clients Yet
-                </p>
-                <p
-                  style={{ ...mono, color: T.dim, fontSize: 11, marginTop: 8 }}
-                >
-                  Clients appear here once they book an appointment.
-                </p>
-              </div>
-            ) : (
-              <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
-                {clients.map((c) => (
-                  <button
-                    key={c.id}
-                    onClick={() => openClientProfile(c.id)}
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: isMobile ? 10 : 14,
-                      padding: isMobile ? "13px 12px" : "14px 16px",
-                      background: c.is_blocked
-                        ? "rgba(248,113,113,0.03)"
-                        : T.surface,
-                      border: `1px solid ${c.is_vip ? T.amberBorder : c.is_blocked ? "rgba(248,113,113,0.15)" : T.border}`,
-                      cursor: "pointer",
-                      textAlign: "left",
-                      width: "100%",
-                      transition: "all 0.2s",
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.borderColor = T.amber;
-                      e.currentTarget.style.background = T.amberDim;
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.borderColor = c.is_vip
-                        ? T.amberBorder
-                        : c.is_blocked
-                          ? "rgba(248,113,113,0.15)"
-                          : T.border;
-                      e.currentTarget.style.background = c.is_blocked
-                        ? "rgba(248,113,113,0.03)"
-                        : T.surface;
-                    }}
-                  >
-                    {/* Avatar */}
-                    <div
-                      style={{
-                        width: isMobile ? 36 : 42,
-                        height: isMobile ? 36 : 42,
-                        borderRadius: "50%",
-                        background: c.is_vip
-                          ? T.amberDim
-                          : "rgba(255,255,255,0.05)",
-                        border: `1px solid ${c.is_vip ? T.amberBorder : T.border}`,
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        flexShrink: 0,
-                      }}
-                    >
-                      <span
-                        style={{
-                          ...sf,
-                          fontSize: isMobile ? 12 : 14,
-                          fontWeight: 900,
-                          color: c.is_vip ? T.amber : "#a1a1aa",
-                        }}
-                      >
-                        {(c.name || "?").charAt(0).toUpperCase()}
+                      <span style={{ ...mono, fontSize: 10, color: T.dim }}>
+                        →
                       </span>
                     </div>
-
-                    {/* Info */}
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: 8,
-                          marginBottom: 3,
-                          flexWrap: "wrap",
-                        }}
-                      >
-                        <p
-                          style={{
-                            ...sf,
-                            fontSize: isMobile ? 8 : 9,
-                            fontWeight: 700,
-                            textTransform: "uppercase",
-                            color: c.is_blocked ? "#f87171" : "white",
-                            margin: 0,
-                          }}
-                        >
-                          {c.name}
-                        </p>
-                        {c.is_vip && (
-                          <span
-                            style={{
-                              ...sf,
-                              fontSize: 5,
-                              color: T.amber,
-                              padding: "1px 6px",
-                              background: T.amberDim,
-                              border: `1px solid ${T.amberBorder}`,
-                            }}
-                          >
-                            ★ VIP
-                          </span>
-                        )}
-                        {c.is_blocked && (
-                          <span
-                            style={{
-                              ...sf,
-                              fontSize: 5,
-                              color: "#f87171",
-                              padding: "1px 6px",
-                              background: "rgba(248,113,113,0.08)",
-                              border: "1px solid rgba(248,113,113,0.2)",
-                            }}
-                          >
-                            Blocked
-                          </span>
-                        )}
-                        {c.is_walk_in && (
-                          <span
-                            style={{
-                              ...sf,
-                              fontSize: 5,
-                              color: "#a78bfa",
-                              padding: "1px 6px",
-                              background: "rgba(139,92,246,0.08)",
-                              border: "1px solid rgba(139,92,246,0.2)",
-                            }}
-                          >
-                            Walk-In
-                          </span>
-                        )}
-                      </div>
-                      <div
-                        style={{ display: "flex", gap: 10, flexWrap: "wrap" }}
-                      >
-                        <span style={{ ...mono, fontSize: 10, color: T.amber }}>
-                          {c.total_visits} visit
-                          {c.total_visits !== 1 ? "s" : ""}
-                        </span>
-                        {c.last_visit && (
-                          <span
-                            style={{ ...mono, fontSize: 10, color: T.muted }}
-                          >
-                            Last:{" "}
-                            {new Date(
-                              c.last_visit + "T00:00:00",
-                            ).toLocaleDateString("en-US", {
-                              month: "short",
-                              day: "numeric",
-                            })}
-                          </span>
-                        )}
-                        {c.last_service && (
-                          <span
-                            style={{ ...mono, fontSize: 10, color: T.muted }}
-                          >
-                            {c.last_service}
-                          </span>
-                        )}
-                        {c.no_shows > 0 && (
-                          <span
-                            style={{ ...mono, fontSize: 10, color: "#f87171" }}
-                          >
-                            {c.no_shows} no-show{c.no_shows !== 1 ? "s" : ""}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Arrow */}
-                    <span
-                      style={{ color: T.muted, fontSize: 16, flexShrink: 0 }}
+                  ))}
+                {clients.filter(
+                  (c) =>
+                    !clientSearch ||
+                    c.name?.toLowerCase().includes(clientSearch.toLowerCase()),
+                ).length === 0 && (
+                  <div
+                    style={{
+                      padding: "40px 20px",
+                      textAlign: "center",
+                      border: `1px solid ${T.border}`,
+                    }}
+                  >
+                    <p
+                      style={{
+                        ...sf,
+                        fontSize: 9,
+                        color: "rgba(255,255,255,0.08)",
+                        textTransform: "uppercase",
+                      }}
                     >
-                      ›
-                    </span>
-                  </button>
-                ))}
+                      No clients found
+                    </p>
+                  </div>
+                )}
               </div>
             )}
           </div>
         )}
 
-        {/* ── REPORTS TAB ── */}
+        {/* ══ REPORTS TAB ══ */}
         {activeTab === "reports" && (
           <div className="bd-enter">
-            {/* Period selector */}
             <div
               style={{
                 display: "flex",
-                gap: 6,
+                justifyContent: "space-between",
+                alignItems: "center",
                 marginBottom: 24,
                 flexWrap: "wrap",
+                gap: 12,
               }}
             >
-              {[
-                { key: "week", label: "This Week" },
-                { key: "month", label: "This Month" },
-                { key: "year", label: "This Year" },
-                { key: "all", label: "All Time" },
-              ].map(({ key, label }) => (
-                <button
-                  key={key}
-                  onClick={() => setReportPeriod(key)}
-                  style={{
-                    padding: "8px 16px",
-                    ...sf,
-                    fontSize: 7,
-                    letterSpacing: "0.15em",
-                    textTransform: "uppercase",
-                    background: reportPeriod === key ? T.amber : T.surface,
-                    color: reportPeriod === key ? "black" : T.muted,
-                    border: `1px solid ${reportPeriod === key ? T.amber : T.border}`,
-                    cursor: "pointer",
-                    transition: "all 0.2s",
-                  }}
-                  onMouseEnter={(e) => {
-                    if (reportPeriod !== key) {
-                      e.currentTarget.style.borderColor = T.amberBorder;
-                      e.currentTarget.style.color = T.amber;
-                    }
-                  }}
-                  onMouseLeave={(e) => {
-                    if (reportPeriod !== key) {
-                      e.currentTarget.style.borderColor = T.border;
-                      e.currentTarget.style.color = T.muted;
-                    }
-                  }}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
-
-            {loadingReports || !reports ? (
-              <div
-                style={{
-                  padding: "48px 0",
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "center",
-                  gap: 12,
-                }}
-              >
+              <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
                 <div
                   style={{
-                    width: 20,
-                    height: 20,
-                    border: `1.5px solid rgba(245,158,11,0.2)`,
-                    borderTopColor: T.amber,
-                    borderRadius: "50%",
-                    animation: "spin 0.8s linear infinite",
+                    width: 32,
+                    height: 1,
+                    background: `rgba(245,158,11,0.5)`,
                   }}
                 />
                 <p
                   style={{
-                    ...sf,
-                    fontSize: 6,
-                    color: T.dim,
-                    letterSpacing: "0.3em",
+                    ...mono,
+                    fontSize: 8,
+                    color: T.amber,
+                    letterSpacing: "0.5em",
                     textTransform: "uppercase",
                   }}
                 >
-                  Loading reports...
+                  Reports
                 </p>
+              </div>
+              <div style={{ display: "flex", gap: 6 }}>
+                {["week", "month", "year"].map((k) => (
+                  <button
+                    key={k}
+                    onClick={() => setReportPeriod(k)}
+                    style={{
+                      padding: "8px 16px",
+                      ...sf,
+                      fontSize: 7,
+                      letterSpacing: "0.15em",
+                      textTransform: "uppercase",
+                      background: reportPeriod === k ? T.amber : T.surface,
+                      color: reportPeriod === k ? "black" : T.muted,
+                      border: `1px solid ${reportPeriod === k ? T.amber : T.border}`,
+                      cursor: "pointer",
+                      transition: "all 0.2s",
+                    }}
+                  >
+                    {k}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {!reports ? (
+              <div style={{ padding: "40px 0", textAlign: "center" }}>
+                <div
+                  style={{
+                    width: 18,
+                    height: 18,
+                    border: `1.5px solid ${T.amberBorder}`,
+                    borderTopColor: T.amber,
+                    borderRadius: "50%",
+                    animation: "spin 0.8s linear infinite",
+                    margin: "0 auto",
+                  }}
+                />
               </div>
             ) : (
               <>
-                {/* ── Revenue summary cards ── */}
+                {/* Summary cards */}
                 <div
                   style={{
                     display: "grid",
@@ -3952,32 +2886,32 @@ export default function BarberDashboard() {
                 >
                   {[
                     {
-                      label: "Total Revenue",
-                      value: `$${reports.summary.total_revenue}`,
-                      accent: true,
+                      label: "Total Cuts",
+                      value: reports.total_appointments || 0,
+                      amber: true,
                     },
                     {
-                      label: "Online (Stripe)",
-                      value: `$${reports.summary.online_revenue}`,
+                      label: "Completed",
+                      value: reports.completed || 0,
+                      amber: false,
                     },
                     {
-                      label: "In Shop",
-                      value: `$${reports.summary.shop_revenue}`,
+                      label: "Online Rev",
+                      value: `$${reports.online_revenue || "0.00"}`,
+                      amber: false,
                     },
                     {
-                      label: "Avg Per Visit",
-                      value:
-                        reports.summary.completed > 0
-                          ? `$${(parseFloat(reports.summary.total_revenue) / reports.summary.completed).toFixed(2)}`
-                          : "$0",
+                      label: "No Shows",
+                      value: reports.no_shows || 0,
+                      amber: false,
                     },
-                  ].map(({ label, value, accent }) => (
+                  ].map(({ label, value, amber }) => (
                     <div
                       key={label}
                       style={{
-                        padding: "16px 14px",
-                        background: accent ? T.amberDim : T.surface,
-                        border: `1px solid ${accent ? T.amberBorder : T.border}`,
+                        padding: "18px 16px",
+                        background: amber ? T.amberDim : T.surface,
+                        border: `1px solid ${amber ? T.amberBorder : T.border}`,
                         position: "relative",
                         overflow: "hidden",
                       }}
@@ -3989,7 +2923,7 @@ export default function BarberDashboard() {
                           right: 0,
                           width: 40,
                           height: 40,
-                          background: accent
+                          background: amber
                             ? "linear-gradient(225deg,rgba(245,158,11,0.2),transparent)"
                             : "linear-gradient(225deg,rgba(255,255,255,0.03),transparent)",
                         }}
@@ -3997,87 +2931,11 @@ export default function BarberDashboard() {
                       <p
                         style={{
                           ...sf,
-                          fontSize: 6,
-                          letterSpacing: "0.3em",
-                          color: accent ? T.amber : T.muted,
-                          textTransform: "uppercase",
-                          marginBottom: 8,
-                        }}
-                      >
-                        {label}
-                      </p>
-                      <p
-                        style={{
-                          ...sf,
-                          fontSize: isMobile ? 18 : 22,
-                          fontWeight: 900,
-                          color: accent ? T.amber : "white",
-                          margin: 0,
-                          lineHeight: 1,
-                        }}
-                      >
-                        {value}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-
-                {/* ── Appointment summary cards ── */}
-                <div
-                  style={{
-                    display: "grid",
-                    gridTemplateColumns: isMobile
-                      ? "repeat(3,1fr)"
-                      : "repeat(6,1fr)",
-                    gap: 6,
-                    marginBottom: 24,
-                  }}
-                >
-                  {[
-                    { label: "Total", value: reports.summary.total },
-                    {
-                      label: "Completed",
-                      value: reports.summary.completed,
-                      color: "#4ade80",
-                    },
-                    {
-                      label: "Confirmed",
-                      value: reports.summary.confirmed,
-                      color: T.amber,
-                    },
-                    {
-                      label: "Cancelled",
-                      value: reports.summary.cancelled,
-                      color: T.muted,
-                    },
-                    {
-                      label: "No-Shows",
-                      value: reports.summary.no_shows,
-                      color: "#f87171",
-                    },
-                    {
-                      label: "Walk-Ins",
-                      value: reports.summary.walk_ins,
-                      color: "#a78bfa",
-                    },
-                  ].map(({ label, value, color }) => (
-                    <div
-                      key={label}
-                      style={{
-                        padding: "12px 10px",
-                        background: T.surface,
-                        border: `1px solid ${T.border}`,
-                        textAlign: "center",
-                      }}
-                    >
-                      <p
-                        style={{
-                          ...sf,
                           fontSize: 5,
-                          letterSpacing: "0.25em",
-                          color: T.muted,
+                          letterSpacing: "0.35em",
+                          color: amber ? T.amber : T.muted,
                           textTransform: "uppercase",
-                          marginBottom: 6,
+                          marginBottom: 10,
                         }}
                       >
                         {label}
@@ -4085,9 +2943,10 @@ export default function BarberDashboard() {
                       <p
                         style={{
                           ...sf,
-                          fontSize: 20,
+                          fontSize: 26,
                           fontWeight: 900,
-                          color: color || "white",
+                          color: amber ? T.amber : "white",
+                          lineHeight: 1,
                           margin: 0,
                         }}
                       >
@@ -4097,351 +2956,84 @@ export default function BarberDashboard() {
                   ))}
                 </div>
 
-                {/* ── Rates row ── */}
-                <div
-                  style={{
-                    display: "grid",
-                    gridTemplateColumns: "1fr 1fr",
-                    gap: 8,
-                    marginBottom: 24,
-                  }}
-                >
-                  {[
-                    {
-                      label: "Completion Rate",
-                      value: `${reports.summary.completion_rate}%`,
-                      color: "#4ade80",
-                      desc: "Appointments marked completed",
-                    },
-                    {
-                      label: "No-Show Rate",
-                      value: `${reports.summary.no_show_rate}%`,
-                      color: "#f87171",
-                      desc: "Clients who didn't show up",
-                    },
-                  ].map(({ label, value, color, desc }) => (
-                    <div
-                      key={label}
-                      style={{
-                        padding: "18px 16px",
-                        background: T.surface,
-                        border: `1px solid ${T.border}`,
-                      }}
-                    >
-                      <p
-                        style={{
-                          ...sf,
-                          fontSize: 6,
-                          letterSpacing: "0.3em",
-                          color: T.muted,
-                          textTransform: "uppercase",
-                          marginBottom: 8,
-                        }}
-                      >
-                        {label}
-                      </p>
-                      <p
-                        style={{
-                          ...sf,
-                          fontSize: 28,
-                          fontWeight: 900,
-                          color,
-                          margin: "0 0 4px",
-                        }}
-                      >
-                        {value}
-                      </p>
-                      <div
-                        style={{
-                          width: "100%",
-                          height: 3,
-                          background: T.border,
-                          borderRadius: 2,
-                          overflow: "hidden",
-                        }}
-                      >
-                        <div
-                          style={{
-                            width: value,
-                            height: "100%",
-                            background: color,
-                            borderRadius: 2,
-                            transition: "width 0.8s ease",
-                          }}
-                        />
-                      </div>
-                      <p
-                        style={{
-                          ...mono,
-                          fontSize: 9,
-                          color: T.dim,
-                          marginTop: 6,
-                        }}
-                      >
-                        {desc}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-
-                {/* ── Daily revenue bar chart ── */}
-                <div
-                  style={{
-                    background: T.surface,
-                    border: `1px solid ${T.border}`,
-                    padding: "18px 16px",
-                    marginBottom: 20,
-                  }}
-                >
+                {/* Services breakdown */}
+                {reports.services?.length > 0 && (
                   <div
                     style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 12,
-                      marginBottom: 16,
+                      marginBottom: 20,
+                      background: T.surface,
+                      border: `1px solid ${T.border}`,
+                      padding: "20px",
                     }}
                   >
                     <p
                       style={{
                         ...sf,
-                        fontSize: 7,
-                        letterSpacing: "0.3em",
+                        fontSize: 6,
+                        letterSpacing: "0.4em",
                         color: T.muted,
                         textTransform: "uppercase",
-                        margin: 0,
+                        marginBottom: 16,
                       }}
                     >
-                      Daily Revenue — Last 30 Days
+                      Top Services
                     </p>
-                    <div style={{ flex: 1, height: 1, background: T.border }} />
-                  </div>
-                  {(() => {
-                    const maxRev = Math.max(
-                      ...reports.daily.map((d) => d.revenue),
-                      1,
-                    );
-                    const nonZero = reports.daily.filter((d) => d.revenue > 0);
-                    return (
-                      <div
-                        style={{
-                          overflowX: "auto",
-                          WebkitOverflowScrolling: "touch",
-                        }}
-                      >
-                        <div
-                          style={{
-                            display: "flex",
-                            alignItems: "flex-end",
-                            gap: 3,
-                            height: 100,
-                            minWidth: isMobile ? 500 : "100%",
-                            paddingBottom: 24,
-                            position: "relative",
-                          }}
-                        >
-                          {reports.daily.map((d, i) => {
-                            const pct = d.revenue / maxRev;
-                            const isToday = d.date === today;
-                            return (
-                              <div
-                                key={d.date}
-                                style={{
-                                  flex: 1,
-                                  display: "flex",
-                                  flexDirection: "column",
-                                  alignItems: "center",
-                                  gap: 2,
-                                  height: "100%",
-                                  justifyContent: "flex-end",
-                                }}
-                                title={`${d.label}: $${d.revenue} · ${d.bookings} bookings`}
-                              >
-                                <div
-                                  style={{
-                                    width: "100%",
-                                    height: `${Math.max(pct * 76, d.revenue > 0 ? 3 : 0)}px`,
-                                    background: isToday
-                                      ? T.amber
-                                      : d.revenue > 0
-                                        ? "rgba(245,158,11,0.5)"
-                                        : "rgba(255,255,255,0.04)",
-                                    borderRadius: "1px 1px 0 0",
-                                    transition: "height 0.5s ease",
-                                    position: "relative",
-                                  }}
-                                />
-                                {(i % 5 === 0 || isToday) && (
-                                  <span
-                                    style={{
-                                      ...mono,
-                                      fontSize: 7,
-                                      color: isToday ? T.amber : T.dim,
-                                      whiteSpace: "nowrap",
-                                      position: "absolute",
-                                      bottom: 4,
-                                    }}
-                                  >
-                                    {d.label.split(" ")[1]}
-                                  </span>
-                                )}
-                              </div>
-                            );
-                          })}
-                        </div>
-                        {nonZero.length === 0 && (
-                          <p
-                            style={{
-                              ...mono,
-                              color: T.dim,
-                              fontSize: 11,
-                              textAlign: "center",
-                              marginTop: 8,
-                            }}
-                          >
-                            No revenue data for this period.
-                          </p>
-                        )}
-                      </div>
-                    );
-                  })()}
-                </div>
-
-                {/* ── Service breakdown ── */}
-                <div
-                  style={{
-                    background: T.surface,
-                    border: `1px solid ${T.border}`,
-                    padding: "18px 16px",
-                    marginBottom: 20,
-                  }}
-                >
-                  <div
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 12,
-                      marginBottom: 16,
-                    }}
-                  >
-                    <p
-                      style={{
-                        ...sf,
-                        fontSize: 7,
-                        letterSpacing: "0.3em",
-                        color: T.muted,
-                        textTransform: "uppercase",
-                        margin: 0,
-                      }}
-                    >
-                      Service Performance
-                    </p>
-                    <div style={{ flex: 1, height: 1, background: T.border }} />
-                  </div>
-                  {reports.services.length === 0 ? (
-                    <p style={{ ...mono, color: T.dim, fontSize: 11 }}>
-                      No service data yet.
-                    </p>
-                  ) : (
                     <div
                       style={{
                         display: "flex",
                         flexDirection: "column",
-                        gap: 5,
+                        gap: 8,
                       }}
                     >
-                      {reports.services.map((svc, i) => {
-                        const maxBookings = reports.services[0].bookings;
-                        const pct = (svc.bookings / maxBookings) * 100;
+                      {reports.services.map((s, i) => {
+                        const pct =
+                          reports.services[0]?.count > 0
+                            ? Math.round(
+                                (s.count / reports.services[0].count) * 100,
+                              )
+                            : 0;
                         return (
-                          <div
-                            key={svc.name}
-                            style={{
-                              padding: "12px 14px",
-                              background: "rgba(255,255,255,0.01)",
-                              border: `1px solid ${T.border}`,
-                            }}
-                          >
+                          <div key={i}>
                             <div
                               style={{
                                 display: "flex",
                                 justifyContent: "space-between",
-                                alignItems: "center",
-                                marginBottom: 6,
+                                marginBottom: 5,
                               }}
                             >
-                              <div
+                              <span
                                 style={{
-                                  display: "flex",
-                                  alignItems: "center",
-                                  gap: 10,
+                                  ...mono,
+                                  fontSize: 11,
+                                  color: "#a1a1aa",
                                 }}
                               >
-                                <span
-                                  style={{
-                                    ...sf,
-                                    fontSize: 6,
-                                    color: T.dim,
-                                    width: 14,
-                                  }}
-                                >
-                                  #{i + 1}
-                                </span>
-                                <p
-                                  style={{
-                                    ...sf,
-                                    fontSize: 9,
-                                    fontWeight: 700,
-                                    textTransform: "uppercase",
-                                    color: "white",
-                                    margin: 0,
-                                  }}
-                                >
-                                  {svc.name}
-                                </p>
-                              </div>
-                              <div
+                                {s.service_name || s.name}
+                              </span>
+                              <span
                                 style={{
-                                  display: "flex",
-                                  gap: 14,
-                                  alignItems: "center",
+                                  ...sf,
+                                  fontSize: 10,
+                                  color: T.amber,
+                                  fontWeight: 900,
                                 }}
                               >
-                                <span
-                                  style={{
-                                    ...mono,
-                                    fontSize: 10,
-                                    color: T.muted,
-                                  }}
-                                >
-                                  {svc.bookings} booked
-                                </span>
-                                <span
-                                  style={{
-                                    ...mono,
-                                    fontSize: 11,
-                                    color: T.amber,
-                                    fontWeight: 500,
-                                  }}
-                                >
-                                  ${svc.revenue}
-                                </span>
-                              </div>
+                                {s.count}
+                              </span>
                             </div>
                             <div
                               style={{
                                 height: 2,
                                 background: T.border,
                                 borderRadius: 1,
-                                overflow: "hidden",
                               }}
                             >
                               <div
                                 style={{
-                                  width: `${pct}%`,
                                   height: "100%",
+                                  width: `${pct}%`,
                                   background: T.amber,
-                                  borderRadius: 1,
-                                  transition: "width 0.6s ease",
+                                  transition: "width 1s ease",
                                 }}
                               />
                             </div>
@@ -4449,335 +3041,79 @@ export default function BarberDashboard() {
                         );
                       })}
                     </div>
-                  )}
-                </div>
-
-                {/* ── Busiest days + hours ── */}
-                <div
-                  style={{
-                    display: "grid",
-                    gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr",
-                    gap: 16,
-                    marginBottom: 20,
-                  }}
-                >
-                  {/* Busiest days */}
-                  <div
-                    style={{
-                      background: T.surface,
-                      border: `1px solid ${T.border}`,
-                      padding: "18px 16px",
-                    }}
-                  >
-                    <p
-                      style={{
-                        ...sf,
-                        fontSize: 7,
-                        letterSpacing: "0.3em",
-                        color: T.muted,
-                        textTransform: "uppercase",
-                        marginBottom: 14,
-                      }}
-                    >
-                      Busiest Days
-                    </p>
-                    {(() => {
-                      const max = Math.max(
-                        ...reports.busiest_days.map((d) => d.bookings),
-                        1,
-                      );
-                      return reports.busiest_days.map((d) => (
-                        <div
-                          key={d.day}
-                          style={{
-                            display: "flex",
-                            alignItems: "center",
-                            gap: 10,
-                            marginBottom: 8,
-                          }}
-                        >
-                          <span
-                            style={{
-                              ...sf,
-                              fontSize: 7,
-                              color: T.muted,
-                              width: 28,
-                              flexShrink: 0,
-                            }}
-                          >
-                            {d.day}
-                          </span>
-                          <div
-                            style={{
-                              flex: 1,
-                              height: 6,
-                              background: T.border,
-                              borderRadius: 1,
-                              overflow: "hidden",
-                            }}
-                          >
-                            <div
-                              style={{
-                                width: `${(d.bookings / max) * 100}%`,
-                                height: "100%",
-                                background:
-                                  d.bookings === max
-                                    ? T.amber
-                                    : "rgba(245,158,11,0.35)",
-                                borderRadius: 1,
-                                transition: "width 0.6s ease",
-                              }}
-                            />
-                          </div>
-                          <span
-                            style={{
-                              ...mono,
-                              fontSize: 10,
-                              color: d.bookings === max ? T.amber : T.muted,
-                              width: 20,
-                              textAlign: "right",
-                              flexShrink: 0,
-                            }}
-                          >
-                            {d.bookings}
-                          </span>
-                        </div>
-                      ));
-                    })()}
                   </div>
+                )}
 
-                  {/* Busiest hours */}
+                {/* Busiest hours */}
+                {reports.busiest_hours?.length > 0 && (
                   <div
                     style={{
                       background: T.surface,
                       border: `1px solid ${T.border}`,
-                      padding: "18px 16px",
+                      padding: "20px",
                     }}
                   >
                     <p
                       style={{
                         ...sf,
-                        fontSize: 7,
-                        letterSpacing: "0.3em",
+                        fontSize: 6,
+                        letterSpacing: "0.4em",
                         color: T.muted,
                         textTransform: "uppercase",
-                        marginBottom: 14,
+                        marginBottom: 16,
                       }}
                     >
                       Busiest Hours
                     </p>
-                    {reports.busiest_hours.length === 0 ? (
-                      <p style={{ ...mono, color: T.dim, fontSize: 11 }}>
-                        No data yet.
-                      </p>
-                    ) : (
-                      (() => {
-                        const max = Math.max(
-                          ...reports.busiest_hours.map((h) => h.bookings),
-                          1,
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "flex-end",
+                        gap: 4,
+                        height: 80,
+                        overflowX: "auto",
+                      }}
+                    >
+                      {reports.busiest_hours.map((h, i) => {
+                        const maxC = Math.max(
+                          ...reports.busiest_hours.map((x) => x.count),
                         );
-                        return reports.busiest_hours.map((h) => (
+                        const pct = maxC > 0 ? (h.count / maxC) * 100 : 0;
+                        return (
                           <div
-                            key={h.hour}
+                            key={i}
                             style={{
                               display: "flex",
+                              flexDirection: "column",
                               alignItems: "center",
-                              gap: 10,
-                              marginBottom: 8,
+                              gap: 4,
+                              flex: 1,
+                              minWidth: 36,
                             }}
                           >
-                            <span
-                              style={{
-                                ...mono,
-                                fontSize: 9,
-                                color: T.muted,
-                                width: 32,
-                                flexShrink: 0,
-                              }}
-                            >
-                              {h.label}
-                            </span>
                             <div
                               style={{
-                                flex: 1,
-                                height: 6,
-                                background: T.border,
-                                borderRadius: 1,
-                                overflow: "hidden",
+                                width: "100%",
+                                background: T.amber,
+                                opacity: 0.7 + pct / 300,
+                                height: `${pct}%`,
+                                minHeight: 4,
+                                transition: "height 0.5s ease",
                               }}
-                            >
-                              <div
-                                style={{
-                                  width: `${(h.bookings / max) * 100}%`,
-                                  height: "100%",
-                                  background:
-                                    h.bookings === max
-                                      ? T.amber
-                                      : "rgba(245,158,11,0.35)",
-                                  borderRadius: 1,
-                                  transition: "width 0.6s ease",
-                                }}
-                              />
-                            </div>
+                            />
                             <span
-                              style={{
-                                ...mono,
-                                fontSize: 10,
-                                color: h.bookings === max ? T.amber : T.muted,
-                                width: 20,
-                                textAlign: "right",
-                                flexShrink: 0,
-                              }}
-                            >
-                              {h.bookings}
-                            </span>
-                          </div>
-                        ));
-                      })()
-                    )}
-                  </div>
-                </div>
-
-                {/* ── Top clients ── */}
-                {reports.top_clients.length > 0 && (
-                  <div
-                    style={{
-                      background: T.surface,
-                      border: `1px solid ${T.border}`,
-                      padding: "18px 16px",
-                    }}
-                  >
-                    <div
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 12,
-                        marginBottom: 14,
-                      }}
-                    >
-                      <p
-                        style={{
-                          ...sf,
-                          fontSize: 7,
-                          letterSpacing: "0.3em",
-                          color: T.muted,
-                          textTransform: "uppercase",
-                          margin: 0,
-                        }}
-                      >
-                        Top Clients
-                      </p>
-                      <div
-                        style={{ flex: 1, height: 1, background: T.border }}
-                      />
-                    </div>
-                    <div
-                      style={{
-                        display: "flex",
-                        flexDirection: "column",
-                        gap: 5,
-                      }}
-                    >
-                      {reports.top_clients.map((c, i) => (
-                        <div
-                          key={c.id}
-                          style={{
-                            display: "flex",
-                            alignItems: "center",
-                            gap: 12,
-                            padding: "10px 12px",
-                            background: "rgba(255,255,255,0.01)",
-                            border: `1px solid ${T.border}`,
-                          }}
-                        >
-                          <span
-                            style={{
-                              ...sf,
-                              fontSize: 8,
-                              color: i === 0 ? T.amber : T.dim,
-                              width: 20,
-                              flexShrink: 0,
-                              fontWeight: 900,
-                            }}
-                          >
-                            #{i + 1}
-                          </span>
-                          <div
-                            style={{
-                              width: 32,
-                              height: 32,
-                              borderRadius: "50%",
-                              background:
-                                i === 0 ? T.amberDim : "rgba(255,255,255,0.04)",
-                              border: `1px solid ${i === 0 ? T.amberBorder : T.border}`,
-                              display: "flex",
-                              alignItems: "center",
-                              justifyContent: "center",
-                              flexShrink: 0,
-                            }}
-                          >
-                            <span
-                              style={{
-                                ...sf,
-                                fontSize: 11,
-                                fontWeight: 900,
-                                color: i === 0 ? T.amber : "#a1a1aa",
-                              }}
-                            >
-                              {(c.name || "?").charAt(0).toUpperCase()}
-                            </span>
-                          </div>
-                          <div style={{ flex: 1, minWidth: 0 }}>
-                            <p
-                              style={{
-                                ...sf,
-                                fontSize: 8,
-                                fontWeight: 700,
-                                textTransform: "uppercase",
-                                color: "white",
-                                margin: 0,
-                              }}
-                            >
-                              {c.name}
-                            </p>
-                            {!isMobile && c.email && (
-                              <p
-                                style={{
-                                  ...mono,
-                                  fontSize: 9,
-                                  color: T.dim,
-                                  margin: 0,
-                                }}
-                              >
-                                {c.email}
-                              </p>
-                            )}
-                          </div>
-                          <div style={{ textAlign: "right", flexShrink: 0 }}>
-                            <p
-                              style={{
-                                ...sf,
-                                fontSize: 9,
-                                color: i === 0 ? T.amber : T.muted,
-                                margin: 0,
-                                fontWeight: 700,
-                              }}
-                            >
-                              {c.visits}
-                            </p>
-                            <p
                               style={{
                                 ...mono,
                                 fontSize: 8,
                                 color: T.dim,
-                                margin: 0,
+                                whiteSpace: "nowrap",
                               }}
                             >
-                              visit{c.visits !== 1 ? "s" : ""}
-                            </p>
+                              {fmtTime(h.hour + ":00")}
+                            </span>
                           </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   </div>
                 )}
@@ -4786,20 +3122,47 @@ export default function BarberDashboard() {
           </div>
         )}
 
-        {/* ── MY HOURS TAB ── */}
+        {/* ══ AVAILABILITY TAB ══ */}
         {activeTab === "availability" && (
-          <div className="bd-enter">
+          <div className="bd-enter" style={{ maxWidth: 640 }}>
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 14,
+                marginBottom: 8,
+              }}
+            >
+              <div
+                style={{
+                  width: 32,
+                  height: 1,
+                  background: `rgba(245,158,11,0.5)`,
+                }}
+              />
+              <p
+                style={{
+                  ...mono,
+                  fontSize: 8,
+                  color: T.amber,
+                  letterSpacing: "0.5em",
+                  textTransform: "uppercase",
+                }}
+              >
+                My Hours
+              </p>
+            </div>
             <p
               style={{
                 ...mono,
-                color: T.muted,
                 fontSize: 12,
-                marginBottom: 24,
+                color: T.muted,
                 lineHeight: 1.7,
+                marginBottom: 24,
               }}
             >
-              Set your working hours per day. Clients can only book during these
-              windows.
+              Set your working hours for each day. Clients can only book during
+              these times.
             </p>
             <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
               {DAYS.map((dayName, dayIdx) => {
@@ -4815,8 +3178,8 @@ export default function BarberDashboard() {
                     style={{
                       background: T.surface,
                       border: `1px solid ${isEditing ? T.amberBorder : T.border}`,
-                      transition: "all 0.2s",
                       overflow: "hidden",
+                      transition: "all 0.2s",
                     }}
                   >
                     <div
@@ -4824,7 +3187,7 @@ export default function BarberDashboard() {
                         display: "flex",
                         justifyContent: "space-between",
                         alignItems: "center",
-                        padding: "14px 16px",
+                        padding: "14px 18px",
                         flexWrap: "wrap",
                         gap: 10,
                       }}
@@ -4862,7 +3225,7 @@ export default function BarberDashboard() {
                               borderRadius: "50%",
                               background: isSun
                                 ? T.dim
-                                : isWorking && saved
+                                : saved && isWorking
                                   ? "#4ade80"
                                   : T.dim,
                             }}
@@ -4911,7 +3274,7 @@ export default function BarberDashboard() {
                             fontSize: 6,
                             letterSpacing: "0.15em",
                             textTransform: "uppercase",
-                            padding: "6px 12px",
+                            padding: "6px 14px",
                             background: isEditing ? T.amberDim : "transparent",
                             border: `1px solid ${isEditing ? T.amber : T.border}`,
                             color: isEditing ? T.amber : T.muted,
@@ -4923,25 +3286,24 @@ export default function BarberDashboard() {
                         </button>
                       )}
                     </div>
-
                     {isEditing && (
                       <div
                         style={{
-                          padding: "16px",
+                          padding: "16px 18px",
                           borderTop: `1px solid ${T.border}`,
-                          background: "rgba(245,158,11,0.02)",
+                          background: T.amberDim,
                         }}
                       >
                         <div
                           style={{ display: "flex", gap: 6, marginBottom: 14 }}
                         >
                           {[
-                            { val: true, label: "Working" },
-                            { val: false, label: "Day Off" },
-                          ].map(({ val, label }) => (
+                            { v: true, l: "Working" },
+                            { v: false, l: "Day Off" },
+                          ].map(({ v, l }) => (
                             <button
-                              key={label}
-                              onClick={() => setEditWorking(val)}
+                              key={l}
+                              onClick={() => setEditWorking(v)}
                               style={{
                                 flex: 1,
                                 padding: "9px",
@@ -4950,14 +3312,14 @@ export default function BarberDashboard() {
                                 textTransform: "uppercase",
                                 letterSpacing: "0.15em",
                                 background:
-                                  editWorking === val ? T.amber : "transparent",
-                                color: editWorking === val ? "black" : T.muted,
-                                border: `1px solid ${editWorking === val ? T.amber : T.border}`,
+                                  editWorking === v ? T.amber : "transparent",
+                                color: editWorking === v ? "black" : T.muted,
+                                border: `1px solid ${editWorking === v ? T.amber : T.border}`,
                                 cursor: "pointer",
                                 transition: "all 0.2s",
                               }}
                             >
-                              {label}
+                              {l}
                             </button>
                           ))}
                         </div>
@@ -4971,14 +3333,10 @@ export default function BarberDashboard() {
                             }}
                           >
                             {[
-                              {
-                                label: "Start",
-                                val: editStart,
-                                set: setEditStart,
-                              },
-                              { label: "End", val: editEnd, set: setEditEnd },
-                            ].map(({ label, val, set }) => (
-                              <div key={label}>
+                              { l: "Start", v: editStart, s: setEditStart },
+                              { l: "End", v: editEnd, s: setEditEnd },
+                            ].map(({ l, v, s }) => (
+                              <div key={l}>
                                 <label
                                   style={{
                                     ...sf,
@@ -4990,12 +3348,12 @@ export default function BarberDashboard() {
                                     marginBottom: 6,
                                   }}
                                 >
-                                  {label}
+                                  {l}
                                 </label>
                                 <input
                                   type="time"
-                                  value={val}
-                                  onChange={(e) => set(e.target.value)}
+                                  value={v}
+                                  onChange={(e) => s(e.target.value)}
                                   style={{
                                     width: "100%",
                                     background: T.bg,
@@ -5022,7 +3380,7 @@ export default function BarberDashboard() {
                           disabled={savingAvail}
                           style={{
                             padding: "11px 24px",
-                            background: savingAvail ? T.deepDim : T.amber,
+                            background: savingAvail ? T.deep : T.amber,
                             color: savingAvail ? T.dim : "black",
                             ...sf,
                             fontSize: 7,
@@ -5031,7 +3389,7 @@ export default function BarberDashboard() {
                             letterSpacing: "0.2em",
                             border: "none",
                             cursor: savingAvail ? "not-allowed" : "pointer",
-                            transition: "all 0.25s",
+                            transition: "all 0.2s",
                             display: "flex",
                             alignItems: "center",
                             gap: 8,
@@ -5053,7 +3411,7 @@ export default function BarberDashboard() {
                               Saving...
                             </>
                           ) : (
-                            "Save →"
+                            "Save Hours →"
                           )}
                         </button>
                       </div>
@@ -5065,28 +3423,54 @@ export default function BarberDashboard() {
           </div>
         )}
 
-        {/* ── TIME OFF TAB ── */}
+        {/* ══ TIME OFF TAB ══ */}
         {activeTab === "timeoff" && (
-          <div className="bd-enter">
+          <div className="bd-enter" style={{ maxWidth: 600 }}>
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 14,
+                marginBottom: 8,
+              }}
+            >
+              <div
+                style={{
+                  width: 32,
+                  height: 1,
+                  background: `rgba(245,158,11,0.5)`,
+                }}
+              />
+              <p
+                style={{
+                  ...mono,
+                  fontSize: 8,
+                  color: T.amber,
+                  letterSpacing: "0.5em",
+                  textTransform: "uppercase",
+                }}
+              >
+                Time Off
+              </p>
+            </div>
             <p
               style={{
                 ...mono,
-                color: T.muted,
                 fontSize: 12,
-                marginBottom: 24,
+                color: T.muted,
                 lineHeight: 1.7,
+                marginBottom: 24,
               }}
             >
               Block specific dates. Clients won't be able to book you on these
               days.
             </p>
-
             <div
               style={{
                 padding: "20px",
                 background: T.surface,
                 border: `1px solid ${T.border}`,
-                marginBottom: 24,
+                marginBottom: 20,
               }}
             >
               <p
@@ -5109,72 +3493,57 @@ export default function BarberDashboard() {
                   marginBottom: 14,
                 }}
               >
-                <div>
-                  <label
-                    style={{
-                      ...sf,
-                      fontSize: 6,
-                      letterSpacing: "0.3em",
-                      color: T.muted,
-                      textTransform: "uppercase",
-                      display: "block",
-                      marginBottom: 8,
-                    }}
-                  >
-                    Date
-                  </label>
-                  <input
-                    type="date"
-                    value={newTimeOffDate}
-                    min={today}
-                    onChange={(e) => setNewTimeOffDate(e.target.value)}
-                    style={{
-                      width: "100%",
-                      background: T.bg,
-                      border: `1px solid ${T.border}`,
-                      padding: "11px 12px",
-                      color: "white",
-                      fontSize: 14,
-                      outline: "none",
-                      ...mono,
-                    }}
-                    onFocus={(e) => (e.target.style.borderColor = T.amber)}
-                    onBlur={(e) => (e.target.style.borderColor = T.border)}
-                  />
-                </div>
-                <div>
-                  <label
-                    style={{
-                      ...sf,
-                      fontSize: 6,
-                      letterSpacing: "0.3em",
-                      color: T.muted,
-                      textTransform: "uppercase",
-                      display: "block",
-                      marginBottom: 8,
-                    }}
-                  >
-                    Reason (optional)
-                  </label>
-                  <input
-                    type="text"
-                    value={newTimeOffReason}
-                    onChange={(e) => setNewTimeOffReason(e.target.value)}
-                    placeholder="Vacation, personal, etc."
-                    style={{
-                      width: "100%",
-                      background: T.bg,
-                      border: `1px solid ${T.border}`,
-                      padding: "11px 12px",
-                      color: "white",
-                      fontSize: 16,
-                      outline: "none",
-                      ...mono,
-                    }}
-                    onFocus={(e) => (e.target.style.borderColor = T.amber)}
-                    onBlur={(e) => (e.target.style.borderColor = T.border)}
-                  />
-                </div>
+                {[
+                  {
+                    label: "Date",
+                    type: "date",
+                    val: newTimeOffDate,
+                    set: setNewTimeOffDate,
+                    min: today,
+                  },
+                  {
+                    label: "Reason (optional)",
+                    type: "text",
+                    val: newTimeOffReason,
+                    set: setNewTimeOffReason,
+                    placeholder: "Vacation, personal, etc.",
+                  },
+                ].map(({ label, type, val, set, min, placeholder }) => (
+                  <div key={label}>
+                    <label
+                      style={{
+                        ...sf,
+                        fontSize: 6,
+                        letterSpacing: "0.3em",
+                        color: T.muted,
+                        textTransform: "uppercase",
+                        display: "block",
+                        marginBottom: 8,
+                      }}
+                    >
+                      {label}
+                    </label>
+                    <input
+                      type={type}
+                      value={val}
+                      min={min}
+                      onChange={(e) => set(e.target.value)}
+                      placeholder={placeholder}
+                      style={{
+                        width: "100%",
+                        background: T.bg,
+                        border: `1px solid ${T.border}`,
+                        padding: "11px 12px",
+                        color: "white",
+                        fontSize: type === "date" ? 14 : 16,
+                        outline: "none",
+                        ...mono,
+                      }}
+                      onFocus={(e) => (e.target.style.borderColor = T.amber)}
+                      onBlur={(e) => (e.target.style.borderColor = T.border)}
+                    />
+                  </div>
+                ))}
               </div>
               <button
                 onClick={addTimeOff}
@@ -5182,7 +3551,7 @@ export default function BarberDashboard() {
                 style={{
                   padding: "11px 24px",
                   background:
-                    !newTimeOffDate || addingTimeOff ? T.deepDim : T.amber,
+                    !newTimeOffDate || addingTimeOff ? T.deep : T.amber,
                   color: !newTimeOffDate || addingTimeOff ? T.dim : "black",
                   ...sf,
                   fontSize: 7,
@@ -5201,29 +3570,6 @@ export default function BarberDashboard() {
               </button>
             </div>
 
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 12,
-                marginBottom: 12,
-              }}
-            >
-              <p
-                style={{
-                  ...sf,
-                  fontSize: 6,
-                  letterSpacing: "0.4em",
-                  color: T.dim,
-                  textTransform: "uppercase",
-                  margin: 0,
-                }}
-              >
-                Upcoming
-              </p>
-              <div style={{ flex: 1, height: 1, background: T.border }} />
-            </div>
-
             {timeOff.length === 0 ? (
               <div
                 style={{
@@ -5235,13 +3581,12 @@ export default function BarberDashboard() {
                 <p
                   style={{
                     ...sf,
-                    fontSize: "1.2rem",
-                    fontWeight: 900,
-                    color: "rgba(255,255,255,0.04)",
+                    fontSize: 9,
+                    color: "rgba(255,255,255,0.08)",
                     textTransform: "uppercase",
                   }}
                 >
-                  None Scheduled
+                  No dates blocked
                 </p>
               </div>
             ) : (
@@ -5253,7 +3598,7 @@ export default function BarberDashboard() {
                       display: "flex",
                       justifyContent: "space-between",
                       alignItems: "center",
-                      padding: "14px 16px",
+                      padding: "14px 18px",
                       background: T.surface,
                       border: `1px solid ${T.border}`,
                       flexWrap: "wrap",
@@ -5264,7 +3609,7 @@ export default function BarberDashboard() {
                       <p
                         style={{
                           ...sf,
-                          fontSize: 8,
+                          fontSize: 9,
                           fontWeight: 700,
                           textTransform: "uppercase",
                           marginBottom: 2,
@@ -5293,16 +3638,15 @@ export default function BarberDashboard() {
                         fontSize: 6,
                         letterSpacing: "0.15em",
                         textTransform: "uppercase",
-                        padding: "6px 12px",
+                        padding: "7px 14px",
                         background: "transparent",
-                        border: "1px solid rgba(248,113,113,0.25)",
-                        color: "#f87171",
+                        border: `1px solid ${T.redBorder}`,
+                        color: T.red,
                         cursor: "pointer",
                         transition: "all 0.2s",
                       }}
                       onMouseEnter={(e) =>
-                        (e.currentTarget.style.background =
-                          "rgba(248,113,113,0.08)")
+                        (e.currentTarget.style.background = T.redDim)
                       }
                       onMouseLeave={(e) =>
                         (e.currentTarget.style.background = "transparent")
@@ -5316,1191 +3660,7 @@ export default function BarberDashboard() {
             )}
           </div>
         )}
-
-        {/* ── WALK-IN TAB ── */}
-        {activeTab === "walkin" && (
-          <div className="bd-enter">
-            <p
-              style={{
-                ...mono,
-                color: T.muted,
-                fontSize: 12,
-                marginBottom: 24,
-                lineHeight: 1.7,
-              }}
-            >
-              Book a client on the spot — no account needed. Walk-ins appear on
-              your schedule instantly.
-            </p>
-
-            {/* Reminder button */}
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "flex-end",
-                marginBottom: 20,
-              }}
-            >
-              <button
-                onClick={handleSendReminders}
-                disabled={sendingReminders}
-                style={{
-                  ...sf,
-                  fontSize: 7,
-                  letterSpacing: "0.15em",
-                  textTransform: "uppercase",
-                  padding: "9px 18px",
-                  background: sendingReminders ? T.deepDim : T.amberDim,
-                  color: sendingReminders ? T.dim : T.amber,
-                  border: `1px solid ${T.amberBorder}`,
-                  cursor: sendingReminders ? "not-allowed" : "pointer",
-                  transition: "all 0.2s",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 8,
-                }}
-                onMouseEnter={(e) => {
-                  if (!sendingReminders) {
-                    e.currentTarget.style.background = T.amber;
-                    e.currentTarget.style.color = "black";
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  if (!sendingReminders) {
-                    e.currentTarget.style.background = T.amberDim;
-                    e.currentTarget.style.color = T.amber;
-                  }
-                }}
-              >
-                {sendingReminders
-                  ? "Sending..."
-                  : "📧 Send Tomorrow's Reminders"}
-              </button>
-            </div>
-
-            <div
-              style={{
-                background: T.surface,
-                border: `1px solid ${T.border}`,
-                padding: "22px 20px",
-              }}
-            >
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 10,
-                  marginBottom: 20,
-                }}
-              >
-                <Scissors size={14} />
-                <p
-                  style={{
-                    ...sf,
-                    fontSize: 7,
-                    letterSpacing: "0.3em",
-                    color: T.muted,
-                    textTransform: "uppercase",
-                    margin: 0,
-                  }}
-                >
-                  New Walk-In
-                </p>
-              </div>
-
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr",
-                  gap: 14,
-                  marginBottom: 14,
-                }}
-              >
-                {/* Client name */}
-                <div>
-                  <label
-                    style={{
-                      ...sf,
-                      fontSize: 6,
-                      letterSpacing: "0.3em",
-                      color: T.muted,
-                      textTransform: "uppercase",
-                      display: "block",
-                      marginBottom: 8,
-                    }}
-                  >
-                    Client Name *
-                  </label>
-                  <input
-                    value={wiClientName}
-                    onChange={(e) => setWiClientName(e.target.value)}
-                    placeholder="First Last"
-                    style={{
-                      width: "100%",
-                      background: T.bg,
-                      border: `1px solid ${T.border}`,
-                      padding: "11px 12px",
-                      color: "white",
-                      fontSize: 15,
-                      outline: "none",
-                      ...mono,
-                    }}
-                    onFocus={(e) => (e.target.style.borderColor = T.amber)}
-                    onBlur={(e) => (e.target.style.borderColor = T.border)}
-                  />
-                </div>
-
-                {/* Service */}
-                <div>
-                  <label
-                    style={{
-                      ...sf,
-                      fontSize: 6,
-                      letterSpacing: "0.3em",
-                      color: T.muted,
-                      textTransform: "uppercase",
-                      display: "block",
-                      marginBottom: 8,
-                    }}
-                  >
-                    Service *
-                  </label>
-                  <select
-                    value={wiService}
-                    onChange={(e) => setWiService(e.target.value)}
-                    style={{
-                      width: "100%",
-                      background: T.bg,
-                      border: `1px solid ${T.border}`,
-                      padding: "11px 12px",
-                      color: wiService ? "white" : T.muted,
-                      fontSize: 15,
-                      outline: "none",
-                      ...mono,
-                      cursor: "pointer",
-                    }}
-                    onFocus={(e) => (e.target.style.borderColor = T.amber)}
-                    onBlur={(e) => (e.target.style.borderColor = T.border)}
-                  >
-                    <option value="">Select service...</option>
-                    {services.map((s) => (
-                      <option key={s.id} value={s.id}>
-                        {s.name} — ${s.price}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                {/* Date */}
-                <div>
-                  <label
-                    style={{
-                      ...sf,
-                      fontSize: 6,
-                      letterSpacing: "0.3em",
-                      color: T.muted,
-                      textTransform: "uppercase",
-                      display: "block",
-                      marginBottom: 8,
-                    }}
-                  >
-                    Date *
-                  </label>
-                  <input
-                    type="date"
-                    value={wiDate}
-                    onChange={(e) => setWiDate(e.target.value)}
-                    style={{
-                      width: "100%",
-                      background: T.bg,
-                      border: `1px solid ${T.border}`,
-                      padding: "11px 12px",
-                      color: "white",
-                      fontSize: 14,
-                      outline: "none",
-                      ...mono,
-                    }}
-                    onFocus={(e) => (e.target.style.borderColor = T.amber)}
-                    onBlur={(e) => (e.target.style.borderColor = T.border)}
-                  />
-                </div>
-
-                {/* Time */}
-                <div>
-                  <label
-                    style={{
-                      ...sf,
-                      fontSize: 6,
-                      letterSpacing: "0.3em",
-                      color: T.muted,
-                      textTransform: "uppercase",
-                      display: "block",
-                      marginBottom: 8,
-                    }}
-                  >
-                    Time *
-                  </label>
-                  <div
-                    style={{
-                      display: "grid",
-                      gridTemplateColumns: "repeat(4,1fr)",
-                      gap: 4,
-                    }}
-                  >
-                    {HOURS.map((h) => {
-                      const [hr, mn] = h.split(":");
-                      const hour = parseInt(hr);
-                      const label = `${hour % 12 || 12}:${mn}${hour >= 12 ? "p" : "a"}`;
-                      const full = `${hour % 12 || 12}:${mn} ${hour >= 12 ? "PM" : "AM"}`;
-                      return (
-                        <button
-                          key={h}
-                          onClick={() => setWiTime(full)}
-                          style={{
-                            padding: "6px 2px",
-                            ...sf,
-                            fontSize: 6,
-                            letterSpacing: "0.03em",
-                            textTransform: "uppercase",
-                            border: `1px solid ${wiTime === full ? T.amber : T.border}`,
-                            background:
-                              wiTime === full ? T.amberDim : "transparent",
-                            color: wiTime === full ? T.amber : T.muted,
-                            cursor: "pointer",
-                            transition: "all 0.15s",
-                          }}
-                        >
-                          {label}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              </div>
-
-              {/* Payment + Notes */}
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: isMobile ? "1fr" : "1fr 2fr",
-                  gap: 14,
-                  marginBottom: 18,
-                }}
-              >
-                <div>
-                  <label
-                    style={{
-                      ...sf,
-                      fontSize: 6,
-                      letterSpacing: "0.3em",
-                      color: T.muted,
-                      textTransform: "uppercase",
-                      display: "block",
-                      marginBottom: 8,
-                    }}
-                  >
-                    Payment
-                  </label>
-                  <div style={{ display: "flex", gap: 6 }}>
-                    {[
-                      { val: "shop", label: "In Shop" },
-                      { val: "online", label: "Online" },
-                    ].map(({ val, label }) => (
-                      <button
-                        key={val}
-                        onClick={() => setWiPayment(val)}
-                        style={{
-                          flex: 1,
-                          padding: "9px",
-                          ...sf,
-                          fontSize: 6,
-                          textTransform: "uppercase",
-                          letterSpacing: "0.1em",
-                          background:
-                            wiPayment === val ? T.amber : "transparent",
-                          color: wiPayment === val ? "black" : T.muted,
-                          border: `1px solid ${wiPayment === val ? T.amber : T.border}`,
-                          cursor: "pointer",
-                          transition: "all 0.2s",
-                        }}
-                      >
-                        {label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-                <div>
-                  <label
-                    style={{
-                      ...sf,
-                      fontSize: 6,
-                      letterSpacing: "0.3em",
-                      color: T.muted,
-                      textTransform: "uppercase",
-                      display: "block",
-                      marginBottom: 8,
-                    }}
-                  >
-                    Notes (optional)
-                  </label>
-                  <input
-                    value={wiNotes}
-                    onChange={(e) => setWiNotes(e.target.value)}
-                    placeholder="Any notes..."
-                    style={{
-                      width: "100%",
-                      background: T.bg,
-                      border: `1px solid ${T.border}`,
-                      padding: "11px 12px",
-                      color: "white",
-                      fontSize: 15,
-                      outline: "none",
-                      ...mono,
-                    }}
-                    onFocus={(e) => (e.target.style.borderColor = T.amber)}
-                    onBlur={(e) => (e.target.style.borderColor = T.border)}
-                  />
-                </div>
-              </div>
-
-              <button
-                onClick={handleWalkIn}
-                disabled={wiSubmitting}
-                style={{
-                  padding: "13px 28px",
-                  background: wiSubmitting ? T.deepDim : T.amber,
-                  color: wiSubmitting ? T.dim : "black",
-                  ...sf,
-                  fontSize: 8,
-                  fontWeight: 700,
-                  textTransform: "uppercase",
-                  letterSpacing: "0.2em",
-                  border: "none",
-                  cursor: wiSubmitting ? "not-allowed" : "pointer",
-                  transition: "all 0.25s",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 8,
-                }}
-                onMouseEnter={(e) => {
-                  if (!wiSubmitting) e.currentTarget.style.background = "white";
-                }}
-                onMouseLeave={(e) => {
-                  if (!wiSubmitting) e.currentTarget.style.background = T.amber;
-                }}
-              >
-                {wiSubmitting ? "Booking..." : "Book Walk-In →"}
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* ── WAITLIST TAB ── */}
-        {activeTab === "waitlist" && (
-          <div className="bd-enter">
-            <p
-              style={{
-                ...mono,
-                color: T.muted,
-                fontSize: 12,
-                marginBottom: 24,
-                lineHeight: 1.7,
-              }}
-            >
-              Track clients who want a slot that's fully booked. Notify them
-              when something opens up.
-            </p>
-
-            {/* Add to waitlist */}
-            <div
-              style={{
-                background: T.surface,
-                border: `1px solid ${T.border}`,
-                padding: "22px 20px",
-                marginBottom: 28,
-              }}
-            >
-              <p
-                style={{
-                  ...sf,
-                  fontSize: 7,
-                  letterSpacing: "0.3em",
-                  color: T.muted,
-                  textTransform: "uppercase",
-                  marginBottom: 18,
-                }}
-              >
-                Add to Waitlist
-              </p>
-
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr",
-                  gap: 12,
-                  marginBottom: 12,
-                }}
-              >
-                {[
-                  {
-                    label: "Client Name *",
-                    val: wlName,
-                    set: setWlName,
-                    ph: "First Last",
-                  },
-                  {
-                    label: "Phone",
-                    val: wlPhone,
-                    set: setWlPhone,
-                    ph: "601-555-0100",
-                  },
-                  {
-                    label: "Email",
-                    val: wlEmail,
-                    set: setWlEmail,
-                    ph: "client@email.com",
-                  },
-                ].map(({ label, val, set, ph }) => (
-                  <div key={label}>
-                    <label
-                      style={{
-                        ...sf,
-                        fontSize: 6,
-                        letterSpacing: "0.3em",
-                        color: T.muted,
-                        textTransform: "uppercase",
-                        display: "block",
-                        marginBottom: 8,
-                      }}
-                    >
-                      {label}
-                    </label>
-                    <input
-                      value={val}
-                      onChange={(e) => set(e.target.value)}
-                      placeholder={ph}
-                      style={{
-                        width: "100%",
-                        background: T.bg,
-                        border: `1px solid ${T.border}`,
-                        padding: "11px 12px",
-                        color: "white",
-                        fontSize: 15,
-                        outline: "none",
-                        ...mono,
-                      }}
-                      onFocus={(e) => (e.target.style.borderColor = T.amber)}
-                      onBlur={(e) => (e.target.style.borderColor = T.border)}
-                    />
-                  </div>
-                ))}
-
-                <div>
-                  <label
-                    style={{
-                      ...sf,
-                      fontSize: 6,
-                      letterSpacing: "0.3em",
-                      color: T.muted,
-                      textTransform: "uppercase",
-                      display: "block",
-                      marginBottom: 8,
-                    }}
-                  >
-                    Preferred Date *
-                  </label>
-                  <input
-                    type="date"
-                    value={wlDate}
-                    onChange={(e) => setWlDate(e.target.value)}
-                    style={{
-                      width: "100%",
-                      background: T.bg,
-                      border: `1px solid ${T.border}`,
-                      padding: "11px 12px",
-                      color: "white",
-                      fontSize: 14,
-                      outline: "none",
-                      ...mono,
-                    }}
-                    onFocus={(e) => (e.target.style.borderColor = T.amber)}
-                    onBlur={(e) => (e.target.style.borderColor = T.border)}
-                  />
-                </div>
-
-                <div>
-                  <label
-                    style={{
-                      ...sf,
-                      fontSize: 6,
-                      letterSpacing: "0.3em",
-                      color: T.muted,
-                      textTransform: "uppercase",
-                      display: "block",
-                      marginBottom: 8,
-                    }}
-                  >
-                    Service
-                  </label>
-                  <select
-                    value={wlService}
-                    onChange={(e) => setWlService(e.target.value)}
-                    style={{
-                      width: "100%",
-                      background: T.bg,
-                      border: `1px solid ${T.border}`,
-                      padding: "11px 12px",
-                      color: wlService ? "white" : T.muted,
-                      fontSize: 15,
-                      outline: "none",
-                      ...mono,
-                      cursor: "pointer",
-                    }}
-                    onFocus={(e) => (e.target.style.borderColor = T.amber)}
-                    onBlur={(e) => (e.target.style.borderColor = T.border)}
-                  >
-                    <option value="">Any service</option>
-                    {services.map((s) => (
-                      <option key={s.id} value={s.id}>
-                        {s.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              <div style={{ marginBottom: 16 }}>
-                <label
-                  style={{
-                    ...sf,
-                    fontSize: 6,
-                    letterSpacing: "0.3em",
-                    color: T.muted,
-                    textTransform: "uppercase",
-                    display: "block",
-                    marginBottom: 8,
-                  }}
-                >
-                  Notes
-                </label>
-                <input
-                  value={wlNotes}
-                  onChange={(e) => setWlNotes(e.target.value)}
-                  placeholder="Any preferences or notes..."
-                  style={{
-                    width: "100%",
-                    background: T.bg,
-                    border: `1px solid ${T.border}`,
-                    padding: "11px 12px",
-                    color: "white",
-                    fontSize: 15,
-                    outline: "none",
-                    ...mono,
-                  }}
-                  onFocus={(e) => (e.target.style.borderColor = T.amber)}
-                  onBlur={(e) => (e.target.style.borderColor = T.border)}
-                />
-              </div>
-
-              <button
-                onClick={handleAddWaitlist}
-                disabled={wlSubmitting}
-                style={{
-                  padding: "13px 28px",
-                  background: wlSubmitting ? T.deepDim : T.amber,
-                  color: wlSubmitting ? T.dim : "black",
-                  ...sf,
-                  fontSize: 8,
-                  fontWeight: 700,
-                  textTransform: "uppercase",
-                  letterSpacing: "0.2em",
-                  border: "none",
-                  cursor: wlSubmitting ? "not-allowed" : "pointer",
-                  transition: "all 0.25s",
-                }}
-                onMouseEnter={(e) => {
-                  if (!wlSubmitting) e.currentTarget.style.background = "white";
-                }}
-                onMouseLeave={(e) => {
-                  if (!wlSubmitting) e.currentTarget.style.background = T.amber;
-                }}
-              >
-                {wlSubmitting ? "Adding..." : "Add to Waitlist →"}
-              </button>
-            </div>
-
-            {/* Waitlist entries */}
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 12,
-                marginBottom: 14,
-              }}
-            >
-              <p
-                style={{
-                  ...sf,
-                  fontSize: 6,
-                  letterSpacing: "0.4em",
-                  color: T.dim,
-                  textTransform: "uppercase",
-                  margin: 0,
-                }}
-              >
-                Waitlist ({waitlist.length})
-              </p>
-              <div style={{ flex: 1, height: 1, background: T.border }} />
-            </div>
-
-            {waitlist.length === 0 ? (
-              <div
-                style={{
-                  padding: "40px 0",
-                  textAlign: "center",
-                  border: `1px solid ${T.border}`,
-                }}
-              >
-                <p
-                  style={{
-                    ...sf,
-                    fontSize: "1.2rem",
-                    fontWeight: 900,
-                    color: "rgba(255,255,255,0.04)",
-                    textTransform: "uppercase",
-                  }}
-                >
-                  Empty
-                </p>
-                <p
-                  style={{ ...mono, color: T.dim, fontSize: 11, marginTop: 8 }}
-                >
-                  No one on the waitlist.
-                </p>
-              </div>
-            ) : (
-              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                {waitlist.map((w) => (
-                  <div
-                    key={w.id}
-                    style={{
-                      background: T.surface,
-                      border: `1px solid ${w.notified ? T.dim : T.border}`,
-                      padding: "14px 16px",
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "flex-start",
-                      gap: 12,
-                      flexWrap: "wrap",
-                      opacity: w.notified ? 0.5 : 1,
-                      transition: "all 0.2s",
-                    }}
-                  >
-                    <div>
-                      <div
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: 8,
-                          marginBottom: 4,
-                        }}
-                      >
-                        <p
-                          style={{
-                            ...sf,
-                            fontSize: 9,
-                            fontWeight: 700,
-                            textTransform: "uppercase",
-                            color: "white",
-                            margin: 0,
-                          }}
-                        >
-                          {w.client_name}
-                        </p>
-                        {w.notified && (
-                          <span
-                            style={{
-                              ...sf,
-                              fontSize: 6,
-                              color: "#4ade80",
-                              letterSpacing: "0.1em",
-                              textTransform: "uppercase",
-                              padding: "2px 6px",
-                              background: "rgba(74,222,128,0.08)",
-                              border: "1px solid rgba(74,222,128,0.2)",
-                            }}
-                          >
-                            Notified
-                          </span>
-                        )}
-                      </div>
-                      <div
-                        style={{ display: "flex", gap: 10, flexWrap: "wrap" }}
-                      >
-                        {w.service && (
-                          <span
-                            style={{ ...mono, fontSize: 10, color: "#a1a1aa" }}
-                          >
-                            {w.service}
-                          </span>
-                        )}
-                        <span style={{ ...mono, fontSize: 10, color: T.amber }}>
-                          {new Date(w.date + "T00:00:00").toLocaleDateString(
-                            "en-US",
-                            {
-                              weekday: "short",
-                              month: "short",
-                              day: "numeric",
-                            },
-                          )}
-                        </span>
-                        {w.client_phone && (
-                          <span
-                            style={{ ...mono, fontSize: 10, color: T.muted }}
-                          >
-                            {w.client_phone}
-                          </span>
-                        )}
-                        {w.client_email && (
-                          <span
-                            style={{ ...mono, fontSize: 10, color: T.muted }}
-                          >
-                            {w.client_email}
-                          </span>
-                        )}
-                      </div>
-                      {w.notes && (
-                        <p
-                          style={{
-                            ...mono,
-                            fontSize: 10,
-                            color: T.dim,
-                            marginTop: 4,
-                          }}
-                        >
-                          {w.notes}
-                        </p>
-                      )}
-                    </div>
-                    <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
-                      {!w.notified && (
-                        <button
-                          onClick={() => markWaitlistNotified(w.id)}
-                          style={{
-                            ...sf,
-                            fontSize: 6,
-                            letterSpacing: "0.12em",
-                            textTransform: "uppercase",
-                            padding: "6px 10px",
-                            background: "rgba(74,222,128,0.08)",
-                            border: "1px solid rgba(74,222,128,0.25)",
-                            color: "#4ade80",
-                            cursor: "pointer",
-                            transition: "all 0.2s",
-                          }}
-                          onMouseEnter={(e) =>
-                            (e.currentTarget.style.background =
-                              "rgba(74,222,128,0.15)")
-                          }
-                          onMouseLeave={(e) =>
-                            (e.currentTarget.style.background =
-                              "rgba(74,222,128,0.08)")
-                          }
-                        >
-                          ✓ Notified
-                        </button>
-                      )}
-                      <button
-                        onClick={() => removeWaitlist(w.id)}
-                        style={{
-                          ...sf,
-                          fontSize: 6,
-                          letterSpacing: "0.12em",
-                          textTransform: "uppercase",
-                          padding: "6px 10px",
-                          background: "transparent",
-                          border: "1px solid rgba(248,113,113,0.2)",
-                          color: "#f87171",
-                          cursor: "pointer",
-                          transition: "all 0.2s",
-                        }}
-                        onMouseEnter={(e) =>
-                          (e.currentTarget.style.background =
-                            "rgba(248,113,113,0.08)")
-                        }
-                        onMouseLeave={(e) =>
-                          (e.currentTarget.style.background = "transparent")
-                        }
-                      >
-                        Remove
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
       </div>
-
-      {/* ── NOTES MODAL ── */}
-      {notesAppt && (
-        <div
-          style={{
-            position: "fixed",
-            inset: 0,
-            zIndex: 300,
-            background: "rgba(4,4,4,0.95)",
-            backdropFilter: "blur(12px)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            padding: 24,
-          }}
-        >
-          <div
-            style={{
-              width: "100%",
-              maxWidth: 440,
-              background: "#060606",
-              border: `1px solid ${T.border}`,
-              padding: "24px 22px",
-            }}
-          >
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 12,
-                marginBottom: 20,
-              }}
-            >
-              <Scissors size={16} />
-              <div>
-                <p
-                  style={{
-                    ...sf,
-                    fontSize: 6,
-                    letterSpacing: "0.4em",
-                    color: T.muted,
-                    textTransform: "uppercase",
-                    margin: 0,
-                  }}
-                >
-                  Barber Notes
-                </p>
-                <h2
-                  style={{
-                    ...sf,
-                    fontSize: 14,
-                    fontWeight: 900,
-                    textTransform: "uppercase",
-                    color: "white",
-                    margin: 0,
-                  }}
-                >
-                  {notesAppt.client}
-                  <span style={{ color: T.amber }}>_</span>
-                </h2>
-              </div>
-            </div>
-            <p
-              style={{
-                ...mono,
-                fontSize: 11,
-                color: T.muted,
-                marginBottom: 12,
-              }}
-            >
-              {notesAppt.service} · {fmtTime(notesAppt.time)} — private notes,
-              not visible to the client
-            </p>
-            <textarea
-              value={notesText}
-              onChange={(e) => setNotesText(e.target.value)}
-              placeholder="Hair texture, preferred length, color notes, allergies..."
-              rows={5}
-              style={{
-                width: "100%",
-                background: T.bg,
-                border: `1px solid ${T.border}`,
-                padding: "12px 14px",
-                color: "white",
-                fontSize: 14,
-                outline: "none",
-                ...mono,
-                resize: "vertical",
-                lineHeight: 1.6,
-              }}
-              onFocus={(e) => (e.target.style.borderColor = T.amber)}
-              onBlur={(e) => (e.target.style.borderColor = T.border)}
-            />
-            <div style={{ display: "flex", gap: 10, marginTop: 14 }}>
-              <button
-                onClick={() => setNotesAppt(null)}
-                style={{
-                  flex: 1,
-                  padding: "12px",
-                  background: "transparent",
-                  border: `1px solid ${T.border}`,
-                  color: T.muted,
-                  ...sf,
-                  fontSize: 7,
-                  textTransform: "uppercase",
-                  letterSpacing: "0.15em",
-                  cursor: "pointer",
-                  transition: "all 0.2s",
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.borderColor = "rgba(255,255,255,0.3)";
-                  e.currentTarget.style.color = "white";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.borderColor = T.border;
-                  e.currentTarget.style.color = T.muted;
-                }}
-              >
-                Cancel
-              </button>
-              <button
-                onClick={saveNotes}
-                disabled={savingNotes}
-                style={{
-                  flex: 2,
-                  padding: "12px",
-                  background: savingNotes ? T.deepDim : T.amber,
-                  color: savingNotes ? T.dim : "black",
-                  ...sf,
-                  fontSize: 7,
-                  fontWeight: 700,
-                  textTransform: "uppercase",
-                  letterSpacing: "0.2em",
-                  border: "none",
-                  cursor: savingNotes ? "not-allowed" : "pointer",
-                  transition: "all 0.25s",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  gap: 8,
-                }}
-              >
-                {savingNotes ? (
-                  <>
-                    <span
-                      style={{
-                        width: 11,
-                        height: 11,
-                        border: "2px solid #3f3f46",
-                        borderTopColor: "#71717a",
-                        borderRadius: "50%",
-                        display: "inline-block",
-                        animation: "spin 0.7s linear infinite",
-                      }}
-                    />
-                    Saving...
-                  </>
-                ) : (
-                  "Save Notes →"
-                )}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Reschedule modal */}
-      {rescheduleAppt && (
-        <RescheduleModal
-          appt={rescheduleAppt}
-          onClose={() => setRescheduleAppt(null)}
-          onDone={handleRescheduleDone}
-        />
-      )}
-
-      {/* Cancel modal */}
-      {cancelTarget && (
-        <div
-          style={{
-            position: "fixed",
-            inset: 0,
-            zIndex: 300,
-            background: "rgba(4,4,4,0.95)",
-            backdropFilter: "blur(12px)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            padding: 24,
-          }}
-        >
-          <div
-            style={{
-              width: "100%",
-              maxWidth: 380,
-              background: "#060606",
-              border: "1px solid rgba(248,113,113,0.2)",
-              padding: "24px 22px",
-            }}
-          >
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 12,
-                marginBottom: 16,
-              }}
-            >
-              <div
-                style={{
-                  width: 36,
-                  height: 36,
-                  borderRadius: "50%",
-                  background: "rgba(248,113,113,0.08)",
-                  border: "1px solid rgba(248,113,113,0.2)",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  flexShrink: 0,
-                }}
-              >
-                <svg
-                  width="16"
-                  height="16"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="#f87171"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
-                  <line x1="12" y1="9" x2="12" y2="13" />
-                  <line x1="12" y1="17" x2="12.01" y2="17" />
-                </svg>
-              </div>
-              <div>
-                <p
-                  style={{
-                    ...sf,
-                    fontSize: 6,
-                    color: T.muted,
-                    letterSpacing: "0.4em",
-                    textTransform: "uppercase",
-                    margin: 0,
-                  }}
-                >
-                  Cancel Appointment
-                </p>
-                <h2
-                  style={{
-                    ...sf,
-                    fontSize: 14,
-                    fontWeight: 900,
-                    textTransform: "uppercase",
-                    color: "white",
-                    margin: 0,
-                  }}
-                >
-                  Confirm<span style={{ color: "#f87171" }}>?</span>
-                </h2>
-              </div>
-            </div>
-            <div
-              style={{
-                padding: "11px 14px",
-                background: "rgba(248,113,113,0.04)",
-                border: "1px solid rgba(248,113,113,0.1)",
-                marginBottom: 16,
-              }}
-            >
-              <p
-                style={{
-                  ...mono,
-                  fontSize: 12,
-                  color: "#a1a1aa",
-                  lineHeight: 1.7,
-                  margin: 0,
-                }}
-              >
-                <span style={{ color: "white" }}>{cancelTarget.client}</span>
-                <br />
-                {cancelTarget.service} ·{" "}
-                <span style={{ color: "#f87171" }}>
-                  {fmtTime(cancelTarget.time)}
-                </span>
-              </p>
-            </div>
-            <div style={{ display: "flex", gap: 8 }}>
-              <button
-                onClick={() => setCancelTarget(null)}
-                style={{
-                  flex: 1,
-                  padding: "11px",
-                  background: "transparent",
-                  border: `1px solid ${T.border}`,
-                  color: T.muted,
-                  ...sf,
-                  fontSize: 7,
-                  textTransform: "uppercase",
-                  letterSpacing: "0.15em",
-                  cursor: "pointer",
-                  transition: "all 0.2s",
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.borderColor = "rgba(255,255,255,0.3)";
-                  e.currentTarget.style.color = "white";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.borderColor = T.border;
-                  e.currentTarget.style.color = T.muted;
-                }}
-              >
-                Keep It
-              </button>
-              <button
-                onClick={handleCancel}
-                disabled={cancelling}
-                style={{
-                  flex: 2,
-                  padding: "11px",
-                  background: cancelling ? T.deepDim : "#f87171",
-                  color: cancelling ? T.dim : "black",
-                  ...sf,
-                  fontSize: 7,
-                  fontWeight: 700,
-                  textTransform: "uppercase",
-                  letterSpacing: "0.15em",
-                  border: "none",
-                  cursor: cancelling ? "not-allowed" : "pointer",
-                  transition: "all 0.25s",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  gap: 8,
-                }}
-              >
-                {cancelling ? (
-                  <>
-                    <span
-                      style={{
-                        width: 10,
-                        height: 10,
-                        border: "2px solid #3f3f46",
-                        borderTopColor: "#71717a",
-                        borderRadius: "50%",
-                        display: "inline-block",
-                        animation: "spin 0.7s linear infinite",
-                      }}
-                    />
-                    Cancelling...
-                  </>
-                ) : (
-                  "Yes, Cancel It"
-                )}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </>
   );
 }
