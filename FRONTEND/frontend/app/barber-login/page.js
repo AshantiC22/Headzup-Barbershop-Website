@@ -327,15 +327,17 @@ export default function BarberLoginPage() {
     }
 
     setLoading(true);
+    let registerData = null;
     try {
       // Step 1 — create the barber account
-      await API.post("barber/register/", {
+      const res = await API.post("barber/register/", {
         full_name: regName.trim(),
         username: regUser.trim(),
         email: regEmail.trim(),
         password: regPass,
         invite_code: regInvite.trim(),
       });
+      registerData = res.data;
     } catch (e) {
       const d = e.response?.data || {};
       const msg = (v) =>
@@ -357,19 +359,25 @@ export default function BarberLoginPage() {
       return;
     }
 
-    // Step 2 — log them in
+    // Step 2 — log in using tokens from register response OR fallback token call
     try {
-      const res = await API.post("token/", {
-        username: regUser.trim(),
-        password: regPass,
-      });
-      localStorage.setItem("access", res.data.access);
-      localStorage.setItem("refresh", res.data.refresh);
+      if (registerData?.access && registerData?.refresh) {
+        // Backend returned tokens directly — use them
+        localStorage.setItem("access", registerData.access);
+        localStorage.setItem("refresh", registerData.refresh);
+      } else {
+        // Fallback: request tokens separately
+        const tokenRes = await API.post("token/", {
+          username: regUser.trim(),
+          password: regPass,
+        });
+        localStorage.setItem("access", tokenRes.data.access);
+        localStorage.setItem("refresh", tokenRes.data.refresh);
+      }
       setSuccess("Account created! Taking you to your dashboard...");
-      setTimeout(() => router.replace("/barber-dashboard"), 1200);
+      setTimeout(() => router.replace("/barber-dashboard"), 300);
     } catch {
-      // Account was created but auto-login failed — send them to login manually
-      setSuccess("Account created! Please sign in with your new credentials.");
+      setSuccess("Account created! Please sign in with your credentials.");
       setTimeout(() => {
         setMode("login");
         setUser(regUser);

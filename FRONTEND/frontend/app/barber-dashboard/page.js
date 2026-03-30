@@ -1020,12 +1020,24 @@ export default function BarberDashboard() {
     return () => clearInterval(t);
   }, []);
 
-  /* load barber */
+  /* load barber + today's schedule + services in parallel */
   useEffect(() => {
     const load = async () => {
       try {
-        const res = await API.get("barber/me/");
-        setBarber(res.data);
+        const [barberRes, schedRes, svcRes] = await Promise.all([
+          API.get("barber/me/"),
+          API.get(`barber/schedule/?date=${todayISO()}`),
+          API.get("services/"),
+        ]);
+        setBarber(barberRes.data);
+        setSchedule(
+          Array.isArray(schedRes.data)
+            ? schedRes.data
+            : schedRes.data.results || [],
+        );
+        setServices(
+          Array.isArray(svcRes.data) ? svcRes.data : svcRes.data.results || [],
+        );
       } catch {
         router.replace("/barber-login");
       } finally {
@@ -1061,14 +1073,7 @@ export default function BarberDashboard() {
       .catch(() => {});
   }, []);
 
-  /* load services */
-  useEffect(() => {
-    API.get("services/")
-      .then((r) =>
-        setServices(Array.isArray(r.data) ? r.data : r.data.results || []),
-      )
-      .catch(() => {});
-  }, []);
+  /* services loaded on mount above */
 
   /* load availability */
   const loadAvailability = useCallback(async () => {
