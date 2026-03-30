@@ -668,6 +668,7 @@ function BookContent() {
         barber: selectedBarber.name,
         date: selectedDate,
         time: selectedTime,
+        payment: "shop",
       });
       router.push(`/booking-confirmed?${params.toString()}`);
     } catch (e) {
