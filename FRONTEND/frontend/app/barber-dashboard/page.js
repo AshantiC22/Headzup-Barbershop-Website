@@ -186,7 +186,7 @@ function StatCard({ label, value, accent, icon }) {
   return (
     <div
       style={{
-        padding: "18px 16px",
+        padding: "20px 16px",
         background: accent ? T.amberDim : T.surface,
         border: `1px solid ${accent ? T.amberBorder : T.border}`,
         position: "relative",
@@ -203,32 +203,33 @@ function StatCard({ label, value, accent, icon }) {
         e.currentTarget.style.background = accent ? T.amberDim : T.surface;
       }}
     >
-      {/* Corner accent */}
+      {/* Corner gradient */}
       <div
         style={{
           position: "absolute",
           top: 0,
           right: 0,
-          width: 40,
-          height: 40,
+          width: 50,
+          height: 50,
           background: accent
-            ? "linear-gradient(225deg, rgba(245,158,11,0.2), transparent)"
-            : "linear-gradient(225deg, rgba(255,255,255,0.03), transparent)",
+            ? "linear-gradient(225deg,rgba(245,158,11,0.25),transparent)"
+            : "linear-gradient(225deg,rgba(255,255,255,0.04),transparent)",
         }}
       />
+      {/* Label row */}
       <div
         style={{
           display: "flex",
           justifyContent: "space-between",
-          alignItems: "flex-start",
-          marginBottom: 10,
+          alignItems: "center",
+          marginBottom: 12,
         }}
       >
         <p
           style={{
             ...sf,
-            fontSize: 6,
-            letterSpacing: "0.35em",
+            fontSize: 5,
+            letterSpacing: "0.4em",
             color: accent ? T.amber : T.muted,
             textTransform: "uppercase",
             margin: 0,
@@ -236,19 +237,20 @@ function StatCard({ label, value, accent, icon }) {
         >
           {label}
         </p>
-        {icon && <span style={{ fontSize: 12, opacity: 0.5 }}>{icon}</span>}
+        {icon && <span style={{ fontSize: 14, opacity: 0.4 }}>{icon}</span>}
       </div>
+      {/* Value */}
       <p
         style={{
           ...sf,
-          fontSize: 26,
+          fontSize: 28,
           fontWeight: 900,
           color: accent ? T.amber : "white",
           lineHeight: 1,
           margin: 0,
         }}
       >
-        {value}
+        {value ?? "—"}
       </p>
     </div>
   );
@@ -1769,7 +1771,9 @@ export default function BarberDashboard() {
           alignItems: "center",
           justifyContent: "center",
           flexDirection: "column",
-          gap: 20,
+          gap: 24,
+          position: "relative",
+          overflow: "hidden",
         }}
       >
         <style jsx global>{`
@@ -1778,45 +1782,91 @@ export default function BarberDashboard() {
             margin: 0;
           }
           @keyframes spin {
-            from {
-              transform: rotate(0deg);
-            }
             to {
               transform: rotate(360deg);
             }
           }
-          @keyframes pulse {
-            0%,
-            100% {
-              opacity: 0.3;
-            }
-            50% {
+          @keyframes fadeIn {
+            to {
               opacity: 1;
             }
           }
+          @keyframes scandown {
+            from {
+              top: -1px;
+            }
+            to {
+              top: 100%;
+            }
+          }
         `}</style>
-        {/* Logo */}
-        <div style={{ textAlign: "center", marginBottom: 8 }}>
+        {/* Grid */}
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            backgroundImage:
+              "linear-gradient(rgba(255,255,255,0.014) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,0.014) 1px,transparent 1px)",
+            backgroundSize: "64px 64px",
+            pointerEvents: "none",
+          }}
+        />
+        {/* Scanline */}
+        <div
+          style={{
+            position: "absolute",
+            left: 0,
+            right: 0,
+            height: 1,
+            background:
+              "linear-gradient(to right,transparent,rgba(245,158,11,0.25),transparent)",
+            animation: "scandown 6s linear infinite",
+            pointerEvents: "none",
+          }}
+        />
+        {/* Amber glow */}
+        <div
+          style={{
+            position: "absolute",
+            top: "-20%",
+            left: "50%",
+            transform: "translateX(-50%)",
+            width: 600,
+            height: 400,
+            background:
+              "radial-gradient(ellipse,rgba(245,158,11,0.08) 0%,transparent 65%)",
+            pointerEvents: "none",
+          }}
+        />
+        {/* Content */}
+        <div
+          style={{
+            position: "relative",
+            zIndex: 1,
+            textAlign: "center",
+            opacity: 0,
+            animation: "fadeIn 0.5s ease 0.1s forwards",
+          }}
+        >
           <p
             style={{
-              fontFamily: "'Syncopate',sans-serif",
-              fontSize: 22,
+              ...sf,
+              fontSize: 24,
               fontWeight: 900,
-              letterSpacing: "-0.05em",
-              margin: 0,
+              letterSpacing: "-0.06em",
               textTransform: "uppercase",
+              marginBottom: 4,
             }}
           >
             HEADZ<span style={{ color: T.amber, fontStyle: "italic" }}>UP</span>
           </p>
           <p
             style={{
-              fontFamily: "'DM Mono',monospace",
-              fontSize: 9,
+              ...mono,
+              fontSize: 8,
               color: T.dim,
-              letterSpacing: "0.4em",
+              letterSpacing: "0.5em",
               textTransform: "uppercase",
-              marginTop: 6,
             }}
           >
             Barber Portal
@@ -1824,15 +1874,19 @@ export default function BarberDashboard() {
         </div>
         <div
           style={{
+            position: "relative",
+            zIndex: 1,
             width: 1,
-            height: 32,
-            background: `linear-gradient(to bottom, ${T.amber}, transparent)`,
+            height: 40,
+            background: `linear-gradient(to bottom,${T.amber},transparent)`,
           }}
         />
         <div
           style={{
-            width: 18,
-            height: 18,
+            position: "relative",
+            zIndex: 1,
+            width: 16,
+            height: 16,
             border: `1.5px solid rgba(245,158,11,0.2)`,
             borderTopColor: T.amber,
             borderRadius: "50%",
@@ -1990,17 +2044,7 @@ export default function BarberDashboard() {
         }}
       />
       {/* Grain */}
-      <div
-        style={{
-          position: "fixed",
-          inset: 0,
-          opacity: 0.028,
-          backgroundImage:
-            "url('https://grainy-gradients.vercel.app/noise.svg')",
-          pointerEvents: "none",
-          zIndex: 0,
-        }}
-      />
+      {/* grain overlay */}
       {/* Corner marks */}
       {[
         { top: 68, left: 16 },
@@ -2261,7 +2305,9 @@ export default function BarberDashboard() {
         <div
           className="bd-enter"
           style={{
-            marginBottom: 24,
+            marginBottom: 28,
+            paddingBottom: 28,
+            borderBottom: `1px solid ${T.border}`,
             display: "flex",
             justifyContent: "space-between",
             alignItems: "flex-end",
@@ -2272,12 +2318,12 @@ export default function BarberDashboard() {
           <div>
             <p
               style={{
-                ...sf,
-                fontSize: 6,
-                letterSpacing: "0.6em",
-                color: T.muted,
+                ...mono,
+                fontSize: 8,
+                color: T.amber,
+                letterSpacing: "0.5em",
                 textTransform: "uppercase",
-                marginBottom: 6,
+                marginBottom: 10,
               }}
             >
               Barber Portal
@@ -2285,43 +2331,42 @@ export default function BarberDashboard() {
             <h1
               style={{
                 ...sf,
-                fontSize: "clamp(1.4rem, 2.5vw, 2rem)",
+                fontSize: "clamp(1.6rem,3vw,2.4rem)",
                 fontWeight: 900,
                 textTransform: "uppercase",
-                lineHeight: 1,
+                lineHeight: 0.88,
+                letterSpacing: "-0.04em",
                 margin: 0,
               }}
             >
-              {isMobile ? barber.name : `Hey, `}
+              Hey,
+              <br />
               <span style={{ color: T.amber, fontStyle: "italic" }}>
-                {isMobile ? "_" : `${barber.name}_`}
+                {barber.name}_
               </span>
             </h1>
           </div>
-          {/* Animated scissors divider */}
           <div
             style={{
               display: "flex",
               alignItems: "center",
               gap: 10,
-              opacity: 0.25,
+              opacity: 0.3,
             }}
           >
             <div
               style={{
-                width: isMobile ? 36 : 96,
+                width: isMobile ? 28 : 80,
                 height: 1,
-                background: `linear-gradient(to right, transparent, ${T.amber})`,
+                background: `linear-gradient(to right,transparent,${T.amber})`,
               }}
             />
-            <div style={{ animation: "drift 5s ease-in-out infinite" }}>
-              <Scissors size={16} />
-            </div>
+            <Scissors size={14} />
             <div
               style={{
-                width: isMobile ? 36 : 96,
+                width: isMobile ? 28 : 80,
                 height: 1,
-                background: `linear-gradient(to left, transparent, ${T.amber})`,
+                background: `linear-gradient(to left,transparent,${T.amber})`,
               }}
             />
           </div>
@@ -3315,12 +3360,6 @@ export default function BarberDashboard() {
                     <textarea
                       key={selectedClient.id}
                       defaultValue={selectedClient.notes}
-                      onBlur={(e) => {
-                        if (e.target.value !== selectedClient.notes)
-                          updateClient(selectedClient.id, {
-                            notes: e.target.value,
-                          });
-                      }}
                       placeholder="Hair texture, preferred style, allergies, preferences..."
                       rows={3}
                       style={{

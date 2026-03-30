@@ -1,4 +1,5 @@
 "use client";
+// v3 — visual calendar, creative redesign
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
@@ -577,23 +578,27 @@ function BookContent() {
 
   // ── Entry animations ──
   useEffect(() => {
-    gsap.from(".book-enter", {
-      y: 50,
-      opacity: 0,
-      duration: 1.2,
-      stagger: 0.15,
-      ease: "expo.out",
-    });
+    try {
+      gsap.from(".book-enter", {
+        y: 50,
+        opacity: 0,
+        duration: 1.2,
+        stagger: 0.15,
+        ease: "expo.out",
+      });
+    } catch {}
   }, []);
 
   useEffect(() => {
-    gsap.from(".step-content > *", {
-      x: 16,
-      opacity: 0,
-      duration: 0.45,
-      stagger: 0.06,
-      ease: "expo.out",
-    });
+    try {
+      gsap.from(".step-content > *", {
+        x: 16,
+        opacity: 0,
+        duration: 0.45,
+        stagger: 0.06,
+        ease: "expo.out",
+      });
+    } catch {}
   }, [step]);
 
   // ── Load services + barbers ──
@@ -766,9 +771,9 @@ function BookContent() {
           inset: 0,
           zIndex: 1,
           pointerEvents: "none",
-          opacity: 0.03,
+          opacity: 0.04,
           backgroundImage:
-            "url('https://grainy-gradients.vercel.app/noise.svg')",
+            "url(\"data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E\")",
         }}
       />
       <div

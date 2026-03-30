@@ -437,17 +437,7 @@ export default function BarberLoginPage() {
       />
 
       {/* Grain */}
-      <div
-        style={{
-          position: "fixed",
-          inset: 0,
-          zIndex: 0,
-          pointerEvents: "none",
-          opacity: 0.04,
-          backgroundImage:
-            "url('https://grainy-gradients.vercel.app/noise.svg')",
-        }}
-      />
+      {/* grain overlay */}
 
       {/* Deep amber glow — top */}
       <div
