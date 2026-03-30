@@ -125,15 +125,10 @@ export default function PWAProvider({ children }) {
       .register("/sw.js")
       .then((registration) => {
         console.log("[PWA] SW registered:", registration.scope);
-
-        // Set up auto-update
         setupAutoUpdate(registration);
-
-        // Check for updates every 60 seconds (catches deploys while app is open)
         const updateInterval = setInterval(() => {
           registration.update().catch(() => {});
         }, 60 * 1000);
-
         return () => clearInterval(updateInterval);
       })
       .catch((err) => {
@@ -146,6 +141,15 @@ export default function PWAProvider({ children }) {
     // Subscribe to push if logged in
     const token = localStorage.getItem("access");
     if (token) subscribeToPush();
+
+    // ── Keep Railway awake — ping every 4 minutes to prevent cold starts ──
+    // Railway free tier sleeps after ~5 min of inactivity
+    const BASE = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
+    const ping = () =>
+      fetch(`${BASE}/api/token/`, { method: "OPTIONS" }).catch(() => {});
+    ping(); // immediate ping on load
+    const keepAlive = setInterval(ping, 4 * 60 * 1000); // every 4 minutes
+    return () => clearInterval(keepAlive);
   }, []);
 
   return children;
