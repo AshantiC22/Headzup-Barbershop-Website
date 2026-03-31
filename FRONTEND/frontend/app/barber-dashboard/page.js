@@ -1167,11 +1167,13 @@ export default function BarberDashboard() {
     }
     setWiLoading(true);
     try {
+      const now = new Date();
+      const currentTime = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}:00`;
       const payload = {
         client_name: wiName.trim(),
         service_id: wiSvc,
         date: today,
-        time: "00:00:00",
+        time: currentTime,
         notes: wiNotes,
         phone: wiPhone,
         is_walk_in: true,
@@ -2445,13 +2447,13 @@ export default function BarberDashboard() {
                         style={{ display: "flex", gap: 12, flexWrap: "wrap" }}
                       >
                         <span style={{ ...mono, fontSize: 10, color: T.muted }}>
-                          {w.service_name}
+                          {w.service_name || w.service}
                         </span>
-                        {w.phone && (
+                        {(w.phone || w.client_phone) && (
                           <span
                             style={{ ...mono, fontSize: 10, color: T.muted }}
                           >
-                            {w.phone}
+                            {w.phone || w.client_phone}
                           </span>
                         )}
                         {w.date && (
@@ -2898,22 +2900,26 @@ export default function BarberDashboard() {
                   {[
                     {
                       label: "Total Cuts",
-                      value: reports.total_appointments || 0,
+                      value:
+                        reports.summary?.total ||
+                        reports.total_appointments ||
+                        0,
                       amber: true,
                     },
                     {
                       label: "Completed",
-                      value: reports.completed || 0,
+                      value:
+                        reports.summary?.completed || reports.completed || 0,
                       amber: false,
                     },
                     {
                       label: "Online Rev",
-                      value: `$${reports.online_revenue || "0.00"}`,
+                      value: `$${reports.summary?.online_revenue || reports.online_revenue || "0.00"}`,
                       amber: false,
                     },
                     {
                       label: "No Shows",
-                      value: reports.no_shows || 0,
+                      value: reports.summary?.no_shows || reports.no_shows || 0,
                       amber: false,
                     },
                   ].map(({ label, value, amber }) => (
@@ -2997,12 +3003,12 @@ export default function BarberDashboard() {
                       }}
                     >
                       {reports.services.map((s, i) => {
-                        const pct =
-                          reports.services[0]?.count > 0
-                            ? Math.round(
-                                (s.count / reports.services[0].count) * 100,
-                              )
-                            : 0;
+                        const total =
+                          reports.services[0]?.bookings ||
+                          reports.services[0]?.count ||
+                          1;
+                        const cnt = s.bookings || s.count || 0;
+                        const pct = Math.round((cnt / total) * 100);
                         return (
                           <div key={i}>
                             <div
@@ -3019,7 +3025,7 @@ export default function BarberDashboard() {
                                   color: "#a1a1aa",
                                 }}
                               >
-                                {s.service_name || s.name}
+                                {s.name || s.service_name}
                               </span>
                               <span
                                 style={{
@@ -3029,7 +3035,7 @@ export default function BarberDashboard() {
                                   fontWeight: 900,
                                 }}
                               >
-                                {s.count}
+                                {cnt}
                               </span>
                             </div>
                             <div
@@ -3087,9 +3093,12 @@ export default function BarberDashboard() {
                     >
                       {reports.busiest_hours.map((h, i) => {
                         const maxC = Math.max(
-                          ...reports.busiest_hours.map((x) => x.count),
+                          ...reports.busiest_hours.map(
+                            (x) => x.bookings || x.count || 0,
+                          ),
                         );
-                        const pct = maxC > 0 ? (h.count / maxC) * 100 : 0;
+                        const cnt = h.bookings || h.count || 0;
+                        const pct = maxC > 0 ? (cnt / maxC) * 100 : 0;
                         return (
                           <div
                             key={i}
@@ -3106,9 +3115,8 @@ export default function BarberDashboard() {
                               style={{
                                 width: "100%",
                                 background: T.amber,
-                                opacity: 0.7 + pct / 300,
-                                height: `${pct}%`,
-                                minHeight: 4,
+                                opacity: 0.4 + pct / 150,
+                                height: `${Math.max(pct, 4)}%`,
                                 transition: "height 0.5s ease",
                               }}
                             />
@@ -3120,7 +3128,10 @@ export default function BarberDashboard() {
                                 whiteSpace: "nowrap",
                               }}
                             >
-                              {fmtTime(h.hour + ":00")}
+                              {h.label ||
+                                fmtTime(
+                                  String(h.hour || 0).padStart(2, "0") + ":00",
+                                )}
                             </span>
                           </div>
                         );
