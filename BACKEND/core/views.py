@@ -13,6 +13,20 @@ from rest_framework import status
 from rest_framework.views import APIView
 import logging
 from datetime import date as date_type, datetime, timedelta
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
+from rest_framework_simplejwt.views import TokenObtainPairView
+
+# ── Custom JWT — adds is_staff to token payload so frontend can read it instantly
+class HeadzUpTokenSerializer(TokenObtainPairSerializer):
+    @classmethod
+    def get_token(cls, user):
+        token = super().get_token(user)
+        token["is_staff"]  = user.is_staff
+        token["username"]  = user.username
+        return token
+
+class HeadzUpTokenView(TokenObtainPairView):
+    serializer_class = HeadzUpTokenSerializer
 import math
 import json
 
@@ -573,6 +587,9 @@ class BarberRegisterView(APIView):
             return Response(errors, status=status.HTTP_400_BAD_REQUEST)
 
         try:
+            from django.contrib.auth import authenticate
+            from rest_framework_simplejwt.tokens import RefreshToken
+
             # Create user with staff access
             user = User.objects.create_user(
                 username=username,
@@ -589,7 +606,14 @@ class BarberRegisterView(APIView):
                 bio="",
             )
 
-            return Response({"message": "Barber account created successfully."}, status=status.HTTP_201_CREATED)
+            # Return tokens directly — avoids second round-trip race condition
+            refresh = RefreshToken.for_user(user)
+            return Response({
+                "message": "Barber account created successfully.",
+                "access":  str(refresh.access_token),
+                "refresh": str(refresh),
+            }, status=status.HTTP_201_CREATED)
+
         except Exception as e:
             return Response({"detail": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 

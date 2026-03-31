@@ -132,6 +132,7 @@ export default function HomePage() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [isStaff, setIsStaff] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [authReady, setAuthReady] = useState(false);
   const [homeBarbers, setHomeBarbers] = useState([]);
   const [reviewIdx, setReviewIdx] = useState(0);
   const [scrollY, setScrollY] = useState(0);
@@ -157,28 +158,74 @@ export default function HomePage() {
     return () => clearInterval(t);
   }, []);
 
-  // Auth
+  // Auth — read JWT payload directly, no API call needed
   const checkAuth = useCallback(() => {
     const token = localStorage.getItem("access");
     if (!token) {
       setIsLoggedIn(false);
       setIsStaff(false);
+      setAuthReady(true);
       return;
     }
-    fetch(
-      `${process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000"}/api/dashboard/`,
-      {
-        headers: { Authorization: `Bearer ${token}` },
-      },
-    )
-      .then((r) => (r.ok ? r.json() : null))
-      .then((d) => {
-        if (d) {
-          setIsLoggedIn(true);
-          setIsStaff(!!d.is_staff);
+    try {
+      // JWT is base64url encoded — decode the payload (middle part)
+      const payload = JSON.parse(
+        atob(token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/")),
+      );
+      // Check token hasn't expired
+      const expired = payload.exp && payload.exp * 1000 < Date.now();
+      if (expired) {
+        // Try to silently refresh — don't block the UI
+        const refresh = localStorage.getItem("refresh");
+        if (!refresh) {
+          localStorage.removeItem("access");
+          setIsLoggedIn(false);
+          setIsStaff(false);
+          setAuthReady(true);
+          return;
         }
-      })
-      .catch(() => {});
+        fetch(
+          `${process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000"}/api/token/refresh/`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ refresh }),
+          },
+        )
+          .then((r) => (r.ok ? r.json() : null))
+          .then((d) => {
+            if (d?.access) {
+              localStorage.setItem("access", d.access);
+              if (d.refresh) localStorage.setItem("refresh", d.refresh);
+              const newPayload = JSON.parse(
+                atob(
+                  d.access.split(".")[1].replace(/-/g, "+").replace(/_/g, "/"),
+                ),
+              );
+              setIsLoggedIn(true);
+              setIsStaff(!!newPayload.is_staff);
+            } else {
+              localStorage.removeItem("access");
+              localStorage.removeItem("refresh");
+              setIsLoggedIn(false);
+              setIsStaff(false);
+            }
+          })
+          .catch(() => {
+            setIsLoggedIn(false);
+            setIsStaff(false);
+          })
+          .finally(() => setAuthReady(true));
+        return;
+      }
+      // Token is valid — read claims instantly
+      setIsLoggedIn(true);
+      setIsStaff(!!payload.is_staff);
+    } catch {
+      setIsLoggedIn(false);
+      setIsStaff(false);
+    }
+    setAuthReady(true);
   }, []);
 
   useEffect(() => {
@@ -530,17 +577,7 @@ export default function HomePage() {
       />
 
       {/* ── GRAIN ── */}
-      <div
-        style={{
-          position: "fixed",
-          inset: 0,
-          zIndex: 0,
-          pointerEvents: "none",
-          opacity: 0.04,
-          backgroundImage:
-            "url('https://grainy-gradients.vercel.app/noise.svg')",
-        }}
-      />
+      {/* grain overlay */}
 
       {/* ── AMBER AMBIENT ── */}
       <div
@@ -637,23 +674,39 @@ export default function HomePage() {
 
             {/* Right actions */}
             <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-              {isLoggedIn && isStaff && (
-                <a
-                  href="/barber-dashboard"
-                  className="donly cta-ghost"
-                  style={{ padding: "10px 18px", fontSize: 8 }}
-                >
-                  <span>Dashboard</span>
-                </a>
-              )}
-              {!isLoggedIn && (
-                <a
-                  href="/barber-login"
-                  className="donly cta-ghost"
-                  style={{ padding: "10px 18px", fontSize: 8 }}
-                >
-                  <span>Barber Login</span>
-                </a>
+              {authReady && (
+                <>
+                  {/* Barber — show dashboard */}
+                  {isLoggedIn && isStaff && (
+                    <a
+                      href="/barber-dashboard"
+                      className="donly cta-ghost"
+                      style={{ padding: "10px 18px", fontSize: 8 }}
+                    >
+                      <span>Dashboard</span>
+                    </a>
+                  )}
+                  {/* Client logged in — show My Account */}
+                  {isLoggedIn && !isStaff && (
+                    <a
+                      href="/dashboard"
+                      className="donly cta-ghost"
+                      style={{ padding: "10px 18px", fontSize: 8 }}
+                    >
+                      <span>My Account</span>
+                    </a>
+                  )}
+                  {/* Nobody logged in — show Barber Login */}
+                  {!isLoggedIn && (
+                    <a
+                      href="/barber-login"
+                      className="donly cta-ghost"
+                      style={{ padding: "10px 18px", fontSize: 8 }}
+                    >
+                      <span>Barber Login</span>
+                    </a>
+                  )}
+                </>
               )}
               <a
                 href="/book"
@@ -773,6 +826,63 @@ export default function HomePage() {
               >
                 <span>Book Appointment</span>
               </a>
+              {authReady && isLoggedIn && isStaff && (
+                <a
+                  href="/barber-dashboard"
+                  style={{
+                    ...sf,
+                    fontSize: 7,
+                    letterSpacing: "0.2em",
+                    textTransform: "uppercase",
+                    color: "#f59e0b",
+                    textDecoration: "none",
+                    border: "1px solid rgba(245,158,11,0.3)",
+                    padding: "14px",
+                    textAlign: "center",
+                    transition: "all 0.2s",
+                  }}
+                >
+                  Barber Dashboard
+                </a>
+              )}
+              {authReady && isLoggedIn && !isStaff && (
+                <a
+                  href="/dashboard"
+                  style={{
+                    ...sf,
+                    fontSize: 7,
+                    letterSpacing: "0.2em",
+                    textTransform: "uppercase",
+                    color: "#f59e0b",
+                    textDecoration: "none",
+                    border: "1px solid rgba(245,158,11,0.3)",
+                    padding: "14px",
+                    textAlign: "center",
+                    transition: "all 0.2s",
+                  }}
+                >
+                  My Account
+                </a>
+              )}
+              {authReady && !isLoggedIn && (
+                <a
+                  href="/barber-login"
+                  style={{
+                    ...sf,
+                    fontSize: 7,
+                    letterSpacing: "0.2em",
+                    textTransform: "uppercase",
+                    color: "#52525b",
+                    textDecoration: "none",
+                    border: "1px solid rgba(255,255,255,0.08)",
+                    padding: "14px",
+                    textAlign: "center",
+                    transition: "all 0.2s",
+                  }}
+                >
+                  Barber Login
+                </a>
+              )}
             </div>
           </div>
         )}
