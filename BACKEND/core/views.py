@@ -299,9 +299,6 @@ def send_reschedule_request_email(reschedule_request):
 
     def _send():
         try:
-            if not getattr(settings, "EMAIL_HOST_PASSWORD", ""):
-                return
-
             if rr.initiated_by == "client":
                 # Email the barber
                 recipient  = appt.barber.user.email if appt.barber.user else None
@@ -372,9 +369,6 @@ def send_reschedule_response_email(reschedule_request, accepted):
 
     def _send():
         try:
-            if not getattr(settings, "EMAIL_HOST_PASSWORD", ""):
-                return
-
             if accepted:
                 icon = '<div style="width:52px;height:52px;border-radius:50%;background:linear-gradient(135deg,#22c55e,#16a34a);display:inline-block;text-align:center;line-height:52px;"><span style="color:black;font-size:24px;font-weight:900;">&#10003;</span></div>'
                 if rr.initiated_by == "client":
@@ -1862,11 +1856,10 @@ class RescheduleResponseView(APIView):
 
 
 class BarberRescheduleRequestView(APIView):
-    """Barber proposes a reschedule — sends email to client with accept/reject."""
+    """Barber reschedules appointment immediately — updates calendar and emails client."""
     permission_classes = [IsAuthenticated]
 
     def post(self, request, pk):
-        import secrets
         barber = get_barber_for_user(request.user)
         if not barber:
             return Response({"error": "Not a barber account."}, status=403)
@@ -1881,18 +1874,64 @@ class BarberRescheduleRequestView(APIView):
         if not new_date or not new_time:
             return Response({"error": "new_date and new_time required."}, status=400)
 
-        RescheduleRequest.objects.filter(appointment=appt, status="pending").update(status="expired")
+        old_date = appt.date
+        old_time = appt.time
 
-        token = secrets.token_urlsafe(32)
-        rr = RescheduleRequest.objects.create(
-            appointment=appt,
-            initiated_by="barber",
-            new_date=new_date,
-            new_time=new_time,
-            token=token,
-        )
-        send_reschedule_request_email(rr)
-        return Response({"message": "Reschedule proposal sent to client.", "id": rr.id})
+        # Update the appointment immediately
+        appt.date = new_date
+        appt.time = new_time
+        appt.save()
+
+        # Email the client about the change
+        import threading
+        def _notify():
+            try:
+                client_email  = appt.user.email
+                client_name   = appt.user.first_name or appt.user.username
+                service_name  = appt.service.name if appt.service else "Appointment"
+                old_date_str  = old_date.strftime("%A, %B %d, %Y")
+                old_time_str  = old_time.strftime("%I:%M %p").lstrip("0")
+                new_date_str  = appt.date.strftime("%A, %B %d, %Y") if hasattr(appt.date, 'strftime') else str(new_date)
+                new_time_str  = appt.time.strftime("%I:%M %p").lstrip("0") if hasattr(appt.time, 'strftime') else str(new_time)
+
+                subject = f"Your Appointment Has Been Rescheduled — HEADZ UP"
+                plain   = (
+                    f"Hi {client_name},\n\n"
+                    f"Your {service_name} appointment with {barber.name} has been rescheduled.\n\n"
+                    f"Original: {old_date_str} at {old_time_str}\n"
+                    f"New Time: {new_date_str} at {new_time_str}\n\n"
+                    f"If you have questions, please contact the shop.\n\n"
+                    f"HEADZ UP Barbershop\n4 Hub Dr, Hattiesburg, MS"
+                )
+                rows = _ticket_rows(
+                    ("Service",       service_name),
+                    ("Barber",        barber.name),
+                    ("Original Date", old_date_str),
+                    ("Original Time", old_time_str),
+                    ("New Date",      f"<span style='color:#f59e0b;font-weight:900'>{new_date_str}</span>"),
+                    ("New Time",      f"<span style='color:#f59e0b;font-weight:900'>{new_time_str}</span>"),
+                    ("Location",      "4 Hub Dr, Hattiesburg, MS 39402"),
+                )
+                icon = '<div style="width:52px;height:52px;border-radius:50%;background:rgba(245,158,11,0.15);border:1px solid rgba(245,158,11,0.4);display:inline-block;text-align:center;line-height:52px;"><span style="color:#f59e0b;font-size:22px;">↻</span></div>'
+                html = _html_email_wrapper(
+                    "",
+                    icon,
+                    "Appointment<br><span style='color:#f59e0b;font-style:italic;'>Rescheduled_</span>",
+                    f"{barber.name} has updated your appointment time.",
+                    rows,
+                    f"{FRONTEND_URL}/dashboard",
+                    "View My Appointments"
+                )
+                _sendgrid_send(client_email, subject, plain, html)
+            except Exception:
+                pass
+        threading.Thread(target=_notify, daemon=True).start()
+
+        return Response({
+            "message":  "Appointment rescheduled and client notified.",
+            "new_date": str(appt.date),
+            "new_time": str(appt.time),
+        })
 
 
 class TestEmailView(APIView):
