@@ -69,7 +69,18 @@ DATABASES = {
 
 DATABASE_URL = os.environ.get("DATABASE_URL")
 if DATABASE_URL:
-    DATABASES["default"] = dj_database_url.parse(DATABASE_URL)
+    DATABASES["default"] = dj_database_url.parse(DATABASE_URL, conn_max_age=600)
+else:
+    # WARNING: SQLite is only for local development — data is lost on every deploy
+    import sys
+    if "runserver" not in sys.argv:
+        print("WARNING: DATABASE_URL not set — using SQLite. Data will not persist!")
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.sqlite3",
+            "NAME":   BASE_DIR / "db.sqlite3",
+        }
+    }
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
