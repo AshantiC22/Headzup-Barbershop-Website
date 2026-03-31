@@ -1019,10 +1019,10 @@ function BookContent() {
             <h1
               style={{
                 ...sf,
-                fontSize: "clamp(1.5rem, 4vw, 2.4rem)",
+                fontSize: "clamp(1.4rem, 4vw, 2.4rem)",
                 fontWeight: 900,
                 textTransform: "uppercase",
-                lineHeight: 1,
+                lineHeight: 1.1,
               }}
             >
               {["Choose", "Pick Your", "Set The", "Confirm &"][step - 1]}{" "}
@@ -1118,7 +1118,7 @@ function BookContent() {
                           display: "flex",
                           justifyContent: "space-between",
                           alignItems: "center",
-                          padding: "24px 28px",
+                          padding: "20px 16px",
                           background: "rgba(255,255,255,0.025)",
                           border: "1px solid rgba(255,255,255,0.07)",
                           cursor: "pointer",
@@ -1270,7 +1270,7 @@ function BookContent() {
                           display: "flex",
                           alignItems: "center",
                           gap: 20,
-                          padding: "24px 28px",
+                          padding: "20px 16px",
                           background: "rgba(255,255,255,0.025)",
                           border: "1px solid rgba(255,255,255,0.07)",
                           cursor: "pointer",

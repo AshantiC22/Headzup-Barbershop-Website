@@ -946,6 +946,7 @@ export default function HomePage() {
               color: "#27272a",
               textTransform: "uppercase",
               whiteSpace: "nowrap",
+              display: isMobile ? "none" : "block",
             }}
           >
             Hattiesburg, Mississippi — Est. 2020
@@ -987,8 +988,8 @@ export default function HomePage() {
               maxWidth: 1320,
               margin: "0 auto",
               width: "100%",
-              padding: "0 28px 80px",
-              paddingTop: 120,
+              padding: isMobile ? "0 20px 60px" : "0 28px 80px",
+              paddingTop: isMobile ? 80 : 120,
             }}
           >
             {/* Status pill */}
@@ -1018,7 +1019,7 @@ export default function HomePage() {
                   ...mono,
                   fontSize: 10,
                   color: "#4ade80",
-                  letterSpacing: "0.4em",
+                  letterSpacing: isMobile ? "0.15em" : "0.4em",
                   textTransform: "uppercase",
                 }}
               >
@@ -1041,7 +1042,7 @@ export default function HomePage() {
                     fontSize: "clamp(2.8rem,7.5vw,7.2rem)",
                     fontWeight: 900,
                     textTransform: "uppercase",
-                    lineHeight: 0.92,
+                    lineHeight: isMobile ? 1.05 : 0.92,
                     letterSpacing: "-0.04em",
                     color: amber ? "#f59e0b" : "white",
                     fontStyle: italic ? "italic" : "normal",
@@ -1060,7 +1061,7 @@ export default function HomePage() {
             <div
               style={{
                 display: "flex",
-                gap: 40,
+                gap: isMobile ? 24 : 40,
                 alignItems: "flex-end",
                 flexWrap: "wrap",
                 opacity: heroLoaded ? 1 : 0,
@@ -1068,7 +1069,7 @@ export default function HomePage() {
                 transition: "all 0.9s cubic-bezier(0.16,1,0.3,1) 0.7s",
               }}
             >
-              <div style={{ flex: 1, minWidth: 280 }}>
+              <div style={{ flex: 1, minWidth: isMobile ? "100%" : "280px" }}>
                 <p
                   style={{
                     ...mono,
@@ -1105,8 +1106,8 @@ export default function HomePage() {
               style={{
                 display: "flex",
                 gap: 0,
-                marginTop: 72,
-                paddingTop: 32,
+                marginTop: isMobile ? 36 : 72,
+                paddingTop: isMobile ? 20 : 32,
                 borderTop: "1px solid rgba(255,255,255,0.07)",
                 flexWrap: "wrap",
                 opacity: heroLoaded ? 1 : 0,
@@ -1788,7 +1789,7 @@ export default function HomePage() {
               style={{
                 display: "grid",
                 gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr",
-                gap: isMobile ? 32 : 80,
+                gap: isMobile ? 28 : 80,
                 alignItems: isMobile ? "start" : "center",
               }}
             >
@@ -1984,7 +1985,7 @@ export default function HomePage() {
               style={{
                 display: "grid",
                 gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr",
-                gap: isMobile ? 32 : 80,
+                gap: isMobile ? 28 : 80,
                 alignItems: isMobile ? "start" : "center",
               }}
             >

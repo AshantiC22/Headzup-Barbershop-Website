@@ -442,11 +442,11 @@ function BookingConfirmedInner() {
           <h1
             style={{
               ...sf,
-              fontSize: "clamp(1.8rem,6vw,3.2rem)",
+              fontSize: "clamp(1.6rem,6vw,3.2rem)",
               fontWeight: 900,
               textTransform: "uppercase",
-              lineHeight: 0.88,
-              letterSpacing: "-0.04em",
+              lineHeight: isMobile ? 1.1 : 0.88,
+              letterSpacing: "-0.03em",
             }}
           >
             {isPaid ? "You're" : "Slot"}
@@ -493,7 +493,7 @@ function BookingConfirmedInner() {
               background: "#0a0a0a",
               border: `1px solid ${accentBdr}`,
               borderBottom: "none",
-              padding: isMobile ? "24px 20px" : "28px 28px",
+              padding: isMobile ? "20px 16px" : "28px 28px",
               position: "relative",
               overflow: "hidden",
             }}
@@ -687,7 +687,7 @@ function BookingConfirmedInner() {
               background: "rgba(255,255,255,0.015)",
               border: `1px solid ${accentBdr}`,
               borderTop: "none",
-              padding: isMobile ? "18px 20px" : "20px 28px",
+              padding: isMobile ? "16px 16px" : "20px 28px",
               display: "flex",
               flexDirection: "column",
               gap: 14,
@@ -813,8 +813,8 @@ function BookingConfirmedInner() {
         <div
           style={{
             display: "flex",
-            gap: 10,
-            marginTop: 28,
+            gap: isMobile ? 8 : 10,
+            marginTop: isMobile ? 20 : 28,
             flexWrap: "wrap",
             justifyContent: "center",
             opacity: entered ? 1 : 0,

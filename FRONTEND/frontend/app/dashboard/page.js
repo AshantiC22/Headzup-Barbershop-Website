@@ -913,11 +913,11 @@ function DashboardContent() {
                 <h1
                   style={{
                     ...sf,
-                    fontSize: "clamp(2rem,6vw,4rem)",
+                    fontSize: "clamp(1.8rem,6vw,4rem)",
                     fontWeight: 900,
                     textTransform: "uppercase",
-                    lineHeight: 0.88,
-                    letterSpacing: "-0.04em",
+                    lineHeight: isMobile ? 1.1 : 0.88,
+                    letterSpacing: "-0.03em",
                     marginBottom: 16,
                   }}
                 >
@@ -1032,7 +1032,7 @@ function DashboardContent() {
                   className="dc"
                   style={{
                     marginBottom: isMobile ? 32 : 48,
-                    padding: isMobile ? "20px 18px" : "24px 28px",
+                    padding: isMobile ? "18px 16px" : "24px 28px",
                     background:
                       "linear-gradient(135deg,rgba(245,158,11,0.07),rgba(245,158,11,0.02))",
                     border: "1px solid rgba(245,158,11,0.25)",
@@ -1298,7 +1298,7 @@ function DashboardContent() {
                             display: "flex",
                             alignItems: "center",
                             gap: isMobile ? 10 : 16,
-                            padding: isMobile ? "14px 12px" : "16px 20px",
+                            padding: isMobile ? "16px 12px" : "18px 20px",
                             background: "rgba(255,255,255,0.02)",
                             border: "1px solid rgba(255,255,255,0.07)",
                           }}
@@ -1326,7 +1326,7 @@ function DashboardContent() {
                             <p
                               style={{
                                 ...sf,
-                                fontSize: isMobile ? 18 : 24,
+                                fontSize: isMobile ? 16 : 22,
                                 fontWeight: 900,
                                 color:
                                   appt.status === "confirmed"
@@ -1366,10 +1366,10 @@ function DashboardContent() {
                             <p
                               style={{
                                 ...sf,
-                                fontSize: isMobile ? 8 : 10,
+                                fontSize: isMobile ? 11 : 12,
                                 fontWeight: 700,
                                 textTransform: "uppercase",
-                                marginBottom: 3,
+                                marginBottom: 4,
                                 overflow: "hidden",
                                 textOverflow: "ellipsis",
                                 whiteSpace: "nowrap",

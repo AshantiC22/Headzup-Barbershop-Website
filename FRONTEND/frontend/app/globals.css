@@ -435,3 +435,61 @@ video {
     gap: 8px !important;
   }
 }
+
+/* ── Mobile readability overrides ────────────────────────────────────────────
+   These ensure nothing is ever smushed on any phone */
+@media (max-width: 639px) {
+  /* Headings need more breathing room on small screens */
+  h1,
+  h2,
+  h3 {
+    line-height: 1.1 !important;
+    letter-spacing: -0.02em !important;
+  }
+
+  /* Body text needs comfortable line height */
+  p,
+  span,
+  label,
+  a {
+    line-height: 1.6;
+  }
+
+  /* All sections get breathing room */
+  section {
+    padding-left: 20px !important;
+    padding-right: 20px !important;
+  }
+
+  /* No element wider than screen */
+  * {
+    max-width: 100vw;
+  }
+
+  /* Buttons full-width in column stacks */
+  .btn-stack {
+    width: 100%;
+    justify-content: center;
+  }
+
+  /* Toast fits screen */
+  [style*="toastIn"] {
+    max-width: calc(100vw - 32px) !important;
+    white-space: normal !important;
+  }
+}
+
+/* ── Tiny phones (iPhone SE = 375px, older Androids = 320px) ──────────────── */
+@media (max-width: 390px) {
+  h1 {
+    font-size: clamp(1.4rem, 8vw, 2rem) !important;
+  }
+  h2 {
+    font-size: clamp(1.2rem, 6vw, 1.6rem) !important;
+  }
+
+  /* More padding on nano phones */
+  .page-container {
+    padding: 0 16px;
+  }
+}

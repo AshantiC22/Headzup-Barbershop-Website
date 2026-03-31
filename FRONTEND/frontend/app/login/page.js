@@ -600,7 +600,8 @@ function LoginContent() {
             display: "flex",
             flexDirection: "column",
             justifyContent: "center",
-            padding: "40px 24px",
+            padding: "32px 20px",
+            overflowY: "auto",
             overflowY: "auto",
           }}
         >
@@ -651,8 +652,8 @@ function LoginContent() {
                       fontWeight: 700,
                       letterSpacing: "0.25em",
                       textTransform: "uppercase",
-                      padding: "12px 0",
-                      marginRight: 28,
+                      padding: "14px 0",
+                      marginRight: 24,
                       background: "none",
                       border: "none",
                       borderBottom: `2px solid ${mode === m ? "#f59e0b" : "transparent"}`,
@@ -739,7 +740,7 @@ function LoginContent() {
             {mode === "login" && (
               <div
                 className="field-enter"
-                style={{ display: "flex", flexDirection: "column", gap: 20 }}
+                style={{ display: "flex", flexDirection: "column", gap: 22 }}
               >
                 <h1
                   style={{
@@ -810,7 +811,8 @@ function LoginContent() {
                   onClick={handleLogin}
                   disabled={loading}
                   style={{
-                    padding: "17px",
+                    padding: "16px 17px",
+                    minHeight: "52px",
                     background: loading ? "#111" : "#f59e0b",
                     color: loading ? "#52525b" : "black",
                     ...sf,
@@ -855,7 +857,7 @@ function LoginContent() {
             {mode === "register" && (
               <div
                 className="field-enter"
-                style={{ display: "flex", flexDirection: "column", gap: 18 }}
+                style={{ display: "flex", flexDirection: "column", gap: 20 }}
               >
                 <h1
                   style={{
@@ -955,7 +957,8 @@ function LoginContent() {
                   onClick={handleRegister}
                   disabled={loading}
                   style={{
-                    padding: "17px",
+                    padding: "16px 17px",
+                    minHeight: "52px",
                     background: loading ? "#111" : "#f59e0b",
                     color: loading ? "#52525b" : "black",
                     ...sf,
@@ -1011,7 +1014,7 @@ function LoginContent() {
             {mode === "forgot" && (
               <div
                 className="field-enter"
-                style={{ display: "flex", flexDirection: "column", gap: 20 }}
+                style={{ display: "flex", flexDirection: "column", gap: 22 }}
               >
                 <button
                   onClick={() => {
@@ -1092,7 +1095,8 @@ function LoginContent() {
                   onClick={handleForgot}
                   disabled={loading}
                   style={{
-                    padding: "17px",
+                    padding: "16px 17px",
+                    minHeight: "52px",
                     background: loading ? "#111" : "#f59e0b",
                     color: loading ? "#52525b" : "black",
                     ...sf,

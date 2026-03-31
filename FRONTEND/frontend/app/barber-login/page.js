@@ -531,7 +531,7 @@ export default function BarberLoginPage() {
           flexDirection: "column",
           alignItems: "center",
           justifyContent: "center",
-          padding: "60px 24px",
+          padding: "40px 16px",
         }}
       >
         {/* Back link */}
@@ -563,6 +563,7 @@ export default function BarberLoginPage() {
           style={{
             width: "100%",
             maxWidth: 480,
+            margin: "0 auto",
             background: "rgba(4,4,4,0.85)",
             border: "1px solid rgba(255,255,255,0.08)",
             backdropFilter: "blur(20px)",

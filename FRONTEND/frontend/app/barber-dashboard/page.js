@@ -229,10 +229,10 @@ function ApptTicket({
       {/* Main row */}
       <div
         style={{
-          padding: isMobile ? "12px 14px" : "14px 20px",
+          padding: isMobile ? "14px 12px" : "16px 20px",
           display: "flex",
           alignItems: "center",
-          gap: isMobile ? 10 : 16,
+          gap: isMobile ? 8 : 16,
           flexWrap: "wrap",
         }}
       >
@@ -269,10 +269,10 @@ function ApptTicket({
           <p
             style={{
               ...sf,
-              fontSize: isMobile ? 9 : 11,
+              fontSize: isMobile ? 10 : 12,
               fontWeight: 700,
               textTransform: "uppercase",
-              marginBottom: 4,
+              marginBottom: 5,
               overflow: "hidden",
               textOverflow: "ellipsis",
               whiteSpace: "nowrap",
@@ -1564,7 +1564,7 @@ export default function BarberDashboard() {
             maxWidth: 1280,
             margin: "0 auto",
             padding: isMobile ? "0 14px" : "0 32px",
-            height: 60,
+            height: isMobile ? 56 : 60,
             display: "flex",
             justifyContent: "space-between",
             alignItems: "center",
@@ -1802,11 +1802,11 @@ export default function BarberDashboard() {
               <h1
                 style={{
                   ...sf,
-                  fontSize: "clamp(1.6rem,3.5vw,2.8rem)",
+                  fontSize: "clamp(1.4rem,3.5vw,2.8rem)",
                   fontWeight: 900,
                   textTransform: "uppercase",
-                  lineHeight: 0.88,
-                  letterSpacing: "-0.04em",
+                  lineHeight: isMobile ? 1.1 : 0.88,
+                  letterSpacing: "-0.03em",
                   margin: 0,
                 }}
               >
@@ -1937,7 +1937,7 @@ export default function BarberDashboard() {
                 <p
                   style={{
                     ...sf,
-                    fontSize: 28,
+                    fontSize: isMobile ? 22 : 28,
                     fontWeight: 900,
                     color: accent ? T.amber : "white",
                     lineHeight: 1,
@@ -2245,7 +2245,7 @@ export default function BarberDashboard() {
               Add a walk-in client instantly. They'll be added to today's
               schedule.
             </p>
-            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
               {[
                 {
                   label: "Client Name *",
@@ -2931,7 +2931,7 @@ export default function BarberDashboard() {
                     <div
                       key={label}
                       style={{
-                        padding: "18px 16px",
+                        padding: isMobile ? "16px 12px" : "20px 16px",
                         background: amber ? T.amberDim : T.surface,
                         border: `1px solid ${amber ? T.amberBorder : T.border}`,
                         position: "relative",
