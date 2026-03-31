@@ -636,7 +636,8 @@ function BookingConfirmedInner() {
                       i < rows.length - 1
                         ? "1px solid rgba(255,255,255,0.05)"
                         : "none",
-                    gap: 12,
+                    gap: 8,
+                    flexWrap: "wrap",
                   }}
                 >
                   <p
@@ -644,9 +645,10 @@ function BookingConfirmedInner() {
                       ...mono,
                       fontSize: 9,
                       color: "#52525b",
-                      letterSpacing: "0.3em",
+                      letterSpacing: "0.2em",
                       textTransform: "uppercase",
                       flexShrink: 0,
+                      minWidth: "80px",
                     }}
                   >
                     {label}
@@ -654,7 +656,7 @@ function BookingConfirmedInner() {
                   <p
                     style={{
                       ...mono,
-                      fontSize: isMobile ? 12 : 13,
+                      fontSize: isMobile ? 11 : 13,
                       color:
                         label === "Payment"
                           ? accent
@@ -663,7 +665,10 @@ function BookingConfirmedInner() {
                             : "white",
                       fontWeight: 500,
                       textAlign: "right",
-                      lineHeight: 1.4,
+                      lineHeight: 1.5,
+                      flex: 1,
+                      minWidth: 0,
+                      wordBreak: "break-word",
                     }}
                   >
                     {value}

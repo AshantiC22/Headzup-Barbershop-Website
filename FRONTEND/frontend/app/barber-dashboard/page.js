@@ -731,7 +731,7 @@ function RescheduleModal({ appt, onClose, onDone }) {
           <div
             style={{
               display: "grid",
-              gridTemplateColumns: "repeat(4,1fr)",
+              gridTemplateColumns: "repeat(auto-fill,minmax(80px,1fr))",
               gap: 5,
               marginBottom: 20,
             }}
@@ -1723,10 +1723,10 @@ export default function BarberDashboard() {
               key={key}
               onClick={() => setActiveTab(key)}
               style={{
-                padding: isMobile ? "10px 14px" : "11px 22px",
+                padding: isMobile ? "8px 10px" : "11px 22px",
                 ...sf,
-                fontSize: isMobile ? 5 : 7,
-                letterSpacing: isMobile ? "0.05em" : "0.15em",
+                fontSize: isMobile ? 4.5 : 7,
+                letterSpacing: isMobile ? "0.02em" : "0.15em",
                 textTransform: "uppercase",
                 background: "transparent",
                 border: "none",
@@ -1735,16 +1735,21 @@ export default function BarberDashboard() {
                 cursor: "pointer",
                 transition: "all 0.2s",
                 display: "flex",
-                flexDirection: isMobile ? "column" : "row",
+                flexDirection: "column",
                 alignItems: "center",
-                gap: isMobile ? 3 : 6,
+                gap: isMobile ? 2 : 4,
                 whiteSpace: "nowrap",
                 flexShrink: 0,
-                minWidth: isMobile ? 56 : "auto",
+                flex: isMobile ? "1 0 auto" : "none",
+                minWidth: isMobile ? 48 : "auto",
               }}
             >
-              <span style={{ fontSize: isMobile ? 16 : 11 }}>{icon}</span>
-              <span>{label}</span>
+              <span style={{ fontSize: isMobile ? 18 : 12 }}>{icon}</span>
+              <span
+                style={{ fontSize: isMobile ? "clamp(7px,2vw,9px)" : "7px" }}
+              >
+                {label}
+              </span>
             </button>
           ))}
         </div>

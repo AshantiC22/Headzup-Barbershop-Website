@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import LoadingScreen from "@/lib/LoadingScreen";
+import useBreakpoint from "@/lib/useBreakpoint";
 
 const sf = { fontFamily: "'Syncopate', sans-serif" };
 const mono = { fontFamily: "'DM Mono', monospace" };
@@ -127,6 +128,7 @@ const TICKER = [
 export default function HomePage() {
   const router = useRouter();
   const heroRef = useRef(null);
+  const { isMobile } = useBreakpoint();
 
   const [pageReady, setPageReady] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -1121,8 +1123,8 @@ export default function HomePage() {
                   key={label}
                   style={{
                     flex: 1,
-                    minWidth: 130,
-                    padding: `0 ${i > 0 ? "24px" : "0"} 0 ${i > 0 ? "24px" : "0"}`,
+                    minWidth: isMobile ? 120 : 130,
+                    padding: `0 ${i > 0 ? "16px" : "0"} 0 ${i > 0 ? "16px" : "0"}`,
                     borderLeft:
                       i > 0 ? "1px solid rgba(255,255,255,0.07)" : "none",
                     marginBottom: 16,
@@ -1235,7 +1237,10 @@ export default function HomePage() {
         </div>
 
         {/* ═══════════════════════ SERVICES ═══════════════════════ */}
-        <section id="services" style={{ padding: "120px 28px" }}>
+        <section
+          id="services"
+          style={{ padding: isMobile ? "60px 20px" : "120px 28px" }}
+        >
           <div style={{ maxWidth: 1320, margin: "0 auto" }}>
             {/* Section label */}
             <div
@@ -1271,8 +1276,8 @@ export default function HomePage() {
             <div
               style={{
                 display: "grid",
-                gridTemplateColumns: "1fr 1fr",
-                gap: "0 80px",
+                gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr",
+                gap: isMobile ? "32px" : "0 80px",
                 alignItems: "start",
               }}
             >
@@ -1466,7 +1471,7 @@ export default function HomePage() {
             background: "rgba(255,255,255,0.018)",
             borderTop: "1px solid rgba(255,255,255,0.07)",
             borderBottom: "1px solid rgba(255,255,255,0.07)",
-            padding: "120px 28px",
+            padding: isMobile ? "60px 20px" : "120px 28px",
           }}
         >
           <div style={{ maxWidth: 1320, margin: "0 auto" }}>
@@ -1503,8 +1508,8 @@ export default function HomePage() {
             <div
               style={{
                 display: "grid",
-                gridTemplateColumns: "1fr 1fr",
-                gap: 80,
+                gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr",
+                gap: isMobile ? 32 : 80,
                 alignItems: "start",
               }}
             >
@@ -1744,7 +1749,10 @@ export default function HomePage() {
         </section>
 
         {/* ═══════════════════════ REVIEWS ═══════════════════════ */}
-        <section id="reviews" style={{ padding: "120px 28px" }}>
+        <section
+          id="reviews"
+          style={{ padding: isMobile ? "60px 20px" : "120px 28px" }}
+        >
           <div style={{ maxWidth: 1320, margin: "0 auto" }}>
             <div
               data-id="r1"
@@ -1779,9 +1787,9 @@ export default function HomePage() {
             <div
               style={{
                 display: "grid",
-                gridTemplateColumns: "1fr 1fr",
-                gap: 80,
-                alignItems: "center",
+                gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr",
+                gap: isMobile ? 32 : 80,
+                alignItems: isMobile ? "start" : "center",
               }}
             >
               <div data-id="r2" className={`rv${R("r2") ? " on" : ""}`}>
@@ -1937,7 +1945,7 @@ export default function HomePage() {
           id="location"
           style={{
             borderTop: "1px solid rgba(255,255,255,0.07)",
-            padding: "120px 28px",
+            padding: isMobile ? "60px 20px" : "120px 28px",
             background: "rgba(255,255,255,0.015)",
           }}
         >
@@ -1975,9 +1983,9 @@ export default function HomePage() {
             <div
               style={{
                 display: "grid",
-                gridTemplateColumns: "1fr 1fr",
-                gap: 80,
-                alignItems: "center",
+                gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr",
+                gap: isMobile ? 32 : 80,
+                alignItems: isMobile ? "start" : "center",
               }}
             >
               <div data-id="l2" className={`rv${R("l2") ? " on" : ""}`}>

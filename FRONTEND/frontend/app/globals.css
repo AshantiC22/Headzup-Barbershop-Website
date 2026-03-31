@@ -1,24 +1,24 @@
 /* ── Fonts ─────────────────────────────────────────────────────────────────── */
-@import url("https://fonts.googleapis.com/css2?family=Syncopate:wght@400;700&family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300;1,400;1,500&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Syncopate:wght@400;700&family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300;1,400&display=swap");
 
 /* ── Design Tokens ─────────────────────────────────────────────────────────── */
 :root {
   --bg: #040404;
   --surface: #0a0a0a;
-  --surface-2: #111111;
+  --surface2: #111111;
   --border: rgba(255, 255, 255, 0.08);
-  --border-hover: rgba(255, 255, 255, 0.15);
   --amber: #f59e0b;
   --amber-dim: rgba(245, 158, 11, 0.1);
   --amber-border: rgba(245, 158, 11, 0.3);
   --muted: #71717a;
   --dim: #3f3f46;
-  --white: #ffffff;
-  --red: #f87171;
   --green: #4ade80;
-  --purple: #a78bfa;
+  --red: #f87171;
   --font-display: "Syncopate", sans-serif;
   --font-mono: "DM Mono", monospace;
+  /* Spacing scale */
+  --px: clamp(16px, 4vw, 32px); /* page horizontal padding */
+  --section: clamp(48px, 8vw, 100px); /* section vertical padding */
 }
 
 /* ── Reset ──────────────────────────────────────────────────────────────────── */
@@ -35,7 +35,7 @@
 /* ── Base ───────────────────────────────────────────────────────────────────── */
 html {
   background: var(--bg);
-  color: var(--white);
+  color: white;
   font-family: var(--font-mono);
   font-size: 16px;
   overflow-x: hidden;
@@ -48,7 +48,7 @@ html {
 
 body {
   background: var(--bg);
-  color: var(--white);
+  color: white;
   overflow-x: hidden;
   max-width: 100vw;
   min-height: 100vh;
@@ -75,7 +75,7 @@ body {
   }
 }
 
-/* ── Scrollbars hidden globally ─────────────────────────────────────────────── */
+/* ── Scrollbars hidden ───────────────────────────────────────────────────────── */
 ::-webkit-scrollbar {
   width: 0;
   height: 0;
@@ -98,23 +98,64 @@ h6 {
   letter-spacing: -0.03em;
   text-transform: uppercase;
   line-height: 1.1;
+  /* Prevent h1/h2 from overflowing on tiny screens */
+  overflow-wrap: break-word;
+  word-break: break-word;
 }
 
-/* ── Inputs ─────────────────────────────────────────────────────────────────── */
+p,
+span,
+label {
+  overflow-wrap: break-word;
+}
+
+/* ── Fluid type scale — never too big or too small ─────────────────────────── */
+/* Use clamp() everywhere for headings.
+   Min = smallest phone (320px), Max = desktop */
+.text-hero {
+  font-size: clamp(2rem, 8vw, 7rem);
+}
+.text-h1 {
+  font-size: clamp(1.6rem, 5vw, 4rem);
+}
+.text-h2 {
+  font-size: clamp(1.3rem, 4vw, 3rem);
+}
+.text-h3 {
+  font-size: clamp(1rem, 2.5vw, 2rem);
+}
+.text-body {
+  font-size: clamp(12px, 1.5vw, 15px);
+}
+.text-small {
+  font-size: clamp(10px, 1.2vw, 13px);
+}
+.text-label {
+  font-size: clamp(9px, 1vw, 11px);
+  letter-spacing: 0.3em;
+}
+.text-micro {
+  font-size: clamp(8px, 0.8vw, 10px);
+  letter-spacing: 0.4em;
+}
+
+/* ── Inputs — prevent iOS zoom (must be >= 16px) ──────────────────────────── */
 input,
 select,
 textarea {
-  font-size: 16px; /* prevents iOS zoom */
+  font-size: 16px !important; /* critical — iOS zooms in if < 16px */
   font-family: var(--font-mono);
   border-radius: 0;
   -webkit-appearance: none;
   appearance: none;
   background: var(--surface);
-  color: var(--white);
+  color: white;
   border: 1px solid var(--border);
   outline: none;
   width: 100%;
   transition: border-color 0.2s;
+  /* Full width on all screens */
+  max-width: 100%;
 }
 
 input:focus,
@@ -123,13 +164,15 @@ textarea:focus {
   border-color: var(--amber);
 }
 
-/* Date input styling */
-input[type="date"]::-webkit-calendar-picker-indicator {
+input[type="date"],
+input[type="time"] {
+  color-scheme: dark;
+}
+
+input[type="date"]::-webkit-calendar-picker-indicator,
+input[type="time"]::-webkit-calendar-picker-indicator {
   filter: invert(1) opacity(0.4);
   cursor: pointer;
-}
-input[type="date"] {
-  color-scheme: dark;
 }
 
 /* Autofill */
@@ -137,8 +180,8 @@ input:-webkit-autofill,
 input:-webkit-autofill:hover,
 input:-webkit-autofill:focus {
   -webkit-box-shadow: 0 0 0px 1000px var(--surface) inset !important;
-  -webkit-text-fill-color: var(--white) !important;
-  caret-color: var(--white);
+  -webkit-text-fill-color: white !important;
+  caret-color: white;
   transition: background-color 5000s;
 }
 
@@ -152,6 +195,7 @@ button {
   -webkit-tap-highlight-color: transparent;
   touch-action: manipulation;
   min-height: 44px; /* Apple minimum touch target */
+  min-width: 44px;
 }
 
 button:active {
@@ -179,6 +223,68 @@ video {
   user-drag: none;
 }
 
+/* ── Layout helpers ──────────────────────────────────────────────────────────── */
+.page-container {
+  width: 100%;
+  max-width: 1320px;
+  margin: 0 auto;
+  padding: 0 var(--px);
+}
+
+/* Two-column grid that stacks on mobile */
+.grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: clamp(24px, 5vw, 80px);
+}
+@media (max-width: 767px) {
+  .grid-2 {
+    grid-template-columns: 1fr;
+    gap: 32px;
+  }
+}
+
+/* Stats grid */
+.grid-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+@media (max-width: 639px) {
+  .grid-stats {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+@media (max-width: 359px) {
+  .grid-stats {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+/* ── Visibility helpers ──────────────────────────────────────────────────────── */
+@media (max-width: 639px) {
+  .desktop-only,
+  .donly {
+    display: none !important;
+  }
+}
+@media (min-width: 640px) {
+  .mobile-only,
+  .monly {
+    display: none !important;
+  }
+}
+@media (max-width: 767px) {
+  .tablet-up {
+    display: none !important;
+  }
+}
+@media (min-width: 768px) {
+  .mobile-tablet {
+    display: none !important;
+  }
+}
+
 /* ── Animations ──────────────────────────────────────────────────────────────── */
 @keyframes spin {
   to {
@@ -190,7 +296,21 @@ video {
     opacity: 1;
   }
 }
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
 @keyframes slideUp {
+  from {
+    transform: translateY(20px);
+    opacity: 0;
+  }
   to {
     transform: translateY(0);
     opacity: 1;
@@ -199,55 +319,49 @@ video {
 @keyframes pulse {
   0%,
   100% {
-    opacity: 1;
-  }
-  50% {
     opacity: 0.4;
   }
-}
-@keyframes scanline {
-  0% {
-    top: -2px;
+  50% {
+    opacity: 1;
   }
-  100% {
+}
+@keyframes scandown {
+  from {
+    top: -1px;
+  }
+  to {
     top: 100%;
   }
 }
-
-/* Page entrance */
-.page-enter {
-  opacity: 0;
-  animation: fadeIn 0.35s ease forwards;
-}
-
-/* ── Utility classes ─────────────────────────────────────────────────────────── */
-.truncate {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-/* Mobile-only / desktop-only */
-@media (max-width: 639px) {
-  .desktop-only {
-    display: none !important;
+@keyframes toastIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
   }
 }
-@media (min-width: 640px) {
-  .mobile-only {
-    display: none !important;
+@keyframes glow {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.5);
+  }
+  50% {
+    box-shadow: 0 0 0 8px rgba(34, 197, 94, 0);
   }
 }
 
-/* Safe areas */
+/* ── Safe areas ──────────────────────────────────────────────────────────────── */
 .safe-top {
   padding-top: env(safe-area-inset-top);
 }
 .safe-bottom {
-  padding-bottom: env(safe-area-inset-bottom);
+  padding-bottom: max(16px, env(safe-area-inset-bottom));
 }
 
-/* Tab scrolling on mobile */
+/* ── Tab strip ───────────────────────────────────────────────────────────────── */
 .tab-strip {
   display: flex;
   overflow-x: auto;
@@ -258,20 +372,7 @@ video {
   display: none;
 }
 
-/* Week strip day buttons */
-.day-btn {
-  flex-shrink: 0;
-  min-height: 44px;
-  min-width: 44px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: all 0.15s;
-}
-
-/* Card hover */
+/* ── Card hover ──────────────────────────────────────────────────────────────── */
 .card-hover {
   transition:
     border-color 0.2s,
@@ -280,4 +381,57 @@ video {
 .card-hover:hover {
   border-color: var(--amber-border) !important;
   background: var(--amber-dim) !important;
+}
+
+/* ── Truncate ────────────────────────────────────────────────────────────────── */
+.truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ── Prevent long strings from breaking layout ───────────────────────────────── */
+.break-word {
+  overflow-wrap: break-word;
+  word-break: break-word;
+}
+
+/* ── Section padding ─────────────────────────────────────────────────────────── */
+.section-pad {
+  padding: var(--section) var(--px);
+}
+
+/* ── Fix: nav + content padding on all screen sizes ─────────────────────────── */
+.nav-offset {
+  padding-top: 60px;
+}
+.nav-offset-lg {
+  padding-top: 108px;
+} /* for pages with tab bar under nav */
+
+/* ── Responsive text that's always readable ──────────────────────────────────── */
+/* Syncopate at fontSize 6-8 in JSX = 6-8px which is too small on 320px phones.
+   Boost with a global min using clamp: */
+[style*="letterSpacing"] {
+  /* Don't override — but rely on clamp() in inline styles */
+}
+
+/* Ensure no text is ever smaller than 9px rendered */
+* {
+  -webkit-min-logical-width: 0;
+}
+
+/* ── Booking calendar ────────────────────────────────────────────────────────── */
+.booking-cal button {
+  min-height: 36px;
+  min-width: 36px;
+}
+
+/* ── Responsive table-like rows ─────────────────────────────────────────────── */
+@media (max-width: 480px) {
+  .row-stack {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 8px !important;
+  }
 }

@@ -1,21 +1,34 @@
-// lib/useBreakpoint.js
-// Shared hook — returns { isMobile, isTablet, width }
-// isMobile = < 640px,  isTablet = < 1024px
 "use client";
+// lib/useBreakpoint.js
+// Returns { isMobile, isTablet, isSmall, width }
+// isSmall  = < 380px  (iPhone SE, Galaxy A series small)
+// isMobile = < 640px  (all phones)
+// isTablet = < 1024px (tablets and small laptops)
+
 import { useState, useEffect } from "react";
 
 export default function useBreakpoint() {
   const [width, setWidth] = useState(
     typeof window !== "undefined" ? window.innerWidth : 1200,
   );
+
   useEffect(() => {
-    const handler = () => setWidth(window.innerWidth);
-    window.addEventListener("resize", handler);
-    return () => window.removeEventListener("resize", handler);
+    let raf;
+    const handler = () => {
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(() => setWidth(window.innerWidth));
+    };
+    window.addEventListener("resize", handler, { passive: true });
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener("resize", handler);
+    };
   }, []);
+
   return {
     width,
-    isMobile: width < 640,
-    isTablet: width < 1024,
+    isSmall: width < 380, // iPhone SE, tiny Androids
+    isMobile: width < 640, // all phones
+    isTablet: width < 1024, // tablets
   };
 }
