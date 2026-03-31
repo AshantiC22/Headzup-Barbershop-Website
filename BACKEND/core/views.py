@@ -962,9 +962,20 @@ class BarberMeView(APIView):
         if not barber:
             return Response({"error": "Not a barber account"}, status=403)
         today       = date_type.today()
-        today_appts = Appointment.objects.filter(barber=barber, date=today).count()
+        today_appts = Appointment.objects.filter(barber=barber, date=today, status__in=["confirmed","completed"]).count()
         total_appts = Appointment.objects.filter(barber=barber).count()
-        return Response({"id": barber.id, "name": barber.name, "bio": barber.bio, "today_count": today_appts, "total_count": total_appts})
+        online_appts = Appointment.objects.filter(barber=barber, payment_method="online", status__in=["confirmed","completed"])
+        online_rev  = sum(float(a.service.price) for a in online_appts if a.service)
+        shop_count  = Appointment.objects.filter(barber=barber, payment_method="shop", status__in=["confirmed","completed"]).count()
+        return Response({
+            "id":             barber.id,
+            "name":           barber.name,
+            "bio":            barber.bio,
+            "today_count":    today_appts,
+            "total_count":    total_appts,
+            "online_revenue": f"{online_rev:.2f}",
+            "pay_in_shop":    shop_count,
+        })
 
 
 class BarberScheduleOwnView(APIView):

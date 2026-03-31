@@ -278,7 +278,7 @@ function ApptTicket({
               whiteSpace: "nowrap",
             }}
           >
-            {appt.service_name || "Appointment"}
+            {appt.service_name || appt.service || "Appointment"}
           </p>
           <div
             style={{
@@ -289,7 +289,7 @@ function ApptTicket({
             }}
           >
             <span style={{ ...mono, fontSize: 10, color: "#a1a1aa" }}>
-              {appt.client_name || appt.username || "Client"}
+              {appt.client_name || appt.client || appt.username || "Client"}
             </span>
             {appt.client_notes && (
               <span
@@ -656,7 +656,7 @@ function RescheduleModal({ appt, onClose, onDone }) {
                 margin: 0,
               }}
             >
-              {appt.service_name || "Appointment"}
+              {appt.service_name || appt.service || "Appointment"}
             </p>
           </div>
           <button
@@ -1033,7 +1033,7 @@ export default function BarberDashboard() {
         setSchedule(
           Array.isArray(schedRes.data)
             ? schedRes.data
-            : schedRes.data.results || [],
+            : schedRes.data.appointments || schedRes.data.results || [],
         );
         setServices(
           Array.isArray(svcRes.data) ? svcRes.data : svcRes.data.results || [],
@@ -1052,7 +1052,11 @@ export default function BarberDashboard() {
     setSchedLoading(true);
     try {
       const res = await API.get(`barber/schedule/?date=${date}`);
-      setSchedule(Array.isArray(res.data) ? res.data : res.data.results || []);
+      setSchedule(
+        Array.isArray(res.data)
+          ? res.data
+          : res.data.appointments || res.data.results || [],
+      );
     } catch {
     } finally {
       setSchedLoading(false);
@@ -1067,7 +1071,9 @@ export default function BarberDashboard() {
   useEffect(() => {
     API.get("barber/schedule/?days=60")
       .then((r) => {
-        const arr = Array.isArray(r.data) ? r.data : r.data.results || [];
+        const arr = Array.isArray(r.data)
+          ? r.data
+          : r.data.appointments || r.data.results || [];
         setAllApptDates([...new Set(arr.map((a) => a.date))]);
       })
       .catch(() => {});
