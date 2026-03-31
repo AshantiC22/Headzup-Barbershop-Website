@@ -1095,9 +1095,6 @@ export default function HomePage() {
                 <a href="/book" onClick={book} className="cta">
                   <span>Book Your Cut →</span>
                 </a>
-                <a href="#services" className="cta-ghost">
-                  <span>See Services</span>
-                </a>
               </div>
             </div>
 
