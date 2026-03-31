@@ -8,6 +8,339 @@ import useBreakpoint from "@/lib/useBreakpoint";
 const sf = { fontFamily: "'Syncopate', sans-serif" };
 const mono = { fontFamily: "'DM Mono', monospace" };
 
+// ── Gallery images ─────────────────────────────────────────────────────────
+const GALLERY = [
+  {
+    url: "https://images.unsplash.com/photo-1503951914875-452162b0f3f1?w=600&q=80",
+    label: "Precision Fade",
+    sub: "Signature cut",
+  },
+  {
+    url: "https://images.unsplash.com/photo-1622286342621-4bd786c2447c?w=600&q=80",
+    label: "Clean Lineup",
+    sub: "Sharp edges",
+  },
+  {
+    url: "https://images.unsplash.com/photo-1599351431202-1e0f0137899a?w=600&q=80",
+    label: "Beard Trim",
+    sub: "Sculpted look",
+  },
+  {
+    url: "https://images.unsplash.com/photo-1521590832167-7bcbfaa6381f?w=600&q=80",
+    label: "Kids Cutz",
+    sub: "Ages 1–12",
+  },
+  {
+    url: "https://images.unsplash.com/photo-1605497788044-5a32c7078486?w=600&q=80",
+    label: "Full Experience",
+    sub: "Cut & shave",
+  },
+  {
+    url: "https://images.unsplash.com/photo-1560066984-138dadb4c035?w=600&q=80",
+    label: "The Chair",
+    sub: "Your throne",
+  },
+];
+
+// ── 3D Spinning Carousel ───────────────────────────────────────────────────
+function GalleryCarousel({ isMobile }) {
+  const [angle, setAngle] = useState(0);
+  const [spinning, setSpinning] = useState(true);
+  const [active, setActive] = useState(0);
+  const [dragging, setDragging] = useState(false);
+  const [startX, setStartX] = useState(0);
+  const rafRef = useRef(null);
+  const angleRef = useRef(0);
+
+  const COUNT = GALLERY.length;
+  const STEP = 360 / COUNT;
+  const RADIUS = isMobile ? 150 : 270;
+  const W = isMobile ? 155 : 230;
+  const H = isMobile ? 195 : 290;
+
+  useEffect(() => {
+    if (!spinning) return;
+    const tick = () => {
+      angleRef.current = (angleRef.current + 0.35) % 360;
+      setAngle(angleRef.current);
+      const idx = Math.round(((360 - angleRef.current) % 360) / STEP) % COUNT;
+      setActive(idx < 0 ? idx + COUNT : idx);
+      rafRef.current = requestAnimationFrame(tick);
+    };
+    rafRef.current = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(rafRef.current);
+  }, [spinning]);
+
+  const onDragStart = (e) => {
+    setSpinning(false);
+    cancelAnimationFrame(rafRef.current);
+    setDragging(true);
+    setStartX(e.touches ? e.touches[0].clientX : e.clientX);
+  };
+  const onDragMove = (e) => {
+    if (!dragging) return;
+    const x = e.touches ? e.touches[0].clientX : e.clientX;
+    const delta = x - startX;
+    angleRef.current = (angleRef.current + delta * 0.5) % 360;
+    setAngle(angleRef.current);
+    const idx = Math.round(((360 - angleRef.current) % 360) / STEP) % COUNT;
+    setActive(idx < 0 ? idx + COUNT : idx);
+    setStartX(x);
+  };
+  const onDragEnd = () => {
+    setDragging(false);
+    setTimeout(() => setSpinning(true), 600);
+  };
+
+  const goTo = (i) => {
+    setSpinning(false);
+    cancelAnimationFrame(rafRef.current);
+    angleRef.current = (360 - i * STEP) % 360;
+    setAngle(angleRef.current);
+    setActive(i);
+    setTimeout(() => setSpinning(true), 1200);
+  };
+
+  return (
+    <section
+      style={{
+        padding: isMobile ? "48px 0 52px" : "80px 0 88px",
+        overflow: "hidden",
+        background: "rgba(0,0,0,0.25)",
+        borderTop: "1px solid rgba(255,255,255,0.05)",
+        borderBottom: "1px solid rgba(255,255,255,0.05)",
+        position: "relative",
+      }}
+    >
+      <style>{`
+        @keyframes cardpulse { 0%,100%{box-shadow:0 0 0 0 rgba(245,158,11,0)} 50%{box-shadow:0 0 32px rgba(245,158,11,0.35)} }
+        .gc-front { animation: cardpulse 2.5s ease-in-out infinite; }
+      `}</style>
+
+      {/* Ambient glow */}
+      <div
+        style={{
+          position: "absolute",
+          top: "50%",
+          left: "50%",
+          transform: "translate(-50%,-50%)",
+          width: 500,
+          height: 400,
+          background:
+            "radial-gradient(ellipse,rgba(245,158,11,0.07) 0%,transparent 60%)",
+          pointerEvents: "none",
+        }}
+      />
+
+      {/* Header */}
+      <div
+        style={{
+          textAlign: "center",
+          marginBottom: isMobile ? 28 : 44,
+          padding: "0 20px",
+        }}
+      >
+        <p
+          style={{
+            ...mono,
+            fontSize: 9,
+            color: "#f59e0b",
+            letterSpacing: "0.6em",
+            textTransform: "uppercase",
+            marginBottom: 10,
+          }}
+        >
+          The Work
+        </p>
+        <h2
+          style={{
+            ...sf,
+            fontSize: "clamp(1.4rem,4vw,2.2rem)",
+            fontWeight: 900,
+            textTransform: "uppercase",
+            letterSpacing: "-0.03em",
+            lineHeight: 1.1,
+          }}
+        >
+          Fresh Every{" "}
+          <span style={{ color: "#f59e0b", fontStyle: "italic" }}>Time_</span>
+        </h2>
+      </div>
+
+      {/* 3D Stage */}
+      <div
+        style={{
+          position: "relative",
+          height: isMobile ? 260 : 380,
+          perspective: isMobile ? 600 : 900,
+          perspectiveOrigin: "50% 50%",
+          cursor: dragging ? "grabbing" : "grab",
+          userSelect: "none",
+          WebkitUserSelect: "none",
+          touchAction: "none",
+        }}
+        onMouseDown={onDragStart}
+        onMouseMove={onDragMove}
+        onMouseUp={onDragEnd}
+        onMouseLeave={onDragEnd}
+        onTouchStart={onDragStart}
+        onTouchMove={onDragMove}
+        onTouchEnd={onDragEnd}
+      >
+        {/* Rotating ring */}
+        <div
+          style={{
+            position: "absolute",
+            top: "50%",
+            left: "50%",
+            transformStyle: "preserve-3d",
+            transform: `translate(-50%,-50%) rotateY(${angle}deg)`,
+          }}
+        >
+          {GALLERY.map((item, i) => {
+            const isFront = i === active;
+            return (
+              <div
+                key={i}
+                className={isFront ? "gc-front" : ""}
+                onClick={() => goTo(i)}
+                style={{
+                  position: "absolute",
+                  width: W,
+                  height: H,
+                  left: -W / 2,
+                  top: -H / 2,
+                  transform: `rotateY(${i * STEP}deg) translateZ(${RADIUS}px)`,
+                  borderRadius: 4,
+                  overflow: "hidden",
+                  border: isFront
+                    ? "2px solid #f59e0b"
+                    : "1px solid rgba(255,255,255,0.08)",
+                  cursor: "pointer",
+                  transition: "border 0.4s",
+                  backfaceVisibility: "hidden",
+                }}
+              >
+                <img
+                  src={item.url}
+                  alt={item.label}
+                  style={{
+                    width: "100%",
+                    height: "100%",
+                    objectFit: "cover",
+                    display: "block",
+                    filter: isFront ? "none" : "brightness(0.35) saturate(0.5)",
+                    transition: "filter 0.4s",
+                    pointerEvents: "none",
+                  }}
+                  loading="lazy"
+                />
+                {/* Front card label */}
+                {isFront && (
+                  <div
+                    style={{
+                      position: "absolute",
+                      bottom: 0,
+                      left: 0,
+                      right: 0,
+                      background:
+                        "linear-gradient(to top,rgba(4,4,4,0.96) 0%,rgba(4,4,4,0.6) 60%,transparent 100%)",
+                      padding: isMobile ? "10px 12px 14px" : "14px 16px 18px",
+                    }}
+                  >
+                    <p
+                      style={{
+                        ...sf,
+                        fontSize: isMobile ? 9 : 11,
+                        fontWeight: 900,
+                        textTransform: "uppercase",
+                        color: "white",
+                        margin: "0 0 3px",
+                        letterSpacing: "0.02em",
+                      }}
+                    >
+                      {item.label}
+                    </p>
+                    <p
+                      style={{
+                        ...mono,
+                        fontSize: isMobile ? 9 : 10,
+                        color: "#f59e0b",
+                        letterSpacing: "0.2em",
+                        margin: 0,
+                      }}
+                    >
+                      {item.sub}
+                    </p>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Ground line */}
+        <div
+          style={{
+            position: "absolute",
+            bottom: 8,
+            left: "15%",
+            right: "15%",
+            height: 1,
+            background:
+              "linear-gradient(to right,transparent,rgba(245,158,11,0.25),transparent)",
+          }}
+        />
+      </div>
+
+      {/* Dots */}
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "center",
+          gap: 8,
+          marginTop: isMobile ? 16 : 24,
+        }}
+      >
+        {GALLERY.map((_, i) => (
+          <button
+            key={i}
+            onClick={() => goTo(i)}
+            style={{
+              width: i === active ? 22 : 6,
+              height: 6,
+              background: i === active ? "#f59e0b" : "rgba(255,255,255,0.15)",
+              border: "none",
+              cursor: "pointer",
+              padding: 0,
+              transition: "all 0.3s",
+              borderRadius: 0,
+              minHeight: "auto",
+              minWidth: "auto",
+            }}
+          />
+        ))}
+      </div>
+
+      {/* Hint */}
+      <p
+        style={{
+          ...mono,
+          fontSize: 9,
+          color: "#27272a",
+          textAlign: "center",
+          letterSpacing: "0.4em",
+          textTransform: "uppercase",
+          marginTop: 14,
+          animation: "pulse 3s ease infinite",
+        }}
+      >
+        ✦ Drag to spin ✦
+      </p>
+    </section>
+  );
+}
+
 const SERVICES = [
   {
     name: "Haircut & Shave",
@@ -1233,6 +1566,9 @@ export default function HomePage() {
             ))}
           </div>
         </div>
+
+        {/* ═══════════════════════ GALLERY CAROUSEL ═══════════════════════ */}
+        <GalleryCarousel isMobile={isMobile} />
 
         {/* ═══════════════════════ SERVICES ═══════════════════════ */}
         <section
