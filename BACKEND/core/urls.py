@@ -101,3 +101,8 @@ urlpatterns = [
 
     path("", include(router.urls)),
 ]
+
+# Serve media files in all environments (Railway handles static via whitenoise)
+from django.conf import settings as django_settings
+from django.conf.urls.static import static
+urlpatterns += static(django_settings.MEDIA_URL, document_root=django_settings.MEDIA_ROOT)

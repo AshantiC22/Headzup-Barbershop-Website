@@ -1290,30 +1290,70 @@ function BookContent() {
                             "rgba(255,255,255,0.025)";
                         }}
                       >
+                        {/* Barber photo */}
                         <div
                           style={{
-                            width: 52,
-                            height: 52,
-                            background: "#111",
-                            border: "1px solid rgba(245,158,11,0.25)",
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
+                            width: 68,
+                            height: 68,
                             flexShrink: 0,
+                            border: "2px solid rgba(245,158,11,0.3)",
+                            overflow: "hidden",
+                            background: "#111",
+                            position: "relative",
                           }}
                         >
-                          <span
+                          {b.photo_url || b.photo ? (
+                            <img
+                              src={b.photo_url || b.photo}
+                              alt={b.name}
+                              style={{
+                                width: "100%",
+                                height: "100%",
+                                objectFit: "cover",
+                                objectPosition: "center top",
+                                display: "block",
+                              }}
+                            />
+                          ) : (
+                            <div
+                              style={{
+                                width: "100%",
+                                height: "100%",
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                background:
+                                  "linear-gradient(135deg,#1a1a1a,#111)",
+                              }}
+                            >
+                              <span
+                                style={{
+                                  ...sf,
+                                  fontSize: 22,
+                                  color: "#f59e0b",
+                                  fontWeight: 900,
+                                }}
+                              >
+                                {b.name.charAt(0).toUpperCase()}
+                              </span>
+                            </div>
+                          )}
+                          {/* Accepting dot */}
+                          <div
                             style={{
-                              ...sf,
-                              fontSize: 20,
-                              color: "#f59e0b",
-                              fontWeight: 900,
+                              position: "absolute",
+                              bottom: 4,
+                              right: 4,
+                              width: 8,
+                              height: 8,
+                              background: "#22c55e",
+                              borderRadius: "50%",
+                              border: "1.5px solid #111",
                             }}
-                          >
-                            {b.name.charAt(0)}
-                          </span>
+                          />
                         </div>
-                        <div style={{ flex: 1 }}>
+
+                        <div style={{ flex: 1, minWidth: 0 }}>
                           <p
                             style={{
                               ...sf,
@@ -1321,18 +1361,35 @@ function BookContent() {
                               textTransform: "uppercase",
                               fontWeight: 700,
                               color: "white",
-                              margin: "0 0 5px",
+                              margin: "0 0 4px",
+                              letterSpacing: "-0.02em",
                             }}
                           >
                             {b.name}
                           </p>
+                          <p
+                            style={{
+                              ...mono,
+                              fontSize: 9,
+                              color: "#22c55e",
+                              letterSpacing: "0.3em",
+                              textTransform: "uppercase",
+                              margin: "0 0 5px",
+                            }}
+                          >
+                            ✦ Accepting Clients
+                          </p>
                           {b.bio && (
                             <p
                               style={{
+                                ...mono,
                                 fontSize: 11,
                                 color: "#52525b",
                                 margin: 0,
                                 lineHeight: 1.5,
+                                overflow: "hidden",
+                                textOverflow: "ellipsis",
+                                whiteSpace: "nowrap",
                               }}
                             >
                               {b.bio}
@@ -1345,6 +1402,7 @@ function BookContent() {
                             fontSize: 8,
                             color: "#3f3f46",
                             textTransform: "uppercase",
+                            flexShrink: 0,
                           }}
                         >
                           Select →

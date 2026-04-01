@@ -10,9 +10,22 @@ class UserProfileSerializer(serializers.ModelSerializer):
 
 
 class BarberSerializer(serializers.ModelSerializer):
+    photo_url = serializers.SerializerMethodField()
+
     class Meta:
-        model = Barber
+        model  = Barber
         fields = "__all__"
+
+    def get_photo_url(self, obj):
+        if not obj.photo:
+            return None
+        request = self.context.get("request")
+        if request:
+            return request.build_absolute_uri(obj.photo.url)
+        # Fallback — build from BACKEND_URL env var
+        import os
+        backend = os.environ.get("BACKEND_URL", "").rstrip("/")
+        return f"{backend}{obj.photo.url}" if backend else obj.photo.url
 
 
 class ServiceSerializer(serializers.ModelSerializer):
@@ -22,14 +35,15 @@ class ServiceSerializer(serializers.ModelSerializer):
 
 
 class AppointmentSerializer(serializers.ModelSerializer):
-    service_name  = serializers.CharField(source="service.name",  read_only=True)
-    service_price = serializers.CharField(source="service.price", read_only=True)
-    barber_name   = serializers.CharField(source="barber.name",   read_only=True)
+    service_name     = serializers.CharField(source="service.name",             read_only=True)
+    service_price    = serializers.CharField(source="service.price",            read_only=True)
+    service_duration = serializers.IntegerField(source="service.duration_minutes", read_only=True)
+    barber_name      = serializers.CharField(source="barber.name",              read_only=True)
 
     class Meta:
         model  = Appointment
         fields = "__all__"
-        read_only_fields = ["user", "service_name", "service_price", "barber_name"]
+        read_only_fields = ["user", "service_name", "service_price", "service_duration", "barber_name"]
 
 
 class RegisterSerializer(serializers.Serializer):

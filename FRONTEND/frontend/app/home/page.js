@@ -1955,14 +1955,15 @@ export default function HomePage() {
                           marginBottom: 24,
                         }}
                       >
-                        {b.photo ? (
+                        {b.photo_url || b.photo ? (
                           <img
-                            src={b.photo}
+                            src={b.photo_url || b.photo}
                             alt={b.name}
                             style={{
                               width: "100%",
                               height: "100%",
                               objectFit: "cover",
+                              objectPosition: "center top",
                             }}
                           />
                         ) : (
