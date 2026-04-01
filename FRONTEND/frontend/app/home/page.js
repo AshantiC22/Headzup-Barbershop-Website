@@ -8,6 +8,1102 @@ import useBreakpoint from "@/lib/useBreakpoint";
 const sf = { fontFamily: "'Syncopate', sans-serif" };
 const mono = { fontFamily: "'DM Mono', monospace" };
 
+// ── Persona / Character Select ─────────────────────────────────────────────
+function PersonaSelect({ homeBarbers, book, isMobile }) {
+  const sf = { fontFamily: "'Syncopate', sans-serif" };
+  const mono = { fontFamily: "'DM Mono', monospace" };
+  const [selected, setSelected] = useState(0);
+  const [locked, setLocked] = useState(false);
+  const [flash, setFlash] = useState(false);
+
+  const barbers =
+    homeBarbers.length > 0
+      ? homeBarbers
+      : [{ id: 0, name: "Loading...", bio: "", photo_url: null }];
+  const active = barbers[selected] || barbers[0];
+
+  // Stat bars — use bio keywords or defaults
+  const getStats = (b) => {
+    const n = (b.name || "").toLowerCase();
+    const bio = (b.bio || "").toLowerCase();
+    return [
+      {
+        label: "Fade",
+        val: bio.includes("fade") || bio.includes("skin") ? 98 : 92,
+      },
+      {
+        label: "Lineup",
+        val: bio.includes("line") || bio.includes("edge") ? 99 : 90,
+      },
+      {
+        label: "Beard",
+        val: bio.includes("beard") || bio.includes("shave") ? 96 : 85,
+      },
+      { label: "Precision", val: 97 },
+      { label: "Vibe", val: 100 },
+    ];
+  };
+
+  const handleSelect = (i) => {
+    if (locked) return;
+    setSelected(i);
+  };
+
+  const handleLock = (e) => {
+    setLocked(true);
+    setFlash(true);
+    setTimeout(() => setFlash(false), 600);
+    book(e);
+  };
+
+  const handleChange = () => {
+    setLocked(false);
+    setSelected(0);
+  };
+
+  const stats = getStats(active);
+
+  return (
+    <section
+      id="barber"
+      style={{
+        position: "relative",
+        overflow: "hidden",
+        background: "#020202",
+        borderTop: "1px solid rgba(255,255,255,0.06)",
+        borderBottom: "1px solid rgba(255,255,255,0.06)",
+      }}
+    >
+      <style>{`
+        @keyframes lockin   { 0%{opacity:1}25%{opacity:0}50%{opacity:1}75%{opacity:0}100%{opacity:1} }
+        @keyframes slidein  { from{transform:translateX(-20px);opacity:0} to{transform:none;opacity:1} }
+        @keyframes statgrow { from{width:0} to{width:var(--w)} }
+        @keyframes scanH    { from{left:-100%} to{left:200%} }
+        .persona-flash { animation: lockin 0.6s ease; }
+        .stat-bar      { animation: statgrow 0.8s cubic-bezier(0.4,0,0.2,1) both; }
+        .persona-name  { animation: slidein 0.4s cubic-bezier(0.16,1,0.3,1) both; }
+        .card-idle     { transition: transform 0.3s ease, border-color 0.3s, filter 0.3s; }
+        .card-idle:hover { transform: translateY(-4px) scale(1.02); }
+      `}</style>
+
+      {/* Full bleed atmospheric bg — big photo of active barber */}
+      <div
+        style={{
+          position: "absolute",
+          inset: 0,
+          overflow: "hidden",
+          zIndex: 0,
+        }}
+      >
+        {active.photo_url || active.photo ? (
+          <img
+            key={active.id}
+            src={active.photo_url || active.photo}
+            alt=""
+            style={{
+              width: "100%",
+              height: "100%",
+              objectFit: "cover",
+              objectPosition: "center top",
+              filter: "brightness(0.18) saturate(0.4)",
+              transition: "opacity 0.6s ease",
+              display: "block",
+            }}
+          />
+        ) : (
+          <div
+            style={{
+              width: "100%",
+              height: "100%",
+              background:
+                "radial-gradient(ellipse at 60% 40%,rgba(245,158,11,0.06) 0%,transparent 60%)",
+            }}
+          />
+        )}
+        {/* Vignette */}
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            background:
+              "linear-gradient(to right,rgba(2,2,2,0.98) 0%,rgba(2,2,2,0.7) 50%,rgba(2,2,2,0.92) 100%)",
+          }}
+        />
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            background:
+              "linear-gradient(to top,rgba(2,2,2,0.95) 0%,transparent 40%)",
+          }}
+        />
+        {/* Scan line */}
+        <div
+          style={{
+            position: "absolute",
+            top: 0,
+            bottom: 0,
+            width: "30%",
+            background:
+              "linear-gradient(to right,transparent,rgba(245,158,11,0.03),transparent)",
+            animation: "scanH 4s linear infinite",
+            pointerEvents: "none",
+          }}
+        />
+      </div>
+
+      {/* Grid lines overlay */}
+      <div
+        style={{
+          position: "absolute",
+          inset: 0,
+          zIndex: 1,
+          pointerEvents: "none",
+          backgroundImage:
+            "linear-gradient(rgba(245,158,11,0.025) 1px,transparent 1px),linear-gradient(90deg,rgba(245,158,11,0.025) 1px,transparent 1px)",
+          backgroundSize: "60px 60px",
+        }}
+      />
+
+      <div
+        style={{
+          position: "relative",
+          zIndex: 2,
+          maxWidth: 1320,
+          margin: "0 auto",
+          padding: isMobile ? "40px 20px 48px" : "80px 40px 88px",
+        }}
+      >
+        {/* Header */}
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 20,
+            marginBottom: isMobile ? 32 : 52,
+          }}
+        >
+          <div
+            style={{ width: 40, height: 1, background: "rgba(245,158,11,0.5)" }}
+          />
+          <span
+            style={{
+              ...mono,
+              fontSize: 8,
+              color: "#f59e0b",
+              letterSpacing: "0.6em",
+              textTransform: "uppercase",
+            }}
+          >
+            Select Your Barber
+          </span>
+          <div
+            style={{
+              flex: 1,
+              height: 1,
+              background:
+                "linear-gradient(to right,rgba(245,158,11,0.2),transparent)",
+            }}
+          />
+          <span
+            style={{
+              ...mono,
+              fontSize: 8,
+              color: "#27272a",
+              letterSpacing: "0.3em",
+            }}
+          >
+            {String(selected + 1).padStart(2, "0")} /{" "}
+            {String(barbers.length).padStart(2, "0")}
+          </span>
+        </div>
+
+        {isMobile ? (
+          /* ── MOBILE LAYOUT ── */
+          <div>
+            {/* Character thumbnails row */}
+            <div
+              style={{
+                display: "flex",
+                gap: 10,
+                marginBottom: 28,
+                overflowX: "auto",
+                paddingBottom: 8,
+              }}
+            >
+              {barbers.map((b, i) => (
+                <button
+                  key={b.id}
+                  onClick={() => handleSelect(i)}
+                  className="card-idle"
+                  style={{
+                    flexShrink: 0,
+                    width: 80,
+                    height: 108,
+                    border: `2px solid ${i === selected ? "#f59e0b" : "rgba(255,255,255,0.08)"}`,
+                    background: "#0a0a0a",
+                    overflow: "hidden",
+                    cursor: "pointer",
+                    padding: 0,
+                    position: "relative",
+                    filter: i === selected ? "none" : "brightness(0.5)",
+                  }}
+                >
+                  {b.photo_url || b.photo ? (
+                    <img
+                      src={b.photo_url || b.photo}
+                      alt={b.name}
+                      style={{
+                        width: "100%",
+                        height: "100%",
+                        objectFit: "cover",
+                        objectPosition: "center top",
+                        display: "block",
+                      }}
+                    />
+                  ) : (
+                    <div
+                      style={{
+                        width: "100%",
+                        height: "100%",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        background: "#111",
+                      }}
+                    >
+                      <span
+                        style={{
+                          ...sf,
+                          fontSize: 24,
+                          color: "#f59e0b",
+                          fontWeight: 900,
+                        }}
+                      >
+                        {b.name.charAt(0)}
+                      </span>
+                    </div>
+                  )}
+                  {i === selected && (
+                    <div
+                      style={{
+                        position: "absolute",
+                        bottom: 0,
+                        left: 0,
+                        right: 0,
+                        height: 2,
+                        background: "#f59e0b",
+                      }}
+                    />
+                  )}
+                </button>
+              ))}
+            </div>
+
+            {/* Active barber info */}
+            <div
+              className={flash ? "persona-flash" : ""}
+              style={{ marginBottom: 24 }}
+            >
+              <p
+                style={{
+                  ...mono,
+                  fontSize: 8,
+                  color: "#f59e0b",
+                  letterSpacing: "0.5em",
+                  textTransform: "uppercase",
+                  marginBottom: 8,
+                }}
+              >
+                {locked ? "✓ Selected" : "HEADZ UP · Barber"}
+              </p>
+              <h2
+                key={active.id}
+                className="persona-name"
+                style={{
+                  ...sf,
+                  fontSize: "clamp(1.8rem,7vw,2.8rem)",
+                  fontWeight: 900,
+                  textTransform: "uppercase",
+                  letterSpacing: "-0.04em",
+                  lineHeight: 1,
+                  marginBottom: 12,
+                  color: locked ? "#f59e0b" : "white",
+                }}
+              >
+                {active.name}
+              </h2>
+              {active.bio && (
+                <p
+                  style={{
+                    ...mono,
+                    fontSize: 12,
+                    color: "#52525b",
+                    lineHeight: 1.7,
+                    marginBottom: 16,
+                  }}
+                >
+                  {active.bio}
+                </p>
+              )}
+
+              {/* Stats */}
+              <div
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 8,
+                  marginBottom: 20,
+                }}
+              >
+                {stats.map((s) => (
+                  <div
+                    key={s.label}
+                    style={{ display: "flex", alignItems: "center", gap: 10 }}
+                  >
+                    <span
+                      style={{
+                        ...mono,
+                        fontSize: 8,
+                        color: "#52525b",
+                        letterSpacing: "0.3em",
+                        textTransform: "uppercase",
+                        width: 60,
+                        flexShrink: 0,
+                      }}
+                    >
+                      {s.label}
+                    </span>
+                    <div
+                      style={{
+                        flex: 1,
+                        height: 3,
+                        background: "rgba(255,255,255,0.06)",
+                        position: "relative",
+                        overflow: "hidden",
+                      }}
+                    >
+                      <div
+                        className="stat-bar"
+                        style={{
+                          position: "absolute",
+                          top: 0,
+                          left: 0,
+                          height: "100%",
+                          background: `linear-gradient(to right,#f59e0b,#fbbf24)`,
+                          "--w": `${s.val}%`,
+                          width: `${s.val}%`,
+                        }}
+                      />
+                    </div>
+                    <span
+                      style={{
+                        ...mono,
+                        fontSize: 8,
+                        color: "#f59e0b",
+                        minWidth: 28,
+                        textAlign: "right",
+                      }}
+                    >
+                      {s.val}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Action buttons */}
+            <div style={{ display: "flex", gap: 10 }}>
+              {!locked ? (
+                <button
+                  onClick={handleLock}
+                  style={{
+                    flex: 1,
+                    padding: "16px",
+                    background: "#f59e0b",
+                    color: "black",
+                    ...sf,
+                    fontSize: 8,
+                    fontWeight: 700,
+                    letterSpacing: "0.2em",
+                    textTransform: "uppercase",
+                    border: "none",
+                    cursor: "pointer",
+                    transition: "all 0.2s",
+                  }}
+                >
+                  Book {active.name} →
+                </button>
+              ) : (
+                <>
+                  <button
+                    onClick={handleLock}
+                    style={{
+                      flex: 1,
+                      padding: "16px",
+                      background: "#22c55e",
+                      color: "black",
+                      ...sf,
+                      fontSize: 8,
+                      fontWeight: 700,
+                      letterSpacing: "0.2em",
+                      textTransform: "uppercase",
+                      border: "none",
+                      cursor: "pointer",
+                    }}
+                  >
+                    ✓ Confirm Booking
+                  </button>
+                  <button
+                    onClick={handleChange}
+                    style={{
+                      padding: "16px 20px",
+                      background: "transparent",
+                      color: "#52525b",
+                      ...sf,
+                      fontSize: 7,
+                      letterSpacing: "0.15em",
+                      textTransform: "uppercase",
+                      border: "1px solid rgba(255,255,255,0.1)",
+                      cursor: "pointer",
+                    }}
+                  >
+                    Change
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+        ) : (
+          /* ── DESKTOP LAYOUT ── */
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "340px 1fr",
+              gap: 60,
+              alignItems: "start",
+            }}
+          >
+            {/* Left — character roster */}
+            <div>
+              <p
+                style={{
+                  ...mono,
+                  fontSize: 7,
+                  color: "#27272a",
+                  letterSpacing: "0.5em",
+                  textTransform: "uppercase",
+                  marginBottom: 16,
+                }}
+              >
+                — Choose Fighter —
+              </p>
+              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                {barbers.map((b, i) => (
+                  <button
+                    key={b.id}
+                    onClick={() => handleSelect(i)}
+                    className="card-idle"
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 14,
+                      padding: "0 0 0 0",
+                      background: "transparent",
+                      border: `1px solid ${i === selected ? "rgba(245,158,11,0.5)" : "rgba(255,255,255,0.06)"}`,
+                      cursor: "pointer",
+                      overflow: "hidden",
+                      position: "relative",
+                      textAlign: "left",
+                      filter: i === selected ? "none" : "brightness(0.6)",
+                    }}
+                  >
+                    {/* Photo thumbnail */}
+                    <div
+                      style={{
+                        width: 72,
+                        height: 88,
+                        flexShrink: 0,
+                        overflow: "hidden",
+                        background: "#0a0a0a",
+                      }}
+                    >
+                      {b.photo_url || b.photo ? (
+                        <img
+                          src={b.photo_url || b.photo}
+                          alt={b.name}
+                          style={{
+                            width: "100%",
+                            height: "100%",
+                            objectFit: "cover",
+                            objectPosition: "center top",
+                            display: "block",
+                          }}
+                        />
+                      ) : (
+                        <div
+                          style={{
+                            width: "100%",
+                            height: "100%",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                          }}
+                        >
+                          <span
+                            style={{
+                              ...sf,
+                              fontSize: 28,
+                              color: "#f59e0b",
+                              fontWeight: 900,
+                            }}
+                          >
+                            {b.name.charAt(0)}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                    {/* Name + status */}
+                    <div style={{ flex: 1, padding: "0 16px 0 4px" }}>
+                      <p
+                        style={{
+                          ...mono,
+                          fontSize: 7,
+                          color: i === selected ? "#f59e0b" : "#27272a",
+                          letterSpacing: "0.4em",
+                          textTransform: "uppercase",
+                          marginBottom: 5,
+                          transition: "color 0.2s",
+                        }}
+                      >
+                        Barber
+                      </p>
+                      <p
+                        style={{
+                          ...sf,
+                          fontSize: 13,
+                          fontWeight: 900,
+                          textTransform: "uppercase",
+                          color: i === selected ? "white" : "#52525b",
+                          letterSpacing: "-0.02em",
+                          transition: "color 0.2s",
+                        }}
+                      >
+                        {b.name}
+                      </p>
+                    </div>
+                    {/* Active indicator */}
+                    {i === selected && (
+                      <div
+                        style={{
+                          position: "absolute",
+                          left: 0,
+                          top: 0,
+                          bottom: 0,
+                          width: 3,
+                          background: "#f59e0b",
+                        }}
+                      />
+                    )}
+                    {/* Selected badge */}
+                    {i === selected && (
+                      <span
+                        style={{
+                          ...mono,
+                          fontSize: 7,
+                          color: "#000",
+                          background: "#f59e0b",
+                          padding: "4px 10px",
+                          marginRight: 12,
+                          letterSpacing: "0.2em",
+                          textTransform: "uppercase",
+                          flexShrink: 0,
+                        }}
+                      >
+                        {locked ? "✓ Locked" : "Selected"}
+                      </span>
+                    )}
+                  </button>
+                ))}
+              </div>
+
+              {/* Instruction text */}
+              <div
+                style={{
+                  marginTop: 28,
+                  padding: "16px",
+                  border: "1px solid rgba(255,255,255,0.06)",
+                  background: "rgba(245,158,11,0.03)",
+                }}
+              >
+                <p
+                  style={{
+                    ...mono,
+                    fontSize: 8,
+                    color: "#3f3f46",
+                    letterSpacing: "0.2em",
+                    lineHeight: 1.8,
+                  }}
+                >
+                  {locked
+                    ? `✓ ${active.name} selected — confirm your booking below`
+                    : "Click a barber to view their profile, then book your session"}
+                </p>
+              </div>
+            </div>
+
+            {/* Right — active barber big display */}
+            <div
+              className={flash ? "persona-flash" : ""}
+              style={{ position: "relative" }}
+            >
+              {/* Big photo panel */}
+              <div
+                style={{
+                  position: "relative",
+                  height: 480,
+                  overflow: "hidden",
+                  border: "1px solid rgba(245,158,11,0.15)",
+                  marginBottom: 32,
+                }}
+              >
+                {/* Photo */}
+                {active.photo_url || active.photo ? (
+                  <img
+                    key={active.id}
+                    src={active.photo_url || active.photo}
+                    alt={active.name}
+                    style={{
+                      width: "100%",
+                      height: "100%",
+                      objectFit: "cover",
+                      objectPosition: "center top",
+                      display: "block",
+                      transition: "opacity 0.5s ease",
+                    }}
+                  />
+                ) : (
+                  <div
+                    style={{
+                      width: "100%",
+                      height: "100%",
+                      background: "linear-gradient(135deg,#0a0a0a,#111)",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
+                    <span
+                      style={{
+                        ...sf,
+                        fontSize: 120,
+                        color: "rgba(245,158,11,0.08)",
+                        fontWeight: 900,
+                        letterSpacing: "-0.06em",
+                      }}
+                    >
+                      {active.name.charAt(0)}
+                    </span>
+                  </div>
+                )}
+
+                {/* Gradient overlay */}
+                <div
+                  style={{
+                    position: "absolute",
+                    inset: 0,
+                    background:
+                      "linear-gradient(to top,rgba(2,2,2,0.98) 0%,rgba(2,2,2,0.3) 50%,transparent 100%)",
+                  }}
+                />
+                <div
+                  style={{
+                    position: "absolute",
+                    inset: 0,
+                    background:
+                      "linear-gradient(to right,rgba(2,2,2,0.6) 0%,transparent 50%)",
+                  }}
+                />
+
+                {/* Barber name overlay */}
+                <div
+                  style={{
+                    position: "absolute",
+                    bottom: 0,
+                    left: 0,
+                    right: 0,
+                    padding: "28px 32px",
+                  }}
+                >
+                  <p
+                    style={{
+                      ...mono,
+                      fontSize: 8,
+                      color: "#f59e0b",
+                      letterSpacing: "0.6em",
+                      textTransform: "uppercase",
+                      marginBottom: 10,
+                    }}
+                  >
+                    HEADZ UP · BARBER
+                  </p>
+                  <h2
+                    key={`name-${active.id}`}
+                    className="persona-name"
+                    style={{
+                      ...sf,
+                      fontSize: "clamp(2rem,4vw,3.2rem)",
+                      fontWeight: 900,
+                      textTransform: "uppercase",
+                      letterSpacing: "-0.04em",
+                      lineHeight: 1,
+                      color: "white",
+                      marginBottom: 8,
+                    }}
+                  >
+                    {active.name}
+                  </h2>
+                  {active.bio && (
+                    <p
+                      style={{
+                        ...mono,
+                        fontSize: 12,
+                        color: "rgba(255,255,255,0.5)",
+                        lineHeight: 1.6,
+                        maxWidth: 420,
+                      }}
+                    >
+                      {active.bio}
+                    </p>
+                  )}
+                  {/* Accepting dot */}
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 8,
+                      marginTop: 12,
+                    }}
+                  >
+                    <div
+                      style={{
+                        width: 7,
+                        height: 7,
+                        background: "#22c55e",
+                        borderRadius: "50%",
+                        animation: "glow 2s infinite",
+                      }}
+                    />
+                    <span
+                      style={{
+                        ...mono,
+                        fontSize: 9,
+                        color: "#4ade80",
+                        letterSpacing: "0.3em",
+                        textTransform: "uppercase",
+                      }}
+                    >
+                      Accepting Clients Now
+                    </span>
+                  </div>
+                </div>
+
+                {/* Corner tag */}
+                <div
+                  style={{
+                    position: "absolute",
+                    top: 16,
+                    right: 16,
+                    ...mono,
+                    fontSize: 7,
+                    color: "#f59e0b",
+                    background: "rgba(245,158,11,0.1)",
+                    border: "1px solid rgba(245,158,11,0.3)",
+                    padding: "6px 12px",
+                    letterSpacing: "0.3em",
+                    textTransform: "uppercase",
+                  }}
+                >
+                  HEADZ UP
+                </div>
+              </div>
+
+              {/* Stats panel */}
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "1fr 1fr",
+                  gap: 20,
+                }}
+              >
+                {/* Stat bars */}
+                <div>
+                  <p
+                    style={{
+                      ...mono,
+                      fontSize: 7,
+                      color: "#27272a",
+                      letterSpacing: "0.4em",
+                      textTransform: "uppercase",
+                      marginBottom: 14,
+                    }}
+                  >
+                    Stats
+                  </p>
+                  <div
+                    style={{
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: 10,
+                    }}
+                  >
+                    {stats.map((s) => (
+                      <div
+                        key={s.label}
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 10,
+                        }}
+                      >
+                        <span
+                          style={{
+                            ...mono,
+                            fontSize: 8,
+                            color: "#52525b",
+                            letterSpacing: "0.2em",
+                            textTransform: "uppercase",
+                            width: 68,
+                            flexShrink: 0,
+                          }}
+                        >
+                          {s.label}
+                        </span>
+                        <div
+                          style={{
+                            flex: 1,
+                            height: 3,
+                            background: "rgba(255,255,255,0.06)",
+                            position: "relative",
+                            overflow: "hidden",
+                          }}
+                        >
+                          <div
+                            className="stat-bar"
+                            key={`${active.id}-${s.label}`}
+                            style={{
+                              position: "absolute",
+                              top: 0,
+                              left: 0,
+                              height: "100%",
+                              background:
+                                "linear-gradient(to right,#f59e0b,#fbbf24)",
+                              "--w": `${s.val}%`,
+                              width: `${s.val}%`,
+                            }}
+                          />
+                        </div>
+                        <span
+                          style={{
+                            ...mono,
+                            fontSize: 9,
+                            color: "#f59e0b",
+                            minWidth: 28,
+                            textAlign: "right",
+                          }}
+                        >
+                          {s.val}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Quick info */}
+                <div>
+                  <p
+                    style={{
+                      ...mono,
+                      fontSize: 7,
+                      color: "#27272a",
+                      letterSpacing: "0.4em",
+                      textTransform: "uppercase",
+                      marginBottom: 14,
+                    }}
+                  >
+                    Profile
+                  </p>
+                  <div
+                    style={{
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: 10,
+                    }}
+                  >
+                    {[
+                      { label: "Shop", val: "HEADZ UP" },
+                      { label: "Location", val: "Hattiesburg, MS" },
+                      { label: "Specialty", val: "Precision Fades" },
+                      { label: "Status", val: "✦ Available", green: true },
+                    ].map(({ label, val, green }) => (
+                      <div
+                        key={label}
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          alignItems: "center",
+                          paddingBottom: 8,
+                          borderBottom: "1px solid rgba(255,255,255,0.05)",
+                        }}
+                      >
+                        <span
+                          style={{
+                            ...mono,
+                            fontSize: 8,
+                            color: "#3f3f46",
+                            letterSpacing: "0.2em",
+                            textTransform: "uppercase",
+                          }}
+                        >
+                          {label}
+                        </span>
+                        <span
+                          style={{
+                            ...mono,
+                            fontSize: 10,
+                            color: green ? "#4ade80" : "#a1a1aa",
+                          }}
+                        >
+                          {val}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Action buttons */}
+              <div style={{ display: "flex", gap: 12, marginTop: 28 }}>
+                {!locked ? (
+                  <>
+                    <button
+                      onClick={handleLock}
+                      style={{
+                        flex: 1,
+                        padding: "18px 28px",
+                        background: "#f59e0b",
+                        color: "black",
+                        ...sf,
+                        fontSize: 9,
+                        fontWeight: 700,
+                        letterSpacing: "0.25em",
+                        textTransform: "uppercase",
+                        border: "none",
+                        cursor: "pointer",
+                        transition: "all 0.25s",
+                        position: "relative",
+                        overflow: "hidden",
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.background = "white";
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.background = "#f59e0b";
+                      }}
+                    >
+                      Book {active.name} →
+                    </button>
+                    <a
+                      href="/book"
+                      onClick={book}
+                      style={{
+                        padding: "18px 28px",
+                        background: "transparent",
+                        color: "#52525b",
+                        ...sf,
+                        fontSize: 9,
+                        letterSpacing: "0.2em",
+                        textTransform: "uppercase",
+                        border: "1px solid rgba(255,255,255,0.1)",
+                        cursor: "pointer",
+                        textDecoration: "none",
+                        display: "inline-flex",
+                        alignItems: "center",
+                        transition: "all 0.2s",
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.borderColor =
+                          "rgba(245,158,11,0.4)";
+                        e.currentTarget.style.color = "#f59e0b";
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.borderColor =
+                          "rgba(255,255,255,0.1)";
+                        e.currentTarget.style.color = "#52525b";
+                      }}
+                    >
+                      View All →
+                    </a>
+                  </>
+                ) : (
+                  <>
+                    <button
+                      onClick={handleLock}
+                      style={{
+                        flex: 1,
+                        padding: "18px 28px",
+                        background: "#22c55e",
+                        color: "black",
+                        ...sf,
+                        fontSize: 9,
+                        fontWeight: 700,
+                        letterSpacing: "0.25em",
+                        textTransform: "uppercase",
+                        border: "none",
+                        cursor: "pointer",
+                        transition: "all 0.25s",
+                      }}
+                    >
+                      ✓ Confirm — Book Now
+                    </button>
+                    <button
+                      onClick={handleChange}
+                      style={{
+                        padding: "18px 24px",
+                        background: "transparent",
+                        color: "#52525b",
+                        ...sf,
+                        fontSize: 8,
+                        letterSpacing: "0.15em",
+                        textTransform: "uppercase",
+                        border: "1px solid rgba(255,255,255,0.1)",
+                        cursor: "pointer",
+                        transition: "all 0.2s",
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.borderColor =
+                          "rgba(255,255,255,0.3)";
+                        e.currentTarget.style.color = "white";
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.borderColor =
+                          "rgba(255,255,255,0.1)";
+                        e.currentTarget.style.color = "#52525b";
+                      }}
+                    >
+                      ← Change
+                    </button>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </section>
+  );
+}
+
 // ── Gallery images ─────────────────────────────────────────────────────────
 const GALLERY = [
   {
@@ -1799,289 +2895,15 @@ export default function HomePage() {
         </section>
 
         {/* ═══════════════════════ BARBER ═══════════════════════ */}
-        <section
-          id="barber"
-          style={{
-            background: "rgba(255,255,255,0.018)",
-            borderTop: "1px solid rgba(255,255,255,0.07)",
-            borderBottom: "1px solid rgba(255,255,255,0.07)",
-            padding: isMobile ? "60px 20px" : "120px 28px",
-          }}
-        >
-          <div style={{ maxWidth: 1320, margin: "0 auto" }}>
-            <div
-              data-id="b1"
-              className={`rv${R("b1") ? " on" : ""}`}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 20,
-                marginBottom: 64,
-              }}
-            >
-              <div
-                style={{
-                  width: 40,
-                  height: 1,
-                  background: "rgba(245,158,11,0.5)",
-                }}
-              />
-              <span
-                style={{
-                  ...mono,
-                  fontSize: 8,
-                  color: "#f59e0b",
-                  letterSpacing: "0.6em",
-                  textTransform: "uppercase",
-                }}
-              >
-                In The Chair
-              </span>
-            </div>
-
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr",
-                gap: isMobile ? 32 : 80,
-                alignItems: "start",
-              }}
-            >
-              <div data-id="b2" className={`rv${R("b2") ? " on" : ""}`}>
-                <h2
-                  style={{
-                    ...sf,
-                    fontSize: "clamp(2.2rem,5vw,4rem)",
-                    fontWeight: 900,
-                    textTransform: "uppercase",
-                    lineHeight: 0.88,
-                    letterSpacing: "-0.04em",
-                  }}
-                >
-                  Meet
-                  <br />
-                  <span className="outline">Your</span>
-                  <br />
-                  <span style={{ color: "#f59e0b", fontStyle: "italic" }}>
-                    Barber_
-                  </span>
-                </h2>
-              </div>
-              <div
-                data-id="b3"
-                className={`rv d1${R("b3") ? " on" : ""}`}
-                style={{ paddingTop: 8 }}
-              >
-                <p
-                  style={{
-                    ...mono,
-                    fontSize: 13,
-                    color: "#71717a",
-                    lineHeight: 1.8,
-                  }}
-                >
-                  Every barber at HEADZ UP is handpicked — not just for skill,
-                  but for the whole experience. The conversation, the energy,
-                  the precision. That's the standard.
-                </p>
-              </div>
-            </div>
-
-            {/* Barber cards */}
-            <div
-              data-id="b4"
-              className={`rv${R("b4") ? " on" : ""}`}
-              style={{ marginTop: 56 }}
-            >
-              {homeBarbers.length === 0 ? (
-                <div style={{ padding: "80px 0", textAlign: "center" }}>
-                  <div
-                    style={{
-                      width: 64,
-                      height: 64,
-                      margin: "0 auto 16px",
-                      background: "rgba(245,158,11,0.07)",
-                      border: "1px solid rgba(245,158,11,0.2)",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                    }}
-                  >
-                    <span style={{ fontSize: 24 }}>✂️</span>
-                  </div>
-                  <p style={{ ...mono, fontSize: 12, color: "#3f3f46" }}>
-                    Barber profiles loading...
-                  </p>
-                </div>
-              ) : (
-                <div style={{ display: "flex", gap: 20, flexWrap: "wrap" }}>
-                  {homeBarbers.map((b, i) => (
-                    <div
-                      key={b.id}
-                      className="bcard"
-                      style={{
-                        flex: "1 1 280px",
-                        background: "#0a0a0a",
-                        border: "1px solid rgba(255,255,255,0.08)",
-                        padding: "40px 32px",
-                        position: "relative",
-                        overflow: "hidden",
-                      }}
-                    >
-                      {/* Amber corner */}
-                      <div
-                        style={{
-                          position: "absolute",
-                          top: 0,
-                          right: 0,
-                          width: 0,
-                          height: 0,
-                          borderStyle: "solid",
-                          borderWidth: "0 60px 60px 0",
-                          borderColor: `transparent rgba(245,158,11,0.18) transparent transparent`,
-                        }}
-                      />
-
-                      {/* Avatar */}
-                      <div
-                        style={{
-                          width: 72,
-                          height: 72,
-                          background: "#040404",
-                          border: "1px solid rgba(245,158,11,0.3)",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          marginBottom: 24,
-                        }}
-                      >
-                        {b.photo_url || b.photo ? (
-                          <img
-                            src={b.photo_url || b.photo}
-                            alt={b.name}
-                            style={{
-                              width: "100%",
-                              height: "100%",
-                              objectFit: "cover",
-                              objectPosition: "center top",
-                            }}
-                          />
-                        ) : (
-                          <span
-                            style={{
-                              ...sf,
-                              fontSize: 26,
-                              fontWeight: 900,
-                              color: "#f59e0b",
-                            }}
-                          >
-                            {b.name.charAt(0)}
-                          </span>
-                        )}
-                      </div>
-
-                      <p
-                        style={{
-                          ...mono,
-                          fontSize: 8,
-                          color: "#f59e0b",
-                          letterSpacing: "0.5em",
-                          textTransform: "uppercase",
-                          marginBottom: 8,
-                        }}
-                      >
-                        Barber · HEADZ UP
-                      </p>
-                      <h3
-                        style={{
-                          ...sf,
-                          fontSize: "clamp(1.2rem,2vw,1.6rem)",
-                          fontWeight: 900,
-                          textTransform: "uppercase",
-                          marginBottom: 16,
-                          letterSpacing: "-0.03em",
-                        }}
-                      >
-                        {b.name}
-                      </h3>
-
-                      {b.bio && (
-                        <p
-                          style={{
-                            ...mono,
-                            fontSize: 12,
-                            color: "#71717a",
-                            lineHeight: 1.8,
-                            marginBottom: 24,
-                          }}
-                        >
-                          {b.bio}
-                        </p>
-                      )}
-
-                      <div
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: 8,
-                          marginBottom: 28,
-                        }}
-                      >
-                        <div
-                          style={{
-                            width: 6,
-                            height: 6,
-                            background: "#22c55e",
-                            borderRadius: "50%",
-                            animation: "glow 2s infinite",
-                          }}
-                        />
-                        <span
-                          style={{
-                            ...mono,
-                            fontSize: 9,
-                            color: "#4ade80",
-                            letterSpacing: "0.3em",
-                            textTransform: "uppercase",
-                          }}
-                        >
-                          Accepting Clients
-                        </span>
-                      </div>
-
-                      <a
-                        href="/book"
-                        onClick={book}
-                        style={{
-                          ...mono,
-                          fontSize: 9,
-                          color: "#f59e0b",
-                          textDecoration: "none",
-                          letterSpacing: "0.3em",
-                          textTransform: "uppercase",
-                          display: "inline-flex",
-                          alignItems: "center",
-                          gap: 10,
-                          paddingBottom: 2,
-                          borderBottom: "1px solid rgba(245,158,11,0.4)",
-                          transition: "gap 0.2s",
-                        }}
-                        onMouseEnter={(e) =>
-                          (e.currentTarget.style.gap = "16px")
-                        }
-                        onMouseLeave={(e) =>
-                          (e.currentTarget.style.gap = "10px")
-                        }
-                      >
-                        Book Session →
-                      </a>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-        </section>
+        {/* ═══════════════════════ PERSONA SELECT ═══════════════════════ */}
+        <PersonaSelect
+          homeBarbers={homeBarbers}
+          book={book}
+          isMobile={isMobile}
+          R={R}
+          mono={mono}
+          sf={sf}
+        />
 
         {/* ═══════════════════════ REVIEWS ═══════════════════════ */}
         <section
