@@ -11,32 +11,32 @@ const mono = { fontFamily: "'DM Mono', monospace" };
 // ── Gallery images ─────────────────────────────────────────────────────────
 const GALLERY = [
   {
-    url: "C:\\Users\\Ashanti\\Documents\\GitHub\\Headzup-Barbershop-Website\\FRONTEND\\frontend\\pictures\\IMG_20260331_115011 (2).jpg",
+    url: "/pictures/IMG_20260331_115011 (2).jpg",
     label: "Precision Fade",
     sub: "Signature cut",
   },
   {
-    url: "C:\\Users\\Ashanti\\Documents\\GitHub\\Headzup-Barbershop-Website\\FRONTEND\\frontend\\pictures\\IMG_20260331_115011 (3).jpg",
+    url: "/pictures/IMG_20260331_115011 (3).jpg",
     label: "Clean Lineup",
     sub: "Sharp edges",
   },
   {
-    url: "C:\\Users\\Ashanti\\Documents\\GitHub\\Headzup-Barbershop-Website\\FRONTEND\\frontend\\pictures\\IMG_20260331_115011 (4).jpg",
+    url: "/pictures/IMG_20260331_115011 (4).jpg",
     label: "Beard Trim",
     sub: "Sculpted look",
   },
   {
-    url: "C:\\Users\\Ashanti\\Documents\\GitHub\\Headzup-Barbershop-Website\\FRONTEND\\frontend\\pictures\\IMG_20260331_115011 (5).jpg",
+    url: "/pictures/IMG_20260331_115011 (5).jpg",
     label: "Kids Cutz",
     sub: "Ages 1–12",
   },
   {
-    url: "C:\\Users\\Ashanti\\Documents\\GitHub\\Headzup-Barbershop-Website\\FRONTEND\\frontend\\pictures\\IMG_20260331_115011 (6).jpg",
+    url: "/pictures/IMG_20260331_115011 (6).jpg",
     label: "Full Experience",
     sub: "Cut & shave",
   },
   {
-    url: "C:\\Users\\Ashanti\\Documents\\GitHub\\Headzup-Barbershop-Website\\FRONTEND\\frontend\\pictures\\IMG_20260331_115011 (7).jpg",
+    url: "/pictures/IMG_20260331_115011 (7).jpg",
     label: "The Chair",
     sub: "Your throne",
   },
