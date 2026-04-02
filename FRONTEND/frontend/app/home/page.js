@@ -7,17 +7,15 @@ import useBreakpoint from "@/lib/useBreakpoint";
 const D = { fontFamily: "'Syncopate',sans-serif" };
 const M = { fontFamily: "'DM Mono',monospace" };
 
-/* ─── PERSONA SELECT ────────────────────────────────────────────────────── */
+/* ── PERSONA SELECT ─────────────────────────────────────────────────────── */
 function PersonaSelect({ barbers, book, isMobile }) {
   const [sel, setSel] = useState(0);
   const [locked, setLocked] = useState(false);
   const [flash, setFlash] = useState(false);
-  const [hov, setHov] = useState(null);
   const list = barbers.length
     ? barbers
     : [{ id: 0, name: "Barber", bio: "", photo_url: null }];
   const active = list[sel] || list[0];
-
   const STATS = [
     { k: "Fade", v: 98 },
     { k: "Lineup", v: 99 },
@@ -25,7 +23,6 @@ function PersonaSelect({ barbers, book, isMobile }) {
     { k: "Precision", v: 97 },
     { k: "Vibe", v: 100 },
   ];
-
   const lock = (e) => {
     setFlash(true);
     setLocked(true);
@@ -39,23 +36,26 @@ function PersonaSelect({ barbers, book, isMobile }) {
       style={{
         position: "relative",
         overflow: "hidden",
-        background: "#020202",
-        borderTop: "2px solid rgba(245,158,11,0.15)",
-        borderBottom: "2px solid rgba(245,158,11,0.15)",
+        background: "#000",
+        minHeight: isMobile ? "auto" : "100vh",
+        display: "flex",
+        alignItems: "center",
       }}
     >
       <style>{`
-        .ps-flash { animation: lockin 0.7s ease; }
-        .ps-name  { animation: nameIn 0.45s cubic-bezier(0.16,1,0.3,1) both; }
-        .ps-sbar  { animation: statgrow 0.9s cubic-bezier(0.4,0,0.2,1) both; }
-        .ps-scan  { animation: scanright 5s linear infinite; }
-        .ps-card  { transition: transform 0.3s, border-color 0.3s, filter 0.3s; cursor:pointer; }
-        .ps-card:hover { transform:translateY(-3px); }
-        .ps-row   { transition: background 0.2s, border-color 0.2s; cursor:pointer; }
-        .ps-row:hover  { background: rgba(245,158,11,0.04) !important; border-color: rgba(245,158,11,0.3) !important; }
+        .ps-flash{animation:lockin 0.7s ease;}
+        .ps-name{animation:nameIn 0.5s cubic-bezier(0.16,1,0.3,1) both;}
+        .ps-bar{animation:statgrow 1s cubic-bezier(0.4,0,0.2,1) both;}
+        .ps-row{transition:background 0.2s,border-color 0.2s;cursor:pointer;}
+        .ps-row:hover{background:rgba(245,158,11,0.06)!important;}
+        @keyframes lockin{0%,100%{opacity:1}20%,60%{opacity:0}40%,80%{opacity:0.5}}
+        @keyframes nameIn{from{opacity:0;transform:translateX(-24px) skewX(-4deg)}to{opacity:1;transform:none}}
+        @keyframes statgrow{from{width:0}to{width:var(--w,100%)}}
+        @keyframes scanH{from{left:-60%}to{left:160%}}
+        @keyframes rgbShift{0%{text-shadow:2px 0 #f59e0b,-2px 0 rgba(245,158,11,0.3)}50%{text-shadow:-2px 0 rgba(245,158,11,0.5),2px 0 #f59e0b}100%{text-shadow:2px 0 #f59e0b,-2px 0 rgba(245,158,11,0.3)}}
       `}</style>
 
-      {/* BG photo bleed */}
+      {/* Bleed bg photo */}
       <div style={{ position: "absolute", inset: 0, zIndex: 0 }}>
         {active.photo_url || active.photo ? (
           <img
@@ -67,26 +67,18 @@ function PersonaSelect({ barbers, book, isMobile }) {
               height: "100%",
               objectFit: "cover",
               objectPosition: "center top",
-              filter: "brightness(0.12) saturate(0.3)",
-              transition: "opacity 0.8s",
+              filter: "brightness(0.1) saturate(0.2)",
+              transition: "opacity 1s",
             }}
           />
-        ) : (
-          <div
-            style={{
-              width: "100%",
-              height: "100%",
-              background:
-                "radial-gradient(ellipse at 65% 35%, rgba(245,158,11,0.05) 0%, transparent 60%)",
-            }}
-          />
-        )}
+        ) : null}
+        {/* Heavy vignette */}
         <div
           style={{
             position: "absolute",
             inset: 0,
             background:
-              "linear-gradient(to right,rgba(2,2,2,0.97) 0%,rgba(2,2,2,0.75) 45%,rgba(2,2,2,0.95) 100%)",
+              "linear-gradient(to right,#000 0%,rgba(0,0,0,0.88) 40%,rgba(0,0,0,0.6) 65%,rgba(0,0,0,0.85) 100%)",
           }}
         />
         <div
@@ -94,28 +86,40 @@ function PersonaSelect({ barbers, book, isMobile }) {
             position: "absolute",
             inset: 0,
             background:
-              "linear-gradient(to top,rgba(2,2,2,0.98) 0%,transparent 45%)",
+              "linear-gradient(to bottom,#000 0%,transparent 20%,transparent 80%,#000 100%)",
           }}
         />
+        {/* Scanline */}
         <div
-          className="ps-scan"
           style={{
             position: "absolute",
             top: 0,
             bottom: 0,
-            width: "25%",
+            width: "40%",
             background:
-              "linear-gradient(to right,transparent,rgba(245,158,11,0.025),transparent)",
+              "linear-gradient(to right,transparent,rgba(245,158,11,0.03),transparent)",
+            animation: "scanH 6s linear infinite",
             pointerEvents: "none",
           }}
         />
+        {/* CRT scanlines */}
         <div
           style={{
             position: "absolute",
             inset: 0,
             backgroundImage:
-              "linear-gradient(rgba(245,158,11,0.02) 1px,transparent 1px),linear-gradient(90deg,rgba(245,158,11,0.02) 1px,transparent 1px)",
-            backgroundSize: "48px 48px",
+              "repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.12) 2px,rgba(0,0,0,0.12) 3px)",
+            pointerEvents: "none",
+          }}
+        />
+        {/* Grid */}
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            backgroundImage:
+              "linear-gradient(rgba(245,158,11,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(245,158,11,0.03) 1px,transparent 1px)",
+            backgroundSize: "44px 44px",
             pointerEvents: "none",
           }}
         />
@@ -125,55 +129,79 @@ function PersonaSelect({ barbers, book, isMobile }) {
         style={{
           position: "relative",
           zIndex: 2,
+          width: "100%",
           maxWidth: 1320,
           margin: "0 auto",
-          padding: isMobile ? "44px 20px 52px" : "88px 40px 96px",
+          padding: isMobile ? "44px 20px 52px" : "0 44px",
         }}
       >
-        {/* Section header */}
+        {/* Header label */}
         <div
           style={{
             display: "flex",
             alignItems: "center",
-            gap: 16,
-            marginBottom: isMobile ? 32 : 52,
+            gap: 14,
+            marginBottom: isMobile ? 28 : 48,
           }}
         >
-          <div style={{ width: 3, height: 24, background: "var(--amber)" }} />
+          <div
+            style={{
+              width: 32,
+              height: 32,
+              background: "rgba(245,158,11,0.1)",
+              border: "1px solid rgba(245,158,11,0.4)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <span
+              style={{ ...D, fontSize: 10, color: "#f59e0b", fontWeight: 900 }}
+            >
+              B
+            </span>
+          </div>
           <span
             style={{
               ...M,
               fontSize: 8,
-              color: "var(--amber)",
+              color: "#f59e0b",
               letterSpacing: "0.6em",
               textTransform: "uppercase",
             }}
           >
-            Select Your Barber
+            SELECT YOUR BARBER
           </span>
           <div
             style={{
               flex: 1,
               height: 1,
               background:
-                "linear-gradient(to right,rgba(245,158,11,0.25),transparent)",
+                "linear-gradient(to right,rgba(245,158,11,0.3),transparent)",
             }}
           />
-          <div className="hud-tag" style={{ fontSize: 8 }}>
+          <span
+            style={{
+              ...M,
+              fontSize: 8,
+              color: "rgba(245,158,11,0.3)",
+              letterSpacing: "0.3em",
+            }}
+          >
             {String(sel + 1).padStart(2, "0")} /{" "}
             {String(list.length).padStart(2, "0")}
-          </div>
+          </span>
         </div>
 
-        {/* ── MOBILE ── */}
         {isMobile ? (
+          /* Mobile layout */
           <div>
             <div
               style={{
                 display: "flex",
                 gap: 8,
                 overflowX: "auto",
-                paddingBottom: 12,
+                paddingBottom: 10,
                 marginBottom: 24,
               }}
             >
@@ -184,19 +212,20 @@ function PersonaSelect({ barbers, book, isMobile }) {
                     setSel(i);
                     setLocked(false);
                   }}
-                  className="ps-card"
                   style={{
                     flexShrink: 0,
-                    width: 88,
-                    height: 116,
-                    border: `2px solid ${i === sel ? "var(--amber)" : "rgba(255,255,255,0.07)"}`,
-                    background: "var(--s1)",
+                    width: 90,
+                    height: 115,
+                    border: `2px solid ${i === sel ? "#f59e0b" : "rgba(255,255,255,0.08)"}`,
+                    background: "#0a0a0a",
                     overflow: "hidden",
                     padding: 0,
                     position: "relative",
-                    filter: i === sel ? "none" : "brightness(0.4)",
+                    cursor: "pointer",
                     minHeight: "auto",
                     minWidth: "auto",
+                    filter: i === sel ? "none" : "brightness(0.35)",
+                    transition: "filter 0.3s",
                   }}
                 >
                   {b.photo_url || b.photo ? (
@@ -225,7 +254,7 @@ function PersonaSelect({ barbers, book, isMobile }) {
                         style={{
                           ...D,
                           fontSize: 28,
-                          color: "var(--amber)",
+                          color: "#f59e0b",
                           fontWeight: 900,
                         }}
                       >
@@ -241,41 +270,49 @@ function PersonaSelect({ barbers, book, isMobile }) {
                         left: 0,
                         right: 0,
                         height: 2,
-                        background: "var(--amber)",
+                        background: "#f59e0b",
                       }}
                     />
                   )}
                   <div
                     style={{
                       position: "absolute",
-                      top: 6,
-                      right: 6,
+                      top: 5,
+                      right: 5,
                       width: 6,
                       height: 6,
-                      background: "var(--green)",
+                      background: "#22c55e",
                       borderRadius: "50%",
-                      border: "1px solid #020202",
+                      border: "1.5px solid #000",
                     }}
                   />
                 </button>
               ))}
             </div>
-
             <div className={flash ? "ps-flash" : ""}>
-              <div className="hud-tag" style={{ marginBottom: 12 }}>
-                {locked ? "✓ Locked In" : "Barber · HEADZ UP"}
-              </div>
+              <p
+                style={{
+                  ...M,
+                  fontSize: 8,
+                  color: "#f59e0b",
+                  letterSpacing: "0.5em",
+                  textTransform: "uppercase",
+                  marginBottom: 8,
+                }}
+              >
+                {locked ? "✓ LOCKED IN" : "BARBER PROFILE"}
+              </p>
               <h2
                 key={`m-${active.id}`}
                 className="ps-name"
                 style={{
                   ...D,
-                  fontSize: "clamp(2rem,7.5vw,2.8rem)",
+                  fontSize: "clamp(2rem,8vw,2.8rem)",
                   fontWeight: 900,
                   letterSpacing: "-0.04em",
                   lineHeight: 1.05,
-                  marginBottom: active.bio ? 12 : 20,
-                  color: locked ? "var(--amber)" : "white",
+                  marginBottom: 12,
+                  color: locked ? "#f59e0b" : "white",
                 }}
               >
                 {active.name}
@@ -285,7 +322,7 @@ function PersonaSelect({ barbers, book, isMobile }) {
                   style={{
                     ...M,
                     fontSize: 12,
-                    color: "var(--sub)",
+                    color: "#52525b",
                     lineHeight: 1.7,
                     marginBottom: 16,
                   }}
@@ -310,10 +347,10 @@ function PersonaSelect({ barbers, book, isMobile }) {
                       style={{
                         ...M,
                         fontSize: 7,
-                        color: "var(--muted)",
+                        color: "#52525b",
                         letterSpacing: "0.3em",
                         textTransform: "uppercase",
-                        width: 58,
+                        width: 60,
                         flexShrink: 0,
                       }}
                     >
@@ -323,19 +360,19 @@ function PersonaSelect({ barbers, book, isMobile }) {
                       style={{
                         flex: 1,
                         height: 2,
-                        background: "rgba(255,255,255,0.06)",
+                        background: "rgba(255,255,255,0.05)",
                         position: "relative",
                         overflow: "hidden",
                       }}
                     >
                       <div
-                        className="ps-sbar"
-                        key={`m-stat-${active.id}-${s.k}`}
+                        className="ps-bar"
+                        key={`ms-${active.id}-${s.k}`}
                         style={{
                           position: "absolute",
                           inset: "0 auto 0 0",
                           background:
-                            "linear-gradient(to right,var(--amber),var(--amber2))",
+                            "linear-gradient(to right,#f59e0b,#fbbf24)",
                           "--w": `${s.v}%`,
                           width: `${s.v}%`,
                         }}
@@ -345,7 +382,7 @@ function PersonaSelect({ barbers, book, isMobile }) {
                       style={{
                         ...M,
                         fontSize: 9,
-                        color: "var(--amber)",
+                        color: "#f59e0b",
                         minWidth: 24,
                         textAlign: "right",
                       }}
@@ -356,10 +393,24 @@ function PersonaSelect({ barbers, book, isMobile }) {
                 ))}
               </div>
             </div>
-
             {!locked ? (
-              <button onClick={lock} className="cta" style={{ width: "100%" }}>
-                <span>Book {active.name} →</span>
+              <button
+                onClick={lock}
+                style={{
+                  width: "100%",
+                  padding: "16px",
+                  background: "#f59e0b",
+                  color: "black",
+                  ...D,
+                  fontSize: 8,
+                  fontWeight: 700,
+                  letterSpacing: "0.22em",
+                  textTransform: "uppercase",
+                  border: "none",
+                  cursor: "pointer",
+                }}
+              >
+                Book {active.name} →
               </button>
             ) : (
               <div style={{ display: "flex", gap: 8 }}>
@@ -368,7 +419,7 @@ function PersonaSelect({ barbers, book, isMobile }) {
                   style={{
                     flex: 1,
                     padding: "16px",
-                    background: "var(--green)",
+                    background: "#22c55e",
                     color: "black",
                     ...D,
                     fontSize: 8,
@@ -377,22 +428,21 @@ function PersonaSelect({ barbers, book, isMobile }) {
                     textTransform: "uppercase",
                     border: "none",
                     cursor: "pointer",
-                    clipPath:
-                      "polygon(0 0,calc(100% - 6px) 0,100% 6px,100% 100%,6px 100%,0 calc(100% - 6px))",
                   }}
                 >
-                  ✓ Confirm
+                  ✓ Confirm Booking
                 </button>
                 <button
                   onClick={() => setLocked(false)}
                   style={{
                     padding: "16px 18px",
                     background: "transparent",
-                    color: "var(--muted)",
-                    ...M,
-                    fontSize: 10,
+                    color: "#52525b",
                     border: "1px solid rgba(255,255,255,0.1)",
                     cursor: "pointer",
+                    ...M,
+                    fontSize: 10,
+                    minHeight: "auto",
                   }}
                 >
                   ✕
@@ -401,294 +451,326 @@ function PersonaSelect({ barbers, book, isMobile }) {
             )}
           </div>
         ) : (
-          /* ── DESKTOP ── */
+          /* Desktop — full cinematic split layout */
           <div
             style={{
               display: "grid",
-              gridTemplateColumns: "320px 1fr",
-              gap: 56,
-              alignItems: "start",
+              gridTemplateColumns: "380px 1fr",
+              gap: 0,
+              minHeight: "80vh",
+              alignItems: "stretch",
             }}
           >
-            {/* Roster panel */}
-            <div>
+            {/* Left — roster */}
+            <div
+              style={{
+                borderRight: "1px solid rgba(245,158,11,0.15)",
+                paddingRight: 0,
+                display: "flex",
+                flexDirection: "column",
+                justifyContent: "center",
+                paddingTop: 60,
+                paddingBottom: 60,
+              }}
+            >
               <p
                 style={{
                   ...M,
                   fontSize: 7,
-                  color: "var(--dim)",
+                  color: "rgba(245,158,11,0.3)",
                   letterSpacing: "0.5em",
                   textTransform: "uppercase",
-                  marginBottom: 14,
+                  marginBottom: 20,
+                  paddingLeft: 4,
                 }}
               >
-                — Fighter Roster —
+                — FIGHTER SELECT —
               </p>
-              <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
-                {list.map((b, i) => (
-                  <div
-                    key={b.id}
-                    onClick={() => {
-                      setSel(i);
-                      setLocked(false);
-                    }}
-                    className="ps-row"
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 0,
-                      background:
-                        i === sel ? "rgba(245,158,11,0.05)" : "transparent",
-                      border: `1px solid ${i === sel ? "rgba(245,158,11,0.4)" : "rgba(255,255,255,0.06)"}`,
-                      overflow: "hidden",
-                      position: "relative",
-                    }}
-                  >
-                    {i === sel && (
-                      <div
-                        style={{
-                          position: "absolute",
-                          left: 0,
-                          top: 0,
-                          bottom: 0,
-                          width: 3,
-                          background: "var(--amber)",
-                        }}
-                      />
-                    )}
+              {list.map((b, i) => (
+                <div
+                  key={b.id}
+                  onClick={() => {
+                    setSel(i);
+                    setLocked(false);
+                  }}
+                  className="ps-row"
+                  style={{
+                    display: "flex",
+                    alignItems: "stretch",
+                    background:
+                      i === sel ? "rgba(245,158,11,0.05)" : "transparent",
+                    border: `1px solid ${i === sel ? "rgba(245,158,11,0.35)" : "rgba(255,255,255,0.05)"}`,
+                    marginBottom: 6,
+                    position: "relative",
+                    overflow: "hidden",
+                  }}
+                >
+                  {i === sel && (
                     <div
                       style={{
-                        width: 72,
-                        height: 88,
-                        flexShrink: 0,
-                        overflow: "hidden",
-                        background: "var(--s2)",
-                        marginLeft: i === sel ? 3 : 0,
+                        position: "absolute",
+                        left: 0,
+                        top: 0,
+                        bottom: 0,
+                        width: 3,
+                        background: "#f59e0b",
                       }}
-                    >
-                      {b.photo_url || b.photo ? (
-                        <img
-                          src={b.photo_url || b.photo}
-                          alt={b.name}
+                    />
+                  )}
+                  {/* Thumbnail */}
+                  <div
+                    style={{
+                      width: 80,
+                      height: 100,
+                      flexShrink: 0,
+                      overflow: "hidden",
+                      background: "#0a0a0a",
+                      marginLeft: i === sel ? 3 : 0,
+                    }}
+                  >
+                    {b.photo_url || b.photo ? (
+                      <img
+                        src={b.photo_url || b.photo}
+                        alt={b.name}
+                        style={{
+                          width: "100%",
+                          height: "100%",
+                          objectFit: "cover",
+                          objectPosition: "center top",
+                          filter:
+                            i === sel
+                              ? "none"
+                              : "brightness(0.4) saturate(0.4)",
+                          transition: "filter 0.35s",
+                        }}
+                      />
+                    ) : (
+                      <div
+                        style={{
+                          width: "100%",
+                          height: "100%",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                        }}
+                      >
+                        <span
                           style={{
-                            width: "100%",
-                            height: "100%",
-                            objectFit: "cover",
-                            objectPosition: "center top",
-                            filter:
-                              i === sel
-                                ? "none"
-                                : "brightness(0.5) saturate(0.5)",
-                            transition: "filter 0.3s",
-                          }}
-                        />
-                      ) : (
-                        <div
-                          style={{
-                            width: "100%",
-                            height: "100%",
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
+                            ...D,
+                            fontSize: 28,
+                            color: "#f59e0b",
+                            fontWeight: 900,
                           }}
                         >
-                          <span
-                            style={{
-                              ...D,
-                              fontSize: 26,
-                              color: "var(--amber)",
-                              fontWeight: 900,
-                            }}
-                          >
-                            {(b.name || "?").charAt(0)}
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                    <div style={{ flex: 1, padding: "0 16px 0 12px" }}>
-                      <p
-                        style={{
-                          ...M,
-                          fontSize: 7,
-                          color: i === sel ? "var(--amber)" : "var(--dim)",
-                          letterSpacing: "0.4em",
-                          textTransform: "uppercase",
-                          marginBottom: 4,
-                          transition: "color 0.2s",
-                        }}
-                      >
-                        Barber #{String(i + 1).padStart(2, "0")}
-                      </p>
-                      <p
-                        style={{
-                          ...D,
-                          fontSize: 12,
-                          fontWeight: 900,
-                          textTransform: "uppercase",
-                          color: i === sel ? "white" : "var(--muted)",
-                          letterSpacing: "-0.02em",
-                          transition: "color 0.2s",
-                        }}
-                      >
-                        {b.name}
-                      </p>
-                    </div>
-                    {i === sel && (
+                          {(b.name || "?").charAt(0)}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                  {/* Info */}
+                  <div
+                    style={{
+                      flex: 1,
+                      padding: "16px 16px 16px 14px",
+                      display: "flex",
+                      flexDirection: "column",
+                      justifyContent: "center",
+                    }}
+                  >
+                    <p
+                      style={{
+                        ...M,
+                        fontSize: 7,
+                        color: i === sel ? "#f59e0b" : "rgba(245,158,11,0.25)",
+                        letterSpacing: "0.4em",
+                        textTransform: "uppercase",
+                        marginBottom: 4,
+                        transition: "color 0.25s",
+                      }}
+                    >
+                      BARBER #{String(i + 1).padStart(2, "0")}
+                    </p>
+                    <p
+                      style={{
+                        ...D,
+                        fontSize: 14,
+                        fontWeight: 900,
+                        textTransform: "uppercase",
+                        color: i === sel ? "white" : "#3f3f46",
+                        letterSpacing: "-0.02em",
+                        transition: "color 0.25s",
+                      }}
+                    >
+                      {b.name}
+                    </p>
+                  </div>
+                  {i === sel && (
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        paddingRight: 14,
+                      }}
+                    >
                       <span
                         style={{
                           ...M,
                           fontSize: 7,
                           color: "black",
-                          background: "var(--amber)",
-                          padding: "4px 10px",
-                          marginRight: 12,
+                          background: "#f59e0b",
+                          padding: "3px 9px",
                           letterSpacing: "0.2em",
                           textTransform: "uppercase",
+                          whiteSpace: "nowrap",
                         }}
                       >
                         {locked ? "LOCKED" : "ACTIVE"}
                       </span>
-                    )}
-                  </div>
-                ))}
-              </div>
-
+                    </div>
+                  )}
+                </div>
+              ))}
+              {/* Instruction */}
               <div
                 style={{
                   marginTop: 20,
                   padding: "14px 16px",
-                  border: "1px solid rgba(255,255,255,0.05)",
-                  background: "rgba(245,158,11,0.025)",
-                  borderLeft: "2px solid rgba(245,158,11,0.3)",
+                  borderLeft: "2px solid rgba(245,158,11,0.25)",
+                  background: "rgba(245,158,11,0.03)",
                 }}
               >
                 <p
                   style={{
                     ...M,
                     fontSize: 9,
-                    color: "var(--dim)",
+                    color: "#3f3f46",
                     lineHeight: 1.8,
                   }}
                 >
                   {locked
-                    ? `✓ ${active.name} locked in — confirm below`
-                    : "Select a barber then lock in your session"}
+                    ? `✓ ${active.name} selected — confirm below`
+                    : "Pick your barber, lock them in"}
                 </p>
               </div>
             </div>
 
-            {/* Active display */}
-            <div className={flash ? "ps-flash" : ""}>
-              {/* Photo panel */}
+            {/* Right — big display */}
+            <div
+              className={flash ? "ps-flash" : ""}
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                justifyContent: "center",
+                paddingLeft: 52,
+              }}
+            >
+              {/* Massive photo */}
               <div
                 style={{
                   position: "relative",
-                  height: 500,
+                  height: 520,
+                  marginBottom: 32,
                   overflow: "hidden",
-                  border: "1px solid rgba(245,158,11,0.15)",
-                  marginBottom: 28,
-                  clipPath:
-                    "polygon(0 0,calc(100% - 16px) 0,100% 16px,100% 100%,16px 100%,0 calc(100% - 16px))",
                 }}
               >
-                {active.photo_url || active.photo ? (
-                  <img
-                    key={`hero-${active.id}`}
-                    src={active.photo_url || active.photo}
-                    alt={active.name}
-                    style={{
-                      width: "100%",
-                      height: "100%",
-                      objectFit: "cover",
-                      objectPosition: "center top",
-                      display: "block",
-                    }}
-                  />
-                ) : (
-                  <div
-                    style={{
-                      width: "100%",
-                      height: "100%",
-                      background: "linear-gradient(135deg,var(--s2),var(--s3))",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                    }}
-                  >
-                    <span
+                {/* Angled clip */}
+                <div
+                  style={{
+                    position: "absolute",
+                    inset: 0,
+                    overflow: "hidden",
+                    clipPath:
+                      "polygon(0 0,calc(100% - 24px) 0,100% 24px,100% 100%,24px 100%,0 calc(100% - 24px))",
+                  }}
+                >
+                  {active.photo_url || active.photo ? (
+                    <img
+                      key={`hero-${active.id}`}
+                      src={active.photo_url || active.photo}
+                      alt={active.name}
                       style={{
-                        ...D,
-                        fontSize: 160,
-                        color: "rgba(245,158,11,0.06)",
-                        fontWeight: 900,
+                        width: "100%",
+                        height: "100%",
+                        objectFit: "cover",
+                        objectPosition: "center top",
+                        display: "block",
+                        transition: "opacity 0.6s",
+                      }}
+                    />
+                  ) : (
+                    <div
+                      style={{
+                        width: "100%",
+                        height: "100%",
+                        background: "linear-gradient(135deg,#0a0a0a,#111)",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
                       }}
                     >
-                      {(active.name || "?").charAt(0)}
-                    </span>
-                  </div>
-                )}
-                <div
-                  style={{
-                    position: "absolute",
-                    inset: 0,
-                    background:
-                      "linear-gradient(to top,rgba(2,2,2,0.97) 0%,rgba(2,2,2,0.35) 40%,transparent 70%)",
-                  }}
-                />
-                <div
-                  style={{
-                    position: "absolute",
-                    inset: 0,
-                    background:
-                      "linear-gradient(to right,rgba(2,2,2,0.5) 0%,transparent 40%)",
-                  }}
-                />
-
-                {/* Scanline effect */}
-                <div
-                  style={{
-                    position: "absolute",
-                    inset: 0,
-                    backgroundImage:
-                      "repeating-linear-gradient(0deg,transparent,transparent 3px,rgba(0,0,0,0.08) 3px,rgba(0,0,0,0.08) 4px)",
-                    pointerEvents: "none",
-                  }}
-                />
+                      <span
+                        style={{
+                          ...D,
+                          fontSize: 180,
+                          color: "rgba(245,158,11,0.04)",
+                          fontWeight: 900,
+                          userSelect: "none",
+                        }}
+                      >
+                        {(active.name || "?").charAt(0)}
+                      </span>
+                    </div>
+                  )}
+                  {/* Gradient overlays */}
+                  <div
+                    style={{
+                      position: "absolute",
+                      inset: 0,
+                      background:
+                        "linear-gradient(to top,rgba(0,0,0,0.97) 0%,rgba(0,0,0,0.4) 35%,transparent 65%)",
+                    }}
+                  />
+                  <div
+                    style={{
+                      position: "absolute",
+                      inset: 0,
+                      background:
+                        "linear-gradient(to right,rgba(0,0,0,0.55) 0%,transparent 40%)",
+                    }}
+                  />
+                  {/* CRT effect */}
+                  <div
+                    style={{
+                      position: "absolute",
+                      inset: 0,
+                      backgroundImage:
+                        "repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.1) 2px,rgba(0,0,0,0.1) 3px)",
+                      pointerEvents: "none",
+                    }}
+                  />
+                </div>
 
                 {/* Corner brackets */}
                 {[
-                  {
-                    top: 8,
-                    left: 8,
-                    borderTop: "1px solid rgba(245,158,11,0.6)",
-                    borderLeft: "1px solid rgba(245,158,11,0.6)",
-                  },
-                  {
-                    top: 8,
-                    right: 8,
-                    borderTop: "1px solid rgba(245,158,11,0.6)",
-                    borderRight: "1px solid rgba(245,158,11,0.6)",
-                  },
-                  {
-                    bottom: 8,
-                    left: 8,
-                    borderBottom: "1px solid rgba(245,158,11,0.6)",
-                    borderLeft: "1px solid rgba(245,158,11,0.6)",
-                  },
-                  {
-                    bottom: 8,
-                    right: 8,
-                    borderBottom: "1px solid rgba(245,158,11,0.6)",
-                    borderRight: "1px solid rgba(245,158,11,0.6)",
-                  },
-                ].map((s, i) => (
+                  { t: 8, l: 8, bt: 1, bl: 1 },
+                  { t: 8, r: 8, bt: 1, br: 1 },
+                  { b: 8, l: 8, bb: 1, bl: 1 },
+                  { b: 8, r: 8, bb: 1, br: 1 },
+                ].map((c, j) => (
                   <div
-                    key={i}
+                    key={j}
                     style={{
                       position: "absolute",
-                      width: 16,
-                      height: 16,
-                      ...s,
+                      width: 18,
+                      height: 18,
+                      top: c.t,
+                      bottom: c.b,
+                      left: c.l,
+                      right: c.r,
+                      borderTop: c.bt && "1px solid rgba(245,158,11,0.7)",
+                      borderBottom: c.bb && "1px solid rgba(245,158,11,0.7)",
+                      borderLeft: c.bl && "1px solid rgba(245,158,11,0.7)",
+                      borderRight: c.br && "1px solid rgba(245,158,11,0.7)",
                     }}
                   />
                 ))}
@@ -700,26 +782,32 @@ function PersonaSelect({ barbers, book, isMobile }) {
                     bottom: 0,
                     left: 0,
                     right: 0,
-                    padding: "28px 32px",
+                    padding: "24px 28px",
                   }}
                 >
-                  <div
-                    className="hud-tag"
-                    style={{ marginBottom: 12, display: "inline-flex" }}
+                  <p
+                    style={{
+                      ...M,
+                      fontSize: 8,
+                      color: "rgba(245,158,11,0.7)",
+                      letterSpacing: "0.55em",
+                      textTransform: "uppercase",
+                      marginBottom: 8,
+                    }}
                   >
                     HEADZ UP · BARBER
-                  </div>
+                  </p>
                   <h2
                     key={`d-${active.id}`}
                     className="ps-name"
                     style={{
                       ...D,
-                      fontSize: "clamp(2rem,3.5vw,3rem)",
+                      fontSize: "clamp(2.2rem,3.8vw,3.2rem)",
                       fontWeight: 900,
-                      letterSpacing: "-0.04em",
+                      letterSpacing: "-0.05em",
                       lineHeight: 1,
-                      marginBottom: active.bio ? 10 : 0,
                       color: "white",
+                      marginBottom: active.bio ? 10 : 12,
                     }}
                   >
                     {active.name}
@@ -729,9 +817,9 @@ function PersonaSelect({ barbers, book, isMobile }) {
                       style={{
                         ...M,
                         fontSize: 12,
-                        color: "rgba(255,255,255,0.5)",
+                        color: "rgba(255,255,255,0.45)",
                         lineHeight: 1.6,
-                        maxWidth: 440,
+                        maxWidth: 460,
                         marginBottom: 12,
                       }}
                     >
@@ -745,8 +833,9 @@ function PersonaSelect({ barbers, book, isMobile }) {
                       style={{
                         width: 7,
                         height: 7,
-                        background: "var(--green)",
+                        background: "#22c55e",
                         borderRadius: "50%",
+                        boxShadow: "0 0 0 0 rgba(34,197,94,0.5)",
                         animation: "glow-green 2s infinite",
                       }}
                     />
@@ -764,186 +853,238 @@ function PersonaSelect({ barbers, book, isMobile }) {
                   </div>
                 </div>
 
-                {/* HUD overlay top right */}
-                <div
-                  style={{
-                    position: "absolute",
-                    top: 16,
-                    right: 16,
-                    textAlign: "right",
-                  }}
-                >
-                  <div className="hud-tag">HEADZ UP</div>
+                {/* HUD badge top right */}
+                <div style={{ position: "absolute", top: 16, right: 16 }}>
+                  <div
+                    style={{
+                      background: "rgba(245,158,11,0.1)",
+                      border: "1px solid rgba(245,158,11,0.4)",
+                      padding: "5px 10px",
+                    }}
+                  >
+                    <span
+                      style={{
+                        ...M,
+                        fontSize: 7,
+                        color: "#f59e0b",
+                        letterSpacing: "0.35em",
+                        textTransform: "uppercase",
+                      }}
+                    >
+                      HEADZ UP
+                    </span>
+                  </div>
                 </div>
               </div>
 
-              {/* Stats + profile */}
+              {/* Stats + profile row */}
               <div
                 style={{
                   display: "grid",
                   gridTemplateColumns: "1fr 1fr",
-                  gap: 24,
+                  gap: 28,
                   marginBottom: 24,
                 }}
               >
+                {/* Stat bars */}
                 <div>
                   <p
                     style={{
                       ...M,
                       fontSize: 7,
-                      color: "var(--dim)",
+                      color: "rgba(245,158,11,0.35)",
                       letterSpacing: "0.5em",
                       textTransform: "uppercase",
-                      marginBottom: 14,
+                      marginBottom: 16,
                     }}
                   >
-                    // STATS
+                    // SKILL_STATS
                   </p>
-                  <div
-                    style={{
-                      display: "flex",
-                      flexDirection: "column",
-                      gap: 11,
-                    }}
-                  >
-                    {STATS.map((s) => (
-                      <div
-                        key={s.k}
+                  {STATS.map((s) => (
+                    <div
+                      key={s.k}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 10,
+                        marginBottom: 11,
+                      }}
+                    >
+                      <span
                         style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: 10,
+                          ...M,
+                          fontSize: 8,
+                          color: "#52525b",
+                          letterSpacing: "0.2em",
+                          textTransform: "uppercase",
+                          width: 70,
+                          flexShrink: 0,
                         }}
                       >
-                        <span
-                          style={{
-                            ...M,
-                            fontSize: 8,
-                            color: "var(--muted)",
-                            letterSpacing: "0.2em",
-                            textTransform: "uppercase",
-                            width: 70,
-                            flexShrink: 0,
-                          }}
-                        >
-                          {s.k}
-                        </span>
+                        {s.k}
+                      </span>
+                      <div
+                        style={{
+                          flex: 1,
+                          height: 2,
+                          background: "rgba(255,255,255,0.05)",
+                          position: "relative",
+                          overflow: "hidden",
+                        }}
+                      >
                         <div
+                          className="ps-bar"
+                          key={`d-${active.id}-${s.k}`}
                           style={{
-                            flex: 1,
-                            height: 2,
-                            background: "rgba(255,255,255,0.06)",
-                            position: "relative",
-                            overflow: "hidden",
+                            position: "absolute",
+                            inset: "0 auto 0 0",
+                            background:
+                              "linear-gradient(to right,#f59e0b,#fbbf24)",
+                            "--w": `${s.v}%`,
+                            width: `${s.v}%`,
                           }}
-                        >
-                          <div
-                            className="ps-sbar"
-                            key={`d-stat-${active.id}-${s.k}`}
-                            style={{
-                              position: "absolute",
-                              inset: "0 auto 0 0",
-                              background:
-                                "linear-gradient(to right,var(--amber),var(--amber2))",
-                              "--w": `${s.v}%`,
-                              width: `${s.v}%`,
-                            }}
-                          />
-                        </div>
-                        <span
-                          style={{
-                            ...M,
-                            fontSize: 9,
-                            color: "var(--amber)",
-                            minWidth: 28,
-                            textAlign: "right",
-                            fontWeight: 500,
-                          }}
-                        >
-                          {s.v}
-                        </span>
+                        />
                       </div>
-                    ))}
-                  </div>
+                      <span
+                        style={{
+                          ...M,
+                          fontSize: 9,
+                          color: "#f59e0b",
+                          minWidth: 28,
+                          textAlign: "right",
+                        }}
+                      >
+                        {s.v}
+                      </span>
+                    </div>
+                  ))}
                 </div>
-
+                {/* Profile */}
                 <div>
                   <p
                     style={{
                       ...M,
                       fontSize: 7,
-                      color: "var(--dim)",
+                      color: "rgba(245,158,11,0.35)",
                       letterSpacing: "0.5em",
                       textTransform: "uppercase",
-                      marginBottom: 14,
+                      marginBottom: 16,
                     }}
                   >
-                    // PROFILE
+                    // PROFILE_DATA
                   </p>
-                  <div
-                    style={{ display: "flex", flexDirection: "column", gap: 9 }}
-                  >
-                    {[
-                      ["Shop", "HEADZ UP"],
-                      ["City", "Hattiesburg, MS"],
-                      ["Style", "Precision Fades"],
-                      ["Rating", "★★★★★"],
-                      ["Status", "● Available"],
-                    ].map(([l, v]) => (
-                      <div
-                        key={l}
+                  {[
+                    ["SHOP", "HEADZ UP"],
+                    ["CITY", "Hattiesburg, MS"],
+                    ["STYLE", "Precision Cuts"],
+                    ["RATING", "★★★★★"],
+                    ["STATUS", "● ONLINE"],
+                  ].map(([l, v]) => (
+                    <div
+                      key={l}
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        paddingBottom: 9,
+                        marginBottom: 9,
+                        borderBottom: "1px solid rgba(255,255,255,0.04)",
+                      }}
+                    >
+                      <span
                         style={{
-                          display: "flex",
-                          justifyContent: "space-between",
-                          alignItems: "center",
-                          paddingBottom: 8,
-                          borderBottom: "1px solid rgba(255,255,255,0.04)",
+                          ...M,
+                          fontSize: 7,
+                          color: "#3f3f46",
+                          letterSpacing: "0.25em",
+                          textTransform: "uppercase",
                         }}
                       >
-                        <span
-                          style={{
-                            ...M,
-                            fontSize: 8,
-                            color: "var(--dim)",
-                            letterSpacing: "0.2em",
-                            textTransform: "uppercase",
-                          }}
-                        >
-                          {l}
-                        </span>
-                        <span
-                          style={{
-                            ...M,
-                            fontSize: 10,
-                            color: v.startsWith("●")
-                              ? "#4ade80"
-                              : v.startsWith("★")
-                                ? "var(--amber)"
-                                : "var(--body)",
-                          }}
-                        >
-                          {v}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
+                        {l}
+                      </span>
+                      <span
+                        style={{
+                          ...M,
+                          fontSize: 10,
+                          color: v.startsWith("●")
+                            ? "#4ade80"
+                            : v.startsWith("★")
+                              ? "#f59e0b"
+                              : "#a1a1aa",
+                        }}
+                      >
+                        {v}
+                      </span>
+                    </div>
+                  ))}
                 </div>
               </div>
 
-              {/* CTAs */}
+              {/* Action buttons */}
               <div style={{ display: "flex", gap: 10 }}>
                 {!locked ? (
                   <>
-                    <button onClick={lock} className="cta" style={{ flex: 1 }}>
-                      <span>Lock In — Book {active.name} →</span>
+                    <button
+                      onClick={lock}
+                      style={{
+                        flex: 1,
+                        padding: "18px 24px",
+                        background: "#f59e0b",
+                        color: "black",
+                        ...D,
+                        fontSize: 9,
+                        fontWeight: 700,
+                        letterSpacing: "0.22em",
+                        textTransform: "uppercase",
+                        border: "none",
+                        cursor: "pointer",
+                        clipPath:
+                          "polygon(0 0,calc(100% - 10px) 0,100% 10px,100% 100%,10px 100%,0 calc(100% - 10px))",
+                        transition: "background 0.25s",
+                        position: "relative",
+                        overflow: "hidden",
+                      }}
+                      onMouseEnter={(e) =>
+                        (e.currentTarget.style.background = "white")
+                      }
+                      onMouseLeave={(e) =>
+                        (e.currentTarget.style.background = "#f59e0b")
+                      }
+                    >
+                      Lock In — Book {active.name} →
                     </button>
                     <a
                       href="/book"
                       onClick={book}
-                      className="cta-ghost"
-                      style={{ flexShrink: 0 }}
+                      style={{
+                        padding: "18px 24px",
+                        background: "transparent",
+                        color: "#52525b",
+                        ...D,
+                        fontSize: 9,
+                        letterSpacing: "0.2em",
+                        textTransform: "uppercase",
+                        border: "1px solid rgba(255,255,255,0.1)",
+                        cursor: "pointer",
+                        textDecoration: "none",
+                        display: "inline-flex",
+                        alignItems: "center",
+                        transition: "all 0.2s",
+                        clipPath:
+                          "polygon(0 0,calc(100% - 8px) 0,100% 8px,100% 100%,8px 100%,0 calc(100% - 8px))",
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.borderColor =
+                          "rgba(245,158,11,0.4)";
+                        e.currentTarget.style.color = "#f59e0b";
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.borderColor =
+                          "rgba(255,255,255,0.1)";
+                        e.currentTarget.style.color = "#52525b";
+                      }}
                     >
-                      <span>All Barbers</span>
+                      All →
                     </a>
                   </>
                 ) : (
@@ -952,8 +1093,8 @@ function PersonaSelect({ barbers, book, isMobile }) {
                       onClick={lock}
                       style={{
                         flex: 1,
-                        padding: "17px",
-                        background: "var(--green)",
+                        padding: "18px 24px",
+                        background: "#22c55e",
                         color: "black",
                         ...D,
                         fontSize: 9,
@@ -966,14 +1107,34 @@ function PersonaSelect({ barbers, book, isMobile }) {
                           "polygon(0 0,calc(100% - 10px) 0,100% 10px,100% 100%,10px 100%,0 calc(100% - 10px))",
                       }}
                     >
-                      ✓ Confirmed — Book Now
+                      ✓ CONFIRMED — BOOK NOW
                     </button>
                     <button
                       onClick={() => setLocked(false)}
-                      className="cta-ghost"
-                      style={{ flexShrink: 0 }}
+                      style={{
+                        padding: "18px 22px",
+                        background: "transparent",
+                        color: "#52525b",
+                        border: "1px solid rgba(255,255,255,0.1)",
+                        cursor: "pointer",
+                        ...D,
+                        fontSize: 8,
+                        letterSpacing: "0.15em",
+                        textTransform: "uppercase",
+                        transition: "all 0.2s",
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.color = "white";
+                        e.currentTarget.style.borderColor =
+                          "rgba(255,255,255,0.3)";
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.color = "#52525b";
+                        e.currentTarget.style.borderColor =
+                          "rgba(255,255,255,0.1)";
+                      }}
                     >
-                      <span>← Change</span>
+                      ← CHANGE
                     </button>
                   </>
                 )}
@@ -986,7 +1147,7 @@ function PersonaSelect({ barbers, book, isMobile }) {
   );
 }
 
-/* ─── GALLERY CAROUSEL ──────────────────────────────────────────────────── */
+/* ── GALLERY ────────────────────────────────────────────────────────────── */
 const GALLERY = [
   {
     url: "/pictures/IMG_20260331_115011 (2).jpg",
@@ -1027,53 +1188,52 @@ function GalleryCarousel({ isMobile }) {
   const [dragging, setDragging] = useState(false);
   const [startX, setStartX] = useState(0);
   const rafRef = useRef(null);
-  const angleRef = useRef(0);
-  const COUNT = GALLERY.length;
-  const STEP = 360 / COUNT;
+  const angRef = useRef(0);
+  const N = GALLERY.length;
+  const STEP = 360 / N;
   const R = isMobile ? 155 : 275;
-  const W = isMobile ? 160 : 235;
-  const H = isMobile ? 200 : 300;
+  const W = isMobile ? 158 : 232;
+  const H = isMobile ? 198 : 295;
 
   useEffect(() => {
     if (!spinning) return;
     const tick = () => {
-      angleRef.current = (angleRef.current + 0.32) % 360;
-      setAngle(angleRef.current);
-      let idx = Math.round(((360 - angleRef.current) % 360) / STEP) % COUNT;
-      if (idx < 0) idx += COUNT;
-      setActive(idx);
+      angRef.current = (angRef.current + 0.3) % 360;
+      setAngle(angRef.current);
+      let i = Math.round(((360 - angRef.current) % 360) / STEP) % N;
+      if (i < 0) i += N;
+      setActive(i);
       rafRef.current = requestAnimationFrame(tick);
     };
     rafRef.current = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(rafRef.current);
   }, [spinning]);
 
-  const onDS = (e) => {
+  const ds = (e) => {
     setSpinning(false);
     cancelAnimationFrame(rafRef.current);
     setDragging(true);
     setStartX(e.touches ? e.touches[0].clientX : e.clientX);
   };
-  const onDM = (e) => {
+  const dm = (e) => {
     if (!dragging) return;
     const x = e.touches ? e.touches[0].clientX : e.clientX;
-    const d = x - startX;
-    angleRef.current = (angleRef.current + d * 0.5) % 360;
-    setAngle(angleRef.current);
-    let idx = Math.round(((360 - angleRef.current) % 360) / STEP) % COUNT;
-    if (idx < 0) idx += COUNT;
-    setActive(idx);
+    angRef.current = (angRef.current + (x - startX) * 0.5) % 360;
+    setAngle(angRef.current);
+    let i = Math.round(((360 - angRef.current) % 360) / STEP) % N;
+    if (i < 0) i += N;
+    setActive(i);
     setStartX(x);
   };
-  const onDE = () => {
+  const de = () => {
     setDragging(false);
     setTimeout(() => setSpinning(true), 700);
   };
-  const goTo = (i) => {
+  const go = (i) => {
     setSpinning(false);
     cancelAnimationFrame(rafRef.current);
-    angleRef.current = (360 - i * STEP) % 360;
-    setAngle(angleRef.current);
+    angRef.current = (360 - i * STEP) % 360;
+    setAngle(angRef.current);
     setActive(i);
     setTimeout(() => setSpinning(true), 1400);
   };
@@ -1081,32 +1241,28 @@ function GalleryCarousel({ isMobile }) {
   return (
     <section
       style={{
-        padding: isMobile ? "44px 0 52px" : "80px 0 88px",
+        padding: isMobile ? "44px 0 52px" : "80px 0 92px",
         overflow: "hidden",
-        background: "rgba(0,0,0,0.3)",
-        borderTop: "1px solid rgba(255,255,255,0.04)",
-        borderBottom: "1px solid rgba(255,255,255,0.04)",
+        background: "#000",
+        borderTop: "1px solid rgba(245,158,11,0.1)",
+        borderBottom: "1px solid rgba(245,158,11,0.1)",
         position: "relative",
       }}
     >
-      <style>{`
-        .gc-front { animation: cardpulse 2.8s ease-in-out infinite; }
-        @keyframes cardpulse { 0%,100%{box-shadow:0 0 0 0 rgba(245,158,11,0)} 50%{box-shadow:0 0 40px rgba(245,158,11,0.3)} }
-      `}</style>
+      <style>{`@keyframes gc-pulse{0%,100%{box-shadow:0 0 0 0 rgba(245,158,11,0)}50%{box-shadow:0 0 50px rgba(245,158,11,0.35)}} .gc-active{animation:gc-pulse 2.5s ease-in-out infinite;}`}</style>
       <div
         style={{
           position: "absolute",
           top: "50%",
           left: "50%",
           transform: "translate(-50%,-50%)",
-          width: 520,
-          height: 420,
+          width: 600,
+          height: 500,
           background:
-            "radial-gradient(ellipse,rgba(245,158,11,0.06) 0%,transparent 60%)",
+            "radial-gradient(ellipse,rgba(245,158,11,0.05) 0%,transparent 60%)",
           pointerEvents: "none",
         }}
       />
-
       <div
         style={{
           textAlign: "center",
@@ -1114,32 +1270,36 @@ function GalleryCarousel({ isMobile }) {
           padding: "0 20px",
         }}
       >
-        <div
-          className="hud-tag"
-          style={{ display: "inline-flex", marginBottom: 12 }}
+        <p
+          style={{
+            ...M,
+            fontSize: 8,
+            color: "rgba(245,158,11,0.5)",
+            letterSpacing: "0.7em",
+            textTransform: "uppercase",
+            marginBottom: 10,
+          }}
         >
-          The Work
-        </div>
+          // THE_WORK
+        </p>
         <h2
           style={{
             ...D,
-            fontSize: "clamp(1.5rem,4vw,2.4rem)",
+            fontSize: "clamp(1.4rem,4vw,2.4rem)",
             fontWeight: 900,
             letterSpacing: "-0.04em",
             lineHeight: 1.05,
+            textTransform: "uppercase",
           }}
         >
           Fresh Every{" "}
-          <span style={{ color: "var(--amber)", fontStyle: "italic" }}>
-            Time_
-          </span>
+          <span style={{ color: "#f59e0b", fontStyle: "italic" }}>Time_</span>
         </h2>
       </div>
-
       <div
         style={{
           position: "relative",
-          height: isMobile ? 260 : 390,
+          height: isMobile ? 262 : 392,
           perspective: isMobile ? 600 : 920,
           perspectiveOrigin: "50% 50%",
           cursor: dragging ? "grabbing" : "grab",
@@ -1147,13 +1307,13 @@ function GalleryCarousel({ isMobile }) {
           WebkitUserSelect: "none",
           touchAction: "none",
         }}
-        onMouseDown={onDS}
-        onMouseMove={onDM}
-        onMouseUp={onDE}
-        onMouseLeave={onDE}
-        onTouchStart={onDS}
-        onTouchMove={onDM}
-        onTouchEnd={onDE}
+        onMouseDown={ds}
+        onMouseMove={dm}
+        onMouseUp={de}
+        onMouseLeave={de}
+        onTouchStart={ds}
+        onTouchMove={dm}
+        onTouchEnd={de}
       >
         <div
           style={{
@@ -1164,13 +1324,13 @@ function GalleryCarousel({ isMobile }) {
             transform: `translate(-50%,-50%) rotateY(${angle}deg)`,
           }}
         >
-          {GALLERY.map((item, i) => {
-            const isFront = i === active;
+          {GALLERY.map((g, i) => {
+            const front = i === active;
             return (
               <div
                 key={i}
-                className={isFront ? "gc-front" : ""}
-                onClick={() => goTo(i)}
+                className={front ? "gc-active" : ""}
+                onClick={() => go(i)}
                 style={{
                   position: "absolute",
                   width: W,
@@ -1179,89 +1339,87 @@ function GalleryCarousel({ isMobile }) {
                   top: -H / 2,
                   transform: `rotateY(${i * STEP}deg) translateZ(${R}px)`,
                   overflow: "hidden",
-                  border: isFront
-                    ? "2px solid var(--amber)"
-                    : "1px solid rgba(255,255,255,0.07)",
                   cursor: "pointer",
                   backfaceVisibility: "hidden",
-                  clipPath: isFront
-                    ? "polygon(0 0,calc(100% - 12px) 0,100% 12px,100% 100%,12px 100%,0 calc(100% - 12px))"
+                  border: front
+                    ? "2px solid #f59e0b"
+                    : "1px solid rgba(255,255,255,0.06)",
+                  clipPath: front
+                    ? "polygon(0 0,calc(100% - 14px) 0,100% 14px,100% 100%,14px 100%,0 calc(100% - 14px))"
                     : "none",
                 }}
               >
                 <img
-                  src={item.url}
-                  alt={item.label}
+                  src={g.url}
+                  alt={g.label}
                   style={{
                     width: "100%",
                     height: "100%",
                     objectFit: "cover",
                     objectPosition: "center top",
-                    filter: isFront ? "none" : "brightness(0.3) saturate(0.4)",
-                    transition: "filter 0.4s",
+                    filter: front ? "none" : "brightness(0.25) saturate(0.3)",
+                    transition: "filter 0.45s",
                     pointerEvents: "none",
                   }}
                   loading="lazy"
                 />
-                {isFront && (
-                  <div
-                    style={{
-                      position: "absolute",
-                      bottom: 0,
-                      left: 0,
-                      right: 0,
-                      background:
-                        "linear-gradient(to top,rgba(3,3,3,0.97),transparent)",
-                      padding: isMobile ? "10px 12px 14px" : "14px 16px 18px",
-                    }}
-                  >
-                    <p
-                      style={{
-                        ...D,
-                        fontSize: isMobile ? 9 : 10,
-                        fontWeight: 900,
-                        textTransform: "uppercase",
-                        color: "white",
-                        marginBottom: 2,
-                      }}
-                    >
-                      {item.label}
-                    </p>
-                    <p
-                      style={{
-                        ...M,
-                        fontSize: 9,
-                        color: "var(--amber)",
-                        letterSpacing: "0.2em",
-                      }}
-                    >
-                      {item.sub}
-                    </p>
-                  </div>
-                )}
-                {isFront && (
+                {front && (
                   <>
+                    <div
+                      style={{
+                        position: "absolute",
+                        bottom: 0,
+                        left: 0,
+                        right: 0,
+                        background:
+                          "linear-gradient(to top,rgba(0,0,0,0.97),rgba(0,0,0,0.6) 60%,transparent)",
+                        padding: isMobile ? "10px 12px 14px" : "14px 16px 18px",
+                      }}
+                    >
+                      <p
+                        style={{
+                          ...D,
+                          fontSize: isMobile ? 9 : 10,
+                          fontWeight: 900,
+                          textTransform: "uppercase",
+                          color: "white",
+                          marginBottom: 3,
+                        }}
+                      >
+                        {g.label}
+                      </p>
+                      <p
+                        style={{
+                          ...M,
+                          fontSize: 9,
+                          color: "#f59e0b",
+                          letterSpacing: "0.22em",
+                        }}
+                      >
+                        {g.sub}
+                      </p>
+                    </div>
                     {[
-                      { top: 4, left: 4, bt: "1px", bl: "1px" },
-                      { top: 4, right: 4, bt: "1px", br: "1px" },
-                      { bottom: 4, left: 4, bb: "1px", bl: "1px" },
-                      { bottom: 4, right: 4, bb: "1px", br: "1px" },
+                      { t: 5, l: 5, bt: "1px", bl: "1px" },
+                      { t: 5, r: 5, bt: "1px", br: "1px" },
+                      { b: 5, l: 5, bb: "1px", bl: "1px" },
+                      { b: 5, r: 5, bb: "1px", br: "1px" },
                     ].map((c, j) => (
                       <div
                         key={j}
                         style={{
                           position: "absolute",
-                          width: 8,
-                          height: 8,
-                          top: c.top,
-                          bottom: c.bottom,
-                          left: c.left,
-                          right: c.right,
-                          borderTop: c.bt && "1px solid rgba(245,158,11,0.8)",
+                          width: 10,
+                          height: 10,
+                          top: c.t,
+                          bottom: c.b,
+                          left: c.l,
+                          right: c.r,
+                          borderTop: c.bt && "1px solid rgba(245,158,11,0.9)",
                           borderBottom:
-                            c.bb && "1px solid rgba(245,158,11,0.8)",
-                          borderLeft: c.bl && "1px solid rgba(245,158,11,0.8)",
-                          borderRight: c.br && "1px solid rgba(245,158,11,0.8)",
+                            c.bb && "1px solid rgba(245,158,11,0.9)",
+                          borderLeft: c.bl && "1px solid rgba(245,158,11,0.9)",
+                          borderRight: c.br && "1px solid rgba(245,158,11,0.9)",
                         }}
                       />
                     ))}
@@ -1275,42 +1433,36 @@ function GalleryCarousel({ isMobile }) {
           style={{
             position: "absolute",
             bottom: 6,
-            left: "12%",
-            right: "12%",
+            left: "14%",
+            right: "14%",
             height: 1,
             background:
               "linear-gradient(to right,transparent,rgba(245,158,11,0.2),transparent)",
           }}
         />
       </div>
-
       <div
         style={{
           display: "flex",
           justifyContent: "center",
           gap: 8,
-          marginTop: isMobile ? 16 : 24,
+          marginTop: isMobile ? 16 : 22,
         }}
       >
         {GALLERY.map((_, i) => (
           <button
             key={i}
-            onClick={() => goTo(i)}
+            onClick={() => go(i)}
             style={{
               width: i === active ? 22 : 6,
-              height: 5,
-              background:
-                i === active ? "var(--amber)" : "rgba(255,255,255,0.15)",
+              height: 4,
+              background: i === active ? "#f59e0b" : "rgba(255,255,255,0.14)",
               border: "none",
               cursor: "pointer",
               padding: 0,
-              transition: "all 0.32s",
+              transition: "all 0.3s",
               minHeight: "auto",
               minWidth: "auto",
-              clipPath:
-                i === active
-                  ? "polygon(0 0,calc(100% - 3px) 0,100% 3px,100% 100%,3px 100%,0 calc(100% - 3px))"
-                  : "none",
             }}
           />
         ))}
@@ -1326,49 +1478,25 @@ function GalleryCarousel({ isMobile }) {
           marginTop: 14,
         }}
       >
-        ✦ Drag to spin ✦
+        ✦ DRAG TO SPIN ✦
       </p>
     </section>
   );
 }
 
-/* ─── STATIC DATA ───────────────────────────────────────────────────────── */
+/* ── DATA ───────────────────────────────────────────────────────────────── */
 const SERVICES = [
-  {
-    name: "Haircut & Shave",
-    price: 35,
-    dur: "30 min",
-    tag: "Signature",
-    pop: true,
-  },
-  { name: "Haircut", price: 30, dur: "30 min", tag: "Classic", pop: false },
-  {
-    name: "Senior Cut and Shave",
-    price: 30,
-    dur: "30 min",
-    tag: "Senior",
-    pop: false,
-  },
-  {
-    name: "Kids Cutz (1–12)",
-    price: 25,
-    dur: "30 min",
-    tag: "Kids",
-    pop: false,
-  },
-  {
-    name: "Line and Shave",
-    price: 25,
-    dur: "30 min",
-    tag: "Combo",
-    pop: false,
-  },
-  { name: "Senior Cut", price: 25, dur: "30 min", tag: "Senior", pop: false },
-  { name: "Beard Trim", price: 20, dur: "15 min", tag: "Beard", pop: false },
-  { name: "Line", price: 20, dur: "15 min", tag: "Clean Up", pop: false },
-  { name: "Shave", price: 20, dur: "30 min", tag: "Shave", pop: false },
-  { name: "Kids Line", price: 15, dur: "30 min", tag: "Kids", pop: false },
-  { name: "Senior Line", price: 15, dur: "30 min", tag: "Senior", pop: false },
+  { name: "Haircut & Shave", price: 35, dur: "30 min", pop: true },
+  { name: "Haircut", price: 30, dur: "30 min", pop: false },
+  { name: "Senior Cut and Shave", price: 30, dur: "30 min", pop: false },
+  { name: "Kids Cutz (1–12)", price: 25, dur: "30 min", pop: false },
+  { name: "Line and Shave", price: 25, dur: "30 min", pop: false },
+  { name: "Senior Cut", price: 25, dur: "30 min", pop: false },
+  { name: "Beard Trim", price: 20, dur: "15 min", pop: false },
+  { name: "Line", price: 20, dur: "15 min", pop: false },
+  { name: "Shave", price: 20, dur: "30 min", pop: false },
+  { name: "Kids Line", price: 15, dur: "30 min", pop: false },
+  { name: "Senior Line", price: 15, dur: "30 min", pop: false },
 ];
 const REVIEWS = [
   {
@@ -1387,7 +1515,7 @@ const REVIEWS = [
     city: "Hattiesburg",
   },
   {
-    q: "My son has been going here since he was 3. Fantastic with kids and the cut is always perfect. Love this place.",
+    q: "My son has been going here since he was 3. Fantastic with kids and the cut is always perfect.",
     name: "Tanya W.",
     city: "Hattiesburg",
   },
@@ -1400,29 +1528,26 @@ const TICKER = [
   "Senior Cuts",
   "Book Online 24/7",
   "Hattiesburg MS",
-  "HEADZ UP Barbershop",
+  "HEADZ UP",
 ];
 
-/* ─── HOME PAGE ─────────────────────────────────────────────────────────── */
+/* ── HOME PAGE ──────────────────────────────────────────────────────────── */
 export default function HomePage() {
   const router = useRouter();
-  const heroRef = useRef(null);
   const { isMobile } = useBreakpoint();
-
   const [ready, setReady] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [isStaff, setIsStaff] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [authReady, setAuthReady] = useState(false);
   const [barbers, setBarbers] = useState([]);
-  const [reviewIdx, setReviewIdx] = useState(0);
+  const [revIdx, setRevIdx] = useState(0);
   const [scrollY, setScrollY] = useState(0);
   const [revealed, setRevealed] = useState({});
   const [hovSvc, setHovSvc] = useState(null);
   const [heroIn, setHeroIn] = useState(false);
   const [time, setTime] = useState("");
 
-  /* clock */
   useEffect(() => {
     const t = () =>
       setTime(
@@ -1436,8 +1561,6 @@ export default function HomePage() {
     const id = setInterval(t, 1000);
     return () => clearInterval(id);
   }, []);
-
-  /* auth */
   const checkAuth = useCallback(() => {
     const tok = localStorage.getItem("access");
     if (!tok) {
@@ -1506,8 +1629,6 @@ export default function HomePage() {
     window.addEventListener("focus", checkAuth);
     return () => window.removeEventListener("focus", checkAuth);
   }, [checkAuth]);
-
-  /* barbers */
   useEffect(() => {
     fetch(
       `${process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000"}/api/barbers/`,
@@ -1521,15 +1642,11 @@ export default function HomePage() {
       .then((d) => setBarbers(Array.isArray(d) ? d : d.results || []))
       .catch(() => {});
   }, []);
-
-  /* scroll */
   useEffect(() => {
     const fn = () => setScrollY(window.scrollY);
     window.addEventListener("scroll", fn, { passive: true });
     return () => window.removeEventListener("scroll", fn);
   }, []);
-
-  /* reveal */
   useEffect(() => {
     if (!ready) return;
     const io = new IntersectionObserver(
@@ -1544,26 +1661,18 @@ export default function HomePage() {
     document.querySelectorAll("[data-id]").forEach((el) => io.observe(el));
     return () => io.disconnect();
   }, [ready]);
-
-  /* reviews */
   useEffect(() => {
     const t = setInterval(
-      () => setReviewIdx((i) => (i + 1) % REVIEWS.length),
+      () => setRevIdx((i) => (i + 1) % REVIEWS.length),
       6500,
     );
     return () => clearInterval(t);
   }, []);
-
-  /* hero entry */
   useEffect(() => {
     if (ready) setTimeout(() => setHeroIn(true), 80);
   }, [ready]);
 
   const R = (id) => !!revealed[id];
-  const go = (e, path) => {
-    e.preventDefault();
-    router.push(path);
-  };
   const book = (e) => {
     e.preventDefault();
     router.push(localStorage.getItem("access") ? "/book" : "/login");
@@ -1591,6 +1700,14 @@ export default function HomePage() {
             top: 101%;
           }
         }
+        @keyframes ticker {
+          from {
+            transform: translateX(0);
+          }
+          to {
+            transform: translateX(-50%);
+          }
+        }
         @keyframes menuSlide {
           from {
             opacity: 0;
@@ -1601,37 +1718,91 @@ export default function HomePage() {
             transform: none;
           }
         }
+        @keyframes fadeUp {
+          from {
+            opacity: 0;
+            transform: translateY(22px);
+          }
+          to {
+            opacity: 1;
+            transform: none;
+          }
+        }
+        @keyframes nameIn {
+          from {
+            opacity: 0;
+            transform: translateX(-24px) skewX(-4deg);
+          }
+          to {
+            opacity: 1;
+            transform: none;
+          }
+        }
+        @keyframes statgrow {
+          from {
+            width: 0;
+          }
+          to {
+            width: var(--w, 100%);
+          }
+        }
+        @keyframes lockin {
+          0%,
+          100% {
+            opacity: 1;
+          }
+          20%,
+          60% {
+            opacity: 0;
+          }
+          40%,
+          80% {
+            opacity: 0.5;
+          }
+        }
+        .ticker-wrap {
+          animation: ticker 34s linear infinite;
+          display: flex;
+          width: max-content;
+        }
+        .ticker-wrap:hover {
+          animation-play-state: paused;
+        }
         .srow {
           cursor: pointer;
           transition:
-            padding-left 0.22s cubic-bezier(0.4, 0, 0.2, 1),
+            padding-left 0.22s,
             border-color 0.2s,
             background 0.2s;
         }
         .srow:hover {
-          padding-left: 20px !important;
+          padding-left: 18px !important;
           border-color: rgba(245, 158, 11, 0.3) !important;
-          background: rgba(245, 158, 11, 0.025) !important;
+          background: rgba(245, 158, 11, 0.022) !important;
         }
-        .ticker-track {
-          animation: ticker 32s linear infinite;
-          display: flex;
-          width: max-content;
+        .rv {
+          opacity: 0;
+          transform: translateY(26px);
+          transition:
+            opacity 0.9s cubic-bezier(0.16, 1, 0.3, 1),
+            transform 0.9s cubic-bezier(0.16, 1, 0.3, 1);
         }
-        @keyframes ticker {
-          from {
-            transform: translateX(0);
-          }
-          to {
-            transform: translateX(-50%);
-          }
+        .rv.on {
+          opacity: 1;
+          transform: none;
         }
-        .ticker-track:hover {
-          animation-play-state: paused;
+        .rv.d1 {
+          transition-delay: 0.08s;
+        }
+        .rv.d2 {
+          transition-delay: 0.16s;
+        }
+        .rv.d3 {
+          transition-delay: 0.24s;
         }
       `}</style>
 
-      {/* ── AMBIENT ── */}
+      {/* ── BG EFFECTS ── */}
       <div
         style={{
           position: "fixed",
@@ -1639,19 +1810,19 @@ export default function HomePage() {
           zIndex: 0,
           pointerEvents: "none",
           backgroundImage:
-            "linear-gradient(rgba(255,255,255,0.014) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,0.014) 1px,transparent 1px)",
-          backgroundSize: "68px 68px",
+            "linear-gradient(rgba(255,255,255,0.013) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,0.013) 1px,transparent 1px)",
+          backgroundSize: "66px 66px",
         }}
       />
       <div
         style={{
           position: "fixed",
-          top: "-8%",
-          right: "-4%",
-          width: 680,
-          height: 680,
+          top: "-10%",
+          right: "-6%",
+          width: 700,
+          height: 700,
           background:
-            "radial-gradient(circle,rgba(245,158,11,0.05) 0%,transparent 64%)",
+            "radial-gradient(circle,rgba(245,158,11,0.048) 0%,transparent 62%)",
           pointerEvents: "none",
           zIndex: 0,
         }}
@@ -1659,12 +1830,12 @@ export default function HomePage() {
       <div
         style={{
           position: "fixed",
-          bottom: "18%",
-          left: "-8%",
-          width: 520,
-          height: 520,
+          bottom: "16%",
+          left: "-9%",
+          width: 540,
+          height: 540,
           background:
-            "radial-gradient(circle,rgba(245,158,11,0.03) 0%,transparent 60%)",
+            "radial-gradient(circle,rgba(245,158,11,0.03) 0%,transparent 58%)",
           pointerEvents: "none",
           zIndex: 0,
         }}
@@ -1685,7 +1856,7 @@ export default function HomePage() {
             right: 0,
             height: 1,
             background:
-              "linear-gradient(to right,transparent,rgba(245,158,11,0.2),transparent)",
+              "linear-gradient(to right,transparent,rgba(245,158,11,0.22),transparent)",
             animation: "scandown 9s linear infinite",
           }}
         />
@@ -1715,7 +1886,7 @@ export default function HomePage() {
               width: "100%",
               maxWidth: 1320,
               margin: "0 auto",
-              padding: "0 var(--px)",
+              padding: "0 clamp(18px,5vw,40px)",
               display: "flex",
               justifyContent: "space-between",
               alignItems: "center",
@@ -1729,12 +1900,11 @@ export default function HomePage() {
                 fontSize: 16,
                 letterSpacing: "-0.06em",
                 color: "white",
+                textDecoration: "none",
               }}
             >
               HEADZ
-              <span style={{ color: "var(--amber)", fontStyle: "italic" }}>
-                UP
-              </span>
+              <span style={{ color: "#f59e0b", fontStyle: "italic" }}>UP</span>
             </a>
             <div
               className="donly"
@@ -1746,7 +1916,25 @@ export default function HomePage() {
                 ["#reviews", "Reviews"],
                 ["#location", "Visit"],
               ].map(([h, l]) => (
-                <a key={l} href={h} className="nlink">
+                <a
+                  key={l}
+                  href={h}
+                  style={{
+                    ...M,
+                    fontSize: 10,
+                    color: "#52525b",
+                    letterSpacing: "0.28em",
+                    textTransform: "uppercase",
+                    textDecoration: "none",
+                    transition: "color 0.2s",
+                  }}
+                  onMouseEnter={(e) =>
+                    (e.currentTarget.style.color = "#f59e0b")
+                  }
+                  onMouseLeave={(e) =>
+                    (e.currentTarget.style.color = "#52525b")
+                  }
+                >
                   {l}
                 </a>
               ))}
@@ -1757,28 +1945,86 @@ export default function HomePage() {
                   {isLoggedIn && isStaff && (
                     <a
                       href="/barber-dashboard"
-                      className="donly cta-ghost"
-                      style={{ padding: "9px 16px", fontSize: 7.5 }}
+                      className="donly"
+                      style={{
+                        ...D,
+                        fontSize: 7.5,
+                        color: "#f59e0b",
+                        border: "1px solid rgba(245,158,11,0.35)",
+                        padding: "9px 16px",
+                        letterSpacing: "0.2em",
+                        textTransform: "uppercase",
+                        textDecoration: "none",
+                        transition: "all 0.2s",
+                        clipPath:
+                          "polygon(0 0,calc(100% - 6px) 0,100% 6px,100% 100%,6px 100%,0 calc(100% - 6px))",
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.background =
+                          "rgba(245,158,11,0.1)";
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.background = "transparent";
+                      }}
                     >
-                      <span>Dashboard</span>
+                      Dashboard
                     </a>
                   )}
                   {isLoggedIn && !isStaff && (
                     <a
                       href="/dashboard"
-                      className="donly cta-ghost"
-                      style={{ padding: "9px 16px", fontSize: 7.5 }}
+                      className="donly"
+                      style={{
+                        ...D,
+                        fontSize: 7.5,
+                        color: "#f59e0b",
+                        border: "1px solid rgba(245,158,11,0.35)",
+                        padding: "9px 16px",
+                        letterSpacing: "0.2em",
+                        textTransform: "uppercase",
+                        textDecoration: "none",
+                        transition: "all 0.2s",
+                        clipPath:
+                          "polygon(0 0,calc(100% - 6px) 0,100% 6px,100% 100%,6px 100%,0 calc(100% - 6px))",
+                      }}
+                      onMouseEnter={(e) =>
+                        (e.currentTarget.style.background =
+                          "rgba(245,158,11,0.1)")
+                      }
+                      onMouseLeave={(e) =>
+                        (e.currentTarget.style.background = "transparent")
+                      }
                     >
-                      <span>My Account</span>
+                      My Account
                     </a>
                   )}
                   {!isLoggedIn && (
                     <a
                       href="/barber-login"
-                      className="donly cta-ghost"
-                      style={{ padding: "9px 16px", fontSize: 7.5 }}
+                      className="donly"
+                      style={{
+                        ...D,
+                        fontSize: 7.5,
+                        color: "#52525b",
+                        border: "1px solid rgba(255,255,255,0.1)",
+                        padding: "9px 16px",
+                        letterSpacing: "0.2em",
+                        textTransform: "uppercase",
+                        textDecoration: "none",
+                        transition: "all 0.2s",
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.color = "#f59e0b";
+                        e.currentTarget.style.borderColor =
+                          "rgba(245,158,11,0.3)";
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.color = "#52525b";
+                        e.currentTarget.style.borderColor =
+                          "rgba(255,255,255,0.1)";
+                      }}
                     >
-                      <span>Barbers</span>
+                      Barbers
                     </a>
                   )}
                 </>
@@ -1786,10 +2032,31 @@ export default function HomePage() {
               <a
                 href="/book"
                 onClick={book}
-                className="cta donly"
-                style={{ padding: "10px 22px", fontSize: 7.5 }}
+                className="donly"
+                style={{
+                  ...D,
+                  fontSize: 7.5,
+                  fontWeight: 700,
+                  color: "black",
+                  background: "#f59e0b",
+                  padding: "10px 22px",
+                  letterSpacing: "0.22em",
+                  textTransform: "uppercase",
+                  textDecoration: "none",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  clipPath:
+                    "polygon(0 0,calc(100% - 8px) 0,100% 8px,100% 100%,8px 100%,0 calc(100% - 8px))",
+                  transition: "background 0.25s",
+                }}
+                onMouseEnter={(e) =>
+                  (e.currentTarget.style.background = "white")
+                }
+                onMouseLeave={(e) =>
+                  (e.currentTarget.style.background = "#f59e0b")
+                }
               >
-                <span>Book Now</span>
+                Book Now
               </a>
               <button
                 onClick={() => setMenuOpen((o) => !o)}
@@ -1826,7 +2093,7 @@ export default function HomePage() {
                       display: "block",
                       width: 20,
                       height: 1.5,
-                      background: menuOpen ? "var(--amber)" : "white",
+                      background: menuOpen ? "#f59e0b" : "white",
                       transition: "all 0.28s",
                       transform: s.r || "none",
                       opacity: s.op ?? 1,
@@ -1838,7 +2105,6 @@ export default function HomePage() {
           </div>
         </nav>
 
-        {/* Mobile menu */}
         {menuOpen && (
           <div
             style={{
@@ -1866,28 +2132,25 @@ export default function HomePage() {
                 onClick={() => setMenuOpen(false)}
                 style={{
                   display: "block",
-                  padding: "15px var(--px)",
+                  padding: "15px clamp(18px,5vw,40px)",
                   ...M,
                   fontSize: 10,
                   letterSpacing: "0.3em",
                   textTransform: "uppercase",
-                  color: "var(--muted)",
+                  color: "#52525b",
+                  textDecoration: "none",
                   borderBottom: "1px solid rgba(255,255,255,0.04)",
                   transition: "color 0.2s",
                 }}
-                onMouseEnter={(e) =>
-                  (e.currentTarget.style.color = "var(--amber)")
-                }
-                onMouseLeave={(e) =>
-                  (e.currentTarget.style.color = "var(--muted)")
-                }
+                onMouseEnter={(e) => (e.currentTarget.style.color = "#f59e0b")}
+                onMouseLeave={(e) => (e.currentTarget.style.color = "#52525b")}
               >
                 {l}
               </a>
             ))}
             <div
               style={{
-                padding: "18px var(--px) 4px",
+                padding: "18px clamp(18px,5vw,40px) 4px",
                 display: "flex",
                 flexDirection: "column",
                 gap: 8,
@@ -1899,10 +2162,23 @@ export default function HomePage() {
                   book(e);
                   setMenuOpen(false);
                 }}
-                className="cta"
-                style={{ justifyContent: "center" }}
+                style={{
+                  ...D,
+                  fontSize: 8,
+                  fontWeight: 700,
+                  color: "black",
+                  background: "#f59e0b",
+                  padding: "15px",
+                  textAlign: "center",
+                  letterSpacing: "0.22em",
+                  textTransform: "uppercase",
+                  textDecoration: "none",
+                  display: "block",
+                  clipPath:
+                    "polygon(0 0,calc(100% - 8px) 0,100% 8px,100% 100%,8px 100%,0 calc(100% - 8px))",
+                }}
               >
-                <span>Book Appointment →</span>
+                Book Appointment →
               </a>
               {authReady && isLoggedIn && isStaff && (
                 <a
@@ -1912,8 +2188,8 @@ export default function HomePage() {
                     fontSize: 7,
                     letterSpacing: "0.2em",
                     textTransform: "uppercase",
-                    color: "var(--amber)",
-                    border: "1px solid var(--amber-hi)",
+                    color: "#f59e0b",
+                    border: "1px solid rgba(245,158,11,0.3)",
                     padding: "13px",
                     textAlign: "center",
                     textDecoration: "none",
@@ -1930,8 +2206,8 @@ export default function HomePage() {
                     fontSize: 7,
                     letterSpacing: "0.2em",
                     textTransform: "uppercase",
-                    color: "var(--amber)",
-                    border: "1px solid var(--amber-hi)",
+                    color: "#f59e0b",
+                    border: "1px solid rgba(245,158,11,0.3)",
                     padding: "13px",
                     textAlign: "center",
                     textDecoration: "none",
@@ -1948,8 +2224,8 @@ export default function HomePage() {
                     fontSize: 7,
                     letterSpacing: "0.2em",
                     textTransform: "uppercase",
-                    color: "var(--muted)",
-                    border: "1px solid var(--border)",
+                    color: "#52525b",
+                    border: "1px solid rgba(255,255,255,0.1)",
                     padding: "13px",
                     textAlign: "center",
                     textDecoration: "none",
@@ -1962,39 +2238,32 @@ export default function HomePage() {
           </div>
         )}
 
-        {/* ══ HERO ══ */}
+        {/* ══ HERO — FULL SCREEN SPLIT ══ */}
         <section
-          ref={heroRef}
           style={{
             minHeight: "100dvh",
             position: "relative",
-            display: "flex",
-            flexDirection: "column",
-            justifyContent: "flex-end",
             overflow: "hidden",
+            display: "flex",
+            alignItems: "flex-end",
           }}
         >
           <div
-            style={{
-              position: "absolute",
-              inset: 0,
-              background:
-                "linear-gradient(135deg,#030303 0%,#090704 45%,#030303 100%)",
-            }}
+            style={{ position: "absolute", inset: 0, background: "#030303" }}
           />
 
-          {/* Big editorial bg number */}
+          {/* Giant bg number */}
           <div
             style={{
               position: "absolute",
               right: "-3%",
-              top: "6%",
+              top: "5%",
               ...D,
-              fontSize: "clamp(14rem,32vw,26rem)",
+              fontSize: "clamp(16rem,34vw,30rem)",
               fontWeight: 900,
               lineHeight: 1,
               color: "transparent",
-              WebkitTextStroke: "1px rgba(255,255,255,0.033)",
+              WebkitTextStroke: "1px rgba(255,255,255,0.028)",
               userSelect: "none",
               pointerEvents: "none",
               letterSpacing: "-0.06em",
@@ -2003,19 +2272,19 @@ export default function HomePage() {
             01
           </div>
 
-          {/* Vertical side text */}
+          {/* Vertical label */}
           {!isMobile && (
             <div
               style={{
                 position: "absolute",
-                left: 18,
+                left: 16,
                 top: "50%",
                 transform: "translateY(-50%) rotate(-90deg)",
                 transformOrigin: "center",
                 ...M,
                 fontSize: 8,
                 letterSpacing: "0.6em",
-                color: "var(--dim)",
+                color: "#27272a",
                 textTransform: "uppercase",
                 whiteSpace: "nowrap",
               }}
@@ -2024,31 +2293,31 @@ export default function HomePage() {
             </div>
           )}
 
-          {/* Live clock */}
+          {/* Clock */}
           <div
             style={{
               position: "absolute",
               top: 70,
-              right: "var(--px)",
+              right: "clamp(18px,5vw,40px)",
               ...M,
               fontSize: 11,
-              color: "var(--dim)",
+              color: "#27272a",
               letterSpacing: "0.28em",
             }}
           >
             {time}
           </div>
 
-          {/* Horizontal accent line */}
+          {/* Horizontal accent */}
           <div
             style={{
               position: "absolute",
-              top: 98,
+              top: 96,
               left: 0,
               right: 0,
               height: 1,
               background:
-                "linear-gradient(to right,transparent,rgba(245,158,11,0.12) 30%,rgba(245,158,11,0.12) 70%,transparent)",
+                "linear-gradient(to right,transparent,rgba(245,158,11,0.1) 30%,rgba(245,158,11,0.1) 70%,transparent)",
             }}
           />
 
@@ -2060,19 +2329,19 @@ export default function HomePage() {
               maxWidth: 1320,
               margin: "0 auto",
               width: "100%",
-              padding: isMobile ? "0 20px 56px" : "0 var(--px) 80px",
+              padding: isMobile ? "0 20px 56px" : "0 clamp(18px,5vw,40px) 80px",
               paddingTop: isMobile ? 80 : 120,
             }}
           >
-            {/* Status badge */}
+            {/* Live status */}
             <div
               style={{
                 display: "flex",
                 alignItems: "center",
                 gap: 10,
-                marginBottom: 28,
+                marginBottom: isMobile ? 24 : 28,
                 opacity: heroIn ? 1 : 0,
-                transform: heroIn ? "none" : "translateY(18px)",
+                transform: heroIn ? "none" : "translateY(16px)",
                 transition: "all 0.8s cubic-bezier(0.16,1,0.3,1) 0.1s",
               }}
             >
@@ -2080,7 +2349,7 @@ export default function HomePage() {
                 style={{
                   width: 7,
                   height: 7,
-                  background: "var(--green)",
+                  background: "#22c55e",
                   borderRadius: "50%",
                   animation: "glow-green 2.5s infinite",
                   flexShrink: 0,
@@ -2091,7 +2360,7 @@ export default function HomePage() {
                   ...M,
                   fontSize: 10,
                   color: "#4ade80",
-                  letterSpacing: isMobile ? "0.15em" : "0.38em",
+                  letterSpacing: isMobile ? "0.14em" : "0.36em",
                   textTransform: "uppercase",
                 }}
               >
@@ -2105,14 +2374,14 @@ export default function HomePage() {
                       height: 1,
                       background:
                         "linear-gradient(to right,rgba(34,197,94,0.3),transparent)",
-                      maxWidth: 200,
+                      maxWidth: 180,
                     }}
                   />
                   <span
                     style={{
                       ...M,
                       fontSize: 8,
-                      color: "var(--dim)",
+                      color: "#27272a",
                       letterSpacing: "0.2em",
                     }}
                   >
@@ -2122,29 +2391,29 @@ export default function HomePage() {
               )}
             </div>
 
-            {/* Headline */}
-            <div style={{ marginBottom: isMobile ? 28 : 36 }}>
+            {/* Headline — staggered words */}
+            <div style={{ marginBottom: isMobile ? 24 : 32 }}>
               {[
                 { t: "Where", d: "0.18s", it: false, am: false },
-                { t: "Every", d: "0.28s", it: false, am: false },
-                { t: "Cut", d: "0.38s", it: false, am: false },
-                { t: "Tells", d: "0.46s", it: false, am: false },
-                { t: "A Story.", d: "0.55s", it: true, am: true },
+                { t: "Every", d: "0.26s", it: false, am: false },
+                { t: "Cut", d: "0.34s", it: false, am: false },
+                { t: "Tells", d: "0.42s", it: false, am: false },
+                { t: "A Story.", d: "0.52s", it: true, am: true },
               ].map(({ t, d, it, am }) => (
                 <h1
                   key={t}
                   style={{
                     ...D,
-                    fontSize: "clamp(2.6rem,7vw,6.8rem)",
+                    fontSize: "clamp(2.5rem,7.2vw,6.8rem)",
                     fontWeight: 900,
                     textTransform: "uppercase",
-                    lineHeight: isMobile ? 1.08 : 0.92,
+                    lineHeight: isMobile ? 1.08 : 0.9,
                     letterSpacing: "-0.04em",
-                    color: am ? "var(--amber)" : "white",
+                    color: am ? "#f59e0b" : "white",
                     fontStyle: it ? "italic" : "normal",
                     opacity: heroIn ? 1 : 0,
-                    transform: heroIn ? "none" : "translateY(36px)",
-                    transition: `opacity 1s cubic-bezier(0.16,1,0.3,1) ${d}, transform 1s cubic-bezier(0.16,1,0.3,1) ${d}`,
+                    transform: heroIn ? "none" : "translateY(32px)",
+                    transition: `opacity 1s cubic-bezier(0.16,1,0.3,1) ${d},transform 1s cubic-bezier(0.16,1,0.3,1) ${d}`,
                     margin: 0,
                   }}
                 >
@@ -2153,33 +2422,60 @@ export default function HomePage() {
               ))}
             </div>
 
-            {/* Subtext + cta */}
+            {/* Sub + cta */}
             <div
               style={{
                 display: "flex",
-                gap: isMobile ? 24 : 40,
+                gap: isMobile ? 22 : 36,
                 alignItems: "flex-end",
                 flexWrap: "wrap",
                 opacity: heroIn ? 1 : 0,
-                transform: heroIn ? "none" : "translateY(20px)",
-                transition: "all 0.9s cubic-bezier(0.16,1,0.3,1) 0.68s",
+                transform: heroIn ? "none" : "translateY(18px)",
+                transition: "all 0.9s cubic-bezier(0.16,1,0.3,1) 0.66s",
               }}
             >
-              <div style={{ flex: 1, minWidth: isMobile ? "100%" : "260px" }}>
-                <p
-                  style={{
-                    ...M,
-                    fontSize: "clamp(12px,1.3vw,14px)",
-                    color: "var(--sub)",
-                    lineHeight: 1.85,
-                    maxWidth: 420,
-                  }}
-                >
-                  Hattiesburg's premier barbershop. We don't just cut hair — we
-                  craft confidence. Every client, every time, no exceptions.
-                </p>
-              </div>
-              <a href="/book" onClick={book} className="cta">
+              <p
+                style={{
+                  ...M,
+                  fontSize: "clamp(12px,1.3vw,14px)",
+                  color: "#71717a",
+                  lineHeight: 1.85,
+                  maxWidth: 400,
+                  flex: 1,
+                  minWidth: isMobile ? "100%" : "240px",
+                }}
+              >
+                Hattiesburg's premier barbershop. We don't just cut hair — we
+                craft confidence. Every client, every time.
+              </p>
+              <a
+                href="/book"
+                onClick={book}
+                style={{
+                  ...D,
+                  fontSize: 8.5,
+                  fontWeight: 700,
+                  color: "black",
+                  background: "#f59e0b",
+                  padding: "17px 34px",
+                  letterSpacing: "0.22em",
+                  textTransform: "uppercase",
+                  textDecoration: "none",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 10,
+                  flexShrink: 0,
+                  clipPath:
+                    "polygon(0 0,calc(100% - 10px) 0,100% 10px,100% 100%,10px 100%,0 calc(100% - 10px))",
+                  transition: "background 0.25s",
+                }}
+                onMouseEnter={(e) =>
+                  (e.currentTarget.style.background = "white")
+                }
+                onMouseLeave={(e) =>
+                  (e.currentTarget.style.background = "#f59e0b")
+                }
+              >
                 <span>Book Your Cut →</span>
               </a>
             </div>
@@ -2188,40 +2484,39 @@ export default function HomePage() {
             <div
               style={{
                 display: "flex",
-                gap: 0,
-                marginTop: isMobile ? 36 : 68,
-                paddingTop: isMobile ? 18 : 28,
+                marginTop: isMobile ? 32 : 64,
+                paddingTop: isMobile ? 18 : 26,
                 borderTop: "1px solid rgba(255,255,255,0.06)",
                 flexWrap: "wrap",
                 opacity: heroIn ? 1 : 0,
-                transition: "all 1s cubic-bezier(0.16,1,0.3,1) 0.88s",
+                transition: "all 1s cubic-bezier(0.16,1,0.3,1) 0.85s",
               }}
             >
               {[
                 { n: "5.0", l: "Star Rating", s: "Google" },
                 { n: "11", l: "Services", s: "Every style" },
-                { n: "100+", l: "Clients", s: "& counting" },
+                { n: "100+", l: "Happy Clients", s: "& Counting" },
                 { n: "24/7", l: "Book Online", s: "Anytime" },
               ].map(({ n, l, s }, i) => (
                 <div
                   key={l}
                   style={{
                     flex: 1,
-                    minWidth: isMobile ? 110 : 130,
+                    minWidth: isMobile ? 100 : 120,
                     padding: `0 ${i > 0 ? 14 : 0}px`,
                     borderLeft:
                       i > 0 ? "1px solid rgba(255,255,255,0.06)" : "none",
-                    marginBottom: 14,
+                    marginBottom: 12,
                   }}
                 >
                   <p
                     style={{
                       ...D,
-                      fontSize: "clamp(1.5rem,3vw,2.2rem)",
+                      fontSize: "clamp(1.4rem,2.8vw,2.2rem)",
                       fontWeight: 900,
-                      color: "var(--amber)",
+                      color: "#f59e0b",
                       lineHeight: 1,
-                      marginBottom: 5,
+                      marginBottom: 4,
                     }}
                   >
                     {n}
@@ -2229,8 +2524,8 @@ export default function HomePage() {
                   <p
                     style={{
                       ...M,
-                      fontSize: 10,
-                      color: "var(--body)",
+                      fontSize: 9,
+                      color: "#a1a1aa",
                       letterSpacing: "0.1em",
                       marginBottom: 2,
                     }}
@@ -2240,8 +2535,8 @@ export default function HomePage() {
                   <p
                     style={{
                       ...M,
-                      fontSize: 9,
-                      color: "var(--dim)",
+                      fontSize: 8,
+                      color: "#3f3f46",
                       letterSpacing: "0.2em",
                     }}
                   >
@@ -2252,6 +2547,7 @@ export default function HomePage() {
             </div>
           </div>
 
+          {/* Scroll cue */}
           <div
             style={{
               position: "absolute",
@@ -2262,7 +2558,7 @@ export default function HomePage() {
               flexDirection: "column",
               alignItems: "center",
               gap: 8,
-              paddingBottom: 22,
+              paddingBottom: 20,
               opacity: heroIn ? 1 : 0,
               transition: "opacity 1s ease 1.4s",
             }}
@@ -2271,7 +2567,7 @@ export default function HomePage() {
               style={{
                 ...M,
                 fontSize: 8,
-                color: "var(--dim)",
+                color: "#27272a",
                 letterSpacing: "0.5em",
                 textTransform: "uppercase",
               }}
@@ -2281,9 +2577,9 @@ export default function HomePage() {
             <div
               style={{
                 width: 1,
-                height: 44,
+                height: 40,
                 background:
-                  "linear-gradient(to bottom,rgba(245,158,11,0.55),transparent)",
+                  "linear-gradient(to bottom,rgba(245,158,11,0.5),transparent)",
               }}
             />
           </div>
@@ -2292,21 +2588,21 @@ export default function HomePage() {
         {/* ══ TICKER ══ */}
         <div
           style={{
-            borderTop: "1px solid rgba(255,255,255,0.06)",
-            borderBottom: "1px solid rgba(255,255,255,0.06)",
-            background: "rgba(245,158,11,0.025)",
+            borderTop: "1px solid rgba(245,158,11,0.12)",
+            borderBottom: "1px solid rgba(245,158,11,0.12)",
+            background: "rgba(245,158,11,0.02)",
             overflow: "hidden",
-            padding: "12px 0",
+            padding: "11px 0",
           }}
         >
-          <div className="ticker-track">
+          <div className="ticker-wrap">
             {[...TICKER, ...TICKER].map((t, i) => (
               <span
                 key={i}
                 style={{
                   ...M,
                   fontSize: 9,
-                  color: "rgba(245,158,11,0.5)",
+                  color: "rgba(245,158,11,0.45)",
                   letterSpacing: "0.5em",
                   textTransform: "uppercase",
                   padding: "0 32px",
@@ -2326,67 +2622,77 @@ export default function HomePage() {
         <section
           id="services"
           style={{
-            padding: isMobile ? "56px 20px" : "var(--section) var(--px)",
+            padding: isMobile
+              ? "56px 20px"
+              : "clamp(56px,9vw,112px) clamp(18px,5vw,40px)",
           }}
         >
           <div style={{ maxWidth: 1320, margin: "0 auto" }}>
+            {/* Header */}
             <div
               data-id="s1"
               className={`rv${R("s1") ? " on" : ""}`}
               style={{
                 display: "flex",
                 alignItems: "center",
-                gap: 16,
-                marginBottom: isMobile ? 32 : 56,
+                gap: 14,
+                marginBottom: isMobile ? 28 : 52,
               }}
             >
-              <div
-                style={{ width: 3, height: 24, background: "var(--amber)" }}
-              />
+              <div style={{ width: 3, height: 26, background: "#f59e0b" }} />
               <span
                 style={{
                   ...M,
                   fontSize: 8,
-                  color: "var(--amber)",
+                  color: "#f59e0b",
                   letterSpacing: "0.6em",
                   textTransform: "uppercase",
                 }}
               >
                 Services · {SERVICES.length} Options
               </span>
+              <div
+                style={{
+                  flex: 1,
+                  height: 1,
+                  background:
+                    "linear-gradient(to right,rgba(245,158,11,0.2),transparent)",
+                }}
+              />
             </div>
 
             <div
               style={{
                 display: "grid",
                 gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr",
-                gap: isMobile ? 28 : 80,
+                gap: isMobile ? 24 : 80,
                 alignItems: "start",
-                marginBottom: 44,
+                marginBottom: 40,
               }}
             >
               <div data-id="s2" className={`rv${R("s2") ? " on" : ""}`}>
                 <h2
                   style={{
                     ...D,
-                    fontSize: "clamp(2.2rem,5vw,4rem)",
+                    fontSize: "clamp(2rem,5vw,4rem)",
                     fontWeight: 900,
                     lineHeight: isMobile ? 1.08 : 0.9,
                     letterSpacing: "-0.04em",
+                    textTransform: "uppercase",
                   }}
                 >
                   The
                   <br />
                   <span
                     style={{
-                      WebkitTextStroke: "1px rgba(255,255,255,0.15)",
+                      WebkitTextStroke: "1px rgba(255,255,255,0.14)",
                       color: "transparent",
                     }}
                   >
                     Full
                   </span>
                   <br />
-                  <span style={{ color: "var(--amber)", fontStyle: "italic" }}>
+                  <span style={{ color: "#f59e0b", fontStyle: "italic" }}>
                     Menu_
                   </span>
                 </h2>
@@ -2394,27 +2700,47 @@ export default function HomePage() {
               <div
                 data-id="s3"
                 className={`rv d1${R("s3") ? " on" : ""}`}
-                style={{ paddingTop: 8 }}
+                style={{ paddingTop: isMobile ? 0 : 8 }}
               >
                 <p
                   style={{
                     ...M,
                     fontSize: 13,
-                    color: "var(--sub)",
+                    color: "#71717a",
                     lineHeight: 1.8,
                     marginBottom: 22,
                   }}
                 >
-                  From a quick lineup to the full cut and shave experience —
-                  every service delivered with the same obsessive precision.
+                  From a quick lineup to the full cut and shave — every service
+                  delivered with obsessive precision.
                 </p>
                 <a
                   href="/book"
                   onClick={book}
-                  className="cta"
-                  style={{ padding: "14px 26px", fontSize: 8 }}
+                  style={{
+                    ...D,
+                    fontSize: 8,
+                    fontWeight: 700,
+                    color: "black",
+                    background: "#f59e0b",
+                    padding: "13px 26px",
+                    letterSpacing: "0.2em",
+                    textTransform: "uppercase",
+                    textDecoration: "none",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    clipPath:
+                      "polygon(0 0,calc(100% - 8px) 0,100% 8px,100% 100%,8px 100%,0 calc(100% - 8px))",
+                    transition: "background 0.25s",
+                  }}
+                  onMouseEnter={(e) =>
+                    (e.currentTarget.style.background = "white")
+                  }
+                  onMouseLeave={(e) =>
+                    (e.currentTarget.style.background = "#f59e0b")
+                  }
                 >
-                  <span>Book Any Service →</span>
+                  Book Any Service →
                 </a>
               </div>
             </div>
@@ -2435,7 +2761,7 @@ export default function HomePage() {
                     display: "flex",
                     justifyContent: "space-between",
                     alignItems: "center",
-                    padding: "20px 0",
+                    padding: "19px 0",
                     borderBottom: "1px solid rgba(255,255,255,0.04)",
                     gap: 12,
                   }}
@@ -2444,7 +2770,7 @@ export default function HomePage() {
                     style={{
                       display: "flex",
                       alignItems: "center",
-                      gap: 16,
+                      gap: 14,
                       flex: 1,
                       minWidth: 0,
                     }}
@@ -2453,8 +2779,7 @@ export default function HomePage() {
                       style={{
                         ...M,
                         fontSize: 9,
-                        color:
-                          hovSvc === svc.name ? "var(--amber)" : "var(--dim)",
+                        color: hovSvc === svc.name ? "#f59e0b" : "#3f3f46",
                         minWidth: 28,
                         transition: "color 0.2s",
                       }}
@@ -2464,10 +2789,10 @@ export default function HomePage() {
                     <span
                       style={{
                         ...D,
-                        fontSize: "clamp(8.5px,1.3vw,11.5px)",
+                        fontSize: "clamp(8px,1.2vw,11px)",
                         textTransform: "uppercase",
                         fontWeight: 700,
-                        color: hovSvc === svc.name ? "white" : "var(--sub)",
+                        color: hovSvc === svc.name ? "white" : "#71717a",
                         transition: "color 0.2s",
                         overflow: "hidden",
                         textOverflow: "ellipsis",
@@ -2482,7 +2807,7 @@ export default function HomePage() {
                           ...M,
                           fontSize: 7,
                           color: "black",
-                          background: "var(--amber)",
+                          background: "#f59e0b",
                           padding: "2px 8px",
                           flexShrink: 0,
                           letterSpacing: "0.2em",
@@ -2497,21 +2822,21 @@ export default function HomePage() {
                     style={{
                       display: "flex",
                       alignItems: "center",
-                      gap: 24,
+                      gap: 22,
                       flexShrink: 0,
                     }}
                   >
-                    <span style={{ ...M, fontSize: 9, color: "var(--dim)" }}>
+                    <span style={{ ...M, fontSize: 9, color: "#3f3f46" }}>
                       {svc.dur}
                     </span>
                     <span
                       style={{
                         ...D,
-                        fontSize: "clamp(13px,2vw,20px)",
+                        fontSize: "clamp(13px,1.9vw,20px)",
                         fontWeight: 900,
-                        color: hovSvc === svc.name ? "var(--amber)" : "white",
+                        color: hovSvc === svc.name ? "#f59e0b" : "white",
                         transition: "color 0.2s",
-                        minWidth: 44,
+                        minWidth: 40,
                         textAlign: "right",
                       }}
                     >
@@ -2519,9 +2844,9 @@ export default function HomePage() {
                     </span>
                     <span
                       style={{
-                        fontSize: 13,
+                        fontSize: 12,
                         opacity: hovSvc === svc.name ? 1 : 0,
-                        color: "var(--amber)",
+                        color: "#f59e0b",
                         transform:
                           hovSvc === svc.name
                             ? "translateX(0)"
@@ -2545,7 +2870,9 @@ export default function HomePage() {
         <section
           id="reviews"
           style={{
-            padding: isMobile ? "56px 20px" : "var(--section) var(--px)",
+            padding: isMobile
+              ? "56px 20px"
+              : "clamp(56px,9vw,112px) clamp(18px,5vw,40px)",
           }}
         >
           <div style={{ maxWidth: 1320, margin: "0 auto" }}>
@@ -2555,30 +2882,36 @@ export default function HomePage() {
               style={{
                 display: "flex",
                 alignItems: "center",
-                gap: 16,
-                marginBottom: isMobile ? 32 : 52,
+                gap: 14,
+                marginBottom: isMobile ? 28 : 48,
               }}
             >
-              <div
-                style={{ width: 3, height: 24, background: "var(--amber)" }}
-              />
+              <div style={{ width: 3, height: 26, background: "#f59e0b" }} />
               <span
                 style={{
                   ...M,
                   fontSize: 8,
-                  color: "var(--amber)",
+                  color: "#f59e0b",
                   letterSpacing: "0.6em",
                   textTransform: "uppercase",
                 }}
               >
                 Client Reviews
               </span>
+              <div
+                style={{
+                  flex: 1,
+                  height: 1,
+                  background:
+                    "linear-gradient(to right,rgba(245,158,11,0.2),transparent)",
+                }}
+              />
             </div>
             <div
               style={{
                 display: "grid",
                 gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr",
-                gap: isMobile ? 28 : 80,
+                gap: isMobile ? 24 : 80,
                 alignItems: isMobile ? "start" : "center",
               }}
             >
@@ -2586,25 +2919,26 @@ export default function HomePage() {
                 <h2
                   style={{
                     ...D,
-                    fontSize: "clamp(2rem,5vw,3.8rem)",
+                    fontSize: "clamp(1.9rem,4.8vw,3.8rem)",
                     fontWeight: 900,
                     lineHeight: isMobile ? 1.08 : 0.9,
                     letterSpacing: "-0.04em",
-                    marginBottom: 20,
+                    textTransform: "uppercase",
+                    marginBottom: 18,
                   }}
                 >
                   Word
                   <br />
                   <span
                     style={{
-                      WebkitTextStroke: "1px rgba(255,255,255,0.15)",
+                      WebkitTextStroke: "1px rgba(255,255,255,0.14)",
                       color: "transparent",
                     }}
                   >
                     of
                   </span>
                   <br />
-                  <span style={{ color: "var(--amber)", fontStyle: "italic" }}>
+                  <span style={{ color: "#f59e0b", fontStyle: "italic" }}>
                     Mouth_
                   </span>
                 </h2>
@@ -2612,35 +2946,29 @@ export default function HomePage() {
                   style={{
                     ...M,
                     fontSize: 12,
-                    color: "var(--muted)",
+                    color: "#52525b",
                     lineHeight: 1.8,
-                    marginBottom: 32,
+                    marginBottom: 28,
                   }}
                 >
-                  Real clients. Real reviews. No fluff.
+                  Real clients. Real results. No fluff.
                 </p>
                 <div style={{ display: "flex", gap: 8 }}>
                   {REVIEWS.map((_, i) => (
                     <button
                       key={i}
-                      onClick={() => setReviewIdx(i)}
+                      onClick={() => setRevIdx(i)}
                       style={{
-                        width: i === reviewIdx ? 26 : 6,
-                        height: 5,
+                        width: i === revIdx ? 26 : 6,
+                        height: 4,
                         background:
-                          i === reviewIdx
-                            ? "var(--amber)"
-                            : "rgba(255,255,255,0.14)",
+                          i === revIdx ? "#f59e0b" : "rgba(255,255,255,0.12)",
                         border: "none",
                         cursor: "pointer",
                         transition: "all 0.32s",
                         padding: 0,
                         minHeight: "auto",
                         minWidth: "auto",
-                        clipPath:
-                          i === reviewIdx
-                            ? "polygon(0 0,calc(100% - 3px) 0,100% 3px,100% 100%,3px 100%,0 calc(100% - 3px))"
-                            : "none",
                       }}
                     />
                   ))}
@@ -2651,20 +2979,20 @@ export default function HomePage() {
                   <div
                     key={i}
                     style={{
-                      display: i === reviewIdx ? "block" : "none",
-                      padding: isMobile ? "28px 22px" : "36px 32px",
+                      display: i === revIdx ? "block" : "none",
+                      padding: isMobile ? "24px 18px" : "34px 28px",
                       background: "rgba(255,255,255,0.02)",
                       border: "1px solid rgba(255,255,255,0.07)",
-                      borderLeft: "3px solid var(--amber)",
+                      borderLeft: "3px solid #f59e0b",
                       animation:
-                        i === reviewIdx ? "fadeUp 0.5s ease both" : "none",
+                        i === revIdx ? "fadeUp 0.45s ease both" : "none",
                     }}
                   >
-                    <div style={{ display: "flex", gap: 3, marginBottom: 18 }}>
+                    <div style={{ display: "flex", gap: 2, marginBottom: 16 }}>
                       {[1, 2, 3, 4, 5].map((s) => (
                         <span
                           key={s}
-                          style={{ color: "var(--amber)", fontSize: 11 }}
+                          style={{ color: "#f59e0b", fontSize: 11 }}
                         >
                           ★
                         </span>
@@ -2673,13 +3001,13 @@ export default function HomePage() {
                     <p
                       style={{
                         ...D,
-                        fontSize: "clamp(0.85rem,1.6vw,1.05rem)",
+                        fontSize: "clamp(0.82rem,1.5vw,1rem)",
                         fontWeight: 700,
                         textTransform: "uppercase",
                         lineHeight: 1.55,
                         letterSpacing: "-0.02em",
                         color: "white",
-                        marginBottom: 20,
+                        marginBottom: 18,
                       }}
                     >
                       "{rv.q}"
@@ -2691,11 +3019,13 @@ export default function HomePage() {
                         style={{
                           width: 32,
                           height: 32,
-                          background: "var(--amber)",
+                          background: "#f59e0b",
                           display: "flex",
                           alignItems: "center",
                           justifyContent: "center",
                           flexShrink: 0,
+                          clipPath:
+                            "polygon(0 0,calc(100% - 5px) 0,100% 5px,100% 100%,5px 100%,0 calc(100% - 5px))",
                         }}
                       >
                         <span
@@ -2724,7 +3054,7 @@ export default function HomePage() {
                           style={{
                             ...M,
                             fontSize: 9,
-                            color: "var(--muted)",
+                            color: "#52525b",
                             letterSpacing: "0.2em",
                           }}
                         >
@@ -2744,8 +3074,10 @@ export default function HomePage() {
           id="location"
           style={{
             borderTop: "1px solid rgba(255,255,255,0.06)",
-            padding: isMobile ? "56px 20px" : "var(--section) var(--px)",
-            background: "rgba(255,255,255,0.012)",
+            padding: isMobile
+              ? "56px 20px"
+              : "clamp(56px,9vw,112px) clamp(18px,5vw,40px)",
+            background: "rgba(255,255,255,0.01)",
           }}
         >
           <div style={{ maxWidth: 1320, margin: "0 auto" }}>
@@ -2755,30 +3087,36 @@ export default function HomePage() {
               style={{
                 display: "flex",
                 alignItems: "center",
-                gap: 16,
-                marginBottom: isMobile ? 32 : 52,
+                gap: 14,
+                marginBottom: isMobile ? 28 : 48,
               }}
             >
-              <div
-                style={{ width: 3, height: 24, background: "var(--amber)" }}
-              />
+              <div style={{ width: 3, height: 26, background: "#f59e0b" }} />
               <span
                 style={{
                   ...M,
                   fontSize: 8,
-                  color: "var(--amber)",
+                  color: "#f59e0b",
                   letterSpacing: "0.6em",
                   textTransform: "uppercase",
                 }}
               >
                 Find Us
               </span>
+              <div
+                style={{
+                  flex: 1,
+                  height: 1,
+                  background:
+                    "linear-gradient(to right,rgba(245,158,11,0.2),transparent)",
+                }}
+              />
             </div>
             <div
               style={{
                 display: "grid",
                 gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr",
-                gap: isMobile ? 28 : 80,
+                gap: isMobile ? 24 : 80,
                 alignItems: isMobile ? "start" : "center",
               }}
             >
@@ -2786,25 +3124,26 @@ export default function HomePage() {
                 <h2
                   style={{
                     ...D,
-                    fontSize: "clamp(2rem,5vw,3.8rem)",
+                    fontSize: "clamp(1.9rem,4.8vw,3.8rem)",
                     fontWeight: 900,
                     lineHeight: isMobile ? 1.08 : 0.9,
                     letterSpacing: "-0.04em",
-                    marginBottom: 40,
+                    textTransform: "uppercase",
+                    marginBottom: 36,
                   }}
                 >
                   Come
                   <br />
                   <span
                     style={{
-                      WebkitTextStroke: "1px rgba(255,255,255,0.15)",
+                      WebkitTextStroke: "1px rgba(255,255,255,0.14)",
                       color: "transparent",
                     }}
                   >
                     See
                   </span>
                   <br />
-                  <span style={{ color: "var(--amber)", fontStyle: "italic" }}>
+                  <span style={{ color: "#f59e0b", fontStyle: "italic" }}>
                     Us_
                   </span>
                 </h2>
@@ -2812,8 +3151,8 @@ export default function HomePage() {
                   style={{
                     display: "flex",
                     flexDirection: "column",
-                    gap: 24,
-                    marginBottom: 40,
+                    gap: 20,
+                    marginBottom: 36,
                   }}
                 >
                   {[
@@ -2828,7 +3167,7 @@ export default function HomePage() {
                         display: "flex",
                         gap: 16,
                         alignItems: "flex-start",
-                        paddingBottom: 24,
+                        paddingBottom: 20,
                         borderBottom: "1px solid rgba(255,255,255,0.04)",
                       }}
                     >
@@ -2842,7 +3181,7 @@ export default function HomePage() {
                           style={{
                             ...M,
                             fontSize: 8,
-                            color: "var(--muted)",
+                            color: "#52525b",
                             letterSpacing: "0.4em",
                             textTransform: "uppercase",
                             marginBottom: 4,
@@ -2854,7 +3193,7 @@ export default function HomePage() {
                           style={{
                             ...M,
                             fontSize: 13,
-                            color: "var(--body)",
+                            color: "#a1a1aa",
                             lineHeight: 1.5,
                           }}
                         >
@@ -2864,24 +3203,48 @@ export default function HomePage() {
                     </div>
                   ))}
                 </div>
-                <a href="/book" onClick={book} className="cta">
-                  <span>Lock In Your Spot →</span>
+                <a
+                  href="/book"
+                  onClick={book}
+                  style={{
+                    ...D,
+                    fontSize: 8.5,
+                    fontWeight: 700,
+                    color: "black",
+                    background: "#f59e0b",
+                    padding: "17px 32px",
+                    letterSpacing: "0.22em",
+                    textTransform: "uppercase",
+                    textDecoration: "none",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    clipPath:
+                      "polygon(0 0,calc(100% - 10px) 0,100% 10px,100% 100%,10px 100%,0 calc(100% - 10px))",
+                    transition: "background 0.25s",
+                  }}
+                  onMouseEnter={(e) =>
+                    (e.currentTarget.style.background = "white")
+                  }
+                  onMouseLeave={(e) =>
+                    (e.currentTarget.style.background = "#f59e0b")
+                  }
+                >
+                  Lock In Your Spot →
                 </a>
               </div>
               <div data-id="l3" className={`rv d2${R("l3") ? " on" : ""}`}>
                 <div
                   style={{
-                    background: "var(--s1)",
+                    background: "#080808",
                     border: "1px solid rgba(255,255,255,0.07)",
-                    padding: 48,
                     position: "relative",
                     overflow: "hidden",
-                    minHeight: 380,
+                    minHeight: 360,
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
                     clipPath:
-                      "polygon(0 0,calc(100% - 20px) 0,100% 20px,100% 100%,20px 100%,0 calc(100% - 20px))",
+                      "polygon(0 0,calc(100% - 22px) 0,100% 22px,100% 100%,22px 100%,0 calc(100% - 22px))",
                   }}
                 >
                   <div
@@ -2889,18 +3252,18 @@ export default function HomePage() {
                       position: "absolute",
                       inset: 0,
                       backgroundImage:
-                        "linear-gradient(rgba(255,255,255,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,0.03) 1px,transparent 1px)",
-                      backgroundSize: "36px 36px",
+                        "linear-gradient(rgba(255,255,255,0.025) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,0.025) 1px,transparent 1px)",
+                      backgroundSize: "34px 34px",
                     }}
                   />
-                  {[160, 240, 340].map((sz, i) => (
+                  {[160, 240, 330].map((sz, i) => (
                     <div
                       key={sz}
                       style={{
                         position: "absolute",
                         width: sz,
                         height: sz,
-                        border: `1px solid rgba(245,158,11,${0.14 - i * 0.04})`,
+                        border: `1px solid rgba(245,158,11,${0.12 - i * 0.035})`,
                         borderRadius: "50%",
                       }}
                     />
@@ -2910,13 +3273,14 @@ export default function HomePage() {
                       position: "relative",
                       zIndex: 1,
                       textAlign: "center",
+                      padding: "40px 24px",
                     }}
                   >
                     <div
                       style={{
                         width: 52,
                         height: 52,
-                        background: "var(--amber)",
+                        background: "#f59e0b",
                         margin: "0 auto 14px",
                         display: "flex",
                         alignItems: "center",
@@ -2936,12 +3300,11 @@ export default function HomePage() {
                         textTransform: "uppercase",
                         color: "white",
                         marginBottom: 7,
-                        letterSpacing: "0.04em",
                       }}
                     >
                       HEADZ UP BARBERSHOP
                     </p>
-                    <p style={{ ...M, fontSize: 11, color: "var(--sub)" }}>
+                    <p style={{ ...M, fontSize: 11, color: "#71717a" }}>
                       4 Hub Dr, Hattiesburg MS 39402
                     </p>
                   </div>
@@ -2952,7 +3315,7 @@ export default function HomePage() {
                       right: 14,
                       ...M,
                       fontSize: 8,
-                      color: "var(--dim)",
+                      color: "#27272a",
                       letterSpacing: "0.2em",
                     }}
                   >
@@ -2967,8 +3330,8 @@ export default function HomePage() {
         {/* ══ CTA BAND ══ */}
         <section
           style={{
-            background: "var(--amber)",
-            padding: isMobile ? "56px 20px" : "72px var(--px)",
+            background: "#f59e0b",
+            padding: isMobile ? "52px 20px" : "68px clamp(18px,5vw,40px)",
             position: "relative",
             overflow: "hidden",
           }}
@@ -2978,8 +3341,8 @@ export default function HomePage() {
               position: "absolute",
               inset: 0,
               backgroundImage:
-                "linear-gradient(rgba(0,0,0,0.06) 1px,transparent 1px),linear-gradient(90deg,rgba(0,0,0,0.06) 1px,transparent 1px)",
-              backgroundSize: "44px 44px",
+                "linear-gradient(rgba(0,0,0,0.055) 1px,transparent 1px),linear-gradient(90deg,rgba(0,0,0,0.055) 1px,transparent 1px)",
+              backgroundSize: "42px 42px",
               pointerEvents: "none",
             }}
           />
@@ -2991,7 +3354,7 @@ export default function HomePage() {
               justifyContent: "space-between",
               alignItems: "center",
               flexWrap: "wrap",
-              gap: 28,
+              gap: 24,
               position: "relative",
             }}
           >
@@ -3037,7 +3400,7 @@ export default function HomePage() {
                 }}
                 onMouseEnter={(e) => {
                   e.currentTarget.style.background = "#030303";
-                  e.currentTarget.style.color = "var(--amber)";
+                  e.currentTarget.style.color = "#f59e0b";
                 }}
                 onMouseLeave={(e) => {
                   e.currentTarget.style.background = "black";
@@ -3051,13 +3414,13 @@ export default function HomePage() {
                 style={{
                   ...M,
                   fontSize: 11,
-                  color: "rgba(0,0,0,0.45)",
+                  color: "rgba(0,0,0,0.4)",
                   textDecoration: "none",
                   transition: "color 0.2s",
                 }}
                 onMouseEnter={(e) => (e.currentTarget.style.color = "black")}
                 onMouseLeave={(e) =>
-                  (e.currentTarget.style.color = "rgba(0,0,0,0.45)")
+                  (e.currentTarget.style.color = "rgba(0,0,0,0.4)")
                 }
               >
                 Or call us
@@ -3070,7 +3433,7 @@ export default function HomePage() {
         <footer
           style={{
             borderTop: "1px solid rgba(255,255,255,0.06)",
-            padding: isMobile ? "28px 20px" : "32px var(--px)",
+            padding: isMobile ? "26px 20px" : "30px clamp(18px,5vw,40px)",
           }}
         >
           <div
@@ -3093,15 +3456,13 @@ export default function HomePage() {
               }}
             >
               HEADZ
-              <span style={{ color: "var(--amber)", fontStyle: "italic" }}>
-                UP
-              </span>
+              <span style={{ color: "#f59e0b", fontStyle: "italic" }}>UP</span>
             </p>
             <p
               style={{
                 ...M,
                 fontSize: 9,
-                color: "var(--dim)",
+                color: "#27272a",
                 letterSpacing: "0.3em",
                 textTransform: "uppercase",
               }}
@@ -3121,16 +3482,17 @@ export default function HomePage() {
                   style={{
                     ...M,
                     fontSize: 9,
-                    color: "var(--dim)",
+                    color: "#3f3f46",
                     letterSpacing: "0.2em",
                     textTransform: "uppercase",
                     transition: "color 0.2s",
+                    textDecoration: "none",
                   }}
                   onMouseEnter={(e) =>
-                    (e.currentTarget.style.color = "var(--amber)")
+                    (e.currentTarget.style.color = "#f59e0b")
                   }
                   onMouseLeave={(e) =>
-                    (e.currentTarget.style.color = "var(--dim)")
+                    (e.currentTarget.style.color = "#3f3f46")
                   }
                 >
                   {label}
