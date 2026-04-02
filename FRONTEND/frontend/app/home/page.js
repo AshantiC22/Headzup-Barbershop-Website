@@ -6,23 +6,29 @@ import useBreakpoint from "@/lib/useBreakpoint";
 
 const D = { fontFamily: "'Syncopate',sans-serif" };
 const M = { fontFamily: "'DM Mono',monospace" };
+const A = "#f59e0b";
+const R = "#ef4444";
 
-/* ── PERSONA SELECT ─────────────────────────────────────────────────────── */
+/* ═══════════════════════════════════════════════════════════════════════════
+   PERSONA SELECT  —  full-screen fighter-select like Def Jam / P5
+═══════════════════════════════════════════════════════════════════════════ */
 function PersonaSelect({ barbers, book, isMobile }) {
   const [sel, setSel] = useState(0);
   const [locked, setLocked] = useState(false);
   const [flash, setFlash] = useState(false);
+  const [hover, setHover] = useState(null);
   const list = barbers.length
     ? barbers
     : [{ id: 0, name: "Barber", bio: "", photo_url: null }];
   const active = list[sel] || list[0];
   const STATS = [
-    { k: "Fade", v: 98 },
-    { k: "Lineup", v: 99 },
-    { k: "Beard", v: 95 },
-    { k: "Precision", v: 97 },
-    { k: "Vibe", v: 100 },
+    { k: "FADE", v: 98 },
+    { k: "LINEUP", v: 99 },
+    { k: "BEARD", v: 95 },
+    { k: "PRECISION", v: 97 },
+    { k: "VIBE", v: 100 },
   ];
+
   const lock = (e) => {
     setFlash(true);
     setLocked(true);
@@ -37,25 +43,27 @@ function PersonaSelect({ barbers, book, isMobile }) {
         position: "relative",
         overflow: "hidden",
         background: "#000",
-        minHeight: isMobile ? "auto" : "100vh",
-        display: "flex",
-        alignItems: "center",
+        borderTop: `3px solid ${A}`,
+        borderBottom: `3px solid ${A}`,
       }}
     >
       <style>{`
-        .ps-flash{animation:lockin 0.7s ease;}
-        .ps-name{animation:nameIn 0.5s cubic-bezier(0.16,1,0.3,1) both;}
-        .ps-bar{animation:statgrow 1s cubic-bezier(0.4,0,0.2,1) both;}
-        .ps-row{transition:background 0.2s,border-color 0.2s;cursor:pointer;}
-        .ps-row:hover{background:rgba(245,158,11,0.06)!important;}
-        @keyframes lockin{0%,100%{opacity:1}20%,60%{opacity:0}40%,80%{opacity:0.5}}
-        @keyframes nameIn{from{opacity:0;transform:translateX(-24px) skewX(-4deg)}to{opacity:1;transform:none}}
-        @keyframes statgrow{from{width:0}to{width:var(--w,100%)}}
-        @keyframes scanH{from{left:-60%}to{left:160%}}
-        @keyframes rgbShift{0%{text-shadow:2px 0 #f59e0b,-2px 0 rgba(245,158,11,0.3)}50%{text-shadow:-2px 0 rgba(245,158,11,0.5),2px 0 #f59e0b}100%{text-shadow:2px 0 #f59e0b,-2px 0 rgba(245,158,11,0.3)}}
+        .ps-flash { animation: p5-flash 0.7s ease; }
+        .ps-name  { animation: p5-namein 0.45s cubic-bezier(0.16,1,0.3,1) both; }
+        .ps-bar   { animation: p5-bar 1s cubic-bezier(0.4,0,0.2,1) both; }
+        .ps-scan  { animation: p5-scanH 5s linear infinite; }
+        .ps-card  { transition: transform 0.25s, filter 0.25s, border-color 0.25s; cursor:pointer; }
+        .ps-card:hover { transform:scale(1.03); }
+        .ps-row   { transition: background 0.18s, border-color 0.18s; cursor:pointer; }
+        .ps-row:hover { background:rgba(245,158,11,0.07) !important; border-color:rgba(245,158,11,0.4) !important; }
+        @keyframes p5-flash  { 0%,100%{opacity:1} 20%,60%{opacity:0} 40%,80%{opacity:0.4} }
+        @keyframes p5-namein { from{opacity:0;transform:translateX(-32px) skewX(-5deg)} to{opacity:1;transform:none} }
+        @keyframes p5-bar    { from{width:0} to{width:var(--w,100%)} }
+        @keyframes p5-scanH  { from{left:-60%} to{left:160%} }
+        @keyframes p5-glow   { 0%,100%{box-shadow:0 0 0 0 rgba(34,197,94,0.5)} 50%{box-shadow:0 0 0 10px rgba(34,197,94,0)} }
       `}</style>
 
-      {/* Bleed bg photo */}
+      {/* Full-bleed bg */}
       <div style={{ position: "absolute", inset: 0, zIndex: 0 }}>
         {active.photo_url || active.photo ? (
           <img
@@ -67,48 +75,62 @@ function PersonaSelect({ barbers, book, isMobile }) {
               height: "100%",
               objectFit: "cover",
               objectPosition: "center top",
-              filter: "brightness(0.1) saturate(0.2)",
+              filter: "brightness(0.08) saturate(0.2)",
               transition: "opacity 1s",
             }}
           />
         ) : null}
-        {/* Heavy vignette */}
         <div
           style={{
             position: "absolute",
             inset: 0,
             background:
-              "linear-gradient(to right,#000 0%,rgba(0,0,0,0.88) 40%,rgba(0,0,0,0.6) 65%,rgba(0,0,0,0.85) 100%)",
+              "linear-gradient(135deg,rgba(0,0,0,0.98) 0%,rgba(0,0,0,0.82) 50%,rgba(0,0,0,0.96) 100%)",
           }}
         />
+        {/* Diagonal red accent lines — DMC style */}
         <div
           style={{
             position: "absolute",
             inset: 0,
-            background:
-              "linear-gradient(to bottom,#000 0%,transparent 20%,transparent 80%,#000 100%)",
+            overflow: "hidden",
+            pointerEvents: "none",
           }}
-        />
-        {/* Scanline */}
+        >
+          <div
+            style={{
+              position: "absolute",
+              top: 0,
+              right: "30%",
+              width: 2,
+              height: "140%",
+              background: `linear-gradient(to bottom,transparent,${R}22,transparent)`,
+              transform: "rotate(15deg)",
+              transformOrigin: "top center",
+            }}
+          />
+          <div
+            style={{
+              position: "absolute",
+              top: 0,
+              right: "55%",
+              width: 1,
+              height: "140%",
+              background: `linear-gradient(to bottom,transparent,rgba(245,158,11,0.1),transparent)`,
+              transform: "rotate(15deg)",
+              transformOrigin: "top center",
+            }}
+          />
+        </div>
+        {/* Scan beam */}
         <div
+          className="ps-scan"
           style={{
             position: "absolute",
             top: 0,
             bottom: 0,
-            width: "40%",
-            background:
-              "linear-gradient(to right,transparent,rgba(245,158,11,0.03),transparent)",
-            animation: "scanH 6s linear infinite",
-            pointerEvents: "none",
-          }}
-        />
-        {/* CRT scanlines */}
-        <div
-          style={{
-            position: "absolute",
-            inset: 0,
-            backgroundImage:
-              "repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.12) 2px,rgba(0,0,0,0.12) 3px)",
+            width: "35%",
+            background: `linear-gradient(to right,transparent,rgba(245,158,11,0.025),transparent)`,
             pointerEvents: "none",
           }}
         />
@@ -117,9 +139,18 @@ function PersonaSelect({ barbers, book, isMobile }) {
           style={{
             position: "absolute",
             inset: 0,
+            backgroundImage: `linear-gradient(${A}08 1px,transparent 1px),linear-gradient(90deg,${A}08 1px,transparent 1px)`,
+            backgroundSize: "48px 48px",
+            pointerEvents: "none",
+          }}
+        />
+        {/* CRT */}
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
             backgroundImage:
-              "linear-gradient(rgba(245,158,11,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(245,158,11,0.03) 1px,transparent 1px)",
-            backgroundSize: "44px 44px",
+              "repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.1) 2px,rgba(0,0,0,0.1) 3px)",
             pointerEvents: "none",
           }}
         />
@@ -129,72 +160,110 @@ function PersonaSelect({ barbers, book, isMobile }) {
         style={{
           position: "relative",
           zIndex: 2,
-          width: "100%",
           maxWidth: 1320,
           margin: "0 auto",
           padding: isMobile ? "44px 20px 52px" : "0 44px",
+          minHeight: isMobile ? "auto" : "100vh",
+          display: "flex",
+          flexDirection: "column",
+          justifyContent: "center",
         }}
       >
-        {/* Header label */}
+        {/* P5-style header stamp */}
         <div
           style={{
             display: "flex",
             alignItems: "center",
-            gap: 14,
-            marginBottom: isMobile ? 28 : 48,
+            gap: 0,
+            marginBottom: isMobile ? 28 : 44,
+            overflow: "hidden",
           }}
         >
           <div
             style={{
-              width: 32,
-              height: 32,
-              background: "rgba(245,158,11,0.1)",
-              border: "1px solid rgba(245,158,11,0.4)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
+              background: A,
+              padding: "6px 16px 6px 12px",
+              clipPath: "polygon(0 0,100% 0,calc(100% - 10px) 100%,0 100%)",
+              marginRight: 10,
             }}
           >
             <span
-              style={{ ...D, fontSize: 10, color: "#f59e0b", fontWeight: 900 }}
+              style={{
+                ...D,
+                fontSize: 8,
+                fontWeight: 900,
+                color: "#000",
+                letterSpacing: "0.4em",
+                textTransform: "uppercase",
+              }}
             >
-              B
+              SELECT
             </span>
           </div>
-          <span
+          <div
             style={{
-              ...M,
-              fontSize: 8,
-              color: "#f59e0b",
-              letterSpacing: "0.6em",
-              textTransform: "uppercase",
+              background: "rgba(255,255,255,0.06)",
+              padding: "6px 16px 6px 14px",
+              clipPath: "polygon(8px 0,100% 0,calc(100% - 10px) 100%,0 100%)",
+              marginRight: 10,
             }}
           >
-            SELECT YOUR BARBER
-          </span>
+            <span
+              style={{
+                ...D,
+                fontSize: 8,
+                fontWeight: 900,
+                color: "white",
+                letterSpacing: "0.4em",
+                textTransform: "uppercase",
+              }}
+            >
+              YOUR
+            </span>
+          </div>
+          <div
+            style={{
+              background: R,
+              padding: "6px 16px 6px 14px",
+              clipPath: "polygon(8px 0,100% 0,calc(100% - 10px) 100%,0 100%)",
+            }}
+          >
+            <span
+              style={{
+                ...D,
+                fontSize: 8,
+                fontWeight: 900,
+                color: "white",
+                letterSpacing: "0.4em",
+                textTransform: "uppercase",
+              }}
+            >
+              BARBER
+            </span>
+          </div>
           <div
             style={{
               flex: 1,
-              height: 1,
-              background:
-                "linear-gradient(to right,rgba(245,158,11,0.3),transparent)",
+              height: 2,
+              background: `linear-gradient(to right,${R}88,transparent)`,
+              marginLeft: 16,
             }}
           />
           <span
             style={{
               ...M,
               fontSize: 8,
-              color: "rgba(245,158,11,0.3)",
+              color: `${A}66`,
               letterSpacing: "0.3em",
             }}
           >
-            {String(sel + 1).padStart(2, "0")} /{" "}
+            {String(sel + 1).padStart(2, "0")}/
             {String(list.length).padStart(2, "0")}
           </span>
         </div>
 
+        {/* ── MOBILE ── */}
         {isMobile ? (
-          /* Mobile layout */
           <div>
             <div
               style={{
@@ -202,7 +271,7 @@ function PersonaSelect({ barbers, book, isMobile }) {
                 gap: 8,
                 overflowX: "auto",
                 paddingBottom: 10,
-                marginBottom: 24,
+                marginBottom: 22,
               }}
             >
               {list.map((b, i) => (
@@ -214,9 +283,9 @@ function PersonaSelect({ barbers, book, isMobile }) {
                   }}
                   style={{
                     flexShrink: 0,
-                    width: 90,
-                    height: 115,
-                    border: `2px solid ${i === sel ? "#f59e0b" : "rgba(255,255,255,0.08)"}`,
+                    width: 92,
+                    height: 118,
+                    border: `2px solid ${i === sel ? A : "rgba(255,255,255,0.07)"}`,
                     background: "#0a0a0a",
                     overflow: "hidden",
                     padding: 0,
@@ -224,8 +293,12 @@ function PersonaSelect({ barbers, book, isMobile }) {
                     cursor: "pointer",
                     minHeight: "auto",
                     minWidth: "auto",
-                    filter: i === sel ? "none" : "brightness(0.35)",
-                    transition: "filter 0.3s",
+                    filter: i === sel ? "none" : "brightness(0.3)",
+                    transition: "all 0.3s",
+                    clipPath:
+                      i === sel
+                        ? "polygon(0 0,calc(100% - 8px) 0,100% 8px,100% 100%,8px 100%,0 calc(100% - 8px))"
+                        : "none",
                   }}
                 >
                   {b.photo_url || b.photo ? (
@@ -254,7 +327,7 @@ function PersonaSelect({ barbers, book, isMobile }) {
                         style={{
                           ...D,
                           fontSize: 28,
-                          color: "#f59e0b",
+                          color: A,
                           fontWeight: 900,
                         }}
                       >
@@ -269,8 +342,8 @@ function PersonaSelect({ barbers, book, isMobile }) {
                         bottom: 0,
                         left: 0,
                         right: 0,
-                        height: 2,
-                        background: "#f59e0b",
+                        height: 3,
+                        background: A,
                       }}
                     />
                   )}
@@ -279,29 +352,39 @@ function PersonaSelect({ barbers, book, isMobile }) {
                       position: "absolute",
                       top: 5,
                       right: 5,
-                      width: 6,
-                      height: 6,
+                      width: 7,
+                      height: 7,
                       background: "#22c55e",
                       borderRadius: "50%",
-                      border: "1.5px solid #000",
+                      border: `1.5px solid #000`,
                     }}
                   />
                 </button>
               ))}
             </div>
             <div className={flash ? "ps-flash" : ""}>
-              <p
+              <div
                 style={{
-                  ...M,
-                  fontSize: 8,
-                  color: "#f59e0b",
-                  letterSpacing: "0.5em",
-                  textTransform: "uppercase",
-                  marginBottom: 8,
+                  display: "inline-flex",
+                  background: locked ? "#22c55e" : A,
+                  padding: "4px 12px 4px 10px",
+                  clipPath:
+                    "polygon(0 0,calc(100% - 6px) 0,100% 6px,100% 100%,6px 100%,0 calc(100% - 6px))",
+                  marginBottom: 12,
                 }}
               >
-                {locked ? "✓ LOCKED IN" : "BARBER PROFILE"}
-              </p>
+                <span
+                  style={{
+                    ...M,
+                    fontSize: 8,
+                    color: "#000",
+                    letterSpacing: "0.4em",
+                    textTransform: "uppercase",
+                  }}
+                >
+                  {locked ? "✓ LOCKED IN" : "BARBER PROFILE"}
+                </span>
+              </div>
               <h2
                 key={`m-${active.id}`}
                 className="ps-name"
@@ -311,8 +394,9 @@ function PersonaSelect({ barbers, book, isMobile }) {
                   fontWeight: 900,
                   letterSpacing: "-0.04em",
                   lineHeight: 1.05,
-                  marginBottom: 12,
-                  color: locked ? "#f59e0b" : "white",
+                  marginBottom: 10,
+                  color: locked ? A : "white",
+                  textTransform: "uppercase",
                 }}
               >
                 {active.name}
@@ -350,7 +434,7 @@ function PersonaSelect({ barbers, book, isMobile }) {
                         color: "#52525b",
                         letterSpacing: "0.3em",
                         textTransform: "uppercase",
-                        width: 60,
+                        width: 64,
                         flexShrink: 0,
                       }}
                     >
@@ -359,7 +443,7 @@ function PersonaSelect({ barbers, book, isMobile }) {
                     <div
                       style={{
                         flex: 1,
-                        height: 2,
+                        height: 3,
                         background: "rgba(255,255,255,0.05)",
                         position: "relative",
                         overflow: "hidden",
@@ -371,8 +455,7 @@ function PersonaSelect({ barbers, book, isMobile }) {
                         style={{
                           position: "absolute",
                           inset: "0 auto 0 0",
-                          background:
-                            "linear-gradient(to right,#f59e0b,#fbbf24)",
+                          background: `linear-gradient(to right,${A},#fbbf24)`,
                           "--w": `${s.v}%`,
                           width: `${s.v}%`,
                         }}
@@ -382,7 +465,7 @@ function PersonaSelect({ barbers, book, isMobile }) {
                       style={{
                         ...M,
                         fontSize: 9,
-                        color: "#f59e0b",
+                        color: A,
                         minWidth: 24,
                         textAlign: "right",
                       }}
@@ -399,7 +482,7 @@ function PersonaSelect({ barbers, book, isMobile }) {
                 style={{
                   width: "100%",
                   padding: "16px",
-                  background: "#f59e0b",
+                  background: A,
                   color: "black",
                   ...D,
                   fontSize: 8,
@@ -408,6 +491,8 @@ function PersonaSelect({ barbers, book, isMobile }) {
                   textTransform: "uppercase",
                   border: "none",
                   cursor: "pointer",
+                  clipPath:
+                    "polygon(0 0,calc(100% - 8px) 0,100% 8px,100% 100%,8px 100%,0 calc(100% - 8px))",
                 }}
               >
                 Book {active.name} →
@@ -428,9 +513,11 @@ function PersonaSelect({ barbers, book, isMobile }) {
                     textTransform: "uppercase",
                     border: "none",
                     cursor: "pointer",
+                    clipPath:
+                      "polygon(0 0,calc(100% - 8px) 0,100% 8px,100% 100%,8px 100%,0 calc(100% - 8px))",
                   }}
                 >
-                  ✓ Confirm Booking
+                  ✓ CONFIRM
                 </button>
                 <button
                   onClick={() => setLocked(false)}
@@ -438,7 +525,7 @@ function PersonaSelect({ barbers, book, isMobile }) {
                     padding: "16px 18px",
                     background: "transparent",
                     color: "#52525b",
-                    border: "1px solid rgba(255,255,255,0.1)",
+                    border: `1px solid rgba(255,255,255,0.1)`,
                     cursor: "pointer",
                     ...M,
                     fontSize: 10,
@@ -451,41 +538,24 @@ function PersonaSelect({ barbers, book, isMobile }) {
             )}
           </div>
         ) : (
-          /* Desktop — full cinematic split layout */
+          /* ── DESKTOP — FIGHTER SELECT ── */
           <div
             style={{
               display: "grid",
-              gridTemplateColumns: "380px 1fr",
+              gridTemplateColumns: "360px 1fr",
               gap: 0,
-              minHeight: "80vh",
               alignItems: "stretch",
             }}
           >
-            {/* Left — roster */}
+            {/* LEFT ROSTER */}
             <div
               style={{
-                borderRight: "1px solid rgba(245,158,11,0.15)",
-                paddingRight: 0,
-                display: "flex",
-                flexDirection: "column",
-                justifyContent: "center",
-                paddingTop: 60,
-                paddingBottom: 60,
+                borderRight: `1px solid ${A}22`,
+                paddingRight: 32,
+                paddingTop: 20,
+                paddingBottom: 20,
               }}
             >
-              <p
-                style={{
-                  ...M,
-                  fontSize: 7,
-                  color: "rgba(245,158,11,0.3)",
-                  letterSpacing: "0.5em",
-                  textTransform: "uppercase",
-                  marginBottom: 20,
-                  paddingLeft: 4,
-                }}
-              >
-                — FIGHTER SELECT —
-              </p>
               {list.map((b, i) => (
                 <div
                   key={b.id}
@@ -497,14 +567,14 @@ function PersonaSelect({ barbers, book, isMobile }) {
                   style={{
                     display: "flex",
                     alignItems: "stretch",
-                    background:
-                      i === sel ? "rgba(245,158,11,0.05)" : "transparent",
-                    border: `1px solid ${i === sel ? "rgba(245,158,11,0.35)" : "rgba(255,255,255,0.05)"}`,
+                    background: i === sel ? `${A}08` : "transparent",
+                    border: `1px solid ${i === sel ? `${A}44` : "rgba(255,255,255,0.05)"}`,
                     marginBottom: 6,
                     position: "relative",
                     overflow: "hidden",
                   }}
                 >
+                  {/* Active bar */}
                   {i === sel && (
                     <div
                       style={{
@@ -513,14 +583,27 @@ function PersonaSelect({ barbers, book, isMobile }) {
                         top: 0,
                         bottom: 0,
                         width: 3,
-                        background: "#f59e0b",
+                        background: A,
                       }}
                     />
                   )}
-                  {/* Thumbnail */}
+                  {/* Red accent slash on hover */}
+                  {i === sel && (
+                    <div
+                      style={{
+                        position: "absolute",
+                        right: 0,
+                        top: 0,
+                        bottom: 0,
+                        width: 2,
+                        background: `linear-gradient(to bottom,transparent,${R},transparent)`,
+                      }}
+                    />
+                  )}
+                  {/* Photo */}
                   <div
                     style={{
-                      width: 80,
+                      width: 82,
                       height: 100,
                       flexShrink: 0,
                       overflow: "hidden",
@@ -540,8 +623,8 @@ function PersonaSelect({ barbers, book, isMobile }) {
                           filter:
                             i === sel
                               ? "none"
-                              : "brightness(0.4) saturate(0.4)",
-                          transition: "filter 0.35s",
+                              : "brightness(0.35) saturate(0.4)",
+                          transition: "filter 0.3s",
                         }}
                       />
                     ) : (
@@ -557,8 +640,8 @@ function PersonaSelect({ barbers, book, isMobile }) {
                         <span
                           style={{
                             ...D,
-                            fontSize: 28,
-                            color: "#f59e0b",
+                            fontSize: 30,
+                            color: A,
                             fontWeight: 900,
                           }}
                         >
@@ -571,7 +654,7 @@ function PersonaSelect({ barbers, book, isMobile }) {
                   <div
                     style={{
                       flex: 1,
-                      padding: "16px 16px 16px 14px",
+                      padding: "16px 14px",
                       display: "flex",
                       flexDirection: "column",
                       justifyContent: "center",
@@ -581,10 +664,10 @@ function PersonaSelect({ barbers, book, isMobile }) {
                       style={{
                         ...M,
                         fontSize: 7,
-                        color: i === sel ? "#f59e0b" : "rgba(245,158,11,0.25)",
+                        color: i === sel ? `${A}cc` : "rgba(245,158,11,0.2)",
                         letterSpacing: "0.4em",
                         textTransform: "uppercase",
-                        marginBottom: 4,
+                        marginBottom: 5,
                         transition: "color 0.25s",
                       }}
                     >
@@ -593,7 +676,7 @@ function PersonaSelect({ barbers, book, isMobile }) {
                     <p
                       style={{
                         ...D,
-                        fontSize: 14,
+                        fontSize: 13,
                         fontWeight: 900,
                         textTransform: "uppercase",
                         color: i === sel ? "white" : "#3f3f46",
@@ -612,31 +695,37 @@ function PersonaSelect({ barbers, book, isMobile }) {
                         paddingRight: 14,
                       }}
                     >
-                      <span
+                      <div
                         style={{
-                          ...M,
-                          fontSize: 7,
-                          color: "black",
-                          background: "#f59e0b",
-                          padding: "3px 9px",
-                          letterSpacing: "0.2em",
-                          textTransform: "uppercase",
-                          whiteSpace: "nowrap",
+                          background: locked ? "#22c55e" : A,
+                          padding: "3px 8px",
+                          clipPath:
+                            "polygon(0 0,calc(100% - 4px) 0,100% 4px,100% 100%,4px 100%,0 calc(100% - 4px))",
                         }}
                       >
-                        {locked ? "LOCKED" : "ACTIVE"}
-                      </span>
+                        <span
+                          style={{
+                            ...M,
+                            fontSize: 7,
+                            color: "#000",
+                            letterSpacing: "0.2em",
+                            textTransform: "uppercase",
+                          }}
+                        >
+                          {locked ? "LOCKED" : "ACTIVE"}
+                        </span>
+                      </div>
                     </div>
                   )}
                 </div>
               ))}
-              {/* Instruction */}
+              {/* Info box */}
               <div
                 style={{
-                  marginTop: 20,
-                  padding: "14px 16px",
-                  borderLeft: "2px solid rgba(245,158,11,0.25)",
-                  background: "rgba(245,158,11,0.03)",
+                  marginTop: 16,
+                  padding: "14px",
+                  borderLeft: `3px solid ${A}44`,
+                  background: `${A}04`,
                 }}
               >
                 <p
@@ -648,39 +737,88 @@ function PersonaSelect({ barbers, book, isMobile }) {
                   }}
                 >
                   {locked
-                    ? `✓ ${active.name} selected — confirm below`
-                    : "Pick your barber, lock them in"}
+                    ? `✓ ${active.name} locked in`
+                    : "Select a barber to see their profile"}
                 </p>
               </div>
             </div>
 
-            {/* Right — big display */}
+            {/* RIGHT — BIG DISPLAY */}
             <div
               className={flash ? "ps-flash" : ""}
-              style={{
-                display: "flex",
-                flexDirection: "column",
-                justifyContent: "center",
-                paddingLeft: 52,
-              }}
+              style={{ paddingLeft: 44, paddingTop: 20, paddingBottom: 20 }}
             >
-              {/* Massive photo */}
+              {/* P5-style name stamp */}
               <div
                 style={{
-                  position: "relative",
-                  height: 520,
-                  marginBottom: 32,
-                  overflow: "hidden",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 0,
+                  marginBottom: 20,
                 }}
               >
-                {/* Angled clip */}
+                <div
+                  style={{
+                    background: R,
+                    padding: "5px 14px 5px 10px",
+                    clipPath:
+                      "polygon(0 0,100% 0,calc(100% - 8px) 100%,0 100%)",
+                    marginRight: 0,
+                  }}
+                >
+                  <span
+                    style={{
+                      ...M,
+                      fontSize: 7,
+                      color: "white",
+                      letterSpacing: "0.4em",
+                      textTransform: "uppercase",
+                    }}
+                  >
+                    HEADZ UP
+                  </span>
+                </div>
+                <div
+                  style={{
+                    background: `${A}`,
+                    padding: "5px 18px 5px 14px",
+                    clipPath:
+                      "polygon(8px 0,100% 0,calc(100% - 8px) 100%,0 100%)",
+                  }}
+                >
+                  <span
+                    style={{
+                      ...M,
+                      fontSize: 7,
+                      color: "black",
+                      letterSpacing: "0.4em",
+                      textTransform: "uppercase",
+                    }}
+                  >
+                    BARBER
+                  </span>
+                </div>
+                <div
+                  style={{
+                    flex: 1,
+                    height: 2,
+                    background: `linear-gradient(to right,${A}55,transparent)`,
+                    marginLeft: 12,
+                  }}
+                />
+              </div>
+
+              {/* Giant photo with diagonal cut */}
+              <div
+                style={{ position: "relative", height: 480, marginBottom: 24 }}
+              >
                 <div
                   style={{
                     position: "absolute",
                     inset: 0,
                     overflow: "hidden",
                     clipPath:
-                      "polygon(0 0,calc(100% - 24px) 0,100% 24px,100% 100%,24px 100%,0 calc(100% - 24px))",
+                      "polygon(0 0,calc(100% - 28px) 0,100% 28px,100% 100%,28px 100%,0 calc(100% - 28px))",
                   }}
                 >
                   {active.photo_url || active.photo ? (
@@ -694,7 +832,6 @@ function PersonaSelect({ barbers, book, isMobile }) {
                         objectFit: "cover",
                         objectPosition: "center top",
                         display: "block",
-                        transition: "opacity 0.6s",
                       }}
                     />
                   ) : (
@@ -702,7 +839,8 @@ function PersonaSelect({ barbers, book, isMobile }) {
                       style={{
                         width: "100%",
                         height: "100%",
-                        background: "linear-gradient(135deg,#0a0a0a,#111)",
+                        background:
+                          "linear-gradient(135deg,#0a0a0a 0%,#111 100%)",
                         display: "flex",
                         alignItems: "center",
                         justifyContent: "center",
@@ -711,8 +849,8 @@ function PersonaSelect({ barbers, book, isMobile }) {
                       <span
                         style={{
                           ...D,
-                          fontSize: 180,
-                          color: "rgba(245,158,11,0.04)",
+                          fontSize: 200,
+                          color: `${A}06`,
                           fontWeight: 900,
                           userSelect: "none",
                         }}
@@ -721,13 +859,13 @@ function PersonaSelect({ barbers, book, isMobile }) {
                       </span>
                     </div>
                   )}
-                  {/* Gradient overlays */}
+                  {/* Overlays */}
                   <div
                     style={{
                       position: "absolute",
                       inset: 0,
                       background:
-                        "linear-gradient(to top,rgba(0,0,0,0.97) 0%,rgba(0,0,0,0.4) 35%,transparent 65%)",
+                        "linear-gradient(to top,rgba(0,0,0,0.96) 0%,rgba(0,0,0,0.3) 40%,transparent 68%)",
                     }}
                   />
                   <div
@@ -735,79 +873,104 @@ function PersonaSelect({ barbers, book, isMobile }) {
                       position: "absolute",
                       inset: 0,
                       background:
-                        "linear-gradient(to right,rgba(0,0,0,0.55) 0%,transparent 40%)",
+                        "linear-gradient(to right,rgba(0,0,0,0.5),transparent 35%)",
                     }}
                   />
-                  {/* CRT effect */}
+                  {/* P5 diagonal red slash */}
+                  <div
+                    style={{
+                      position: "absolute",
+                      top: 0,
+                      bottom: 0,
+                      right: "28%",
+                      width: 3,
+                      background: `linear-gradient(to bottom,transparent,${R}55,transparent)`,
+                      transform: "skewX(8deg)",
+                    }}
+                  />
+                  {/* CRT */}
                   <div
                     style={{
                       position: "absolute",
                       inset: 0,
                       backgroundImage:
-                        "repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.1) 2px,rgba(0,0,0,0.1) 3px)",
+                        "repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.08) 2px,rgba(0,0,0,0.08) 3px)",
                       pointerEvents: "none",
                     }}
                   />
                 </div>
 
-                {/* Corner brackets */}
+                {/* Corner HUD brackets */}
                 {[
-                  { t: 8, l: 8, bt: 1, bl: 1 },
-                  { t: 8, r: 8, bt: 1, br: 1 },
-                  { b: 8, l: 8, bb: 1, bl: 1 },
-                  { b: 8, r: 8, bb: 1, br: 1 },
+                  { top: 8, left: 8, bt: "2px", bl: "2px" },
+                  { top: 8, right: 8, bt: "2px", br: "2px" },
+                  { bottom: 8, left: 8, bb: "2px", bl: "2px" },
+                  { bottom: 8, right: 8, bb: "2px", br: "2px" },
                 ].map((c, j) => (
                   <div
                     key={j}
                     style={{
                       position: "absolute",
-                      width: 18,
-                      height: 18,
-                      top: c.t,
-                      bottom: c.b,
-                      left: c.l,
-                      right: c.r,
-                      borderTop: c.bt && "1px solid rgba(245,158,11,0.7)",
-                      borderBottom: c.bb && "1px solid rgba(245,158,11,0.7)",
-                      borderLeft: c.bl && "1px solid rgba(245,158,11,0.7)",
-                      borderRight: c.br && "1px solid rgba(245,158,11,0.7)",
+                      width: 20,
+                      height: 20,
+                      top: c.top,
+                      bottom: c.bottom,
+                      left: c.left,
+                      right: c.right,
+                      borderTop: c.bt && `${c.bt} solid ${A}cc`,
+                      borderBottom: c.bb && `${c.bb} solid ${A}cc`,
+                      borderLeft: c.bl && `${c.bl} solid ${A}cc`,
+                      borderRight: c.br && `${c.br} solid ${A}cc`,
                     }}
                   />
                 ))}
 
-                {/* Info overlay */}
+                {/* Bottom info overlay */}
                 <div
                   style={{
                     position: "absolute",
                     bottom: 0,
                     left: 0,
                     right: 0,
-                    padding: "24px 28px",
+                    padding: "22px 26px",
                   }}
                 >
-                  <p
+                  {/* P5 style name bar */}
+                  <div
                     style={{
-                      ...M,
-                      fontSize: 8,
-                      color: "rgba(245,158,11,0.7)",
-                      letterSpacing: "0.55em",
-                      textTransform: "uppercase",
-                      marginBottom: 8,
+                      display: "inline-flex",
+                      background: "rgba(0,0,0,0.7)",
+                      border: `1px solid ${A}33`,
+                      padding: "4px 14px 4px 12px",
+                      clipPath:
+                        "polygon(0 0,calc(100% - 6px) 0,100% 6px,100% 100%,6px 100%,0 calc(100% - 6px))",
+                      marginBottom: 10,
                     }}
                   >
-                    HEADZ UP · BARBER
-                  </p>
+                    <span
+                      style={{
+                        ...M,
+                        fontSize: 7,
+                        color: `${A}aa`,
+                        letterSpacing: "0.5em",
+                        textTransform: "uppercase",
+                      }}
+                    >
+                      HEADZ UP · BARBER
+                    </span>
+                  </div>
                   <h2
-                    key={`d-${active.id}`}
+                    key={`name-${active.id}`}
                     className="ps-name"
                     style={{
                       ...D,
-                      fontSize: "clamp(2.2rem,3.8vw,3.2rem)",
+                      fontSize: "clamp(2rem,3.5vw,3rem)",
                       fontWeight: 900,
                       letterSpacing: "-0.05em",
                       lineHeight: 1,
                       color: "white",
-                      marginBottom: active.bio ? 10 : 12,
+                      marginBottom: active.bio ? 8 : 12,
+                      textTransform: "uppercase",
                     }}
                   >
                     {active.name}
@@ -820,7 +983,7 @@ function PersonaSelect({ barbers, book, isMobile }) {
                         color: "rgba(255,255,255,0.45)",
                         lineHeight: 1.6,
                         maxWidth: 460,
-                        marginBottom: 12,
+                        marginBottom: 10,
                       }}
                     >
                       {active.bio}
@@ -835,8 +998,7 @@ function PersonaSelect({ barbers, book, isMobile }) {
                         height: 7,
                         background: "#22c55e",
                         borderRadius: "50%",
-                        boxShadow: "0 0 0 0 rgba(34,197,94,0.5)",
-                        animation: "glow-green 2s infinite",
+                        animation: "p5-glow 2s infinite",
                       }}
                     />
                     <span
@@ -853,20 +1015,30 @@ function PersonaSelect({ barbers, book, isMobile }) {
                   </div>
                 </div>
 
-                {/* HUD badge top right */}
-                <div style={{ position: "absolute", top: 16, right: 16 }}>
+                {/* HUD top right badge */}
+                <div
+                  style={{
+                    position: "absolute",
+                    top: 16,
+                    right: 16,
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "flex-end",
+                    gap: 6,
+                  }}
+                >
                   <div
                     style={{
-                      background: "rgba(245,158,11,0.1)",
-                      border: "1px solid rgba(245,158,11,0.4)",
-                      padding: "5px 10px",
+                      background: `${R}cc`,
+                      padding: "4px 10px",
+                      clipPath: "polygon(8px 0,100% 0,100% 100%,0 100%)",
                     }}
                   >
                     <span
                       style={{
                         ...M,
                         fontSize: 7,
-                        color: "#f59e0b",
+                        color: "white",
                         letterSpacing: "0.35em",
                         textTransform: "uppercase",
                       }}
@@ -877,29 +1049,38 @@ function PersonaSelect({ barbers, book, isMobile }) {
                 </div>
               </div>
 
-              {/* Stats + profile row */}
+              {/* Stats + Profile */}
               <div
                 style={{
                   display: "grid",
                   gridTemplateColumns: "1fr 1fr",
-                  gap: 28,
-                  marginBottom: 24,
+                  gap: 24,
+                  marginBottom: 22,
                 }}
               >
-                {/* Stat bars */}
+                {/* Stats */}
                 <div>
-                  <p
+                  <div
                     style={{
-                      ...M,
-                      fontSize: 7,
-                      color: "rgba(245,158,11,0.35)",
-                      letterSpacing: "0.5em",
-                      textTransform: "uppercase",
-                      marginBottom: 16,
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 8,
+                      marginBottom: 14,
                     }}
                   >
-                    // SKILL_STATS
-                  </p>
+                    <div style={{ width: 3, height: 14, background: R }} />
+                    <span
+                      style={{
+                        ...M,
+                        fontSize: 7,
+                        color: `${A}66`,
+                        letterSpacing: "0.5em",
+                        textTransform: "uppercase",
+                      }}
+                    >
+                      SKILL_STATS
+                    </span>
+                  </div>
                   {STATS.map((s) => (
                     <div
                       key={s.k}
@@ -907,17 +1088,17 @@ function PersonaSelect({ barbers, book, isMobile }) {
                         display: "flex",
                         alignItems: "center",
                         gap: 10,
-                        marginBottom: 11,
+                        marginBottom: 10,
                       }}
                     >
                       <span
                         style={{
                           ...M,
-                          fontSize: 8,
+                          fontSize: 7,
                           color: "#52525b",
                           letterSpacing: "0.2em",
                           textTransform: "uppercase",
-                          width: 70,
+                          width: 72,
                           flexShrink: 0,
                         }}
                       >
@@ -926,20 +1107,21 @@ function PersonaSelect({ barbers, book, isMobile }) {
                       <div
                         style={{
                           flex: 1,
-                          height: 2,
+                          height: 3,
                           background: "rgba(255,255,255,0.05)",
                           position: "relative",
                           overflow: "hidden",
+                          clipPath:
+                            "polygon(0 0,calc(100% - 2px) 0,100% 2px,100% 100%,2px 100%,0 calc(100% - 2px))",
                         }}
                       >
                         <div
                           className="ps-bar"
-                          key={`d-${active.id}-${s.k}`}
+                          key={`ds-${active.id}-${s.k}`}
                           style={{
                             position: "absolute",
                             inset: "0 auto 0 0",
-                            background:
-                              "linear-gradient(to right,#f59e0b,#fbbf24)",
+                            background: `linear-gradient(to right,${A},#fbbf24)`,
                             "--w": `${s.v}%`,
                             width: `${s.v}%`,
                           }}
@@ -949,9 +1131,10 @@ function PersonaSelect({ barbers, book, isMobile }) {
                         style={{
                           ...M,
                           fontSize: 9,
-                          color: "#f59e0b",
+                          color: A,
                           minWidth: 28,
                           textAlign: "right",
+                          fontWeight: 500,
                         }}
                       >
                         {s.v}
@@ -961,18 +1144,27 @@ function PersonaSelect({ barbers, book, isMobile }) {
                 </div>
                 {/* Profile */}
                 <div>
-                  <p
+                  <div
                     style={{
-                      ...M,
-                      fontSize: 7,
-                      color: "rgba(245,158,11,0.35)",
-                      letterSpacing: "0.5em",
-                      textTransform: "uppercase",
-                      marginBottom: 16,
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 8,
+                      marginBottom: 14,
                     }}
                   >
-                    // PROFILE_DATA
-                  </p>
+                    <div style={{ width: 3, height: 14, background: A }} />
+                    <span
+                      style={{
+                        ...M,
+                        fontSize: 7,
+                        color: `${A}66`,
+                        letterSpacing: "0.5em",
+                        textTransform: "uppercase",
+                      }}
+                    >
+                      PROFILE_DATA
+                    </span>
+                  </div>
                   {[
                     ["SHOP", "HEADZ UP"],
                     ["CITY", "Hattiesburg, MS"],
@@ -986,8 +1178,8 @@ function PersonaSelect({ barbers, book, isMobile }) {
                         display: "flex",
                         justifyContent: "space-between",
                         alignItems: "center",
-                        paddingBottom: 9,
-                        marginBottom: 9,
+                        paddingBottom: 8,
+                        marginBottom: 8,
                         borderBottom: "1px solid rgba(255,255,255,0.04)",
                       }}
                     >
@@ -1009,7 +1201,7 @@ function PersonaSelect({ barbers, book, isMobile }) {
                           color: v.startsWith("●")
                             ? "#4ade80"
                             : v.startsWith("★")
-                              ? "#f59e0b"
+                              ? A
                               : "#a1a1aa",
                         }}
                       >
@@ -1028,8 +1220,8 @@ function PersonaSelect({ barbers, book, isMobile }) {
                       onClick={lock}
                       style={{
                         flex: 1,
-                        padding: "18px 24px",
-                        background: "#f59e0b",
+                        padding: "17px 20px",
+                        background: A,
                         color: "black",
                         ...D,
                         fontSize: 9,
@@ -1040,31 +1232,29 @@ function PersonaSelect({ barbers, book, isMobile }) {
                         cursor: "pointer",
                         clipPath:
                           "polygon(0 0,calc(100% - 10px) 0,100% 10px,100% 100%,10px 100%,0 calc(100% - 10px))",
-                        transition: "background 0.25s",
-                        position: "relative",
-                        overflow: "hidden",
+                        transition: "background 0.22s",
                       }}
                       onMouseEnter={(e) =>
                         (e.currentTarget.style.background = "white")
                       }
                       onMouseLeave={(e) =>
-                        (e.currentTarget.style.background = "#f59e0b")
+                        (e.currentTarget.style.background = A)
                       }
                     >
-                      Lock In — Book {active.name} →
+                      LOCK IN — BOOK {active.name.toUpperCase()} →
                     </button>
                     <a
                       href="/book"
                       onClick={book}
                       style={{
-                        padding: "18px 24px",
+                        padding: "17px 22px",
                         background: "transparent",
                         color: "#52525b",
                         ...D,
                         fontSize: 9,
                         letterSpacing: "0.2em",
                         textTransform: "uppercase",
-                        border: "1px solid rgba(255,255,255,0.1)",
+                        border: `1px solid rgba(255,255,255,0.1)`,
                         cursor: "pointer",
                         textDecoration: "none",
                         display: "inline-flex",
@@ -1074,9 +1264,8 @@ function PersonaSelect({ barbers, book, isMobile }) {
                           "polygon(0 0,calc(100% - 8px) 0,100% 8px,100% 100%,8px 100%,0 calc(100% - 8px))",
                       }}
                       onMouseEnter={(e) => {
-                        e.currentTarget.style.borderColor =
-                          "rgba(245,158,11,0.4)";
-                        e.currentTarget.style.color = "#f59e0b";
+                        e.currentTarget.style.borderColor = `${A}44`;
+                        e.currentTarget.style.color = A;
                       }}
                       onMouseLeave={(e) => {
                         e.currentTarget.style.borderColor =
@@ -1084,7 +1273,7 @@ function PersonaSelect({ barbers, book, isMobile }) {
                         e.currentTarget.style.color = "#52525b";
                       }}
                     >
-                      All →
+                      ALL →
                     </a>
                   </>
                 ) : (
@@ -1093,7 +1282,7 @@ function PersonaSelect({ barbers, book, isMobile }) {
                       onClick={lock}
                       style={{
                         flex: 1,
-                        padding: "18px 24px",
+                        padding: "17px 20px",
                         background: "#22c55e",
                         color: "black",
                         ...D,
@@ -1112,10 +1301,10 @@ function PersonaSelect({ barbers, book, isMobile }) {
                     <button
                       onClick={() => setLocked(false)}
                       style={{
-                        padding: "18px 22px",
+                        padding: "17px 22px",
                         background: "transparent",
                         color: "#52525b",
-                        border: "1px solid rgba(255,255,255,0.1)",
+                        border: `1px solid rgba(255,255,255,0.1)`,
                         cursor: "pointer",
                         ...D,
                         fontSize: 8,
@@ -1147,7 +1336,9 @@ function PersonaSelect({ barbers, book, isMobile }) {
   );
 }
 
-/* ── GALLERY ────────────────────────────────────────────────────────────── */
+/* ═══════════════════════════════════════════════════════════════════════════
+   GALLERY CAROUSEL
+═══════════════════════════════════════════════════════════════════════════ */
 const GALLERY = [
   {
     url: "/pictures/IMG_20260331_115011 (2).jpg",
@@ -1184,58 +1375,58 @@ const GALLERY = [
 function GalleryCarousel({ isMobile }) {
   const [angle, setAngle] = useState(0);
   const [active, setActive] = useState(0);
-  const [spinning, setSpinning] = useState(true);
-  const [dragging, setDragging] = useState(false);
-  const [startX, setStartX] = useState(0);
+  const [spin, setSpin] = useState(true);
+  const [drag, setDrag] = useState(false);
+  const [sx, setSx] = useState(0);
   const rafRef = useRef(null);
   const angRef = useRef(0);
   const N = GALLERY.length;
   const STEP = 360 / N;
-  const R = isMobile ? 155 : 275;
+  const RAD = isMobile ? 155 : 275;
   const W = isMobile ? 158 : 232;
   const H = isMobile ? 198 : 295;
 
   useEffect(() => {
-    if (!spinning) return;
-    const tick = () => {
+    if (!spin) return;
+    const t = () => {
       angRef.current = (angRef.current + 0.3) % 360;
       setAngle(angRef.current);
       let i = Math.round(((360 - angRef.current) % 360) / STEP) % N;
       if (i < 0) i += N;
       setActive(i);
-      rafRef.current = requestAnimationFrame(tick);
+      rafRef.current = requestAnimationFrame(t);
     };
-    rafRef.current = requestAnimationFrame(tick);
+    rafRef.current = requestAnimationFrame(t);
     return () => cancelAnimationFrame(rafRef.current);
-  }, [spinning]);
+  }, [spin]);
 
   const ds = (e) => {
-    setSpinning(false);
+    setSpin(false);
     cancelAnimationFrame(rafRef.current);
-    setDragging(true);
-    setStartX(e.touches ? e.touches[0].clientX : e.clientX);
+    setDrag(true);
+    setSx(e.touches ? e.touches[0].clientX : e.clientX);
   };
   const dm = (e) => {
-    if (!dragging) return;
+    if (!drag) return;
     const x = e.touches ? e.touches[0].clientX : e.clientX;
-    angRef.current = (angRef.current + (x - startX) * 0.5) % 360;
+    angRef.current = (angRef.current + (x - sx) * 0.5) % 360;
     setAngle(angRef.current);
     let i = Math.round(((360 - angRef.current) % 360) / STEP) % N;
     if (i < 0) i += N;
     setActive(i);
-    setStartX(x);
+    setSx(x);
   };
   const de = () => {
-    setDragging(false);
-    setTimeout(() => setSpinning(true), 700);
+    setDrag(false);
+    setTimeout(() => setSpin(true), 700);
   };
   const go = (i) => {
-    setSpinning(false);
+    setSpin(false);
     cancelAnimationFrame(rafRef.current);
     angRef.current = (360 - i * STEP) % 360;
     setAngle(angRef.current);
     setActive(i);
-    setTimeout(() => setSpinning(true), 1400);
+    setTimeout(() => setSpin(true), 1400);
   };
 
   return (
@@ -1244,12 +1435,12 @@ function GalleryCarousel({ isMobile }) {
         padding: isMobile ? "44px 0 52px" : "80px 0 92px",
         overflow: "hidden",
         background: "#000",
-        borderTop: "1px solid rgba(245,158,11,0.1)",
-        borderBottom: "1px solid rgba(245,158,11,0.1)",
+        borderTop: `1px solid ${A}22`,
+        borderBottom: `1px solid ${A}22`,
         position: "relative",
       }}
     >
-      <style>{`@keyframes gc-pulse{0%,100%{box-shadow:0 0 0 0 rgba(245,158,11,0)}50%{box-shadow:0 0 50px rgba(245,158,11,0.35)}} .gc-active{animation:gc-pulse 2.5s ease-in-out infinite;}`}</style>
+      <style>{`@keyframes gc-p{0%,100%{box-shadow:0 0 0 0 rgba(245,158,11,0)}50%{box-shadow:0 0 50px rgba(245,158,11,0.4)}} .gc-a{animation:gc-p 2.5s ease-in-out infinite;}`}</style>
       <div
         style={{
           position: "absolute",
@@ -1259,50 +1450,80 @@ function GalleryCarousel({ isMobile }) {
           width: 600,
           height: 500,
           background:
-            "radial-gradient(ellipse,rgba(245,158,11,0.05) 0%,transparent 60%)",
+            "radial-gradient(ellipse,rgba(245,158,11,0.06) 0%,transparent 60%)",
           pointerEvents: "none",
         }}
       />
+
+      {/* Header */}
       <div
         style={{
-          textAlign: "center",
+          display: "flex",
+          alignItems: "center",
+          gap: 0,
           marginBottom: isMobile ? 28 : 44,
-          padding: "0 20px",
+          padding: "0 clamp(20px,5vw,44px)",
         }}
       >
-        <p
+        <div
           style={{
-            ...M,
-            fontSize: 8,
-            color: "rgba(245,158,11,0.5)",
-            letterSpacing: "0.7em",
-            textTransform: "uppercase",
-            marginBottom: 10,
+            background: R,
+            padding: "5px 14px 5px 10px",
+            clipPath: "polygon(0 0,100% 0,calc(100% - 8px) 100%,0 100%)",
+            marginRight: 0,
           }}
         >
-          // THE_WORK
-        </p>
-        <h2
+          <span
+            style={{
+              ...D,
+              fontSize: 8,
+              fontWeight: 900,
+              color: "white",
+              letterSpacing: "0.4em",
+              textTransform: "uppercase",
+            }}
+          >
+            THE
+          </span>
+        </div>
+        <div
           style={{
-            ...D,
-            fontSize: "clamp(1.4rem,4vw,2.4rem)",
-            fontWeight: 900,
-            letterSpacing: "-0.04em",
-            lineHeight: 1.05,
-            textTransform: "uppercase",
+            background: A,
+            padding: "5px 16px 5px 12px",
+            clipPath: "polygon(8px 0,100% 0,calc(100% - 8px) 100%,0 100%)",
           }}
         >
-          Fresh Every{" "}
-          <span style={{ color: "#f59e0b", fontStyle: "italic" }}>Time_</span>
-        </h2>
+          <span
+            style={{
+              ...D,
+              fontSize: 8,
+              fontWeight: 900,
+              color: "black",
+              letterSpacing: "0.4em",
+              textTransform: "uppercase",
+            }}
+          >
+            WORK
+          </span>
+        </div>
+        <div
+          style={{
+            flex: 1,
+            height: 2,
+            background: `linear-gradient(to right,${A}55,transparent)`,
+            marginLeft: 12,
+          }}
+        />
       </div>
+
+      {/* Carousel */}
       <div
         style={{
           position: "relative",
           height: isMobile ? 262 : 392,
           perspective: isMobile ? 600 : 920,
           perspectiveOrigin: "50% 50%",
-          cursor: dragging ? "grabbing" : "grab",
+          cursor: drag ? "grabbing" : "grab",
           userSelect: "none",
           WebkitUserSelect: "none",
           touchAction: "none",
@@ -1329,7 +1550,7 @@ function GalleryCarousel({ isMobile }) {
             return (
               <div
                 key={i}
-                className={front ? "gc-active" : ""}
+                className={front ? "gc-a" : ""}
                 onClick={() => go(i)}
                 style={{
                   position: "absolute",
@@ -1337,13 +1558,13 @@ function GalleryCarousel({ isMobile }) {
                   height: H,
                   left: -W / 2,
                   top: -H / 2,
-                  transform: `rotateY(${i * STEP}deg) translateZ(${R}px)`,
+                  transform: `rotateY(${i * STEP}deg) translateZ(${RAD}px)`,
                   overflow: "hidden",
                   cursor: "pointer",
                   backfaceVisibility: "hidden",
                   border: front
-                    ? "2px solid #f59e0b"
-                    : "1px solid rgba(255,255,255,0.06)",
+                    ? `2px solid ${A}`
+                    : `1px solid rgba(255,255,255,0.06)`,
                   clipPath: front
                     ? "polygon(0 0,calc(100% - 14px) 0,100% 14px,100% 100%,14px 100%,0 calc(100% - 14px))"
                     : "none",
@@ -1357,7 +1578,7 @@ function GalleryCarousel({ isMobile }) {
                     height: "100%",
                     objectFit: "cover",
                     objectPosition: "center top",
-                    filter: front ? "none" : "brightness(0.25) saturate(0.3)",
+                    filter: front ? "none" : "brightness(0.22) saturate(0.3)",
                     transition: "filter 0.45s",
                     pointerEvents: "none",
                   }}
@@ -1368,11 +1589,17 @@ function GalleryCarousel({ isMobile }) {
                     <div
                       style={{
                         position: "absolute",
+                        inset: 0,
+                        background:
+                          "linear-gradient(to top,rgba(0,0,0,0.97),rgba(0,0,0,0.55) 55%,transparent)",
+                      }}
+                    />
+                    <div
+                      style={{
+                        position: "absolute",
                         bottom: 0,
                         left: 0,
                         right: 0,
-                        background:
-                          "linear-gradient(to top,rgba(0,0,0,0.97),rgba(0,0,0,0.6) 60%,transparent)",
                         padding: isMobile ? "10px 12px 14px" : "14px 16px 18px",
                       }}
                     >
@@ -1392,18 +1619,19 @@ function GalleryCarousel({ isMobile }) {
                         style={{
                           ...M,
                           fontSize: 9,
-                          color: "#f59e0b",
+                          color: A,
                           letterSpacing: "0.22em",
                         }}
                       >
                         {g.sub}
                       </p>
                     </div>
+                    {/* P5 corner brackets */}
                     {[
-                      { t: 5, l: 5, bt: "1px", bl: "1px" },
-                      { t: 5, r: 5, bt: "1px", br: "1px" },
-                      { b: 5, l: 5, bb: "1px", bl: "1px" },
-                      { b: 5, r: 5, bb: "1px", br: "1px" },
+                      { t: 5, l: 5, bt: "2px", bl: "2px" },
+                      { t: 5, r: 5, bt: "2px", br: "2px" },
+                      { b: 5, l: 5, bb: "2px", bl: "2px" },
+                      { b: 5, r: 5, bb: "2px", br: "2px" },
                     ].map((c, j) => (
                       <div
                         key={j}
@@ -1415,14 +1643,26 @@ function GalleryCarousel({ isMobile }) {
                           bottom: c.b,
                           left: c.l,
                           right: c.r,
-                          borderTop: c.bt && "1px solid rgba(245,158,11,0.9)",
-                          borderBottom:
-                            c.bb && "1px solid rgba(245,158,11,0.9)",
-                          borderLeft: c.bl && "1px solid rgba(245,158,11,0.9)",
-                          borderRight: c.br && "1px solid rgba(245,158,11,0.9)",
+                          borderTop: c.bt && `${c.bt} solid ${A}cc`,
+                          borderBottom: c.bb && `${c.bb} solid ${A}cc`,
+                          borderLeft: c.bl && `${c.bl} solid ${A}cc`,
+                          borderRight: c.br && `${c.br} solid ${A}cc`,
                         }}
                       />
                     ))}
+                    {/* Red slash on front card */}
+                    <div
+                      style={{
+                        position: "absolute",
+                        top: 0,
+                        bottom: 0,
+                        right: "25%",
+                        width: 2,
+                        background: `linear-gradient(to bottom,transparent,${R}44,transparent)`,
+                        transform: "skewX(6deg)",
+                        pointerEvents: "none",
+                      }}
+                    />
                   </>
                 )}
               </div>
@@ -1436,11 +1676,12 @@ function GalleryCarousel({ isMobile }) {
             left: "14%",
             right: "14%",
             height: 1,
-            background:
-              "linear-gradient(to right,transparent,rgba(245,158,11,0.2),transparent)",
+            background: `linear-gradient(to right,transparent,${A}33,transparent)`,
           }}
         />
       </div>
+
+      {/* Dots */}
       <div
         style={{
           display: "flex",
@@ -1456,13 +1697,17 @@ function GalleryCarousel({ isMobile }) {
             style={{
               width: i === active ? 22 : 6,
               height: 4,
-              background: i === active ? "#f59e0b" : "rgba(255,255,255,0.14)",
+              background: i === active ? A : "rgba(255,255,255,0.12)",
               border: "none",
               cursor: "pointer",
               padding: 0,
               transition: "all 0.3s",
               minHeight: "auto",
               minWidth: "auto",
+              clipPath:
+                i === active
+                  ? "polygon(0 0,calc(100% - 3px) 0,100% 3px,100% 100%,3px 100%,0 calc(100% - 3px))"
+                  : "none",
             }}
           />
         ))}
@@ -1484,7 +1729,9 @@ function GalleryCarousel({ isMobile }) {
   );
 }
 
-/* ── DATA ───────────────────────────────────────────────────────────────── */
+/* ═══════════════════════════════════════════════════════════════════════════
+   STATIC DATA
+═══════════════════════════════════════════════════════════════════════════ */
 const SERVICES = [
   { name: "Haircut & Shave", price: 35, dur: "30 min", pop: true },
   { name: "Haircut", price: 30, dur: "30 min", pop: false },
@@ -1531,7 +1778,9 @@ const TICKER = [
   "HEADZ UP",
 ];
 
-/* ── HOME PAGE ──────────────────────────────────────────────────────────── */
+/* ═══════════════════════════════════════════════════════════════════════════
+   HOME PAGE
+═══════════════════════════════════════════════════════════════════════════ */
 export default function HomePage() {
   const router = useRouter();
   const { isMobile } = useBreakpoint();
@@ -1650,10 +1899,10 @@ export default function HomePage() {
   useEffect(() => {
     if (!ready) return;
     const io = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((e) => {
-          if (e.isIntersecting)
-            setRevealed((p) => ({ ...p, [e.target.dataset.id]: true }));
+      (e) => {
+        e.forEach((x) => {
+          if (x.isIntersecting)
+            setRevealed((p) => ({ ...p, [x.target.dataset.id]: true }));
         });
       },
       { threshold: 0.1 },
@@ -1672,7 +1921,7 @@ export default function HomePage() {
     if (ready) setTimeout(() => setHeroIn(true), 80);
   }, [ready]);
 
-  const R = (id) => !!revealed[id];
+  const Rv = (id) => !!revealed[id];
   const book = (e) => {
     e.preventDefault();
     router.push(localStorage.getItem("access") ? "/book" : "/login");
@@ -1728,61 +1977,29 @@ export default function HomePage() {
             transform: none;
           }
         }
-        @keyframes nameIn {
-          from {
-            opacity: 0;
-            transform: translateX(-24px) skewX(-4deg);
-          }
-          to {
-            opacity: 1;
-            transform: none;
-          }
-        }
-        @keyframes statgrow {
-          from {
-            width: 0;
-          }
-          to {
-            width: var(--w, 100%);
-          }
-        }
-        @keyframes lockin {
-          0%,
-          100% {
-            opacity: 1;
-          }
-          20%,
-          60% {
-            opacity: 0;
-          }
-          40%,
-          80% {
-            opacity: 0.5;
-          }
-        }
-        .ticker-wrap {
+        .ticker-w {
           animation: ticker 34s linear infinite;
           display: flex;
           width: max-content;
         }
-        .ticker-wrap:hover {
+        .ticker-w:hover {
           animation-play-state: paused;
         }
         .srow {
           cursor: pointer;
           transition:
-            padding-left 0.22s,
-            border-color 0.2s,
-            background 0.2s;
+            padding-left 0.2s,
+            border-color 0.18s,
+            background 0.18s;
         }
         .srow:hover {
           padding-left: 18px !important;
           border-color: rgba(245, 158, 11, 0.3) !important;
-          background: rgba(245, 158, 11, 0.022) !important;
+          background: rgba(245, 158, 11, 0.02) !important;
         }
         .rv {
           opacity: 0;
-          transform: translateY(26px);
+          transform: translateY(24px);
           transition:
             opacity 0.9s cubic-bezier(0.16, 1, 0.3, 1),
             transform 0.9s cubic-bezier(0.16, 1, 0.3, 1);
@@ -1802,15 +2019,14 @@ export default function HomePage() {
         }
       `}</style>
 
-      {/* ── BG EFFECTS ── */}
+      {/* BG */}
       <div
         style={{
           position: "fixed",
           inset: 0,
           zIndex: 0,
           pointerEvents: "none",
-          backgroundImage:
-            "linear-gradient(rgba(255,255,255,0.013) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,0.013) 1px,transparent 1px)",
+          backgroundImage: `linear-gradient(rgba(255,255,255,0.013) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,0.013) 1px,transparent 1px)`,
           backgroundSize: "66px 66px",
         }}
       />
@@ -1821,8 +2037,7 @@ export default function HomePage() {
           right: "-6%",
           width: 700,
           height: 700,
-          background:
-            "radial-gradient(circle,rgba(245,158,11,0.048) 0%,transparent 62%)",
+          background: `radial-gradient(circle,rgba(245,158,11,0.045) 0%,transparent 62%)`,
           pointerEvents: "none",
           zIndex: 0,
         }}
@@ -1834,8 +2049,7 @@ export default function HomePage() {
           left: "-9%",
           width: 540,
           height: 540,
-          background:
-            "radial-gradient(circle,rgba(245,158,11,0.03) 0%,transparent 58%)",
+          background: `radial-gradient(circle,rgba(245,158,11,0.025) 0%,transparent 58%)`,
           pointerEvents: "none",
           zIndex: 0,
         }}
@@ -1855,15 +2069,14 @@ export default function HomePage() {
             left: 0,
             right: 0,
             height: 1,
-            background:
-              "linear-gradient(to right,transparent,rgba(245,158,11,0.22),transparent)",
+            background: `linear-gradient(to right,transparent,rgba(245,158,11,0.2),transparent)`,
             animation: "scandown 9s linear infinite",
           }}
         />
       </div>
 
       <div style={{ position: "relative", zIndex: 10 }}>
-        {/* ══ NAV ══ */}
+        {/* ══════════════════════ NAV ══════════════════════ */}
         <nav
           style={{
             position: "fixed",
@@ -1871,12 +2084,12 @@ export default function HomePage() {
             left: 0,
             right: 0,
             zIndex: 200,
-            height: 58,
+            height: 56,
             background: scrollY > 50 ? "rgba(3,3,3,0.97)" : "transparent",
             backdropFilter: scrollY > 50 ? "blur(20px)" : "none",
             borderBottom:
-              scrollY > 50 ? "1px solid rgba(255,255,255,0.06)" : "none",
-            transition: "all 0.4s cubic-bezier(0.4,0,0.2,1)",
+              scrollY > 50 ? `1px solid rgba(255,255,255,0.06)` : "none",
+            transition: "all 0.4s",
             display: "flex",
             alignItems: "center",
           }}
@@ -1886,7 +2099,7 @@ export default function HomePage() {
               width: "100%",
               maxWidth: 1320,
               margin: "0 auto",
-              padding: "0 clamp(18px,5vw,40px)",
+              padding: "0 clamp(18px,5vw,44px)",
               display: "flex",
               justifyContent: "space-between",
               alignItems: "center",
@@ -1903,8 +2116,7 @@ export default function HomePage() {
                 textDecoration: "none",
               }}
             >
-              HEADZ
-              <span style={{ color: "#f59e0b", fontStyle: "italic" }}>UP</span>
+              HEADZ<span style={{ color: A, fontStyle: "italic" }}>UP</span>
             </a>
             <div
               className="donly"
@@ -1928,9 +2140,7 @@ export default function HomePage() {
                     textDecoration: "none",
                     transition: "color 0.2s",
                   }}
-                  onMouseEnter={(e) =>
-                    (e.currentTarget.style.color = "#f59e0b")
-                  }
+                  onMouseEnter={(e) => (e.currentTarget.style.color = A)}
                   onMouseLeave={(e) =>
                     (e.currentTarget.style.color = "#52525b")
                   }
@@ -1949,23 +2159,22 @@ export default function HomePage() {
                       style={{
                         ...D,
                         fontSize: 7.5,
-                        color: "#f59e0b",
-                        border: "1px solid rgba(245,158,11,0.35)",
+                        color: A,
+                        border: `1px solid ${A}44`,
                         padding: "9px 16px",
                         letterSpacing: "0.2em",
                         textTransform: "uppercase",
                         textDecoration: "none",
-                        transition: "all 0.2s",
                         clipPath:
                           "polygon(0 0,calc(100% - 6px) 0,100% 6px,100% 100%,6px 100%,0 calc(100% - 6px))",
+                        transition: "all 0.2s",
                       }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.background =
-                          "rgba(245,158,11,0.1)";
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.background = "transparent";
-                      }}
+                      onMouseEnter={(e) =>
+                        (e.currentTarget.style.background = `${A}11`)
+                      }
+                      onMouseLeave={(e) =>
+                        (e.currentTarget.style.background = "transparent")
+                      }
                     >
                       Dashboard
                     </a>
@@ -1977,19 +2186,18 @@ export default function HomePage() {
                       style={{
                         ...D,
                         fontSize: 7.5,
-                        color: "#f59e0b",
-                        border: "1px solid rgba(245,158,11,0.35)",
+                        color: A,
+                        border: `1px solid ${A}44`,
                         padding: "9px 16px",
                         letterSpacing: "0.2em",
                         textTransform: "uppercase",
                         textDecoration: "none",
-                        transition: "all 0.2s",
                         clipPath:
                           "polygon(0 0,calc(100% - 6px) 0,100% 6px,100% 100%,6px 100%,0 calc(100% - 6px))",
+                        transition: "all 0.2s",
                       }}
                       onMouseEnter={(e) =>
-                        (e.currentTarget.style.background =
-                          "rgba(245,158,11,0.1)")
+                        (e.currentTarget.style.background = `${A}11`)
                       }
                       onMouseLeave={(e) =>
                         (e.currentTarget.style.background = "transparent")
@@ -2014,9 +2222,8 @@ export default function HomePage() {
                         transition: "all 0.2s",
                       }}
                       onMouseEnter={(e) => {
-                        e.currentTarget.style.color = "#f59e0b";
-                        e.currentTarget.style.borderColor =
-                          "rgba(245,158,11,0.3)";
+                        e.currentTarget.style.color = A;
+                        e.currentTarget.style.borderColor = `${A}44`;
                       }}
                       onMouseLeave={(e) => {
                         e.currentTarget.style.color = "#52525b";
@@ -2038,7 +2245,7 @@ export default function HomePage() {
                   fontSize: 7.5,
                   fontWeight: 700,
                   color: "black",
-                  background: "#f59e0b",
+                  background: A,
                   padding: "10px 22px",
                   letterSpacing: "0.22em",
                   textTransform: "uppercase",
@@ -2047,14 +2254,12 @@ export default function HomePage() {
                   alignItems: "center",
                   clipPath:
                     "polygon(0 0,calc(100% - 8px) 0,100% 8px,100% 100%,8px 100%,0 calc(100% - 8px))",
-                  transition: "background 0.25s",
+                  transition: "background 0.22s",
                 }}
                 onMouseEnter={(e) =>
                   (e.currentTarget.style.background = "white")
                 }
-                onMouseLeave={(e) =>
-                  (e.currentTarget.style.background = "#f59e0b")
-                }
+                onMouseLeave={(e) => (e.currentTarget.style.background = A)}
               >
                 Book Now
               </a>
@@ -2093,7 +2298,7 @@ export default function HomePage() {
                       display: "block",
                       width: 20,
                       height: 1.5,
-                      background: menuOpen ? "#f59e0b" : "white",
+                      background: menuOpen ? A : "white",
                       transition: "all 0.28s",
                       transform: s.r || "none",
                       opacity: s.op ?? 1,
@@ -2105,11 +2310,12 @@ export default function HomePage() {
           </div>
         </nav>
 
+        {/* Mobile menu */}
         {menuOpen && (
           <div
             style={{
               position: "fixed",
-              top: 58,
+              top: 56,
               left: 0,
               right: 0,
               zIndex: 199,
@@ -2132,7 +2338,7 @@ export default function HomePage() {
                 onClick={() => setMenuOpen(false)}
                 style={{
                   display: "block",
-                  padding: "15px clamp(18px,5vw,40px)",
+                  padding: "15px clamp(18px,5vw,44px)",
                   ...M,
                   fontSize: 10,
                   letterSpacing: "0.3em",
@@ -2142,7 +2348,7 @@ export default function HomePage() {
                   borderBottom: "1px solid rgba(255,255,255,0.04)",
                   transition: "color 0.2s",
                 }}
-                onMouseEnter={(e) => (e.currentTarget.style.color = "#f59e0b")}
+                onMouseEnter={(e) => (e.currentTarget.style.color = A)}
                 onMouseLeave={(e) => (e.currentTarget.style.color = "#52525b")}
               >
                 {l}
@@ -2150,7 +2356,7 @@ export default function HomePage() {
             ))}
             <div
               style={{
-                padding: "18px clamp(18px,5vw,40px) 4px",
+                padding: "18px clamp(18px,5vw,44px) 4px",
                 display: "flex",
                 flexDirection: "column",
                 gap: 8,
@@ -2167,7 +2373,7 @@ export default function HomePage() {
                   fontSize: 8,
                   fontWeight: 700,
                   color: "black",
-                  background: "#f59e0b",
+                  background: A,
                   padding: "15px",
                   textAlign: "center",
                   letterSpacing: "0.22em",
@@ -2188,8 +2394,8 @@ export default function HomePage() {
                     fontSize: 7,
                     letterSpacing: "0.2em",
                     textTransform: "uppercase",
-                    color: "#f59e0b",
-                    border: "1px solid rgba(245,158,11,0.3)",
+                    color: A,
+                    border: `1px solid ${A}44`,
                     padding: "13px",
                     textAlign: "center",
                     textDecoration: "none",
@@ -2206,8 +2412,8 @@ export default function HomePage() {
                     fontSize: 7,
                     letterSpacing: "0.2em",
                     textTransform: "uppercase",
-                    color: "#f59e0b",
-                    border: "1px solid rgba(245,158,11,0.3)",
+                    color: A,
+                    border: `1px solid ${A}44`,
                     padding: "13px",
                     textAlign: "center",
                     textDecoration: "none",
@@ -2238,7 +2444,7 @@ export default function HomePage() {
           </div>
         )}
 
-        {/* ══ HERO — FULL SCREEN SPLIT ══ */}
+        {/* ══════════════════════ HERO — P5/DMC STYLE ══════════════════════ */}
         <section
           style={{
             minHeight: "100dvh",
@@ -2252,18 +2458,49 @@ export default function HomePage() {
             style={{ position: "absolute", inset: 0, background: "#030303" }}
           />
 
-          {/* Giant bg number */}
+          {/* DMC-style diagonal red panel — far right */}
+          {!isMobile && (
+            <div
+              style={{
+                position: "absolute",
+                top: 0,
+                bottom: 0,
+                right: 0,
+                width: "38%",
+                background: `linear-gradient(135deg,transparent 0%,rgba(239,68,68,0.03) 100%)`,
+                borderLeft: `1px solid ${R}18`,
+                clipPath: "polygon(15% 0,100% 0,100% 100%,0 100%)",
+                pointerEvents: "none",
+              }}
+            />
+          )}
+
+          {/* Diagonal slash accent */}
           <div
             style={{
               position: "absolute",
-              right: "-3%",
-              top: "5%",
+              top: 0,
+              bottom: 0,
+              left: "62%",
+              width: 3,
+              background: `linear-gradient(to bottom,transparent,${R}33,${A}22,transparent)`,
+              transform: "skewX(8deg)",
+              pointerEvents: "none",
+            }}
+          />
+
+          {/* Big editorial number */}
+          <div
+            style={{
+              position: "absolute",
+              right: "-2%",
+              top: "4%",
               ...D,
-              fontSize: "clamp(16rem,34vw,30rem)",
+              fontSize: "clamp(16rem,34vw,32rem)",
               fontWeight: 900,
               lineHeight: 1,
               color: "transparent",
-              WebkitTextStroke: "1px rgba(255,255,255,0.028)",
+              WebkitTextStroke: "1px rgba(255,255,255,0.025)",
               userSelect: "none",
               pointerEvents: "none",
               letterSpacing: "-0.06em",
@@ -2277,7 +2514,7 @@ export default function HomePage() {
             <div
               style={{
                 position: "absolute",
-                left: 16,
+                left: 14,
                 top: "50%",
                 transform: "translateY(-50%) rotate(-90deg)",
                 transformOrigin: "center",
@@ -2297,8 +2534,8 @@ export default function HomePage() {
           <div
             style={{
               position: "absolute",
-              top: 70,
-              right: "clamp(18px,5vw,40px)",
+              top: 68,
+              right: "clamp(18px,5vw,44px)",
               ...M,
               fontSize: 11,
               color: "#27272a",
@@ -2308,16 +2545,15 @@ export default function HomePage() {
             {time}
           </div>
 
-          {/* Horizontal accent */}
+          {/* Top accent line */}
           <div
             style={{
               position: "absolute",
-              top: 96,
+              top: 94,
               left: 0,
               right: 0,
               height: 1,
-              background:
-                "linear-gradient(to right,transparent,rgba(245,158,11,0.1) 30%,rgba(245,158,11,0.1) 70%,transparent)",
+              background: `linear-gradient(to right,transparent,${A}14 30%,${A}14 70%,transparent)`,
             }}
           />
 
@@ -2329,17 +2565,17 @@ export default function HomePage() {
               maxWidth: 1320,
               margin: "0 auto",
               width: "100%",
-              padding: isMobile ? "0 20px 56px" : "0 clamp(18px,5vw,40px) 80px",
-              paddingTop: isMobile ? 80 : 120,
+              padding: isMobile ? "0 20px 56px" : "0 clamp(18px,5vw,44px) 80px",
+              paddingTop: isMobile ? 78 : 118,
             }}
           >
-            {/* Live status */}
+            {/* P5 status stamp */}
             <div
               style={{
                 display: "flex",
                 alignItems: "center",
-                gap: 10,
-                marginBottom: isMobile ? 24 : 28,
+                gap: 0,
+                marginBottom: isMobile ? 22 : 28,
                 opacity: heroIn ? 1 : 0,
                 transform: heroIn ? "none" : "translateY(16px)",
                 transition: "all 0.8s cubic-bezier(0.16,1,0.3,1) 0.1s",
@@ -2353,8 +2589,31 @@ export default function HomePage() {
                   borderRadius: "50%",
                   animation: "glow-green 2.5s infinite",
                   flexShrink: 0,
+                  marginRight: 8,
                 }}
               />
+              <div
+                style={{
+                  background: "#22c55e",
+                  padding: "4px 14px 4px 10px",
+                  clipPath:
+                    "polygon(0 0,calc(100% - 6px) 0,100% 6px,100% 100%,6px 100%,0 calc(100% - 6px))",
+                  marginRight: 8,
+                }}
+              >
+                <span
+                  style={{
+                    ...M,
+                    fontSize: 7,
+                    color: "black",
+                    letterSpacing: "0.4em",
+                    textTransform: "uppercase",
+                    fontWeight: 500,
+                  }}
+                >
+                  OPEN
+                </span>
+              </div>
               <span
                 style={{
                   ...M,
@@ -2364,7 +2623,7 @@ export default function HomePage() {
                   textTransform: "uppercase",
                 }}
               >
-                Open · Accepting Clients Now
+                Accepting Clients Now
               </span>
               {!isMobile && (
                 <>
@@ -2372,9 +2631,9 @@ export default function HomePage() {
                     style={{
                       flex: 1,
                       height: 1,
-                      background:
-                        "linear-gradient(to right,rgba(34,197,94,0.3),transparent)",
+                      background: `linear-gradient(to right,rgba(34,197,94,0.3),transparent)`,
                       maxWidth: 180,
+                      marginLeft: 16,
                     }}
                   />
                   <span
@@ -2391,28 +2650,28 @@ export default function HomePage() {
               )}
             </div>
 
-            {/* Headline — staggered words */}
-            <div style={{ marginBottom: isMobile ? 24 : 32 }}>
+            {/* Headline — Persona 5 style stagger */}
+            <div style={{ marginBottom: isMobile ? 22 : 30 }}>
               {[
-                { t: "Where", d: "0.18s", it: false, am: false },
-                { t: "Every", d: "0.26s", it: false, am: false },
-                { t: "Cut", d: "0.34s", it: false, am: false },
-                { t: "Tells", d: "0.42s", it: false, am: false },
-                { t: "A Story.", d: "0.52s", it: true, am: true },
-              ].map(({ t, d, it, am }) => (
+                { t: "Where", d: "0.16s", am: false },
+                { t: "Every", d: "0.24s", am: false },
+                { t: "Cut", d: "0.32s", am: false },
+                { t: "Tells", d: "0.40s", am: false },
+                { t: "A Story.", d: "0.50s", am: true, it: true },
+              ].map(({ t, d, am, it }) => (
                 <h1
                   key={t}
                   style={{
                     ...D,
-                    fontSize: "clamp(2.5rem,7.2vw,6.8rem)",
+                    fontSize: "clamp(2.5rem,7.5vw,7rem)",
                     fontWeight: 900,
                     textTransform: "uppercase",
                     lineHeight: isMobile ? 1.08 : 0.9,
                     letterSpacing: "-0.04em",
-                    color: am ? "#f59e0b" : "white",
+                    color: am ? A : "white",
                     fontStyle: it ? "italic" : "normal",
                     opacity: heroIn ? 1 : 0,
-                    transform: heroIn ? "none" : "translateY(32px)",
+                    transform: heroIn ? "none" : "translateY(30px)",
                     transition: `opacity 1s cubic-bezier(0.16,1,0.3,1) ${d},transform 1s cubic-bezier(0.16,1,0.3,1) ${d}`,
                     margin: 0,
                   }}
@@ -2422,16 +2681,16 @@ export default function HomePage() {
               ))}
             </div>
 
-            {/* Sub + cta */}
+            {/* Sub + CTA */}
             <div
               style={{
                 display: "flex",
-                gap: isMobile ? 22 : 36,
+                gap: isMobile ? 20 : 32,
                 alignItems: "flex-end",
                 flexWrap: "wrap",
                 opacity: heroIn ? 1 : 0,
-                transform: heroIn ? "none" : "translateY(18px)",
-                transition: "all 0.9s cubic-bezier(0.16,1,0.3,1) 0.66s",
+                transform: heroIn ? "none" : "translateY(16px)",
+                transition: "all 0.9s cubic-bezier(0.16,1,0.3,1) 0.64s",
               }}
             >
               <p
@@ -2456,7 +2715,7 @@ export default function HomePage() {
                   fontSize: 8.5,
                   fontWeight: 700,
                   color: "black",
-                  background: "#f59e0b",
+                  background: A,
                   padding: "17px 34px",
                   letterSpacing: "0.22em",
                   textTransform: "uppercase",
@@ -2467,46 +2726,44 @@ export default function HomePage() {
                   flexShrink: 0,
                   clipPath:
                     "polygon(0 0,calc(100% - 10px) 0,100% 10px,100% 100%,10px 100%,0 calc(100% - 10px))",
-                  transition: "background 0.25s",
+                  transition: "background 0.22s",
                 }}
                 onMouseEnter={(e) =>
                   (e.currentTarget.style.background = "white")
                 }
-                onMouseLeave={(e) =>
-                  (e.currentTarget.style.background = "#f59e0b")
-                }
+                onMouseLeave={(e) => (e.currentTarget.style.background = A)}
               >
                 <span>Book Your Cut →</span>
               </a>
             </div>
 
-            {/* Stats strip */}
+            {/* Stats — P5 data panels */}
             <div
               style={{
                 display: "flex",
-                marginTop: isMobile ? 32 : 64,
-                paddingTop: isMobile ? 18 : 26,
+                marginTop: isMobile ? 28 : 60,
+                paddingTop: isMobile ? 16 : 24,
                 borderTop: "1px solid rgba(255,255,255,0.06)",
                 flexWrap: "wrap",
                 opacity: heroIn ? 1 : 0,
-                transition: "all 1s cubic-bezier(0.16,1,0.3,1) 0.85s",
+                transition: "all 1s cubic-bezier(0.16,1,0.3,1) 0.82s",
               }}
             >
               {[
                 { n: "5.0", l: "Star Rating", s: "Google" },
                 { n: "11", l: "Services", s: "Every style" },
-                { n: "100+", l: "Happy Clients", s: "& Counting" },
+                { n: "100+", l: "Clients", s: "& Counting" },
                 { n: "24/7", l: "Book Online", s: "Anytime" },
               ].map(({ n, l, s }, i) => (
                 <div
                   key={l}
                   style={{
                     flex: 1,
-                    minWidth: isMobile ? 100 : 120,
-                    padding: `0 ${i > 0 ? 14 : 0}px`,
+                    minWidth: isMobile ? 98 : 118,
+                    padding: `0 ${i > 0 ? 12 : 0}px`,
                     borderLeft:
                       i > 0 ? "1px solid rgba(255,255,255,0.06)" : "none",
-                    marginBottom: 12,
+                    marginBottom: 10,
                   }}
                 >
                   <p
@@ -2514,7 +2771,7 @@ export default function HomePage() {
                       ...D,
                       fontSize: "clamp(1.4rem,2.8vw,2.2rem)",
                       fontWeight: 900,
-                      color: "#f59e0b",
+                      color: A,
                       lineHeight: 1,
                       marginBottom: 4,
                     }}
@@ -2558,7 +2815,7 @@ export default function HomePage() {
               flexDirection: "column",
               alignItems: "center",
               gap: 8,
-              paddingBottom: 20,
+              paddingBottom: 18,
               opacity: heroIn ? 1 : 0,
               transition: "opacity 1s ease 1.4s",
             }}
@@ -2578,8 +2835,7 @@ export default function HomePage() {
               style={{
                 width: 1,
                 height: 40,
-                background:
-                  "linear-gradient(to bottom,rgba(245,158,11,0.5),transparent)",
+                background: `linear-gradient(to bottom,rgba(245,158,11,0.5),transparent)`,
               }}
             />
           </div>
@@ -2588,24 +2844,25 @@ export default function HomePage() {
         {/* ══ TICKER ══ */}
         <div
           style={{
-            borderTop: "1px solid rgba(245,158,11,0.12)",
-            borderBottom: "1px solid rgba(245,158,11,0.12)",
-            background: "rgba(245,158,11,0.02)",
+            borderTop: `1px solid ${R}22`,
+            borderBottom: `1px solid ${R}22`,
+            background: `${R}06`,
             overflow: "hidden",
-            padding: "11px 0",
+            padding: "10px 0",
+            position: "relative",
           }}
         >
-          <div className="ticker-wrap">
+          <div className="ticker-w">
             {[...TICKER, ...TICKER].map((t, i) => (
               <span
                 key={i}
                 style={{
                   ...M,
                   fontSize: 9,
-                  color: "rgba(245,158,11,0.45)",
+                  color: `${R}77`,
                   letterSpacing: "0.5em",
                   textTransform: "uppercase",
-                  padding: "0 32px",
+                  padding: "0 28px",
                   flexShrink: 0,
                 }}
               >
@@ -2618,45 +2875,98 @@ export default function HomePage() {
         {/* ══ GALLERY ══ */}
         <GalleryCarousel isMobile={isMobile} />
 
-        {/* ══ SERVICES ══ */}
+        {/* ══ SERVICES — P5 PANEL STYLE ══ */}
         <section
           id="services"
           style={{
             padding: isMobile
               ? "56px 20px"
-              : "clamp(56px,9vw,112px) clamp(18px,5vw,40px)",
+              : "clamp(56px,9vw,112px) clamp(18px,5vw,44px)",
           }}
         >
           <div style={{ maxWidth: 1320, margin: "0 auto" }}>
-            {/* Header */}
+            {/* P5 header */}
             <div
               data-id="s1"
-              className={`rv${R("s1") ? " on" : ""}`}
+              className={`rv${Rv("s1") ? " on" : ""}`}
               style={{
                 display: "flex",
                 alignItems: "center",
-                gap: 14,
+                gap: 0,
                 marginBottom: isMobile ? 28 : 52,
               }}
             >
-              <div style={{ width: 3, height: 26, background: "#f59e0b" }} />
+              <div
+                style={{
+                  background: R,
+                  padding: "5px 14px 5px 10px",
+                  clipPath: "polygon(0 0,100% 0,calc(100% - 8px) 100%,0 100%)",
+                  marginRight: 0,
+                }}
+              >
+                <span
+                  style={{
+                    ...D,
+                    fontSize: 8,
+                    fontWeight: 900,
+                    color: "white",
+                    letterSpacing: "0.4em",
+                    textTransform: "uppercase",
+                  }}
+                >
+                  THE
+                </span>
+              </div>
+              <div
+                style={{
+                  background: A,
+                  padding: "5px 14px 5px 12px",
+                  clipPath:
+                    "polygon(8px 0,100% 0,calc(100% - 8px) 100%,0 100%)",
+                  marginRight: 8,
+                }}
+              >
+                <span
+                  style={{
+                    ...D,
+                    fontSize: 8,
+                    fontWeight: 900,
+                    color: "black",
+                    letterSpacing: "0.4em",
+                    textTransform: "uppercase",
+                  }}
+                >
+                  MENU
+                </span>
+              </div>
               <span
                 style={{
                   ...M,
                   fontSize: 8,
-                  color: "#f59e0b",
-                  letterSpacing: "0.6em",
+                  color: "rgba(255,255,255,0.2)",
+                  letterSpacing: "0.4em",
+                  marginRight: 12,
+                }}
+              >
+                ·
+              </span>
+              <span
+                style={{
+                  ...M,
+                  fontSize: 8,
+                  color: `${A}66`,
+                  letterSpacing: "0.4em",
                   textTransform: "uppercase",
                 }}
               >
-                Services · {SERVICES.length} Options
+                {SERVICES.length} Services
               </span>
               <div
                 style={{
                   flex: 1,
-                  height: 1,
-                  background:
-                    "linear-gradient(to right,rgba(245,158,11,0.2),transparent)",
+                  height: 2,
+                  background: `linear-gradient(to right,${A}44,transparent)`,
+                  marginLeft: 16,
                 }}
               />
             </div>
@@ -2667,10 +2977,10 @@ export default function HomePage() {
                 gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr",
                 gap: isMobile ? 24 : 80,
                 alignItems: "start",
-                marginBottom: 40,
+                marginBottom: 36,
               }}
             >
-              <div data-id="s2" className={`rv${R("s2") ? " on" : ""}`}>
+              <div data-id="s2" className={`rv${Rv("s2") ? " on" : ""}`}>
                 <h2
                   style={{
                     ...D,
@@ -2692,14 +3002,12 @@ export default function HomePage() {
                     Full
                   </span>
                   <br />
-                  <span style={{ color: "#f59e0b", fontStyle: "italic" }}>
-                    Menu_
-                  </span>
+                  <span style={{ color: A, fontStyle: "italic" }}>Menu_</span>
                 </h2>
               </div>
               <div
                 data-id="s3"
-                className={`rv d1${R("s3") ? " on" : ""}`}
+                className={`rv d1${Rv("s3") ? " on" : ""}`}
                 style={{ paddingTop: isMobile ? 0 : 8 }}
               >
                 <p
@@ -2712,7 +3020,7 @@ export default function HomePage() {
                   }}
                 >
                   From a quick lineup to the full cut and shave — every service
-                  delivered with obsessive precision.
+                  with obsessive precision.
                 </p>
                 <a
                   href="/book"
@@ -2722,7 +3030,7 @@ export default function HomePage() {
                     fontSize: 8,
                     fontWeight: 700,
                     color: "black",
-                    background: "#f59e0b",
+                    background: A,
                     padding: "13px 26px",
                     letterSpacing: "0.2em",
                     textTransform: "uppercase",
@@ -2731,14 +3039,12 @@ export default function HomePage() {
                     alignItems: "center",
                     clipPath:
                       "polygon(0 0,calc(100% - 8px) 0,100% 8px,100% 100%,8px 100%,0 calc(100% - 8px))",
-                    transition: "background 0.25s",
+                    transition: "background 0.22s",
                   }}
                   onMouseEnter={(e) =>
                     (e.currentTarget.style.background = "white")
                   }
-                  onMouseLeave={(e) =>
-                    (e.currentTarget.style.background = "#f59e0b")
-                  }
+                  onMouseLeave={(e) => (e.currentTarget.style.background = A)}
                 >
                   Book Any Service →
                 </a>
@@ -2747,7 +3053,7 @@ export default function HomePage() {
 
             <div
               data-id="s4"
-              className={`rv${R("s4") ? " on" : ""}`}
+              className={`rv${Rv("s4") ? " on" : ""}`}
               style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}
             >
               {SERVICES.map((svc, i) => (
@@ -2761,7 +3067,7 @@ export default function HomePage() {
                     display: "flex",
                     justifyContent: "space-between",
                     alignItems: "center",
-                    padding: "19px 0",
+                    padding: "18px 0",
                     borderBottom: "1px solid rgba(255,255,255,0.04)",
                     gap: 12,
                   }}
@@ -2779,7 +3085,7 @@ export default function HomePage() {
                       style={{
                         ...M,
                         fontSize: 9,
-                        color: hovSvc === svc.name ? "#f59e0b" : "#3f3f46",
+                        color: hovSvc === svc.name ? A : "#3f3f46",
                         minWidth: 28,
                         transition: "color 0.2s",
                       }}
@@ -2807,7 +3113,7 @@ export default function HomePage() {
                           ...M,
                           fontSize: 7,
                           color: "black",
-                          background: "#f59e0b",
+                          background: A,
                           padding: "2px 8px",
                           flexShrink: 0,
                           letterSpacing: "0.2em",
@@ -2822,7 +3128,7 @@ export default function HomePage() {
                     style={{
                       display: "flex",
                       alignItems: "center",
-                      gap: 22,
+                      gap: 20,
                       flexShrink: 0,
                     }}
                   >
@@ -2832,9 +3138,9 @@ export default function HomePage() {
                     <span
                       style={{
                         ...D,
-                        fontSize: "clamp(13px,1.9vw,20px)",
+                        fontSize: "clamp(12px,1.9vw,20px)",
                         fontWeight: 900,
-                        color: hovSvc === svc.name ? "#f59e0b" : "white",
+                        color: hovSvc === svc.name ? A : "white",
                         transition: "color 0.2s",
                         minWidth: 40,
                         textAlign: "right",
@@ -2846,7 +3152,7 @@ export default function HomePage() {
                       style={{
                         fontSize: 12,
                         opacity: hovSvc === svc.name ? 1 : 0,
-                        color: "#f59e0b",
+                        color: A,
                         transform:
                           hovSvc === svc.name
                             ? "translateX(0)"
@@ -2872,38 +3178,68 @@ export default function HomePage() {
           style={{
             padding: isMobile
               ? "56px 20px"
-              : "clamp(56px,9vw,112px) clamp(18px,5vw,40px)",
+              : "clamp(56px,9vw,112px) clamp(18px,5vw,44px)",
           }}
         >
           <div style={{ maxWidth: 1320, margin: "0 auto" }}>
             <div
               data-id="r1"
-              className={`rv${R("r1") ? " on" : ""}`}
+              className={`rv${Rv("r1") ? " on" : ""}`}
               style={{
                 display: "flex",
                 alignItems: "center",
-                gap: 14,
+                gap: 0,
                 marginBottom: isMobile ? 28 : 48,
               }}
             >
-              <div style={{ width: 3, height: 26, background: "#f59e0b" }} />
-              <span
+              <div
                 style={{
-                  ...M,
-                  fontSize: 8,
-                  color: "#f59e0b",
-                  letterSpacing: "0.6em",
-                  textTransform: "uppercase",
+                  background: R,
+                  padding: "5px 14px 5px 10px",
+                  clipPath: "polygon(0 0,100% 0,calc(100% - 8px) 100%,0 100%)",
+                  marginRight: 0,
                 }}
               >
-                Client Reviews
-              </span>
+                <span
+                  style={{
+                    ...D,
+                    fontSize: 8,
+                    fontWeight: 900,
+                    color: "white",
+                    letterSpacing: "0.4em",
+                    textTransform: "uppercase",
+                  }}
+                >
+                  CLIENT
+                </span>
+              </div>
+              <div
+                style={{
+                  background: A,
+                  padding: "5px 14px 5px 12px",
+                  clipPath:
+                    "polygon(8px 0,100% 0,calc(100% - 8px) 100%,0 100%)",
+                }}
+              >
+                <span
+                  style={{
+                    ...D,
+                    fontSize: 8,
+                    fontWeight: 900,
+                    color: "black",
+                    letterSpacing: "0.4em",
+                    textTransform: "uppercase",
+                  }}
+                >
+                  REVIEWS
+                </span>
+              </div>
               <div
                 style={{
                   flex: 1,
-                  height: 1,
-                  background:
-                    "linear-gradient(to right,rgba(245,158,11,0.2),transparent)",
+                  height: 2,
+                  background: `linear-gradient(to right,${A}44,transparent)`,
+                  marginLeft: 12,
                 }}
               />
             </div>
@@ -2915,7 +3251,7 @@ export default function HomePage() {
                 alignItems: isMobile ? "start" : "center",
               }}
             >
-              <div data-id="r2" className={`rv${R("r2") ? " on" : ""}`}>
+              <div data-id="r2" className={`rv${Rv("r2") ? " on" : ""}`}>
                 <h2
                   style={{
                     ...D,
@@ -2938,9 +3274,7 @@ export default function HomePage() {
                     of
                   </span>
                   <br />
-                  <span style={{ color: "#f59e0b", fontStyle: "italic" }}>
-                    Mouth_
-                  </span>
+                  <span style={{ color: A, fontStyle: "italic" }}>Mouth_</span>
                 </h2>
                 <p
                   style={{
@@ -2961,39 +3295,39 @@ export default function HomePage() {
                       style={{
                         width: i === revIdx ? 26 : 6,
                         height: 4,
-                        background:
-                          i === revIdx ? "#f59e0b" : "rgba(255,255,255,0.12)",
+                        background: i === revIdx ? A : "rgba(255,255,255,0.12)",
                         border: "none",
                         cursor: "pointer",
                         transition: "all 0.32s",
                         padding: 0,
                         minHeight: "auto",
                         minWidth: "auto",
+                        clipPath:
+                          i === revIdx
+                            ? "polygon(0 0,calc(100% - 3px) 0,100% 3px,100% 100%,3px 100%,0 calc(100% - 3px))"
+                            : "none",
                       }}
                     />
                   ))}
                 </div>
               </div>
-              <div data-id="r3" className={`rv d1${R("r3") ? " on" : ""}`}>
+              <div data-id="r3" className={`rv d1${Rv("r3") ? " on" : ""}`}>
                 {REVIEWS.map((rv, i) => (
                   <div
                     key={i}
                     style={{
                       display: i === revIdx ? "block" : "none",
-                      padding: isMobile ? "24px 18px" : "34px 28px",
+                      padding: isMobile ? "22px 18px" : "32px 28px",
                       background: "rgba(255,255,255,0.02)",
                       border: "1px solid rgba(255,255,255,0.07)",
-                      borderLeft: "3px solid #f59e0b",
+                      borderLeft: `3px solid ${A}`,
                       animation:
                         i === revIdx ? "fadeUp 0.45s ease both" : "none",
                     }}
                   >
-                    <div style={{ display: "flex", gap: 2, marginBottom: 16 }}>
+                    <div style={{ display: "flex", gap: 2, marginBottom: 14 }}>
                       {[1, 2, 3, 4, 5].map((s) => (
-                        <span
-                          key={s}
-                          style={{ color: "#f59e0b", fontSize: 11 }}
-                        >
+                        <span key={s} style={{ color: A, fontSize: 11 }}>
                           ★
                         </span>
                       ))}
@@ -3001,7 +3335,7 @@ export default function HomePage() {
                     <p
                       style={{
                         ...D,
-                        fontSize: "clamp(0.82rem,1.5vw,1rem)",
+                        fontSize: "clamp(0.8rem,1.5vw,1rem)",
                         fontWeight: 700,
                         textTransform: "uppercase",
                         lineHeight: 1.55,
@@ -3019,7 +3353,7 @@ export default function HomePage() {
                         style={{
                           width: 32,
                           height: 32,
-                          background: "#f59e0b",
+                          background: A,
                           display: "flex",
                           alignItems: "center",
                           justifyContent: "center",
@@ -3076,39 +3410,69 @@ export default function HomePage() {
             borderTop: "1px solid rgba(255,255,255,0.06)",
             padding: isMobile
               ? "56px 20px"
-              : "clamp(56px,9vw,112px) clamp(18px,5vw,40px)",
+              : "clamp(56px,9vw,112px) clamp(18px,5vw,44px)",
             background: "rgba(255,255,255,0.01)",
           }}
         >
           <div style={{ maxWidth: 1320, margin: "0 auto" }}>
             <div
               data-id="l1"
-              className={`rv${R("l1") ? " on" : ""}`}
+              className={`rv${Rv("l1") ? " on" : ""}`}
               style={{
                 display: "flex",
                 alignItems: "center",
-                gap: 14,
+                gap: 0,
                 marginBottom: isMobile ? 28 : 48,
               }}
             >
-              <div style={{ width: 3, height: 26, background: "#f59e0b" }} />
-              <span
+              <div
                 style={{
-                  ...M,
-                  fontSize: 8,
-                  color: "#f59e0b",
-                  letterSpacing: "0.6em",
-                  textTransform: "uppercase",
+                  background: R,
+                  padding: "5px 14px 5px 10px",
+                  clipPath: "polygon(0 0,100% 0,calc(100% - 8px) 100%,0 100%)",
+                  marginRight: 0,
                 }}
               >
-                Find Us
-              </span>
+                <span
+                  style={{
+                    ...D,
+                    fontSize: 8,
+                    fontWeight: 900,
+                    color: "white",
+                    letterSpacing: "0.4em",
+                    textTransform: "uppercase",
+                  }}
+                >
+                  FIND
+                </span>
+              </div>
+              <div
+                style={{
+                  background: A,
+                  padding: "5px 14px 5px 12px",
+                  clipPath:
+                    "polygon(8px 0,100% 0,calc(100% - 8px) 100%,0 100%)",
+                }}
+              >
+                <span
+                  style={{
+                    ...D,
+                    fontSize: 8,
+                    fontWeight: 900,
+                    color: "black",
+                    letterSpacing: "0.4em",
+                    textTransform: "uppercase",
+                  }}
+                >
+                  US
+                </span>
+              </div>
               <div
                 style={{
                   flex: 1,
-                  height: 1,
-                  background:
-                    "linear-gradient(to right,rgba(245,158,11,0.2),transparent)",
+                  height: 2,
+                  background: `linear-gradient(to right,${A}44,transparent)`,
+                  marginLeft: 12,
                 }}
               />
             </div>
@@ -3120,7 +3484,7 @@ export default function HomePage() {
                 alignItems: isMobile ? "start" : "center",
               }}
             >
-              <div data-id="l2" className={`rv${R("l2") ? " on" : ""}`}>
+              <div data-id="l2" className={`rv${Rv("l2") ? " on" : ""}`}>
                 <h2
                   style={{
                     ...D,
@@ -3129,7 +3493,7 @@ export default function HomePage() {
                     lineHeight: isMobile ? 1.08 : 0.9,
                     letterSpacing: "-0.04em",
                     textTransform: "uppercase",
-                    marginBottom: 36,
+                    marginBottom: 32,
                   }}
                 >
                   Come
@@ -3143,16 +3507,14 @@ export default function HomePage() {
                     See
                   </span>
                   <br />
-                  <span style={{ color: "#f59e0b", fontStyle: "italic" }}>
-                    Us_
-                  </span>
+                  <span style={{ color: A, fontStyle: "italic" }}>Us_</span>
                 </h2>
                 <div
                   style={{
                     display: "flex",
                     flexDirection: "column",
-                    gap: 20,
-                    marginBottom: 36,
+                    gap: 18,
+                    marginBottom: 32,
                   }}
                 >
                   {[
@@ -3165,9 +3527,9 @@ export default function HomePage() {
                       key={l}
                       style={{
                         display: "flex",
-                        gap: 16,
+                        gap: 14,
                         alignItems: "flex-start",
-                        paddingBottom: 20,
+                        paddingBottom: 18,
                         borderBottom: "1px solid rgba(255,255,255,0.04)",
                       }}
                     >
@@ -3211,7 +3573,7 @@ export default function HomePage() {
                     fontSize: 8.5,
                     fontWeight: 700,
                     color: "black",
-                    background: "#f59e0b",
+                    background: A,
                     padding: "17px 32px",
                     letterSpacing: "0.22em",
                     textTransform: "uppercase",
@@ -3220,23 +3582,21 @@ export default function HomePage() {
                     alignItems: "center",
                     clipPath:
                       "polygon(0 0,calc(100% - 10px) 0,100% 10px,100% 100%,10px 100%,0 calc(100% - 10px))",
-                    transition: "background 0.25s",
+                    transition: "background 0.22s",
                   }}
                   onMouseEnter={(e) =>
                     (e.currentTarget.style.background = "white")
                   }
-                  onMouseLeave={(e) =>
-                    (e.currentTarget.style.background = "#f59e0b")
-                  }
+                  onMouseLeave={(e) => (e.currentTarget.style.background = A)}
                 >
                   Lock In Your Spot →
                 </a>
               </div>
-              <div data-id="l3" className={`rv d2${R("l3") ? " on" : ""}`}>
+              <div data-id="l3" className={`rv d2${Rv("l3") ? " on" : ""}`}>
                 <div
                   style={{
                     background: "#080808",
-                    border: "1px solid rgba(255,255,255,0.07)",
+                    border: `1px solid rgba(255,255,255,0.07)`,
                     position: "relative",
                     overflow: "hidden",
                     minHeight: 360,
@@ -3251,8 +3611,7 @@ export default function HomePage() {
                     style={{
                       position: "absolute",
                       inset: 0,
-                      backgroundImage:
-                        "linear-gradient(rgba(255,255,255,0.025) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,0.025) 1px,transparent 1px)",
+                      backgroundImage: `linear-gradient(rgba(255,255,255,0.025) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,0.025) 1px,transparent 1px)`,
                       backgroundSize: "34px 34px",
                     }}
                   />
@@ -3280,12 +3639,12 @@ export default function HomePage() {
                       style={{
                         width: 52,
                         height: 52,
-                        background: "#f59e0b",
+                        background: A,
                         margin: "0 auto 14px",
                         display: "flex",
                         alignItems: "center",
                         justifyContent: "center",
-                        boxShadow: "0 0 48px rgba(245,158,11,0.45)",
+                        boxShadow: `0 0 48px rgba(245,158,11,0.45)`,
                         clipPath:
                           "polygon(0 0,calc(100% - 8px) 0,100% 8px,100% 100%,8px 100%,0 calc(100% - 8px))",
                       }}
@@ -3327,25 +3686,46 @@ export default function HomePage() {
           </div>
         </section>
 
-        {/* ══ CTA BAND ══ */}
+        {/* ══ CTA BAND — DMC RED/GOLD ══ */}
         <section
           style={{
-            background: "#f59e0b",
-            padding: isMobile ? "52px 20px" : "68px clamp(18px,5vw,40px)",
             position: "relative",
             overflow: "hidden",
+            padding: isMobile ? "52px 20px" : "68px clamp(18px,5vw,44px)",
           }}
         >
+          {/* Split bg — half red half amber */}
+          <div
+            style={{
+              position: "absolute",
+              inset: 0,
+              background: `linear-gradient(135deg,${R} 0%,${R} 48%,${A} 48%,${A} 100%)`,
+            }}
+          />
+          {/* Diagonal slash */}
+          <div
+            style={{
+              position: "absolute",
+              top: 0,
+              bottom: 0,
+              left: "48%",
+              width: 3,
+              background: "rgba(0,0,0,0.3)",
+              transform: "skewX(-3deg)",
+              zIndex: 1,
+            }}
+          />
           <div
             style={{
               position: "absolute",
               inset: 0,
               backgroundImage:
-                "linear-gradient(rgba(0,0,0,0.055) 1px,transparent 1px),linear-gradient(90deg,rgba(0,0,0,0.055) 1px,transparent 1px)",
+                "linear-gradient(rgba(0,0,0,0.07) 1px,transparent 1px),linear-gradient(90deg,rgba(0,0,0,0.07) 1px,transparent 1px)",
               backgroundSize: "42px 42px",
               pointerEvents: "none",
             }}
           />
+
           <div
             style={{
               maxWidth: 1320,
@@ -3356,6 +3736,7 @@ export default function HomePage() {
               flexWrap: "wrap",
               gap: 24,
               position: "relative",
+              zIndex: 2,
             }}
           >
             <h2
@@ -3396,11 +3777,11 @@ export default function HomePage() {
                   textDecoration: "none",
                   clipPath:
                     "polygon(0 0,calc(100% - 8px) 0,100% 8px,100% 100%,8px 100%,0 calc(100% - 8px))",
-                  transition: "all 0.28s",
+                  transition: "all 0.25s",
                 }}
                 onMouseEnter={(e) => {
                   e.currentTarget.style.background = "#030303";
-                  e.currentTarget.style.color = "#f59e0b";
+                  e.currentTarget.style.color = A;
                 }}
                 onMouseLeave={(e) => {
                   e.currentTarget.style.background = "black";
@@ -3414,13 +3795,13 @@ export default function HomePage() {
                 style={{
                   ...M,
                   fontSize: 11,
-                  color: "rgba(0,0,0,0.4)",
+                  color: "rgba(0,0,0,0.45)",
                   textDecoration: "none",
                   transition: "color 0.2s",
                 }}
                 onMouseEnter={(e) => (e.currentTarget.style.color = "black")}
                 onMouseLeave={(e) =>
-                  (e.currentTarget.style.color = "rgba(0,0,0,0.4)")
+                  (e.currentTarget.style.color = "rgba(0,0,0,0.45)")
                 }
               >
                 Or call us
@@ -3433,7 +3814,7 @@ export default function HomePage() {
         <footer
           style={{
             borderTop: "1px solid rgba(255,255,255,0.06)",
-            padding: isMobile ? "26px 20px" : "30px clamp(18px,5vw,40px)",
+            padding: isMobile ? "24px 20px" : "28px clamp(18px,5vw,44px)",
           }}
         >
           <div
@@ -3455,8 +3836,7 @@ export default function HomePage() {
                 letterSpacing: "-0.06em",
               }}
             >
-              HEADZ
-              <span style={{ color: "#f59e0b", fontStyle: "italic" }}>UP</span>
+              HEADZ<span style={{ color: A, fontStyle: "italic" }}>UP</span>
             </p>
             <p
               style={{
@@ -3469,7 +3849,7 @@ export default function HomePage() {
             >
               © {new Date().getFullYear()} · Hattiesburg, MS
             </p>
-            <div style={{ display: "flex", gap: 20 }}>
+            <div style={{ display: "flex", gap: 18 }}>
               {[
                 ["book", "Book", book],
                 ["/login", "Login", null],
@@ -3488,9 +3868,7 @@ export default function HomePage() {
                     transition: "color 0.2s",
                     textDecoration: "none",
                   }}
-                  onMouseEnter={(e) =>
-                    (e.currentTarget.style.color = "#f59e0b")
-                  }
+                  onMouseEnter={(e) => (e.currentTarget.style.color = A)}
                   onMouseLeave={(e) =>
                     (e.currentTarget.style.color = "#3f3f46")
                   }
