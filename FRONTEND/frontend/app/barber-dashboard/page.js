@@ -556,6 +556,552 @@ function ApptTicket({
 }
 
 /* ────────────────────────── reschedule modal ────────────────────── */
+/* ── Stripe Connect Panel ─────────────────────────────────────────────────── */
+function StripeConnectPanel({ barber, isMobile }) {
+  const sf = { fontFamily: "'Syncopate',sans-serif" };
+  const mono = { fontFamily: "'DM Mono',monospace" };
+  const [status, setStatus] = useState(null); // null=loading, obj=loaded
+  const [connecting, setConnecting] = useState(false);
+  const [opening, setOpening] = useState(false);
+  const [err, setErr] = useState("");
+
+  useEffect(() => {
+    API.get("barber/stripe/status/")
+      .then((r) => setStatus(r.data))
+      .catch(() => setStatus({ connected: false, charges_enabled: false }));
+  }, []);
+
+  // Handle return from Stripe onboarding
+  useEffect(() => {
+    const p = new URLSearchParams(window.location.search);
+    if (p.get("stripe") === "connected") {
+      API.get("barber/stripe/status/")
+        .then((r) => setStatus(r.data))
+        .catch(() => {});
+      window.history.replaceState({}, "", "/barber-dashboard");
+    }
+    if (p.get("stripe") === "refresh") {
+      window.history.replaceState({}, "", "/barber-dashboard");
+    }
+  }, []);
+
+  const connectStripe = async () => {
+    setConnecting(true);
+    setErr("");
+    try {
+      const r = await API.post("barber/stripe/connect/");
+      window.location.href = r.data.url;
+    } catch (e) {
+      setErr(e.response?.data?.error || "Could not connect. Try again.");
+      setConnecting(false);
+    }
+  };
+
+  const openDashboard = async () => {
+    setOpening(true);
+    setErr("");
+    try {
+      const r = await API.get("barber/stripe/dashboard/");
+      window.open(r.data.url, "_blank");
+    } catch (e) {
+      setErr(e.response?.data?.error || "Could not open dashboard.");
+    } finally {
+      setOpening(false);
+    }
+  };
+
+  if (!status)
+    return (
+      <div
+        style={{
+          padding: "20px",
+          display: "flex",
+          alignItems: "center",
+          gap: 12,
+        }}
+      >
+        <div
+          style={{
+            width: 16,
+            height: 16,
+            border: "2px solid rgba(245,158,11,0.2)",
+            borderTopColor: "#f59e0b",
+            borderRadius: "50%",
+            animation: "spin 0.8s linear infinite",
+          }}
+        />
+        <span style={{ ...mono, fontSize: 11, color: "#52525b" }}>
+          Checking Stripe status...
+        </span>
+      </div>
+    );
+
+  const connected = status.connected && status.details_submitted;
+  const chargesEnabled = status.charges_enabled;
+  const fullySetUp = connected && chargesEnabled;
+
+  return (
+    <div style={{ marginBottom: 32 }}>
+      <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
+
+      {/* Status banner */}
+      <div
+        style={{
+          padding: "20px 22px",
+          background: fullySetUp
+            ? "rgba(34,197,94,0.06)"
+            : "rgba(245,158,11,0.06)",
+          border: `1px solid ${fullySetUp ? "rgba(34,197,94,0.25)" : "rgba(245,158,11,0.25)"}`,
+          clipPath:
+            "polygon(0 0,calc(100% - 12px) 0,100% 12px,100% 100%,12px 100%,0 calc(100% - 12px))",
+          marginBottom: 16,
+        }}
+      >
+        <div
+          style={{
+            display: "flex",
+            alignItems: isMobile ? "flex-start" : "center",
+            justifyContent: "space-between",
+            flexWrap: "wrap",
+            gap: 16,
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+            {/* Stripe logo block */}
+            <div
+              style={{
+                width: 48,
+                height: 48,
+                background: "#635bff",
+                borderRadius: 10,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                flexShrink: 0,
+                boxShadow: fullySetUp ? "0 0 20px rgba(99,91,255,0.4)" : "none",
+              }}
+            >
+              <span
+                style={{
+                  ...sf,
+                  fontSize: 18,
+                  fontWeight: 900,
+                  color: "white",
+                  letterSpacing: "-0.05em",
+                }}
+              >
+                S
+              </span>
+            </div>
+            <div>
+              <p
+                style={{
+                  ...sf,
+                  fontSize: 10,
+                  fontWeight: 700,
+                  textTransform: "uppercase",
+                  color: "white",
+                  margin: "0 0 4px",
+                  letterSpacing: "0.04em",
+                }}
+              >
+                Stripe Payments
+              </p>
+              {fullySetUp ? (
+                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  <div
+                    style={{
+                      width: 6,
+                      height: 6,
+                      background: "#22c55e",
+                      borderRadius: "50%",
+                    }}
+                  />
+                  <p
+                    style={{
+                      ...mono,
+                      fontSize: 11,
+                      color: "#4ade80",
+                      margin: 0,
+                    }}
+                  >
+                    Connected · Accepting payments
+                  </p>
+                </div>
+              ) : connected && !chargesEnabled ? (
+                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  <div
+                    style={{
+                      width: 6,
+                      height: 6,
+                      background: "#f59e0b",
+                      borderRadius: "50%",
+                    }}
+                  />
+                  <p
+                    style={{
+                      ...mono,
+                      fontSize: 11,
+                      color: "#f59e0b",
+                      margin: 0,
+                    }}
+                  >
+                    Setup incomplete — finish onboarding
+                  </p>
+                </div>
+              ) : (
+                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  <div
+                    style={{
+                      width: 6,
+                      height: 6,
+                      background: "#52525b",
+                      borderRadius: "50%",
+                    }}
+                  />
+                  <p
+                    style={{
+                      ...mono,
+                      fontSize: 11,
+                      color: "#71717a",
+                      margin: 0,
+                    }}
+                  >
+                    Not connected — clients can't pay online yet
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Action buttons */}
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            {fullySetUp ? (
+              <>
+                <button
+                  onClick={openDashboard}
+                  disabled={opening}
+                  style={{
+                    padding: "10px 18px",
+                    background: "#635bff",
+                    color: "white",
+                    ...sf,
+                    fontSize: 7.5,
+                    fontWeight: 700,
+                    letterSpacing: "0.18em",
+                    textTransform: "uppercase",
+                    border: "none",
+                    cursor: opening ? "wait" : "pointer",
+                    clipPath:
+                      "polygon(0 0,calc(100% - 7px) 0,100% 7px,100% 100%,7px 100%,0 calc(100% - 7px))",
+                    boxShadow: "0 0 20px rgba(99,91,255,0.3)",
+                    transition: "opacity 0.2s",
+                    minHeight: "auto",
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.85")}
+                  onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
+                >
+                  {opening ? "Opening..." : "$ View Earnings →"}
+                </button>
+                <button
+                  onClick={connectStripe}
+                  disabled={connecting}
+                  style={{
+                    padding: "10px 16px",
+                    background: "transparent",
+                    color: "#52525b",
+                    ...sf,
+                    fontSize: 7,
+                    letterSpacing: "0.15em",
+                    textTransform: "uppercase",
+                    border: "1px solid rgba(255,255,255,0.1)",
+                    cursor: "pointer",
+                    transition: "all 0.2s",
+                    minHeight: "auto",
+                    clipPath:
+                      "polygon(0 0,calc(100% - 6px) 0,100% 6px,100% 100%,6px 100%,0 calc(100% - 6px))",
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.color = "white";
+                    e.currentTarget.style.borderColor = "rgba(255,255,255,0.3)";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.color = "#52525b";
+                    e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)";
+                  }}
+                >
+                  Manage
+                </button>
+              </>
+            ) : (
+              <button
+                onClick={connectStripe}
+                disabled={connecting}
+                style={{
+                  padding: "12px 22px",
+                  background: "#635bff",
+                  color: "white",
+                  ...sf,
+                  fontSize: 8,
+                  fontWeight: 700,
+                  letterSpacing: "0.2em",
+                  textTransform: "uppercase",
+                  border: "none",
+                  cursor: connecting ? "wait" : "pointer",
+                  clipPath:
+                    "polygon(0 0,calc(100% - 8px) 0,100% 8px,100% 100%,8px 100%,0 calc(100% - 8px))",
+                  boxShadow: "0 0 24px rgba(99,91,255,0.35)",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 8,
+                  minHeight: "auto",
+                  transition: "opacity 0.2s",
+                }}
+                onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.85")}
+                onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
+              >
+                {connecting ? (
+                  <>
+                    <span
+                      style={{
+                        width: 12,
+                        height: 12,
+                        border: "2px solid rgba(255,255,255,0.3)",
+                        borderTopColor: "white",
+                        borderRadius: "50%",
+                        display: "inline-block",
+                        animation: "spin 0.7s linear infinite",
+                      }}
+                    />
+                    Connecting...
+                  </>
+                ) : connected ? (
+                  "Finish Setup →"
+                ) : (
+                  "Connect Stripe →"
+                )}
+              </button>
+            )}
+          </div>
+        </div>
+
+        {err && (
+          <p style={{ ...mono, fontSize: 11, color: "#f87171", marginTop: 12 }}>
+            ⚠ {err}
+          </p>
+        )}
+      </div>
+
+      {/* How it works */}
+      {!fullySetUp && (
+        <div
+          style={{
+            padding: "16px 18px",
+            background: "rgba(99,91,255,0.04)",
+            border: "1px solid rgba(99,91,255,0.12)",
+          }}
+        >
+          <p
+            style={{
+              ...mono,
+              fontSize: 8,
+              color: "#635bff",
+              letterSpacing: "0.4em",
+              textTransform: "uppercase",
+              marginBottom: 10,
+            }}
+          >
+            How It Works
+          </p>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {[
+              ["01", "Client books & pays online with their card"],
+              ["02", "Stripe processes the payment securely"],
+              ["03", "Money goes directly into your Stripe balance"],
+              ["04", "Withdraw anytime to your bank → then to Cash App"],
+            ].map(([n, t]) => (
+              <div
+                key={n}
+                style={{ display: "flex", alignItems: "flex-start", gap: 12 }}
+              >
+                <span
+                  style={{
+                    ...mono,
+                    fontSize: 8,
+                    color: "#635bff",
+                    minWidth: 20,
+                    flexShrink: 0,
+                  }}
+                >
+                  {n}
+                </span>
+                <span
+                  style={{
+                    ...mono,
+                    fontSize: 11,
+                    color: "#71717a",
+                    lineHeight: 1.6,
+                  }}
+                >
+                  {t}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Earnings summary if connected */}
+      {fullySetUp && (
+        <div
+          style={{
+            padding: "14px 16px",
+            background: "rgba(99,91,255,0.04)",
+            border: "1px solid rgba(99,91,255,0.1)",
+          }}
+        >
+          <p
+            style={{
+              ...mono,
+              fontSize: 10,
+              color: "rgba(99,91,255,0.7)",
+              lineHeight: 1.7,
+              margin: 0,
+            }}
+          >
+            ✓ When clients pay online, money goes straight to your Stripe
+            balance.
+            <br />
+            Click <strong>"View Earnings"</strong> to see your balance and
+            withdraw to your bank account.
+            <br />
+            From your bank you can instantly move it to Cash App.
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ── Cash App Tag Field (kept as backup) ─────────────────────────────────── */
+function CashAppTagField({ barber, onUpdate }) {
+  const sf = { fontFamily: "'Syncopate',sans-serif" };
+  const mono = { fontFamily: "'DM Mono',monospace" };
+  const [tag, setTag] = useState(barber?.cashapp_tag || "");
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [err, setErr] = useState("");
+
+  const save = async () => {
+    if (!tag.trim()) {
+      setErr("Enter your $cashtag");
+      return;
+    }
+    setSaving(true);
+    setErr("");
+    try {
+      const cleanTag = tag.trim().startsWith("$")
+        ? tag.trim()
+        : `$${tag.trim()}`;
+      await API.patch("barber/me/update/", { cashapp_tag: cleanTag });
+      setTag(cleanTag);
+      onUpdate && onUpdate(cleanTag);
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2500);
+    } catch (e) {
+      setErr(e.response?.data?.error || "Could not save.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div>
+      {err && (
+        <p style={{ ...mono, fontSize: 11, color: "#f87171", marginBottom: 8 }}>
+          ⚠ {err}
+        </p>
+      )}
+      <div style={{ display: "flex", gap: 8 }}>
+        <div style={{ flex: 1, position: "relative" }}>
+          <span
+            style={{
+              position: "absolute",
+              left: 12,
+              top: "50%",
+              transform: "translateY(-50%)",
+              ...mono,
+              fontSize: 16,
+              color: "#00d45f",
+              pointerEvents: "none",
+            }}
+          >
+            $
+          </span>
+          <input
+            type="text"
+            value={tag.startsWith("$") ? tag.slice(1) : tag}
+            onChange={(e) => {
+              setTag(e.target.value);
+              setSaved(false);
+            }}
+            placeholder="YourCashTag"
+            style={{
+              width: "100%",
+              background: "#0a0a0a",
+              border: "1px solid rgba(0,212,95,0.3)",
+              padding: "12px 12px 12px 28px",
+              color: "white",
+              fontSize: 15,
+              outline: "none",
+              ...mono,
+              transition: "border-color 0.2s",
+            }}
+            onFocus={(e) => (e.target.style.borderColor = "#00d45f")}
+            onBlur={(e) => (e.target.style.borderColor = "rgba(0,212,95,0.3)")}
+            onKeyDown={(e) => e.key === "Enter" && save()}
+          />
+        </div>
+        <button
+          onClick={save}
+          disabled={saving}
+          style={{
+            padding: "12px 20px",
+            background: saved ? "#22c55e" : "#00d45f",
+            color: "black",
+            ...sf,
+            fontSize: 7.5,
+            fontWeight: 700,
+            letterSpacing: "0.2em",
+            textTransform: "uppercase",
+            border: "none",
+            cursor: "pointer",
+            flexShrink: 0,
+            minHeight: "auto",
+            clipPath:
+              "polygon(0 0,calc(100% - 6px) 0,100% 6px,100% 100%,6px 100%,0 calc(100% - 6px))",
+            transition: "background 0.2s",
+          }}
+        >
+          {saving ? "..." : saved ? "✓ Saved" : "Save"}
+        </button>
+      </div>
+      {barber?.cashapp_tag && (
+        <p
+          style={{
+            ...mono,
+            fontSize: 11,
+            color: "rgba(0,212,95,0.6)",
+            marginTop: 8,
+          }}
+        >
+          Current: {barber.cashapp_tag}
+        </p>
+      )}
+    </div>
+  );
+}
+
 function RescheduleModal({ appt, onClose, onDone }) {
   const [newDate, setNewDate] = useState("");
   const [newTime, setNewTime] = useState("");
@@ -3152,6 +3698,123 @@ export default function BarberDashboard() {
         {/* ══ AVAILABILITY TAB ══ */}
         {activeTab === "availability" && (
           <div className="bd-enter" style={{ maxWidth: 640 }}>
+            {/* ── Stripe Connect ── */}
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 14,
+                marginBottom: 16,
+              }}
+            >
+              <div
+                style={{
+                  width: 3,
+                  height: 28,
+                  background: "#635bff",
+                  flexShrink: 0,
+                }}
+              />
+              <div>
+                <p
+                  style={{
+                    ...mono,
+                    fontSize: 7,
+                    color: "rgba(99,91,255,0.6)",
+                    letterSpacing: "0.5em",
+                    textTransform: "uppercase",
+                    marginBottom: 2,
+                  }}
+                >
+                  Online Payments
+                </p>
+                <p
+                  style={{
+                    ...sf,
+                    fontSize: 13,
+                    fontWeight: 900,
+                    textTransform: "uppercase",
+                    letterSpacing: "0.02em",
+                  }}
+                >
+                  Stripe Connect
+                </p>
+              </div>
+            </div>
+            <StripeConnectPanel barber={barber} isMobile={isMobile} />
+
+            {/* ── Cash App fallback ── */}
+            <div
+              style={{
+                marginBottom: 28,
+                padding: "16px 18px",
+                background: "rgba(0,212,95,0.04)",
+                border: "1px solid rgba(0,212,95,0.12)",
+              }}
+            >
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 10,
+                  marginBottom: 12,
+                }}
+              >
+                <div
+                  style={{
+                    width: 28,
+                    height: 28,
+                    background: "#00d45f",
+                    borderRadius: 6,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    flexShrink: 0,
+                  }}
+                >
+                  <span
+                    style={{
+                      ...sf,
+                      fontSize: 12,
+                      fontWeight: 900,
+                      color: "black",
+                    }}
+                  >
+                    $
+                  </span>
+                </div>
+                <div>
+                  <p
+                    style={{
+                      ...sf,
+                      fontSize: 8,
+                      fontWeight: 700,
+                      textTransform: "uppercase",
+                      margin: 0,
+                    }}
+                  >
+                    Cash App Tag (Backup)
+                  </p>
+                  <p
+                    style={{
+                      ...mono,
+                      fontSize: 10,
+                      color: T.muted,
+                      marginTop: 2,
+                    }}
+                  >
+                    Used if Stripe isn't connected
+                  </p>
+                </div>
+              </div>
+              <CashAppTagField
+                barber={barber}
+                onUpdate={(tag) =>
+                  setBarber((b) => ({ ...b, cashapp_tag: tag }))
+                }
+              />
+            </div>
+
             <div
               style={{
                 display: "flex",

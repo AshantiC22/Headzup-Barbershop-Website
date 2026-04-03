@@ -24,14 +24,18 @@ DAYS_OF_WEEK = [
 
 
 class Barber(models.Model):
-    name  = models.CharField(max_length=100)
-    user  = models.OneToOneField(
+    name             = models.CharField(max_length=100)
+    user             = models.OneToOneField(
         User, on_delete=models.SET_NULL,
         null=True, blank=True,
         related_name="barber_profile"
     )
-    bio   = models.TextField(blank=True, default="")
-    photo = models.ImageField(upload_to="barbers/", blank=True, null=True)
+    bio              = models.TextField(blank=True, default="")
+    photo            = models.ImageField(upload_to="barbers/", blank=True, null=True)
+    cashapp_tag      = models.CharField(max_length=50, blank=True, default="",
+                                        help_text="Cash App $cashtag for manual payouts")
+    stripe_account_id = models.CharField(max_length=100, blank=True, default="",
+                                         help_text="Stripe Connect Express account ID — set when barber connects Stripe")
 
     def __str__(self):
         return self.name

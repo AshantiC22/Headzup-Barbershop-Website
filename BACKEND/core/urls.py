@@ -19,6 +19,10 @@ from core.views import (
     HeadzUpTokenView,
     # Barber dashboard
     BarberMeView,
+    BarberMeUpdateView,
+    StripeConnectOnboardView,
+    StripeConnectStatusView,
+    StripeConnectDashboardView,
     BarberScheduleOwnView,
     BarberAppointmentUpdateView,
     BarberAvailabilityView,
@@ -69,7 +73,11 @@ urlpatterns = [
     path("payment-success/",         PaymentSuccessView.as_view(),        name="payment_success"),
 
     # Barber dashboard
-    path("barber/me/",                    BarberMeView.as_view(),               name="barber_me"),
+    path("barber/me/",                    BarberMeView.as_view(),                  name="barber_me"),
+    path("barber/me/update/",             BarberMeUpdateView.as_view(),            name="barber_me_update"),
+    path("barber/stripe/connect/",        StripeConnectOnboardView.as_view(),      name="stripe_connect"),
+    path("barber/stripe/status/",         StripeConnectStatusView.as_view(),       name="stripe_status"),
+    path("barber/stripe/dashboard/",      StripeConnectDashboardView.as_view(),    name="stripe_dashboard"),
     path("barber/schedule/",              BarberScheduleOwnView.as_view(),      name="barber_schedule_own"),
     path("barber/appointments/<int:pk>/", BarberAppointmentUpdateView.as_view(),name="barber_appt_update"),
     path("barber/availability/",          BarberAvailabilityView.as_view(),     name="barber_availability"),

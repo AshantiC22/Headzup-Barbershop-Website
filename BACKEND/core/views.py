@@ -716,8 +716,112 @@ class PasswordResetConfirmView(APIView):
         return Response({"message": "Password updated successfully"})
 
 
-# ── Stripe + Cash App Pay ─────────────────────────────────────────────────────
+# ── Stripe Connect ────────────────────────────────────────────────────────────
+
+class StripeConnectOnboardView(APIView):
+    """
+    Step 1 — barber clicks "Connect Stripe" in dashboard.
+    Creates a Stripe Express account and returns the onboarding URL.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        barber = get_barber_for_user(request.user)
+        if not barber:
+            return Response({"error": "Not a barber account"}, status=403)
+
+        try:
+            # If already has an account, generate a new onboarding link
+            if barber.stripe_account_id:
+                account_id = barber.stripe_account_id
+            else:
+                # Create new Express account
+                account = stripe.Account.create(
+                    type="express",
+                    country="US",
+                    email=request.user.email,
+                    capabilities={
+                        "card_payments": {"requested": True},
+                        "transfers":     {"requested": True},
+                    },
+                    business_profile={
+                        "name":  f"{barber.name} — HEADZ UP Barbershop",
+                        "mcc":   "7241",  # Barber shops
+                        "url":   FRONTEND_URL,
+                    },
+                    metadata={
+                        "barber_id":   str(barber.id),
+                        "barber_name": barber.name,
+                    },
+                )
+                account_id = account.id
+                barber.stripe_account_id = account_id
+                barber.save(update_fields=["stripe_account_id"])
+
+            # Generate onboarding link
+            link = stripe.AccountLink.create(
+                account=account_id,
+                refresh_url=f"{FRONTEND_URL}/barber-dashboard?stripe=refresh",
+                return_url=f"{FRONTEND_URL}/barber-dashboard?stripe=connected",
+                type="account_onboarding",
+            )
+            return Response({"url": link.url, "account_id": account_id})
+        except Exception as e:
+            return Response({"error": str(e)}, status=400)
+
+
+class StripeConnectStatusView(APIView):
+    """
+    GET — returns whether barber's Stripe account is fully set up.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        barber = get_barber_for_user(request.user)
+        if not barber:
+            return Response({"error": "Not a barber account"}, status=403)
+
+        if not barber.stripe_account_id:
+            return Response({"connected": False, "charges_enabled": False})
+
+        try:
+            account = stripe.Account.retrieve(barber.stripe_account_id)
+            return Response({
+                "connected":       True,
+                "charges_enabled": account.charges_enabled,
+                "payouts_enabled": account.payouts_enabled,
+                "account_id":      barber.stripe_account_id,
+                "details_submitted": account.details_submitted,
+            })
+        except Exception as e:
+            return Response({"connected": False, "charges_enabled": False, "error": str(e)})
+
+
+class StripeConnectDashboardView(APIView):
+    """
+    GET — returns a link to the barber's Stripe Express dashboard
+    so they can see payouts, earnings, and withdraw to their bank.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        barber = get_barber_for_user(request.user)
+        if not barber or not barber.stripe_account_id:
+            return Response({"error": "No Stripe account connected"}, status=400)
+
+        try:
+            login_link = stripe.Account.create_login_link(barber.stripe_account_id)
+            return Response({"url": login_link.url})
+        except Exception as e:
+            return Response({"error": str(e)}, status=400)
+
+
 class CreateCheckoutSessionView(APIView):
+    """
+    Client pays for an appointment.
+    If barber has Stripe Connect — payment goes directly to barber's Stripe.
+    If not — falls back to cash app or pay in shop message.
+    """
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
@@ -729,48 +833,88 @@ class CreateCheckoutSessionView(APIView):
 
         try:
             service = Service.objects.get(id=service_id)
-            amount_cents = int(float(service.price) * 100)
+            barber  = Barber.objects.get(id=barber_id)
+        except (Service.DoesNotExist, Barber.DoesNotExist) as e:
+            return Response({"error": str(e)}, status=404)
 
+        amount_cents = int(float(service.price) * 100)
+
+        # Check barber has connected Stripe
+        if not barber.stripe_account_id:
+            # Fallback — use Cash App if set
+            cashtag = (barber.cashapp_tag or "").strip()
+            if cashtag:
+                if not cashtag.startswith("$"):
+                    cashtag = f"${cashtag}"
+                return Response({
+                    "method":      "cashapp",
+                    "cashapp_url": f"https://cash.app/{cashtag}/{float(service.price):.2f}",
+                    "cashtag":     cashtag,
+                    "amount":      f"{float(service.price):.2f}",
+                    "barber_name": barber.name,
+                })
+            return Response({
+                "error": f"{barber.name} hasn't connected Stripe yet. Please pay in shop.",
+                "pay_in_shop": True,
+            }, status=400)
+
+        # Check Stripe account is ready to receive payments
+        try:
+            account = stripe.Account.retrieve(barber.stripe_account_id)
+            if not account.charges_enabled:
+                return Response({
+                    "error": f"{barber.name}'s Stripe account isn't fully set up yet. Please pay in shop.",
+                    "pay_in_shop": True,
+                }, status=400)
+        except Exception:
+            pass
+
+        # Platform fee — 0% for now (you can add a % later e.g. 50 cents per booking)
+        # application_fee_amount = 50  # 50 cents platform fee
+
+        try:
             checkout_session = stripe.checkout.Session.create(
-                payment_method_types=["card", "cashapp"],
+                payment_method_types=["card"],
                 line_items=[{
                     "price_data": {
-                        "currency": "usd",
+                        "currency":     "usd",
                         "product_data": {
-                            "name": f"HEADZ UP — {service.name}",
-                            "description": f"Barbershop appointment with duration {service.duration_minutes} min",
+                            "name":        f"HEADZ UP — {service.name}",
+                            "description": f"Appointment with {barber.name} · {service.duration_minutes} min",
                         },
                         "unit_amount": amount_cents,
                     },
                     "quantity": 1,
                 }],
                 mode="payment",
+                # This routes the payment directly to the barber's Stripe account
+                payment_intent_data={
+                    "transfer_data": {
+                        "destination": barber.stripe_account_id,
+                    },
+                    "description": f"HEADZ UP — {service.name} with {barber.name}",
+                },
                 success_url=f"{BACKEND_URL}/api/payment-success/?session_id={{CHECKOUT_SESSION_ID}}",
                 cancel_url=f"{FRONTEND_URL}/book?canceled=true",
                 customer_email=request.user.email or None,
                 metadata={
-                    "user_id":        str(request.user.id),
-                    "service_id":     str(service_id),
-                    "barber_id":      str(barber_id),
-                    "date":           str(date),
-                    "time":           str(time),
-                    "client_notes":   client_notes[:500],
-                    "service_name":   service.name,
-                    "amount_dollars": str(service.price),
-                },
-                payment_intent_data={
-                    "description": f"HEADZ UP Barbershop — {service.name}",
-                    "statement_descriptor_suffix": "HEADZUP",
+                    "user_id":      str(request.user.id),
+                    "service_id":   str(service_id),
+                    "barber_id":    str(barber_id),
+                    "date":         str(date),
+                    "time":         str(time),
+                    "client_notes": client_notes[:500],
+                    "barber_name":  barber.name,
+                    "service_name": service.name,
                 },
             )
             return Response({
-                "url":            checkout_session.url,
-                "session_id":     checkout_session.id,
-                "amount":         str(service.price),
-                "amount_cents":   amount_cents,
-                "service_name":   service.name,
-                # Cash App deep link fallback — sends exact amount to your $cashtag
-                "cashapp_url":    f"https://cash.app/$AshantiiCC/{service.price}",
+                "method":       "stripe",
+                "url":          checkout_session.url,
+                "session_id":   checkout_session.id,
+                "amount":       f"{float(service.price):.2f}",
+                "service_name": service.name,
+                "barber_name":  barber.name,
             })
         except Exception as e:
             return Response({"error": str(e)}, status=400)
@@ -797,14 +941,22 @@ class PaymentSuccessView(APIView):
                 defaults={
                     "payment_method": "online",
                     "client_notes":   metadata.get("client_notes", ""),
+                    "status":         "confirmed",
                 },
             )
             if created:
                 send_booking_confirmation(appt)
 
-            return redirect(f"{FRONTEND_URL}/payment-success?session_id={session_id}")
+            return redirect(
+                f"{FRONTEND_URL}/booking-confirmed"
+                f"?service={metadata.get('service_name','')}"
+                f"&barber={metadata.get('barber_name','')}"
+                f"&date={metadata.get('date','')}"
+                f"&time={metadata.get('time','')}"
+                f"&payment=online"
+            )
         except Exception as e:
-            return redirect(f"{FRONTEND_URL}/dashboard?booked=true&error={str(e)}")
+            return redirect(f"{FRONTEND_URL}/dashboard?booked=true")
 
 
 # ── Admin schedule ────────────────────────────────────────────────────────────
@@ -968,6 +1120,32 @@ class AvailableSlotsView(APIView):
 
 
 # ── Barber portal views ───────────────────────────────────────────────────────
+class BarberMeUpdateView(APIView):
+    """PATCH barber/me/update/ — lets barber update their Cash App tag and bio"""
+    permission_classes = [IsAuthenticated]
+
+    def patch(self, request):
+        barber = get_barber_for_user(request.user)
+        if not barber:
+            return Response({"error": "Not a barber account"}, status=403)
+
+        if "cashapp_tag" in request.data:
+            tag = request.data["cashapp_tag"].strip()
+            if not tag.startswith("$"):
+                tag = f"${tag}"
+            barber.cashapp_tag = tag
+
+        if "bio" in request.data:
+            barber.bio = request.data["bio"]
+
+        barber.save()
+        return Response({
+            "message":     "Updated",
+            "cashapp_tag": barber.cashapp_tag,
+            "bio":         barber.bio,
+        })
+
+
 class BarberMeView(APIView):
     permission_classes = [IsAuthenticated]
 
