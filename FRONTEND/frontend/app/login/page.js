@@ -340,10 +340,18 @@ function LoginContent() {
         });
         setRecMatches(r.data.matches || []);
         if (r.data.matches?.length === 1) {
-          setRecUserId(r.data.matches[0].user_id);
-          setRecUsername(r.data.matches[0].username);
-          setRecToken("verified"); // already answered
+          // Single match — get a real token via step2 using the same answer
+          const match = r.data.matches[0];
+          const t = await API.post("recovery/step2/", {
+            user_id: match.user_id,
+            answer: recAnswer.trim(),
+          });
+          setRecUserId(match.user_id);
+          setRecUsername(match.username);
+          setRecToken(t.data.token);
+          setRecNewUser(match.username);
           setRecStep(3);
+          setSuccess("✓ Identity verified — set your new credentials below.");
         } else {
           setRecStep(2); // show account picker
         }
@@ -1483,11 +1491,25 @@ function LoginContent() {
                         {recMatches.map((m) => (
                           <button
                             key={m.user_id}
-                            onClick={() => {
-                              setRecUserId(m.user_id);
-                              setRecUsername(m.username);
-                              setRecToken("verified");
-                              setRecStep(3);
+                            onClick={async () => {
+                              try {
+                                const t = await API.post("recovery/step2/", {
+                                  user_id: m.user_id,
+                                  answer: recAnswer.trim(),
+                                });
+                                setRecUserId(m.user_id);
+                                setRecUsername(m.username);
+                                setRecToken(t.data.token);
+                                setRecNewUser(m.username);
+                                setRecStep(3);
+                                setSuccess(
+                                  "✓ Identity verified — set your new credentials below.",
+                                );
+                              } catch (e) {
+                                setError(
+                                  e.response?.data?.error || "Could not verify",
+                                );
+                              }
                             }}
                             style={{
                               width: "100%",
