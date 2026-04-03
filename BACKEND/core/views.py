@@ -716,7 +716,7 @@ class PasswordResetConfirmView(APIView):
         return Response({"message": "Password updated successfully"})
 
 
-# ── Stripe ────────────────────────────────────────────────────────────────────
+# ── Stripe + Cash App Pay ─────────────────────────────────────────────────────
 class CreateCheckoutSessionView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -729,29 +729,49 @@ class CreateCheckoutSessionView(APIView):
 
         try:
             service = Service.objects.get(id=service_id)
+            amount_cents = int(float(service.price) * 100)
+
             checkout_session = stripe.checkout.Session.create(
-                payment_method_types=["card"],
+                payment_method_types=["card", "cashapp"],
                 line_items=[{
                     "price_data": {
                         "currency": "usd",
-                        "product_data": {"name": service.name},
-                        "unit_amount": int(service.price * 100),
+                        "product_data": {
+                            "name": f"HEADZ UP — {service.name}",
+                            "description": f"Barbershop appointment with duration {service.duration_minutes} min",
+                        },
+                        "unit_amount": amount_cents,
                     },
                     "quantity": 1,
                 }],
                 mode="payment",
                 success_url=f"{BACKEND_URL}/api/payment-success/?session_id={{CHECKOUT_SESSION_ID}}",
-                cancel_url=f"{FRONTEND_URL}/dashboard?canceled=true",
+                cancel_url=f"{FRONTEND_URL}/book?canceled=true",
+                customer_email=request.user.email or None,
                 metadata={
-                    "user_id":      request.user.id,
-                    "service_id":   service_id,
-                    "barber_id":    barber_id,
-                    "date":         date,
-                    "time":         time,
-                    "client_notes": client_notes[:500],  # Stripe metadata limit
+                    "user_id":        str(request.user.id),
+                    "service_id":     str(service_id),
+                    "barber_id":      str(barber_id),
+                    "date":           str(date),
+                    "time":           str(time),
+                    "client_notes":   client_notes[:500],
+                    "service_name":   service.name,
+                    "amount_dollars": str(service.price),
+                },
+                payment_intent_data={
+                    "description": f"HEADZ UP Barbershop — {service.name}",
+                    "statement_descriptor_suffix": "HEADZUP",
                 },
             )
-            return Response({"url": checkout_session.url})
+            return Response({
+                "url":            checkout_session.url,
+                "session_id":     checkout_session.id,
+                "amount":         str(service.price),
+                "amount_cents":   amount_cents,
+                "service_name":   service.name,
+                # Cash App deep link fallback — sends exact amount to your $cashtag
+                "cashapp_url":    f"https://cash.app/$AshantiiCC/{service.price}",
+            })
         except Exception as e:
             return Response({"error": str(e)}, status=400)
 

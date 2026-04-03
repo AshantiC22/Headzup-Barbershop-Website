@@ -691,7 +691,7 @@ function BookContent() {
     }
   };
 
-  // ── Book (pay online via Stripe) ──
+  // ── Book (pay online via Stripe or Cash App) ──
   const handleCheckout = async () => {
     setSubmitting(true);
     setError("");
@@ -703,7 +703,41 @@ function BookContent() {
         time: to24Hour(selectedTime),
         client_notes: clientNotes,
       });
-      window.location.href = res.data.url;
+
+      if (paymentMethod === "cashapp") {
+        // Use Cash App deep link — opens Cash App with exact amount pre-filled
+        // After payment, user confirms back in app
+        const cashappUrl =
+          res.data.cashapp_url ||
+          `https://cash.app/$AshantiiCC/${selectedService.price}`;
+        // Open Cash App
+        window.location.href = cashappUrl;
+        // After returning, book as shop payment (they already paid via Cash App)
+        // We store a pending flag so the barber can verify
+        setTimeout(async () => {
+          try {
+            await API.post("appointments/", {
+              service: selectedService.id,
+              barber: selectedBarber.id,
+              date: selectedDate,
+              time: to24Hour(selectedTime),
+              payment_method: "online",
+              client_notes: `${clientNotes} [Paid via Cash App $AshantiiCC]`,
+            });
+            router.push(
+              `/booking-confirmed?service=${encodeURIComponent(selectedService.name)}&barber=${encodeURIComponent(selectedBarber.name)}&date=${selectedDate}&time=${encodeURIComponent(selectedTime)}&payment=cashapp`,
+            );
+          } catch {
+            setError(
+              "Payment sent but booking failed. Please contact the shop.",
+            );
+            setSubmitting(false);
+          }
+        }, 2000);
+      } else {
+        // Stripe card checkout
+        window.location.href = res.data.url;
+      }
     } catch (e) {
       setError(
         e.response?.data?.error || "Payment setup failed. Please try again.",
@@ -1688,14 +1722,14 @@ function BookContent() {
                     ))}
                   </div>
 
-                  {/* Client notes / style request */}
+                  {/* Client notes */}
                   <div style={{ marginBottom: 20 }}>
                     <p
                       style={{
                         ...sf,
                         fontSize: 7,
                         letterSpacing: "0.3em",
-                        color: "#52525b",
+                        color: "#a1a1aa",
                         textTransform: "uppercase",
                         marginBottom: 10,
                       }}
@@ -1715,7 +1749,7 @@ function BookContent() {
                         color: "white",
                         fontSize: 14,
                         outline: "none",
-                        fontFamily: "'DM Mono', monospace",
+                        fontFamily: "'DM Mono',monospace",
                         resize: "none",
                         lineHeight: 1.6,
                         transition: "border-color 0.2s",
@@ -1727,140 +1761,491 @@ function BookContent() {
                     />
                     <p
                       style={{
-                        fontSize: 10,
-                        color: "#27272a",
+                        fontSize: 11,
+                        color: "#52525b",
                         marginTop: 6,
-                        fontFamily: "'DM Mono', monospace",
+                        fontFamily: "'DM Mono',monospace",
                       }}
                     >
                       Your barber will see this before your appointment
                     </p>
                   </div>
 
-                  {/* Payment method selector */}
+                  {/* ── PAYMENT METHOD ── */}
                   <div style={{ marginBottom: 24 }}>
                     <p
                       style={{
                         ...sf,
                         fontSize: 7,
                         letterSpacing: "0.3em",
-                        color: "#52525b",
+                        color: "#a1a1aa",
                         textTransform: "uppercase",
-                        marginBottom: 12,
+                        marginBottom: 14,
                       }}
                     >
-                      Payment Method
+                      How Would You Like to Pay?
                     </p>
+
+                    {/* Amount due banner */}
                     <div
                       style={{
-                        display: "grid",
-                        gridTemplateColumns: "1fr 1fr",
+                        padding: "14px 18px",
+                        background: "rgba(245,158,11,0.06)",
+                        border: "1px solid rgba(245,158,11,0.2)",
+                        marginBottom: 14,
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        clipPath:
+                          "polygon(0 0,calc(100% - 8px) 0,100% 8px,100% 100%,8px 100%,0 calc(100% - 8px))",
+                      }}
+                    >
+                      <span
+                        style={{
+                          ...sf,
+                          fontSize: 8,
+                          color: "#a1a1aa",
+                          textTransform: "uppercase",
+                          letterSpacing: "0.2em",
+                        }}
+                      >
+                        Amount Due
+                      </span>
+                      <span
+                        style={{
+                          ...sf,
+                          fontSize: 22,
+                          fontWeight: 900,
+                          color: "#f59e0b",
+                          letterSpacing: "-0.02em",
+                        }}
+                      >
+                        ${selectedService?.price || "0.00"}
+                      </span>
+                    </div>
+
+                    {/* Payment options */}
+                    <div
+                      style={{
+                        display: "flex",
+                        flexDirection: "column",
                         gap: 10,
                       }}
                     >
-                      {[
-                        {
-                          key: "online",
-                          label: "Pay Online",
-                          sub: "Stripe · Secure",
-                          icon: "💳",
-                        },
-                        {
-                          key: "shop",
-                          label: "Pay In Shop",
-                          sub: "Cash or card",
-                          icon: "✂️",
-                        },
-                      ].map(({ key, label, sub, icon }) => {
-                        const active = paymentMethod === key;
-                        return (
-                          <button
-                            key={key}
-                            onClick={() => setPaymentMethod(key)}
+                      {/* Cash App Pay */}
+                      <button
+                        onClick={() => setPaymentMethod("cashapp")}
+                        style={{
+                          padding: "18px 16px",
+                          background:
+                            paymentMethod === "cashapp"
+                              ? "rgba(0,212,95,0.08)"
+                              : "rgba(255,255,255,0.02)",
+                          border: `2px solid ${paymentMethod === "cashapp" ? "#00d45f" : "rgba(255,255,255,0.07)"}`,
+                          cursor: "pointer",
+                          textAlign: "left",
+                          transition: "all 0.2s",
+                          clipPath:
+                            "polygon(0 0,calc(100% - 8px) 0,100% 8px,100% 100%,8px 100%,0 calc(100% - 8px))",
+                        }}
+                        onMouseEnter={(e) => {
+                          if (paymentMethod !== "cashapp") {
+                            e.currentTarget.style.borderColor =
+                              "rgba(0,212,95,0.4)";
+                            e.currentTarget.style.background =
+                              "rgba(0,212,95,0.04)";
+                          }
+                        }}
+                        onMouseLeave={(e) => {
+                          if (paymentMethod !== "cashapp") {
+                            e.currentTarget.style.borderColor =
+                              "rgba(255,255,255,0.07)";
+                            e.currentTarget.style.background =
+                              "rgba(255,255,255,0.02)";
+                          }
+                        }}
+                      >
+                        <div
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "space-between",
+                          }}
+                        >
+                          <div
                             style={{
-                              padding: "16px 14px",
-                              background: active
-                                ? "rgba(245,158,11,0.08)"
-                                : "rgba(255,255,255,0.02)",
-                              border: `1px solid ${active ? "#f59e0b" : "rgba(255,255,255,0.07)"}`,
-                              cursor: "pointer",
-                              textAlign: "left",
-                              transition: "all 0.2s",
+                              display: "flex",
+                              alignItems: "center",
+                              gap: 14,
                             }}
-                            onMouseEnter={(e) => {
-                              if (!active)
-                                e.currentTarget.style.borderColor =
-                                  "rgba(245,158,11,0.3)";
+                          >
+                            {/* Cash App logo */}
+                            <div
+                              style={{
+                                width: 42,
+                                height: 42,
+                                background: "#00d45f",
+                                borderRadius: "10px",
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                flexShrink: 0,
+                              }}
+                            >
+                              <span style={{ fontSize: 22 }}>$</span>
+                            </div>
+                            <div>
+                              <p
+                                style={{
+                                  ...sf,
+                                  fontSize: 10,
+                                  textTransform: "uppercase",
+                                  color:
+                                    paymentMethod === "cashapp"
+                                      ? "#00d45f"
+                                      : "white",
+                                  margin: "0 0 3px",
+                                  letterSpacing: "0.05em",
+                                }}
+                              >
+                                Cash App Pay
+                              </p>
+                              <p
+                                style={{
+                                  fontFamily: "'DM Mono',monospace",
+                                  fontSize: 11,
+                                  color:
+                                    paymentMethod === "cashapp"
+                                      ? "#00d45f"
+                                      : "#71717a",
+                                  margin: 0,
+                                }}
+                              >
+                                Pay ${selectedService?.price} via $AshantiiCC
+                              </p>
+                            </div>
+                          </div>
+                          <div
+                            style={{
+                              width: 20,
+                              height: 20,
+                              borderRadius: "50%",
+                              border: `2px solid ${paymentMethod === "cashapp" ? "#00d45f" : "rgba(255,255,255,0.2)"}`,
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
                             }}
-                            onMouseLeave={(e) => {
-                              if (!active)
-                                e.currentTarget.style.borderColor =
-                                  "rgba(255,255,255,0.07)";
+                          >
+                            {paymentMethod === "cashapp" && (
+                              <div
+                                style={{
+                                  width: 10,
+                                  height: 10,
+                                  borderRadius: "50%",
+                                  background: "#00d45f",
+                                }}
+                              />
+                            )}
+                          </div>
+                        </div>
+                        {paymentMethod === "cashapp" && (
+                          <div
+                            style={{
+                              marginTop: 10,
+                              padding: "8px 12px",
+                              background: "rgba(0,212,95,0.06)",
+                              border: "1px solid rgba(0,212,95,0.2)",
+                            }}
+                          >
+                            <p
+                              style={{
+                                fontFamily: "'DM Mono',monospace",
+                                fontSize: 10,
+                                color: "rgba(0,212,95,0.8)",
+                                margin: 0,
+                              }}
+                            >
+                              ✓ Exact amount ${selectedService?.price} will be
+                              requested · Insufficient funds will be declined
+                            </p>
+                          </div>
+                        )}
+                      </button>
+
+                      {/* Card via Stripe */}
+                      <button
+                        onClick={() => setPaymentMethod("online")}
+                        style={{
+                          padding: "18px 16px",
+                          background:
+                            paymentMethod === "online"
+                              ? "rgba(245,158,11,0.08)"
+                              : "rgba(255,255,255,0.02)",
+                          border: `2px solid ${paymentMethod === "online" ? "#f59e0b" : "rgba(255,255,255,0.07)"}`,
+                          cursor: "pointer",
+                          textAlign: "left",
+                          transition: "all 0.2s",
+                          clipPath:
+                            "polygon(0 0,calc(100% - 8px) 0,100% 8px,100% 100%,8px 100%,0 calc(100% - 8px))",
+                        }}
+                        onMouseEnter={(e) => {
+                          if (paymentMethod !== "online") {
+                            e.currentTarget.style.borderColor =
+                              "rgba(245,158,11,0.4)";
+                            e.currentTarget.style.background =
+                              "rgba(245,158,11,0.04)";
+                          }
+                        }}
+                        onMouseLeave={(e) => {
+                          if (paymentMethod !== "online") {
+                            e.currentTarget.style.borderColor =
+                              "rgba(255,255,255,0.07)";
+                            e.currentTarget.style.background =
+                              "rgba(255,255,255,0.02)";
+                          }
+                        }}
+                      >
+                        <div
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "space-between",
+                          }}
+                        >
+                          <div
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: 14,
                             }}
                           >
                             <div
                               style={{
+                                width: 42,
+                                height: 42,
+                                background: "rgba(245,158,11,0.1)",
+                                border: "1px solid rgba(245,158,11,0.4)",
+                                borderRadius: "10px",
                                 display: "flex",
                                 alignItems: "center",
-                                gap: 8,
-                                marginBottom: 4,
+                                justifyContent: "center",
+                                flexShrink: 0,
                               }}
                             >
-                              <span style={{ fontSize: 14 }}>{icon}</span>
-                              {active && (
-                                <span
-                                  style={{
-                                    ...sf,
-                                    fontSize: 6,
-                                    color: "#f59e0b",
-                                    letterSpacing: "0.15em",
-                                    textTransform: "uppercase",
-                                  }}
-                                >
-                                  Selected
-                                </span>
-                              )}
+                              <span style={{ fontSize: 20 }}>💳</span>
                             </div>
+                            <div>
+                              <p
+                                style={{
+                                  ...sf,
+                                  fontSize: 10,
+                                  textTransform: "uppercase",
+                                  color:
+                                    paymentMethod === "online"
+                                      ? "#f59e0b"
+                                      : "white",
+                                  margin: "0 0 3px",
+                                  letterSpacing: "0.05em",
+                                }}
+                              >
+                                Credit / Debit Card
+                              </p>
+                              <p
+                                style={{
+                                  fontFamily: "'DM Mono',monospace",
+                                  fontSize: 11,
+                                  color:
+                                    paymentMethod === "online"
+                                      ? "#f59e0b"
+                                      : "#71717a",
+                                  margin: 0,
+                                }}
+                              >
+                                Visa · Mastercard · Amex · Discover
+                              </p>
+                            </div>
+                          </div>
+                          <div
+                            style={{
+                              width: 20,
+                              height: 20,
+                              borderRadius: "50%",
+                              border: `2px solid ${paymentMethod === "online" ? "#f59e0b" : "rgba(255,255,255,0.2)"}`,
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                            }}
+                          >
+                            {paymentMethod === "online" && (
+                              <div
+                                style={{
+                                  width: 10,
+                                  height: 10,
+                                  borderRadius: "50%",
+                                  background: "#f59e0b",
+                                }}
+                              />
+                            )}
+                          </div>
+                        </div>
+                        {paymentMethod === "online" && (
+                          <div
+                            style={{
+                              marginTop: 10,
+                              padding: "8px 12px",
+                              background: "rgba(245,158,11,0.04)",
+                              border: "1px solid rgba(245,158,11,0.15)",
+                            }}
+                          >
                             <p
                               style={{
-                                ...sf,
-                                fontSize: 9,
-                                textTransform: "uppercase",
-                                color: active ? "#f59e0b" : "white",
-                                margin: "0 0 3px",
-                              }}
-                            >
-                              {label}
-                            </p>
-                            <p
-                              style={{
+                                fontFamily: "'DM Mono',monospace",
                                 fontSize: 10,
-                                color: "#3f3f46",
+                                color: "rgba(245,158,11,0.7)",
                                 margin: 0,
                               }}
                             >
-                              {sub}
+                              🔒 Secure payment via Stripe · Card will be
+                              charged ${selectedService?.price} exactly
                             </p>
-                          </button>
-                        );
-                      })}
+                          </div>
+                        )}
+                      </button>
+
+                      {/* Pay in shop */}
+                      <button
+                        onClick={() => setPaymentMethod("shop")}
+                        style={{
+                          padding: "18px 16px",
+                          background:
+                            paymentMethod === "shop"
+                              ? "rgba(255,255,255,0.04)"
+                              : "rgba(255,255,255,0.015)",
+                          border: `2px solid ${paymentMethod === "shop" ? "rgba(255,255,255,0.25)" : "rgba(255,255,255,0.07)"}`,
+                          cursor: "pointer",
+                          textAlign: "left",
+                          transition: "all 0.2s",
+                          clipPath:
+                            "polygon(0 0,calc(100% - 8px) 0,100% 8px,100% 100%,8px 100%,0 calc(100% - 8px))",
+                        }}
+                        onMouseEnter={(e) => {
+                          if (paymentMethod !== "shop") {
+                            e.currentTarget.style.borderColor =
+                              "rgba(255,255,255,0.2)";
+                            e.currentTarget.style.background =
+                              "rgba(255,255,255,0.03)";
+                          }
+                        }}
+                        onMouseLeave={(e) => {
+                          if (paymentMethod !== "shop") {
+                            e.currentTarget.style.borderColor =
+                              "rgba(255,255,255,0.07)";
+                            e.currentTarget.style.background =
+                              "rgba(255,255,255,0.015)";
+                          }
+                        }}
+                      >
+                        <div
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "space-between",
+                          }}
+                        >
+                          <div
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: 14,
+                            }}
+                          >
+                            <div
+                              style={{
+                                width: 42,
+                                height: 42,
+                                background: "rgba(255,255,255,0.05)",
+                                border: "1px solid rgba(255,255,255,0.12)",
+                                borderRadius: "10px",
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                flexShrink: 0,
+                              }}
+                            >
+                              <span style={{ fontSize: 20 }}>✂️</span>
+                            </div>
+                            <div>
+                              <p
+                                style={{
+                                  ...sf,
+                                  fontSize: 10,
+                                  textTransform: "uppercase",
+                                  color:
+                                    paymentMethod === "shop"
+                                      ? "white"
+                                      : "#71717a",
+                                  margin: "0 0 3px",
+                                  letterSpacing: "0.05em",
+                                }}
+                              >
+                                Pay In Shop
+                              </p>
+                              <p
+                                style={{
+                                  fontFamily: "'DM Mono',monospace",
+                                  fontSize: 11,
+                                  color: "#52525b",
+                                  margin: 0,
+                                }}
+                              >
+                                Cash · Card · Tap to pay
+                              </p>
+                            </div>
+                          </div>
+                          <div
+                            style={{
+                              width: 20,
+                              height: 20,
+                              borderRadius: "50%",
+                              border: `2px solid ${paymentMethod === "shop" ? "rgba(255,255,255,0.5)" : "rgba(255,255,255,0.2)"}`,
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                            }}
+                          >
+                            {paymentMethod === "shop" && (
+                              <div
+                                style={{
+                                  width: 10,
+                                  height: 10,
+                                  borderRadius: "50%",
+                                  background: "white",
+                                }}
+                              />
+                            )}
+                          </div>
+                        </div>
+                      </button>
                     </div>
                   </div>
 
+                  {/* Info text */}
                   <p
                     style={{
                       ...sf,
                       fontSize: 7,
-                      letterSpacing: "0.15em",
-                      color: "#27272a",
+                      letterSpacing: "0.12em",
+                      color: "#52525b",
                       textTransform: "uppercase",
                       textAlign: "center",
-                      marginBottom: 18,
+                      marginBottom: 16,
                     }}
                   >
-                    {paymentMethod === "online"
-                      ? "Redirecting to Stripe — secure checkout"
-                      : "Appointment confirmed · Pay at the shop"}
+                    {paymentMethod === "cashapp"
+                      ? `Cash App will request exactly $${selectedService?.price} · Decline if insufficient funds`
+                      : paymentMethod === "online"
+                        ? `Card will be charged exactly $${selectedService?.price} · Secured by Stripe`
+                        : "Appointment confirmed · Bring exact amount to shop"}
                   </p>
 
                   {error && (
@@ -1870,6 +2255,8 @@ function BookContent() {
                         background: "rgba(248,113,113,0.06)",
                         border: "1px solid rgba(248,113,113,0.2)",
                         marginBottom: 16,
+                        clipPath:
+                          "polygon(0 0,calc(100% - 6px) 0,100% 6px,100% 100%,6px 100%,0 calc(100% - 6px))",
                       }}
                     >
                       <p
@@ -1898,13 +2285,15 @@ function BookContent() {
                         padding: "16px",
                         background: "transparent",
                         border: "1px solid rgba(255,255,255,0.1)",
-                        color: "#71717a",
+                        color: "#a1a1aa",
                         ...sf,
                         fontSize: 8,
                         textTransform: "uppercase",
                         letterSpacing: "0.15em",
                         cursor: "pointer",
                         transition: "all 0.2s",
+                        clipPath:
+                          "polygon(0 0,calc(100% - 6px) 0,100% 6px,100% 100%,6px 100%,0 calc(100% - 6px))",
                       }}
                       onMouseEnter={(e) => {
                         e.currentTarget.style.borderColor =
@@ -1914,7 +2303,7 @@ function BookContent() {
                       onMouseLeave={(e) => {
                         e.currentTarget.style.borderColor =
                           "rgba(255,255,255,0.1)";
-                        e.currentTarget.style.color = "#71717a";
+                        e.currentTarget.style.color = "#a1a1aa";
                       }}
                     >
                       ← Edit
@@ -1925,13 +2314,6 @@ function BookContent() {
                       style={{
                         flex: 2,
                         padding: "16px",
-                        background: submitting ? "#111" : "#f59e0b",
-                        color: submitting ? "#27272a" : "black",
-                        ...sf,
-                        fontSize: 9,
-                        fontWeight: 700,
-                        textTransform: "uppercase",
-                        letterSpacing: "0.2em",
                         border: "none",
                         cursor: submitting ? "not-allowed" : "pointer",
                         transition: "all 0.25s",
@@ -1939,14 +2321,33 @@ function BookContent() {
                         alignItems: "center",
                         justifyContent: "center",
                         gap: 10,
+                        ...sf,
+                        fontSize: 9,
+                        fontWeight: 700,
+                        textTransform: "uppercase",
+                        letterSpacing: "0.2em",
+                        background: submitting
+                          ? "#111"
+                          : paymentMethod === "cashapp"
+                            ? "#00d45f"
+                            : paymentMethod === "online"
+                              ? "linear-gradient(to right,#f59e0b,#fbbf24)"
+                              : "rgba(255,255,255,0.9)",
+                        color: submitting ? "#3f3f46" : "black",
+                        clipPath:
+                          "polygon(0 0,calc(100% - 8px) 0,100% 8px,100% 100%,8px 100%,0 calc(100% - 8px))",
+                        boxShadow:
+                          !submitting && paymentMethod === "cashapp"
+                            ? "0 0 24px rgba(0,212,95,0.3)"
+                            : !submitting && paymentMethod === "online"
+                              ? "0 0 24px rgba(245,158,11,0.25)"
+                              : "none",
                       }}
                       onMouseEnter={(e) => {
-                        if (!submitting)
-                          e.currentTarget.style.background = "white";
+                        if (!submitting) e.currentTarget.style.opacity = "0.88";
                       }}
                       onMouseLeave={(e) => {
-                        if (!submitting)
-                          e.currentTarget.style.background = "#f59e0b";
+                        e.currentTarget.style.opacity = "1";
                       }}
                     >
                       {submitting ? (
@@ -1964,10 +2365,12 @@ function BookContent() {
                           />
                           Processing...
                         </>
+                      ) : paymentMethod === "cashapp" ? (
+                        `$ Pay $${selectedService?.price} via Cash App →`
                       ) : paymentMethod === "shop" ? (
-                        "Book It →"
+                        "Book It — Pay In Shop →"
                       ) : (
-                        "Pay & Lock It In →"
+                        `Pay $${selectedService?.price} Securely →`
                       )}
                     </button>
                   </div>

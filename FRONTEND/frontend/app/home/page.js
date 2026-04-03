@@ -406,7 +406,7 @@ function PersonaSelect({ barbers, book, isMobile }) {
                   style={{
                     ...M,
                     fontSize: 12,
-                    color: "#52525b",
+                    color: "#a1a1aa",
                     lineHeight: 1.7,
                     marginBottom: 16,
                   }}
@@ -431,7 +431,7 @@ function PersonaSelect({ barbers, book, isMobile }) {
                       style={{
                         ...M,
                         fontSize: 7,
-                        color: "#52525b",
+                        color: "#a1a1aa",
                         letterSpacing: "0.3em",
                         textTransform: "uppercase",
                         width: 64,
@@ -524,7 +524,7 @@ function PersonaSelect({ barbers, book, isMobile }) {
                   style={{
                     padding: "16px 18px",
                     background: "transparent",
-                    color: "#52525b",
+                    color: "#a1a1aa",
                     border: `1px solid rgba(255,255,255,0.1)`,
                     cursor: "pointer",
                     ...M,
@@ -679,7 +679,7 @@ function PersonaSelect({ barbers, book, isMobile }) {
                         fontSize: 13,
                         fontWeight: 900,
                         textTransform: "uppercase",
-                        color: i === sel ? "white" : "#3f3f46",
+                        color: i === sel ? "white" : "#a1a1aa",
                         letterSpacing: "-0.02em",
                         transition: "color 0.25s",
                       }}
@@ -732,7 +732,7 @@ function PersonaSelect({ barbers, book, isMobile }) {
                   style={{
                     ...M,
                     fontSize: 9,
-                    color: "#3f3f46",
+                    color: "#a1a1aa",
                     lineHeight: 1.8,
                   }}
                 >
@@ -1095,7 +1095,7 @@ function PersonaSelect({ barbers, book, isMobile }) {
                         style={{
                           ...M,
                           fontSize: 7,
-                          color: "#52525b",
+                          color: "#a1a1aa",
                           letterSpacing: "0.2em",
                           textTransform: "uppercase",
                           width: 72,
@@ -1187,7 +1187,7 @@ function PersonaSelect({ barbers, book, isMobile }) {
                         style={{
                           ...M,
                           fontSize: 7,
-                          color: "#3f3f46",
+                          color: "#a1a1aa",
                           letterSpacing: "0.25em",
                           textTransform: "uppercase",
                         }}
@@ -1249,7 +1249,7 @@ function PersonaSelect({ barbers, book, isMobile }) {
                       style={{
                         padding: "17px 22px",
                         background: "transparent",
-                        color: "#52525b",
+                        color: "#a1a1aa",
                         ...D,
                         fontSize: 9,
                         letterSpacing: "0.2em",
@@ -1270,7 +1270,7 @@ function PersonaSelect({ barbers, book, isMobile }) {
                       onMouseLeave={(e) => {
                         e.currentTarget.style.borderColor =
                           "rgba(255,255,255,0.1)";
-                        e.currentTarget.style.color = "#52525b";
+                        e.currentTarget.style.color = "#a1a1aa";
                       }}
                     >
                       ALL →
@@ -1303,7 +1303,7 @@ function PersonaSelect({ barbers, book, isMobile }) {
                       style={{
                         padding: "17px 22px",
                         background: "transparent",
-                        color: "#52525b",
+                        color: "#a1a1aa",
                         border: `1px solid rgba(255,255,255,0.1)`,
                         cursor: "pointer",
                         ...D,
@@ -1318,7 +1318,7 @@ function PersonaSelect({ barbers, book, isMobile }) {
                           "rgba(255,255,255,0.3)";
                       }}
                       onMouseLeave={(e) => {
-                        e.currentTarget.style.color = "#52525b";
+                        e.currentTarget.style.color = "#a1a1aa";
                         e.currentTarget.style.borderColor =
                           "rgba(255,255,255,0.1)";
                       }}
@@ -1715,8 +1715,8 @@ function GalleryCarousel({ isMobile }) {
       <p
         style={{
           ...M,
-          fontSize: 8,
-          color: "#27272a",
+          fontSize: 9,
+          color: "#a1a1aa",
           textAlign: "center",
           letterSpacing: "0.4em",
           textTransform: "uppercase",
@@ -2133,8 +2133,8 @@ export default function HomePage() {
                   href={h}
                   style={{
                     ...M,
-                    fontSize: 10,
-                    color: "#52525b",
+                    fontSize: 11,
+                    color: "#d4d4d4",
                     letterSpacing: "0.28em",
                     textTransform: "uppercase",
                     textDecoration: "none",
@@ -2142,7 +2142,7 @@ export default function HomePage() {
                   }}
                   onMouseEnter={(e) => (e.currentTarget.style.color = A)}
                   onMouseLeave={(e) =>
-                    (e.currentTarget.style.color = "#52525b")
+                    (e.currentTarget.style.color = "#a1a1aa")
                   }
                 >
                   {l}
@@ -2213,7 +2213,7 @@ export default function HomePage() {
                       style={{
                         ...D,
                         fontSize: 7.5,
-                        color: "#52525b",
+                        color: "#a1a1aa",
                         border: "1px solid rgba(255,255,255,0.1)",
                         padding: "9px 16px",
                         letterSpacing: "0.2em",
@@ -2226,7 +2226,7 @@ export default function HomePage() {
                         e.currentTarget.style.borderColor = `${A}44`;
                       }}
                       onMouseLeave={(e) => {
-                        e.currentTarget.style.color = "#52525b";
+                        e.currentTarget.style.color = "#a1a1aa";
                         e.currentTarget.style.borderColor =
                           "rgba(255,255,255,0.1)";
                       }}
@@ -2343,13 +2343,13 @@ export default function HomePage() {
                   fontSize: 10,
                   letterSpacing: "0.3em",
                   textTransform: "uppercase",
-                  color: "#52525b",
+                  color: "#a1a1aa",
                   textDecoration: "none",
                   borderBottom: "1px solid rgba(255,255,255,0.04)",
                   transition: "color 0.2s",
                 }}
                 onMouseEnter={(e) => (e.currentTarget.style.color = A)}
-                onMouseLeave={(e) => (e.currentTarget.style.color = "#52525b")}
+                onMouseLeave={(e) => (e.currentTarget.style.color = "#a1a1aa")}
               >
                 {l}
               </a>
@@ -2430,7 +2430,7 @@ export default function HomePage() {
                     fontSize: 7,
                     letterSpacing: "0.2em",
                     textTransform: "uppercase",
-                    color: "#52525b",
+                    color: "#a1a1aa",
                     border: "1px solid rgba(255,255,255,0.1)",
                     padding: "13px",
                     textAlign: "center",
@@ -2521,7 +2521,7 @@ export default function HomePage() {
                 ...M,
                 fontSize: 8,
                 letterSpacing: "0.6em",
-                color: "#27272a",
+                color: "#52525b",
                 textTransform: "uppercase",
                 whiteSpace: "nowrap",
               }}
@@ -2537,8 +2537,8 @@ export default function HomePage() {
               top: 68,
               right: "clamp(18px,5vw,44px)",
               ...M,
-              fontSize: 11,
-              color: "#27272a",
+              fontSize: 12,
+              color: "#a1a1aa",
               letterSpacing: "0.28em",
             }}
           >
@@ -2639,8 +2639,8 @@ export default function HomePage() {
                   <span
                     style={{
                       ...M,
-                      fontSize: 8,
-                      color: "#27272a",
+                      fontSize: 9,
+                      color: "#a1a1aa",
                       letterSpacing: "0.2em",
                     }}
                   >
@@ -2697,7 +2697,7 @@ export default function HomePage() {
                 style={{
                   ...M,
                   fontSize: "clamp(12px,1.3vw,14px)",
-                  color: "#71717a",
+                  color: "#a1a1aa",
                   lineHeight: 1.85,
                   maxWidth: 400,
                   flex: 1,
@@ -2781,8 +2781,8 @@ export default function HomePage() {
                   <p
                     style={{
                       ...M,
-                      fontSize: 9,
-                      color: "#a1a1aa",
+                      fontSize: 10,
+                      color: "#d4d4d4",
                       letterSpacing: "0.1em",
                       marginBottom: 2,
                     }}
@@ -2792,8 +2792,8 @@ export default function HomePage() {
                   <p
                     style={{
                       ...M,
-                      fontSize: 8,
-                      color: "#3f3f46",
+                      fontSize: 9,
+                      color: "#d4d4d4",
                       letterSpacing: "0.2em",
                     }}
                   >
@@ -2823,8 +2823,8 @@ export default function HomePage() {
             <span
               style={{
                 ...M,
-                fontSize: 8,
-                color: "#27272a",
+                fontSize: 9,
+                color: "#a1a1aa",
                 letterSpacing: "0.5em",
                 textTransform: "uppercase",
               }}
@@ -3013,8 +3013,8 @@ export default function HomePage() {
                 <p
                   style={{
                     ...M,
-                    fontSize: 13,
-                    color: "#71717a",
+                    fontSize: 14,
+                    color: "#d4d4d4",
                     lineHeight: 1.8,
                     marginBottom: 22,
                   }}
@@ -3085,7 +3085,7 @@ export default function HomePage() {
                       style={{
                         ...M,
                         fontSize: 9,
-                        color: hovSvc === svc.name ? A : "#3f3f46",
+                        color: hovSvc === svc.name ? A : "#a1a1aa",
                         minWidth: 28,
                         transition: "color 0.2s",
                       }}
@@ -3098,7 +3098,7 @@ export default function HomePage() {
                         fontSize: "clamp(8px,1.2vw,11px)",
                         textTransform: "uppercase",
                         fontWeight: 700,
-                        color: hovSvc === svc.name ? "white" : "#71717a",
+                        color: hovSvc === svc.name ? "white" : "#a1a1aa",
                         transition: "color 0.2s",
                         overflow: "hidden",
                         textOverflow: "ellipsis",
@@ -3132,7 +3132,7 @@ export default function HomePage() {
                       flexShrink: 0,
                     }}
                   >
-                    <span style={{ ...M, fontSize: 9, color: "#3f3f46" }}>
+                    <span style={{ ...M, fontSize: 10, color: "#d4d4d4" }}>
                       {svc.dur}
                     </span>
                     <span
@@ -3279,8 +3279,8 @@ export default function HomePage() {
                 <p
                   style={{
                     ...M,
-                    fontSize: 12,
-                    color: "#52525b",
+                    fontSize: 13,
+                    color: "#d4d4d4",
                     lineHeight: 1.8,
                     marginBottom: 28,
                   }}
@@ -3387,8 +3387,8 @@ export default function HomePage() {
                         <p
                           style={{
                             ...M,
-                            fontSize: 9,
-                            color: "#52525b",
+                            fontSize: 10,
+                            color: "#d4d4d4",
                             letterSpacing: "0.2em",
                           }}
                         >
@@ -3542,8 +3542,8 @@ export default function HomePage() {
                         <p
                           style={{
                             ...M,
-                            fontSize: 8,
-                            color: "#52525b",
+                            fontSize: 9,
+                            color: "#d4d4d4",
                             letterSpacing: "0.4em",
                             textTransform: "uppercase",
                             marginBottom: 4,
@@ -3554,8 +3554,8 @@ export default function HomePage() {
                         <p
                           style={{
                             ...M,
-                            fontSize: 13,
-                            color: "#a1a1aa",
+                            fontSize: 14,
+                            color: "#d4d4d4",
                             lineHeight: 1.5,
                           }}
                         >
@@ -3663,7 +3663,7 @@ export default function HomePage() {
                     >
                       HEADZ UP BARBERSHOP
                     </p>
-                    <p style={{ ...M, fontSize: 11, color: "#71717a" }}>
+                    <p style={{ ...M, fontSize: 12, color: "#d4d4d4" }}>
                       4 Hub Dr, Hattiesburg MS 39402
                     </p>
                   </div>
@@ -3673,8 +3673,8 @@ export default function HomePage() {
                       bottom: 10,
                       right: 14,
                       ...M,
-                      fontSize: 8,
-                      color: "#27272a",
+                      fontSize: 9,
+                      color: "#a1a1aa",
                       letterSpacing: "0.2em",
                     }}
                   >
@@ -3841,8 +3841,8 @@ export default function HomePage() {
             <p
               style={{
                 ...M,
-                fontSize: 9,
-                color: "#27272a",
+                fontSize: 10,
+                color: "#a1a1aa",
                 letterSpacing: "0.3em",
                 textTransform: "uppercase",
               }}
@@ -3861,8 +3861,8 @@ export default function HomePage() {
                   onClick={fn || undefined}
                   style={{
                     ...M,
-                    fontSize: 9,
-                    color: "#3f3f46",
+                    fontSize: 10,
+                    color: "#d4d4d4",
                     letterSpacing: "0.2em",
                     textTransform: "uppercase",
                     transition: "color 0.2s",
@@ -3870,7 +3870,7 @@ export default function HomePage() {
                   }}
                   onMouseEnter={(e) => (e.currentTarget.style.color = A)}
                   onMouseLeave={(e) =>
-                    (e.currentTarget.style.color = "#3f3f46")
+                    (e.currentTarget.style.color = "#a1a1aa")
                   }
                 >
                   {label}
