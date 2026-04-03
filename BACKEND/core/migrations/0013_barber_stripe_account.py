@@ -2,7 +2,7 @@ from django.db import migrations, models
 
 class Migration(migrations.Migration):
     dependencies = [
-        ('core', '0001_initial'),
+        ('core', '0012_userprofile_security'),
     ]
     operations = [
         migrations.AddField(
