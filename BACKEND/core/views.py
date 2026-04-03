@@ -673,7 +673,202 @@ class CheckUsernameView(APIView):
         return Response({"exists": exists})
 
 
+SECURITY_QUESTIONS = [
+    "What was the name of your first pet?",
+    "What city were you born in?",
+    "What is your mother's maiden name?",
+    "What was the name of your elementary school?",
+    "What was your childhood nickname?",
+    "What is the name of the street you grew up on?",
+    "What was the make of your first car?",
+    "What is your oldest sibling's middle name?",
+]
+
+
+class SetSecurityQuestionView(APIView):
+    """
+    Authenticated — let user save their security question and answer.
+    Called during registration or from account settings.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        question = request.data.get("question", "").strip()
+        answer   = request.data.get("answer",   "").strip()
+        if not question or not answer:
+            return Response({"error": "Question and answer required"}, status=400)
+        profile, _ = UserProfile.objects.get_or_create(
+            user=request.user,
+            defaults={"name": request.user.username}
+        )
+        profile.security_question = question
+        profile.security_answer   = answer.lower().strip()
+        profile.save(update_fields=["security_question", "security_answer"])
+        return Response({"message": "Security question saved"})
+
+    def get(self, request):
+        """Returns the list of available questions and current question (no answer)."""
+        profile = getattr(request.user, "profile", None)
+        return Response({
+            "questions":        SECURITY_QUESTIONS,
+            "current_question": profile.security_question if profile else "",
+            "has_answer":       bool(profile and profile.security_answer),
+        })
+
+
+class RecoveryStep1View(APIView):
+    """
+    Step 1 — find the account by username or email.
+    Returns the security question for that account (if set).
+    """
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        identifier = request.data.get("identifier", "").strip()
+        if not identifier:
+            return Response({"error": "Enter your username or email"}, status=400)
+
+        user = (
+            User.objects.filter(username__iexact=identifier).first()
+            or User.objects.filter(email__iexact=identifier).first()
+        )
+        if not user:
+            return Response({"error": "No account found with that username or email"}, status=404)
+
+        profile = getattr(user, "profile", None)
+        if not profile or not profile.security_question:
+            return Response({
+                "error": "This account has no security question set. Contact the shop owner.",
+                "no_question": True,
+            }, status=400)
+
+        return Response({
+            "user_id":          user.pk,
+            "username":         user.username,
+            "security_question": profile.security_question,
+        })
+
+
+class RecoveryStep1ByQuestionView(APIView):
+    """
+    Step 1 alternate — user doesn't remember username OR email.
+    They provide just the security question answer to find their account.
+    Only works if answers are unique — otherwise returns all matching usernames.
+    """
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        answer   = request.data.get("answer", "").strip().lower()
+        question = request.data.get("question", "").strip()
+        if not answer or not question:
+            return Response({"error": "Question and answer required"}, status=400)
+
+        profiles = UserProfile.objects.filter(
+            security_question__iexact=question,
+            security_answer__iexact=answer,
+        ).select_related("user")
+
+        if not profiles.exists():
+            return Response({"error": "No account found with that answer"}, status=404)
+
+        # Return matching usernames so user can pick theirs
+        matches = [{"username": p.user.username, "user_id": p.user.pk} for p in profiles]
+        return Response({"matches": matches})
+
+
+class RecoveryStep2View(APIView):
+    """
+    Step 2 — verify security question answer.
+    Returns a reset token if correct.
+    """
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        user_id = request.data.get("user_id")
+        answer  = request.data.get("answer", "").strip().lower()
+        if not user_id or not answer:
+            return Response({"error": "user_id and answer required"}, status=400)
+
+        try:
+            user = User.objects.get(pk=user_id)
+        except User.DoesNotExist:
+            return Response({"error": "Account not found"}, status=404)
+
+        profile = getattr(user, "profile", None)
+        if not profile or not profile.security_answer:
+            return Response({"error": "No security question on this account"}, status=400)
+
+        if profile.security_answer.strip().lower() != answer:
+            return Response({"error": "Incorrect answer. Try again."}, status=400)
+
+        # Correct — generate a reset token
+        from django.contrib.auth.tokens import default_token_generator
+        token = default_token_generator.make_token(user)
+        return Response({
+            "token":    token,
+            "user_id":  user.pk,
+            "username": user.username,
+            "message":  "Answer correct — you can now reset your credentials",
+        })
+
+
+class RecoveryStep3View(APIView):
+    """
+    Step 3 — reset password and/or username using the verified token.
+    """
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        user_id      = request.data.get("user_id")
+        token        = request.data.get("token", "").strip()
+        new_password = request.data.get("new_password", "").strip()
+        new_username = request.data.get("new_username", "").strip()
+
+        if not user_id or not token:
+            return Response({"error": "user_id and token required"}, status=400)
+        if not new_password and not new_username:
+            return Response({"error": "Provide a new password or new username"}, status=400)
+
+        try:
+            user = User.objects.get(pk=user_id)
+        except User.DoesNotExist:
+            return Response({"error": "Account not found"}, status=404)
+
+        from django.contrib.auth.tokens import default_token_generator
+        if not default_token_generator.check_token(user, token):
+            return Response({"error": "Token expired. Start over."}, status=400)
+
+        changes = []
+
+        if new_username and new_username != user.username:
+            if User.objects.filter(username__iexact=new_username).exclude(pk=user.pk).exists():
+                return Response({"error": f"Username '{new_username}' is already taken"}, status=400)
+            user.username = new_username
+            changes.append("username")
+
+        if new_password:
+            if len(new_password) < 6:
+                return Response({"error": "Password must be at least 6 characters"}, status=400)
+            user.set_password(new_password)
+            changes.append("password")
+
+        user.save()
+        return Response({
+            "message":  f"Successfully updated: {', '.join(changes)}",
+            "username": user.username,
+        })
+
+
+class SecurityQuestionsListView(APIView):
+    """Returns the list of security questions for dropdowns."""
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        return Response({"questions": SECURITY_QUESTIONS})
+
+
 class PasswordResetView(APIView):
+    """Legacy — kept for backwards compatibility."""
     permission_classes = [AllowAny]
 
     def post(self, request):
@@ -692,6 +887,7 @@ class PasswordResetView(APIView):
 
 
 class PasswordResetConfirmView(APIView):
+    """Legacy — kept for backwards compatibility."""
     permission_classes = [AllowAny]
 
     def post(self, request):
@@ -714,9 +910,6 @@ class PasswordResetConfirmView(APIView):
         user.set_password(new_password)
         user.save()
         return Response({"message": "Password updated successfully"})
-
-
-# ── Stripe Connect ────────────────────────────────────────────────────────────
 
 class StripeConnectOnboardView(APIView):
     """

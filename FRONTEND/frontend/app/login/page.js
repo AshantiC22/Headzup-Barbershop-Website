@@ -198,15 +198,33 @@ function LoginContent() {
   const [regPass2, setRegPass2] = useState("");
   const [showRegPw, setShowRegPw] = useState(false);
   const [fieldErrors, setFieldErrors] = useState({});
+  // Security question during registration
+  const [regSecQ, setRegSecQ] = useState("");
+  const [regSecA, setRegSecA] = useState("");
+  const [secQuestions, setSecQuestions] = useState([]);
 
-  // Forgot fields
-  const [forgotId, setForgotId] = useState("");
-  const [forgotNew, setForgotNew] = useState("");
-  const [forgotCode, setForgotCode] = useState("");
-  const [forgotStep, setForgotStep] = useState(1);
+  // Recovery state — 3 steps
+  const [recStep, setRecStep] = useState(1); // 1=find account | 2=answer question | 3=reset
+  const [recId, setRecId] = useState(""); // username or email entered
+  const [recUserId, setRecUserId] = useState(null);
+  const [recUsername, setRecUsername] = useState("");
+  const [recQuestion, setRecQuestion] = useState("");
+  const [recAnswer, setRecAnswer] = useState("");
+  const [recToken, setRecToken] = useState("");
+  const [recNewPass, setRecNewPass] = useState("");
+  const [recNewUser, setRecNewUser] = useState("");
+  const [recShowPass, setRecShowPass] = useState(false);
+  // "I forgot both" mode
+  const [recByQ, setRecByQ] = useState(false);
+  const [recPickQ, setRecPickQ] = useState("");
+  const [recMatches, setRecMatches] = useState([]);
 
   useEffect(() => {
     if (searchParams.get("expired") === "true") setExpired(true);
+    // Load security questions for registration
+    API.get("security-questions/")
+      .then((r) => setSecQuestions(r.data.questions || []))
+      .catch(() => {});
   }, [searchParams]);
 
   const handleLogin = async () => {
@@ -249,6 +267,8 @@ function LoginContent() {
     if (ee) errs.regEmail = ee;
     if (ep) errs.regPass = ep;
     if (regPass !== regPass2) errs.regPass2 = "Passwords don't match";
+    if (!regSecQ) errs.regSecQ = "Choose a security question";
+    if (!regSecA.trim()) errs.regSecA = "Enter your security answer";
     if (Object.keys(errs).length) {
       setFieldErrors(errs);
       return;
@@ -267,6 +287,13 @@ function LoginContent() {
       });
       localStorage.setItem("access", res.data.access);
       localStorage.setItem("refresh", res.data.refresh);
+      // Save security question — authenticated now
+      try {
+        await API.post("security-question/set/", {
+          question: regSecQ,
+          answer: regSecA.trim(),
+        });
+      } catch {}
       router.replace("/book");
     } catch (e) {
       const d = e.response?.data || {};
@@ -278,37 +305,122 @@ function LoginContent() {
     }
   };
 
-  const handleForgot = async () => {
+  // Recovery handlers
+  const resetRecovery = () => {
+    setRecStep(1);
+    setRecId("");
+    setRecUserId(null);
+    setRecUsername("");
+    setRecQuestion("");
+    setRecAnswer("");
+    setRecToken("");
+    setRecNewPass("");
+    setRecNewUser("");
+    setRecByQ(false);
+    setRecPickQ("");
+    setRecMatches([]);
     setError("");
     setSuccess("");
+  };
+
+  const handleRecStep1 = async () => {
+    setError("");
     setLoading(true);
     try {
-      if (forgotStep === 1) {
-        await API.post("password-reset/", { identifier: forgotId.trim() });
-        setSuccess("Reset code sent to your email.");
-        setForgotStep(2);
-      } else {
-        await API.post("password-reset/confirm/", {
-          identifier: forgotId.trim(),
-          code: forgotCode.trim(),
-          new_password: forgotNew,
+      if (recByQ) {
+        // Find by security question answer
+        if (!recPickQ || !recAnswer.trim()) {
+          setError("Choose a question and enter your answer");
+          setLoading(false);
+          return;
+        }
+        const r = await API.post("recovery/step1-by-question/", {
+          question: recPickQ,
+          answer: recAnswer.trim(),
         });
-        setSuccess("Password updated. Sign in below.");
-        setForgotStep(1);
-        setForgotId("");
-        setForgotCode("");
-        setForgotNew("");
-        setTimeout(() => {
-          setMode("login");
-          setSuccess("");
-        }, 2000);
+        setRecMatches(r.data.matches || []);
+        if (r.data.matches?.length === 1) {
+          setRecUserId(r.data.matches[0].user_id);
+          setRecUsername(r.data.matches[0].username);
+          setRecToken("verified"); // already answered
+          setRecStep(3);
+        } else {
+          setRecStep(2); // show account picker
+        }
+      } else {
+        if (!recId.trim()) {
+          setError("Enter your username or email");
+          setLoading(false);
+          return;
+        }
+        const r = await API.post("recovery/step1/", {
+          identifier: recId.trim(),
+        });
+        setRecUserId(r.data.user_id);
+        setRecUsername(r.data.username);
+        setRecQuestion(r.data.security_question);
+        setRecStep(2);
       }
-    } catch {
-      setError("Could not process request. Check your details.");
+    } catch (e) {
+      setError(e.response?.data?.error || "Account not found");
     } finally {
       setLoading(false);
     }
   };
+
+  const handleRecStep2 = async () => {
+    setError("");
+    setLoading(true);
+    try {
+      const r = await API.post("recovery/step2/", {
+        user_id: recUserId,
+        answer: recAnswer.trim(),
+      });
+      setRecToken(r.data.token);
+      setRecNewUser(recUsername); // pre-fill username
+      setRecStep(3);
+      setSuccess("✓ Correct! Now set your new credentials.");
+    } catch (e) {
+      setError(e.response?.data?.error || "Incorrect answer");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRecStep3 = async () => {
+    setError("");
+    setLoading(true);
+    if (!recNewPass && !recNewUser) {
+      setError("Enter a new password or new username");
+      setLoading(false);
+      return;
+    }
+    if (recNewPass && recNewPass.length < 6) {
+      setError("Password must be at least 6 characters");
+      setLoading(false);
+      return;
+    }
+    try {
+      const r = await API.post("recovery/step3/", {
+        user_id: recUserId,
+        token: recToken,
+        new_password: recNewPass || undefined,
+        new_username: recNewUser !== recUsername ? recNewUser : undefined,
+      });
+      setSuccess(`✓ ${r.data.message} — Sign in below.`);
+      setTimeout(() => {
+        setMode("login");
+        resetRecovery();
+      }, 2200);
+    } catch (e) {
+      setError(e.response?.data?.error || "Could not update. Try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Legacy — kept so old code paths don't break
+  const handleForgot = handleRecStep1;
 
   const strength = getStrength(regPass);
   const strengthColors = [
@@ -953,6 +1065,85 @@ function LoginContent() {
                   autoComplete="new-password"
                 />
 
+                {/* Security Question */}
+                <div>
+                  <p
+                    style={{
+                      ...sf,
+                      fontSize: 7,
+                      letterSpacing: "0.3em",
+                      color: "#a1a1aa",
+                      textTransform: "uppercase",
+                      marginBottom: 8,
+                    }}
+                  >
+                    Security Question
+                  </p>
+                  <p
+                    style={{
+                      ...mono,
+                      fontSize: 10,
+                      color: "#52525b",
+                      marginBottom: 10,
+                      lineHeight: 1.6,
+                    }}
+                  >
+                    Used to recover your account if you forget your password
+                  </p>
+                  <select
+                    value={regSecQ}
+                    onChange={(e) => setRegSecQ(e.target.value)}
+                    style={{
+                      width: "100%",
+                      background: "#080808",
+                      border: `1px solid ${fieldErrors.regSecQ ? "#f87171" : "rgba(255,255,255,0.1)"}`,
+                      padding: "14px 12px",
+                      color: regSecQ ? "white" : "#52525b",
+                      fontSize: 14,
+                      outline: "none",
+                      marginBottom: 10,
+                      fontFamily: "'DM Mono',monospace",
+                      cursor: "pointer",
+                    }}
+                    onFocus={(e) => (e.target.style.borderColor = "#f59e0b")}
+                    onBlur={(e) =>
+                      (e.target.style.borderColor = fieldErrors.regSecQ
+                        ? "#f87171"
+                        : "rgba(255,255,255,0.1)")
+                    }
+                  >
+                    <option value="" disabled>
+                      Choose a question...
+                    </option>
+                    {secQuestions.map((q) => (
+                      <option key={q} value={q}>
+                        {q}
+                      </option>
+                    ))}
+                  </select>
+                  {fieldErrors.regSecQ && (
+                    <p
+                      style={{
+                        ...mono,
+                        fontSize: 10,
+                        color: "#f87171",
+                        marginBottom: 6,
+                      }}
+                    >
+                      ⚠ {fieldErrors.regSecQ}
+                    </p>
+                  )}
+                  {regSecQ && (
+                    <Field
+                      label="Your Answer"
+                      value={regSecA}
+                      onChange={(e) => setRegSecA(e.target.value)}
+                      placeholder="Your answer (case insensitive)"
+                      error={fieldErrors.regSecA}
+                    />
+                  )}
+                </div>
+
                 <button
                   onClick={handleRegister}
                   disabled={loading}
@@ -1010,18 +1201,17 @@ function LoginContent() {
               </div>
             )}
 
-            {/* ── FORGOT PASSWORD ── */}
+            {/* ── ACCOUNT RECOVERY ── */}
             {mode === "forgot" && (
               <div
                 className="field-enter"
-                style={{ display: "flex", flexDirection: "column", gap: 22 }}
+                style={{ display: "flex", flexDirection: "column", gap: 20 }}
               >
+                {/* Back button */}
                 <button
                   onClick={() => {
                     setMode("login");
-                    setError("");
-                    setSuccess("");
-                    setForgotStep(1);
+                    resetRecovery();
                   }}
                   style={{
                     ...mono,
@@ -1034,7 +1224,6 @@ function LoginContent() {
                     alignItems: "center",
                     gap: 6,
                     padding: 0,
-                    marginBottom: 8,
                     transition: "color 0.2s",
                   }}
                   onMouseEnter={(e) =>
@@ -1047,95 +1236,575 @@ function LoginContent() {
                   ← Back to Sign In
                 </button>
 
+                {/* Step indicator */}
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 6,
+                    marginBottom: 4,
+                  }}
+                >
+                  {[1, 2, 3].map((s) => (
+                    <div
+                      key={s}
+                      style={{ display: "flex", alignItems: "center", gap: 6 }}
+                    >
+                      <div
+                        style={{
+                          width: 24,
+                          height: 24,
+                          borderRadius: "50%",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          background:
+                            recStep > s
+                              ? "#22c55e"
+                              : recStep === s
+                                ? "#f59e0b"
+                                : "rgba(255,255,255,0.06)",
+                          border: `1px solid ${recStep > s ? "#22c55e" : recStep === s ? "#f59e0b" : "rgba(255,255,255,0.1)"}`,
+                          flexShrink: 0,
+                        }}
+                      >
+                        <span
+                          style={{
+                            ...sf,
+                            fontSize: 8,
+                            fontWeight: 900,
+                            color: recStep >= s ? "black" : "#52525b",
+                          }}
+                        >
+                          {recStep > s ? "✓" : s}
+                        </span>
+                      </div>
+                      {s < 3 && (
+                        <div
+                          style={{
+                            width: 24,
+                            height: 1,
+                            background:
+                              recStep > s
+                                ? "#22c55e"
+                                : "rgba(255,255,255,0.08)",
+                          }}
+                        />
+                      )}
+                    </div>
+                  ))}
+                  <span
+                    style={{
+                      ...mono,
+                      fontSize: 10,
+                      color: "#71717a",
+                      marginLeft: 8,
+                    }}
+                  >
+                    {recStep === 1
+                      ? "Find Account"
+                      : recStep === 2
+                        ? "Security Question"
+                        : "Reset Credentials"}
+                  </span>
+                </div>
+
                 <h1
                   style={{
                     ...sf,
-                    fontSize: "clamp(1.4rem,3vw,2rem)",
+                    fontSize: "clamp(1.2rem,3vw,1.8rem)",
                     fontWeight: 900,
                     textTransform: "uppercase",
                     letterSpacing: "-0.04em",
                   }}
                 >
-                  Reset
-                  <br />
-                  <span style={{ color: "#f59e0b", fontStyle: "italic" }}>
-                    Password_
-                  </span>
+                  {recStep === 1 ? (
+                    <>
+                      Find Your
+                      <br />
+                      <span style={{ color: "#f59e0b", fontStyle: "italic" }}>
+                        Account_
+                      </span>
+                    </>
+                  ) : recStep === 2 ? (
+                    <>
+                      Security
+                      <br />
+                      <span style={{ color: "#f59e0b", fontStyle: "italic" }}>
+                        Question_
+                      </span>
+                    </>
+                  ) : (
+                    <>
+                      New
+                      <br />
+                      <span style={{ color: "#f59e0b", fontStyle: "italic" }}>
+                        Credentials_
+                      </span>
+                    </>
+                  )}
                 </h1>
 
-                <Field
-                  label="Username or Email"
-                  value={forgotId}
-                  onChange={(e) => setForgotId(e.target.value)}
-                  placeholder="your_username or email"
-                  disabled={forgotStep === 2}
-                />
-
-                {forgotStep === 2 && (
+                {/* ── STEP 1 — Find account ── */}
+                {recStep === 1 && (
                   <>
-                    <Field
-                      label="Reset Code"
-                      value={forgotCode}
-                      onChange={(e) => setForgotCode(e.target.value)}
-                      placeholder="Code from email"
-                    />
-                    <Field
-                      label="New Password"
-                      value={forgotNew}
-                      onChange={(e) => setForgotNew(e.target.value)}
-                      placeholder="Min 6 characters"
-                      showToggle
-                      showPw={showLoginPw}
-                      onToggle={() => setShowLoginPw(!showLoginPw)}
-                    />
+                    {/* Toggle between "I know my username/email" vs "I forgot both" */}
+                    <div
+                      style={{
+                        display: "flex",
+                        border: "1px solid rgba(255,255,255,0.08)",
+                        marginBottom: 4,
+                      }}
+                    >
+                      {[
+                        { label: "I know my username / email", val: false },
+                        { label: "I forgot both", val: true },
+                      ].map(({ label, val }) => (
+                        <button
+                          key={String(val)}
+                          onClick={() => {
+                            setRecByQ(val);
+                            setError("");
+                            setRecMatches([]);
+                          }}
+                          style={{
+                            flex: 1,
+                            padding: "10px 8px",
+                            background:
+                              recByQ === val ? "#f59e0b" : "transparent",
+                            color: recByQ === val ? "black" : "#52525b",
+                            ...sf,
+                            fontSize: 6,
+                            letterSpacing: "0.1em",
+                            textTransform: "uppercase",
+                            border: "none",
+                            cursor: "pointer",
+                            transition: "all 0.2s",
+                            lineHeight: 1.4,
+                          }}
+                        >
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+
+                    {!recByQ ? (
+                      <Field
+                        label="Username or Email"
+                        value={recId}
+                        onChange={(e) => setRecId(e.target.value)}
+                        onKeyDown={(e) => e.key === "Enter" && handleRecStep1()}
+                        placeholder="Enter your username or email"
+                      />
+                    ) : (
+                      <>
+                        <p
+                          style={{
+                            ...mono,
+                            fontSize: 11,
+                            color: "#71717a",
+                            lineHeight: 1.6,
+                          }}
+                        >
+                          Choose your security question and enter the answer —
+                          we'll find your account.
+                        </p>
+                        <div>
+                          <p
+                            style={{
+                              ...sf,
+                              fontSize: 7,
+                              letterSpacing: "0.3em",
+                              color: "#a1a1aa",
+                              textTransform: "uppercase",
+                              marginBottom: 8,
+                            }}
+                          >
+                            Security Question
+                          </p>
+                          <select
+                            value={recPickQ}
+                            onChange={(e) => setRecPickQ(e.target.value)}
+                            style={{
+                              width: "100%",
+                              background: "#080808",
+                              border: "1px solid rgba(255,255,255,0.1)",
+                              padding: "14px 12px",
+                              color: recPickQ ? "white" : "#52525b",
+                              fontSize: 14,
+                              outline: "none",
+                              fontFamily: "'DM Mono',monospace",
+                              marginBottom: 12,
+                              cursor: "pointer",
+                            }}
+                            onFocus={(e) =>
+                              (e.target.style.borderColor = "#f59e0b")
+                            }
+                            onBlur={(e) =>
+                              (e.target.style.borderColor =
+                                "rgba(255,255,255,0.1)")
+                            }
+                          >
+                            <option value="" disabled>
+                              Choose your question...
+                            </option>
+                            {secQuestions.map((q) => (
+                              <option key={q} value={q}>
+                                {q}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        <Field
+                          label="Your Answer"
+                          value={recAnswer}
+                          onChange={(e) => setRecAnswer(e.target.value)}
+                          onKeyDown={(e) =>
+                            e.key === "Enter" && handleRecStep1()
+                          }
+                          placeholder="Your answer"
+                        />
+                      </>
+                    )}
+
+                    {/* Multiple matches */}
+                    {recMatches.length > 1 && (
+                      <div>
+                        <p
+                          style={{
+                            ...mono,
+                            fontSize: 11,
+                            color: "#a1a1aa",
+                            marginBottom: 10,
+                          }}
+                        >
+                          Multiple accounts found — choose yours:
+                        </p>
+                        {recMatches.map((m) => (
+                          <button
+                            key={m.user_id}
+                            onClick={() => {
+                              setRecUserId(m.user_id);
+                              setRecUsername(m.username);
+                              setRecToken("verified");
+                              setRecStep(3);
+                            }}
+                            style={{
+                              width: "100%",
+                              padding: "12px 16px",
+                              background: "rgba(245,158,11,0.05)",
+                              border: "1px solid rgba(245,158,11,0.2)",
+                              color: "#f59e0b",
+                              ...sf,
+                              fontSize: 8,
+                              textTransform: "uppercase",
+                              letterSpacing: "0.15em",
+                              cursor: "pointer",
+                              marginBottom: 6,
+                              textAlign: "left",
+                              transition: "all 0.2s",
+                            }}
+                            onMouseEnter={(e) =>
+                              (e.currentTarget.style.background =
+                                "rgba(245,158,11,0.1)")
+                            }
+                            onMouseLeave={(e) =>
+                              (e.currentTarget.style.background =
+                                "rgba(245,158,11,0.05)")
+                            }
+                          >
+                            {m.username}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+
+                    <button
+                      onClick={handleRecStep1}
+                      disabled={loading}
+                      style={{
+                        padding: "16px",
+                        minHeight: "52px",
+                        background: loading ? "#111" : "#f59e0b",
+                        color: loading ? "#52525b" : "black",
+                        ...sf,
+                        fontSize: 9,
+                        fontWeight: 700,
+                        letterSpacing: "0.25em",
+                        textTransform: "uppercase",
+                        border: "none",
+                        cursor: loading ? "not-allowed" : "pointer",
+                        transition: "all 0.3s",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        gap: 10,
+                      }}
+                    >
+                      {loading ? (
+                        <>
+                          <span
+                            style={{
+                              width: 14,
+                              height: 14,
+                              border: "2px solid #3f3f46",
+                              borderTopColor: "#71717a",
+                              borderRadius: "50%",
+                              display: "inline-block",
+                              animation: "spin 0.7s linear infinite",
+                            }}
+                          />
+                          Finding account...
+                        </>
+                      ) : (
+                        <span>Find My Account →</span>
+                      )}
+                    </button>
                   </>
                 )}
 
-                <button
-                  onClick={handleForgot}
-                  disabled={loading}
-                  style={{
-                    padding: "16px 17px",
-                    minHeight: "52px",
-                    background: loading ? "#111" : "#f59e0b",
-                    color: loading ? "#52525b" : "black",
-                    ...sf,
-                    fontSize: 9,
-                    fontWeight: 700,
-                    letterSpacing: "0.25em",
-                    textTransform: "uppercase",
-                    border: "none",
-                    cursor: loading ? "not-allowed" : "pointer",
-                    transition: "all 0.3s",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    gap: 10,
-                  }}
-                >
-                  {loading ? (
-                    <>
-                      <span
+                {/* ── STEP 2 — Answer security question ── */}
+                {recStep === 2 && (
+                  <>
+                    <div
+                      style={{
+                        padding: "14px 16px",
+                        background: "rgba(245,158,11,0.05)",
+                        border: "1px solid rgba(245,158,11,0.15)",
+                      }}
+                    >
+                      <p
                         style={{
-                          width: 14,
-                          height: 14,
-                          border: "2px solid #3f3f46",
-                          borderTopColor: "#71717a",
-                          borderRadius: "50%",
-                          display: "inline-block",
-                          animation: "spin 0.7s linear infinite",
+                          ...mono,
+                          fontSize: 10,
+                          color: "#a1a1aa",
+                          marginBottom: 4,
                         }}
+                      >
+                        Account found
+                      </p>
+                      <p
+                        style={{
+                          ...sf,
+                          fontSize: 11,
+                          fontWeight: 700,
+                          textTransform: "uppercase",
+                          color: "white",
+                        }}
+                      >
+                        {recUsername}
+                      </p>
+                    </div>
+
+                    <div>
+                      <p
+                        style={{
+                          ...sf,
+                          fontSize: 7,
+                          letterSpacing: "0.3em",
+                          color: "#a1a1aa",
+                          textTransform: "uppercase",
+                          marginBottom: 10,
+                        }}
+                      >
+                        Security Question
+                      </p>
+                      <div
+                        style={{
+                          padding: "14px 16px",
+                          background: "rgba(255,255,255,0.02)",
+                          border: "1px solid rgba(255,255,255,0.08)",
+                          marginBottom: 14,
+                        }}
+                      >
+                        <p
+                          style={{
+                            ...mono,
+                            fontSize: 13,
+                            color: "white",
+                            lineHeight: 1.6,
+                          }}
+                        >
+                          {recQuestion}
+                        </p>
+                      </div>
+                      <Field
+                        label="Your Answer"
+                        value={recAnswer}
+                        onChange={(e) => setRecAnswer(e.target.value)}
+                        onKeyDown={(e) => e.key === "Enter" && handleRecStep2()}
+                        placeholder="Type your answer..."
                       />
-                      Processing...
-                    </>
-                  ) : (
-                    <span>
-                      {forgotStep === 1
-                        ? "Send Reset Code →"
-                        : "Update Password →"}
-                    </span>
-                  )}
-                </button>
+                      <p
+                        style={{
+                          ...mono,
+                          fontSize: 10,
+                          color: "#52525b",
+                          marginTop: 6,
+                        }}
+                      >
+                        Not case sensitive
+                      </p>
+                    </div>
+
+                    <button
+                      onClick={handleRecStep2}
+                      disabled={loading}
+                      style={{
+                        padding: "16px",
+                        minHeight: "52px",
+                        background: loading ? "#111" : "#f59e0b",
+                        color: loading ? "#52525b" : "black",
+                        ...sf,
+                        fontSize: 9,
+                        fontWeight: 700,
+                        letterSpacing: "0.25em",
+                        textTransform: "uppercase",
+                        border: "none",
+                        cursor: loading ? "not-allowed" : "pointer",
+                        transition: "all 0.3s",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        gap: 10,
+                      }}
+                    >
+                      {loading ? (
+                        <>
+                          <span
+                            style={{
+                              width: 14,
+                              height: 14,
+                              border: "2px solid #3f3f46",
+                              borderTopColor: "#71717a",
+                              borderRadius: "50%",
+                              display: "inline-block",
+                              animation: "spin 0.7s linear infinite",
+                            }}
+                          />
+                          Verifying...
+                        </>
+                      ) : (
+                        <span>Verify Answer →</span>
+                      )}
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        setRecStep(1);
+                        setRecAnswer("");
+                        setError("");
+                      }}
+                      style={{
+                        ...mono,
+                        fontSize: 10,
+                        color: "#52525b",
+                        background: "none",
+                        border: "none",
+                        cursor: "pointer",
+                        textAlign: "center",
+                        transition: "color 0.2s",
+                      }}
+                      onMouseEnter={(e) =>
+                        (e.currentTarget.style.color = "#f59e0b")
+                      }
+                      onMouseLeave={(e) =>
+                        (e.currentTarget.style.color = "#52525b")
+                      }
+                    >
+                      ← Try different account
+                    </button>
+                  </>
+                )}
+
+                {/* ── STEP 3 — Set new credentials ── */}
+                {recStep === 3 && (
+                  <>
+                    <div
+                      style={{
+                        padding: "12px 16px",
+                        background: "rgba(34,197,94,0.06)",
+                        border: "1px solid rgba(34,197,94,0.2)",
+                      }}
+                    >
+                      <p style={{ ...mono, fontSize: 11, color: "#4ade80" }}>
+                        ✓ Identity verified — set your new credentials below
+                      </p>
+                    </div>
+
+                    <Field
+                      label="New Username (optional — leave to keep current)"
+                      value={recNewUser}
+                      onChange={(e) => setRecNewUser(e.target.value)}
+                      placeholder={recUsername}
+                    />
+
+                    <div>
+                      <Field
+                        label="New Password (optional — leave to keep current)"
+                        value={recNewPass}
+                        onChange={(e) => setRecNewPass(e.target.value)}
+                        onKeyDown={(e) => e.key === "Enter" && handleRecStep3()}
+                        placeholder="Min 6 characters"
+                        showToggle
+                        showPw={recShowPass}
+                        onToggle={() => setRecShowPass(!recShowPass)}
+                      />
+                      <p
+                        style={{
+                          ...mono,
+                          fontSize: 10,
+                          color: "#52525b",
+                          marginTop: 6,
+                        }}
+                      >
+                        Leave blank to keep your current password
+                      </p>
+                    </div>
+
+                    <button
+                      onClick={handleRecStep3}
+                      disabled={loading}
+                      style={{
+                        padding: "16px",
+                        minHeight: "52px",
+                        background: loading ? "#111" : "#22c55e",
+                        color: loading ? "#52525b" : "black",
+                        ...sf,
+                        fontSize: 9,
+                        fontWeight: 700,
+                        letterSpacing: "0.25em",
+                        textTransform: "uppercase",
+                        border: "none",
+                        cursor: loading ? "not-allowed" : "pointer",
+                        transition: "all 0.3s",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        gap: 10,
+                      }}
+                    >
+                      {loading ? (
+                        <>
+                          <span
+                            style={{
+                              width: 14,
+                              height: 14,
+                              border: "2px solid #3f3f46",
+                              borderTopColor: "#71717a",
+                              borderRadius: "50%",
+                              display: "inline-block",
+                              animation: "spin 0.7s linear infinite",
+                            }}
+                          />
+                          Saving...
+                        </>
+                      ) : (
+                        <span>Save New Credentials ✓</span>
+                      )}
+                    </button>
+                  </>
+                )}
               </div>
             )}
           </div>

@@ -3,9 +3,12 @@ from django.contrib.auth.models import User
 
 
 class UserProfile(models.Model):
-    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="profile")
-    name = models.CharField(max_length=100)
-    created_at = models.DateTimeField(auto_now_add=True)
+    user              = models.OneToOneField(User, on_delete=models.CASCADE, related_name="profile")
+    name              = models.CharField(max_length=100)
+    created_at        = models.DateTimeField(auto_now_add=True)
+    security_question = models.CharField(max_length=200, blank=True, default="")
+    security_answer   = models.CharField(max_length=200, blank=True, default="",
+                                         help_text="Stored lowercase stripped for comparison")
 
 
 class Service(models.Model):

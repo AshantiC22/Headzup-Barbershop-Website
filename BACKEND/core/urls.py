@@ -17,6 +17,13 @@ from core.views import (
     PasswordResetConfirmView,
     AvailableSlotsView,
     HeadzUpTokenView,
+    # Account recovery
+    SetSecurityQuestionView,
+    RecoveryStep1View,
+    RecoveryStep1ByQuestionView,
+    RecoveryStep2View,
+    RecoveryStep3View,
+    SecurityQuestionsListView,
     # Barber dashboard
     BarberMeView,
     BarberMeUpdateView,
@@ -61,9 +68,17 @@ urlpatterns = [
     path("dashboard/",       DashboardView.as_view(),       name="dashboard"),
 
     # Auth helpers
-    path("check-username/",         CheckUsernameView.as_view(),        name="check_username"),
-    path("password-reset/",         PasswordResetView.as_view(),        name="password_reset"),
-    path("password-reset/confirm/", PasswordResetConfirmView.as_view(), name="password_reset_confirm"),
+    path("check-username/",              CheckUsernameView.as_view(),           name="check_username"),
+    path("password-reset/",              PasswordResetView.as_view(),           name="password_reset"),
+    path("password-reset/confirm/",      PasswordResetConfirmView.as_view(),    name="password_reset_confirm"),
+
+    # Account recovery — security question flow
+    path("security-questions/",          SecurityQuestionsListView.as_view(),   name="security_questions"),
+    path("security-question/set/",       SetSecurityQuestionView.as_view(),     name="set_security_question"),
+    path("recovery/step1/",              RecoveryStep1View.as_view(),           name="recovery_step1"),
+    path("recovery/step1-by-question/",  RecoveryStep1ByQuestionView.as_view(), name="recovery_step1_question"),
+    path("recovery/step2/",              RecoveryStep2View.as_view(),           name="recovery_step2"),
+    path("recovery/step3/",              RecoveryStep3View.as_view(),           name="recovery_step3"),
 
     # Booking
     path("available-slots/", AvailableSlotsView.as_view(), name="available_slots"),
