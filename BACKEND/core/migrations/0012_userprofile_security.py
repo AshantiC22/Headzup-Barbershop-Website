@@ -2,7 +2,7 @@ from django.db import migrations, models
 
 class Migration(migrations.Migration):
     dependencies = [
-        ('core', '0003_barber_stripe_account'),
+        ('core', '0013_barber_stripe_account'),
     ]
     operations = [
         migrations.AddField(
@@ -13,8 +13,10 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='userprofile',
             name='security_answer',
-            field=models.CharField(blank=True, default='',
-                                   help_text='Stored lowercase stripped for comparison',
-                                   max_length=200),
+            field=models.CharField(
+                blank=True, default='',
+                help_text='Stored lowercase stripped for comparison',
+                max_length=200
+            ),
         ),
     ]
