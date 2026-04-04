@@ -15,9 +15,10 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
-# Force clean migrations every deploy
+# Force clean migrations every deploy + reminder loop in background
 CMD python manage.py migrate --noinput && \
     python manage.py collectstatic --noinput --clear && \
     python manage.py make_admin && \
     python manage.py seed_data && \
+    (while true; do python manage.py send_reminders; sleep 1800; done) & \
     gunicorn config.wsgi:application --bind 0.0.0.0:${PORT} --workers 2 --timeout 120

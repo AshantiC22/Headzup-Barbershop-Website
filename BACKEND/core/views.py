@@ -2206,9 +2206,8 @@ class VapidPublicKeyView(APIView):
 
 class SendRemindersView(APIView):
     """
-    Called by a cron job or manually to send 24-hour appointment reminders.
-    Sends email to clients with appointments tomorrow.
-    Only staff can trigger this.
+    POST — manually trigger all reminder types.
+    Also called automatically every 30 minutes by the background loop in start.sh.
     """
     permission_classes = [IsAuthenticated]
 
@@ -2216,43 +2215,14 @@ class SendRemindersView(APIView):
         if not request.user.is_staff:
             return Response({"error": "Staff only"}, status=403)
 
-        from datetime import date, timedelta
-        from django.conf import settings as django_settings
-
-        tomorrow = date.today() + timedelta(days=1)
-        appts = Appointment.objects.filter(
-            date=tomorrow,
-            status="confirmed",
-            reminder_sent=False,
-        ).select_related("user", "barber", "service")
-
-        sent = 0
-        for appt in appts:
-            if not appt.user.email:
-                continue
-            try:
-                plain = (
-                    f"Hey {appt.user.first_name or appt.user.username},\n\n"
-                    f"Just a reminder that you have an appointment tomorrow:\n\n"
-                    f"  Service: {appt.service.name}\n"
-                    f"  Barber:  {appt.barber.name}\n"
-                    f"  Date:    {appt.date.strftime('%A, %B %d')}\n"
-                    f"  Time:    {appt.time.strftime('%I:%M %p')}\n\n"
-                    f"See you then!\n\n"
-                    f"— HEADZ UP Barbershop\n  Hattiesburg, MS"
-                )
-                _sendgrid_send(
-                    appt.user.email,
-                    "Reminder: Your appointment tomorrow at HEADZ UP",
-                    plain, plain,
-                )
-                appt.reminder_sent = True
-                appt.save(update_fields=["reminder_sent"])
-                sent += 1
-            except Exception:
-                pass
-
-        return Response({"message": f"Reminders sent: {sent}", "tomorrow": str(tomorrow)})
+        try:
+            from django.core.management import call_command
+            from io import StringIO
+            out = StringIO()
+            call_command("send_reminders", stdout=out)
+            return Response({"message": out.getvalue().strip() or "Reminders processed"})
+        except Exception as e:
+            return Response({"error": str(e)}, status=400)
 
 
 class BarberClientListView(APIView):

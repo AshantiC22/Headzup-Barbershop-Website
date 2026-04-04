@@ -108,7 +108,10 @@ class Appointment(models.Model):
     payment_method    = models.CharField(max_length=20, choices=PAYMENT_CHOICES, default="shop")
     created_at        = models.DateTimeField(auto_now_add=True)
     review_notified   = models.BooleanField(default=False)
-    reminder_sent     = models.BooleanField(default=False)
+    reminder_sent          = models.BooleanField(default=False)   # client 24hr reminder
+    reminder_2hr_sent      = models.BooleanField(default=False)   # client 2hr reminder
+    barber_reminder_2hr    = models.BooleanField(default=False)   # barber 2hr reminder
+    barber_reminder_now    = models.BooleanField(default=False)   # barber at-time reminder
     barber_notes      = models.TextField(blank=True, default="")
     client_notes      = models.TextField(blank=True, default="")
     is_walk_in        = models.BooleanField(default=False)
