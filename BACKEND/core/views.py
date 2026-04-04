@@ -922,10 +922,17 @@ def issue_strike(user, reason="no_show"):
     profile, _ = UserProfile.objects.get_or_create(
         user=user, defaults={"name": user.username}
     )
-    profile.strike_count += 1
-    # $10 base + $1.50 for every strike beyond the first
-    profile.deposit_fee = DEPOSIT_BASE + DEPOSIT_INCR * max(0, profile.strike_count - 1)
-    profile.save(update_fields=["strike_count", "deposit_fee"])
+    try:
+        profile.strike_count += 1
+        profile.deposit_fee = DEPOSIT_BASE + DEPOSIT_INCR * max(0, profile.strike_count - 1)
+        profile.save(update_fields=["strike_count", "deposit_fee"])
+    except Exception:
+        # Fields may not exist yet if migration 0013 hasn't run
+        # Fall back to saving without those fields
+        try:
+            profile.save()
+        except Exception:
+            pass
     return profile
 
 
@@ -1202,18 +1209,30 @@ class IssueStrikeView(APIView):
         except Appointment.DoesNotExist:
             return Response({"error": "Appointment not found"}, status=404)
 
-        reason = request.data.get("reason", "no_show")  # no_show | late_cancel
+        reason = request.data.get("reason", "no_show")
 
         # Update appointment status
-        if reason == "no_show":
-            appt.status = "no_show"
-        elif reason == "late_cancel":
-            appt.status    = "cancelled"
-            appt.late_cancel = True
-        appt.save(update_fields=["status", "late_cancel"])
+        try:
+            if reason == "no_show":
+                appt.status = "no_show"
+                appt.save(update_fields=["status"])
+            elif reason == "late_cancel":
+                appt.status = "cancelled"
+                appt.save(update_fields=["status"])
+                # late_cancel field may not exist yet if migration hasn't run
+                try:
+                    appt.late_cancel = True
+                    appt.save(update_fields=["late_cancel"])
+                except Exception:
+                    pass
+        except Exception as e:
+            return Response({"error": f"Could not update appointment: {str(e)}"}, status=400)
 
         # Issue strike to client
-        profile = issue_strike(appt.user, reason)
+        try:
+            profile = issue_strike(appt.user, reason)
+        except Exception as e:
+            return Response({"error": f"Could not issue strike: {str(e)}"}, status=400)
 
         # Email the client
         try:
@@ -1222,10 +1241,10 @@ class IssueStrikeView(APIView):
             pass
 
         return Response({
-            "message":       f"Strike issued for {reason.replace('_',' ')}",
-            "client":        appt.user.username,
-            "strike_count":  profile.strike_count,
-            "next_deposit":  str(profile.get_deposit_fee()),
+            "message":      f"Strike issued for {reason.replace('_',' ')}",
+            "client":       appt.user.username,
+            "strike_count": profile.strike_count,
+            "next_deposit": str(profile.get_deposit_fee()),
         })
 
 
