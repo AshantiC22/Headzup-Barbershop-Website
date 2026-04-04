@@ -24,6 +24,13 @@ from core.views import (
     RecoveryStep2View,
     RecoveryStep3View,
     SecurityQuestionsListView,
+    # Strike & deposit
+    ClientStrikeStatusView,
+    AcceptTermsView,
+    DepositCheckoutView,
+    DepositSuccessView,
+    IssueStrikeView,
+    BarberClientStrikesView,
     # Barber dashboard
     BarberMeView,
     BarberMeUpdateView,
@@ -79,6 +86,14 @@ urlpatterns = [
     path("recovery/step1-by-question/",  RecoveryStep1ByQuestionView.as_view(), name="recovery_step1_question"),
     path("recovery/step2/",              RecoveryStep2View.as_view(),           name="recovery_step2"),
     path("recovery/step3/",              RecoveryStep3View.as_view(),           name="recovery_step3"),
+
+    # Strike & deposit system
+    path("client/strike-status/",               ClientStrikeStatusView.as_view(),   name="strike_status"),
+    path("client/accept-terms/",                AcceptTermsView.as_view(),           name="accept_terms"),
+    path("deposit/checkout/",                   DepositCheckoutView.as_view(),       name="deposit_checkout"),
+    path("deposit-success/",                    DepositSuccessView.as_view(),        name="deposit_success"),
+    path("barber/appointments/<int:pk>/strike/",IssueStrikeView.as_view(),           name="issue_strike"),
+    path("barber/client-strikes/",              BarberClientStrikesView.as_view(),   name="barber_client_strikes"),
 
     # Booking
     path("available-slots/", AvailableSlotsView.as_view(), name="available_slots"),
