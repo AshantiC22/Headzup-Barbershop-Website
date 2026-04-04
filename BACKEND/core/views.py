@@ -1,6 +1,7 @@
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
 import stripe
+from decimal import Decimal
 from django.conf import settings
 from django.db import IntegrityError
 from django.shortcuts import redirect
@@ -907,6 +908,371 @@ class PasswordResetConfirmView(APIView):
         user.set_password(new_password)
         user.save()
         return Response({"message": "Password updated successfully"})
+
+            return Response({"error": "Invalid or expired token"}, status=400)
+        user.set_password(new_password)
+        user.save()
+        return Response({"message": "Password updated successfully"})
+
+
+# ── Strike & Deposit System ───────────────────────────────────────────────────
+
+DEPOSIT_BASE   = Decimal("10.00")
+DEPOSIT_INCR   = Decimal("1.50")   # per strike after the first
+LATE_CANCEL_HRS = 2                # hours before appt = "last minute"
+
+
+def issue_strike(user, reason="no_show"):
+    """Add a strike to a client and recalculate their deposit fee."""
+    profile, _ = UserProfile.objects.get_or_create(
+        user=user, defaults={"name": user.username}
+    )
+    profile.strike_count += 1
+    # $10 base + $1.50 for every strike beyond the first
+    profile.deposit_fee = DEPOSIT_BASE + DEPOSIT_INCR * max(0, profile.strike_count - 1)
+    profile.save(update_fields=["strike_count", "deposit_fee"])
+    return profile
+
+
+class ClientStrikeStatusView(APIView):
+    """GET — returns the client's current strike count and deposit fee."""
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        profile, _ = UserProfile.objects.get_or_create(
+            user=request.user, defaults={"name": request.user.username}
+        )
+        return Response({
+            "strike_count":    profile.strike_count,
+            "deposit_fee":     str(profile.get_deposit_fee()),
+            "terms_accepted":  profile.terms_accepted,
+        })
+
+
+class AcceptTermsView(APIView):
+    """POST — client accepts the deposit & strike terms and conditions."""
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        from django.utils import timezone
+        profile, _ = UserProfile.objects.get_or_create(
+            user=request.user, defaults={"name": request.user.username}
+        )
+        profile.terms_accepted    = True
+        profile.terms_accepted_at = timezone.now()
+        profile.save(update_fields=["terms_accepted", "terms_accepted_at"])
+        return Response({"message": "Terms accepted", "terms_accepted": True})
+
+
+class DepositCheckoutView(APIView):
+    """
+    POST — creates a Stripe checkout session for the deposit only.
+    The deposit comes out of the total service price.
+    e.g. $35 cut → $10 deposit now → $25 remaining paid at shop.
+    If client is a repeat offender deposit is higher ($10 + $1.50 per strike).
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        service_id   = request.data.get("service")
+        barber_id    = request.data.get("barber")
+        date         = request.data.get("date")
+        time         = request.data.get("time")
+        client_notes = request.data.get("client_notes", "")
+
+        try:
+            service = Service.objects.get(id=service_id)
+            barber  = Barber.objects.get(id=barber_id)
+        except (Service.DoesNotExist, Barber.DoesNotExist) as e:
+            return Response({"error": str(e)}, status=404)
+
+        # Get client's current deposit fee
+        profile, _ = UserProfile.objects.get_or_create(
+            user=request.user, defaults={"name": request.user.username}
+        )
+
+        deposit = profile.get_deposit_fee()
+        service_price = Decimal(str(service.price))
+
+        # Deposit can't exceed the service price
+        deposit = min(deposit, service_price)
+        remaining = service_price - deposit
+        deposit_cents = int(deposit * 100)
+
+        # Need barber's Stripe account to route deposit
+        if not barber.stripe_account_id:
+            return Response({
+                "error": f"{barber.name} hasn't connected Stripe yet. Deposit not available.",
+                "pay_in_shop": True,
+            }, status=400)
+
+        try:
+            account = stripe.Account.retrieve(barber.stripe_account_id)
+            if not account.charges_enabled:
+                return Response({
+                    "error": f"{barber.name}'s Stripe account isn't fully set up yet.",
+                    "pay_in_shop": True,
+                }, status=400)
+        except Exception:
+            pass
+
+        try:
+            session = stripe.checkout.Session.create(
+                payment_method_types=["card"],
+                line_items=[{
+                    "price_data": {
+                        "currency":     "usd",
+                        "product_data": {
+                            "name":        f"HEADZ UP — Deposit for {service.name}",
+                            "description": (
+                                f"${deposit:.2f} deposit to secure your chair with {barber.name}. "
+                                f"Remaining balance ${remaining:.2f} due at appointment."
+                            ),
+                        },
+                        "unit_amount": deposit_cents,
+                    },
+                    "quantity": 1,
+                }],
+                mode="payment",
+                payment_intent_data={
+                    "transfer_data": {"destination": barber.stripe_account_id},
+                    "description":   f"HEADZ UP Deposit — {service.name} with {barber.name}",
+                },
+                success_url=f"{BACKEND_URL}/api/deposit-success/?session_id={{CHECKOUT_SESSION_ID}}",
+                cancel_url=f"{FRONTEND_URL}/book?deposit_canceled=true",
+                customer_email=request.user.email or None,
+                metadata={
+                    "user_id":        str(request.user.id),
+                    "service_id":     str(service_id),
+                    "barber_id":      str(barber_id),
+                    "date":           str(date),
+                    "time":           str(time),
+                    "client_notes":   client_notes[:500],
+                    "deposit_amount": str(deposit),
+                    "remaining":      str(remaining),
+                    "service_name":   service.name,
+                    "barber_name":    barber.name,
+                    "strike_count":   str(profile.strike_count),
+                },
+            )
+            return Response({
+                "url":             session.url,
+                "session_id":      session.id,
+                "deposit_amount":  str(deposit),
+                "remaining":       str(remaining),
+                "service_price":   str(service_price),
+                "strike_count":    profile.strike_count,
+                "barber_name":     barber.name,
+                "service_name":    service.name,
+            })
+        except Exception as e:
+            return Response({"error": str(e)}, status=400)
+
+
+class DepositSuccessView(APIView):
+    """GET — called by Stripe after deposit paid. Books appointment, marks deposit paid."""
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        session_id = request.GET.get("session_id")
+        if not session_id:
+            return redirect(f"{FRONTEND_URL}/book")
+
+        try:
+            session  = stripe.checkout.Session.retrieve(session_id)
+            metadata = session.metadata
+            user     = User.objects.get(id=metadata["user_id"])
+            service  = Service.objects.get(id=metadata["service_id"])
+            barber   = Barber.objects.get(id=metadata["barber_id"])
+
+            appt, created = Appointment.objects.get_or_create(
+                user=user, service=service, barber=barber,
+                date=metadata["date"], time=metadata["time"],
+                defaults={
+                    "payment_method":     "online",
+                    "client_notes":       metadata.get("client_notes", ""),
+                    "deposit_amount":     Decimal(metadata.get("deposit_amount", "10.00")),
+                    "deposit_paid":       True,
+                    "deposit_session_id": session_id,
+                    "status":             "confirmed",
+                },
+            )
+            if not created and not appt.deposit_paid:
+                appt.deposit_paid       = True
+                appt.deposit_session_id = session_id
+                appt.deposit_amount     = Decimal(metadata.get("deposit_amount", "10.00"))
+                appt.save(update_fields=["deposit_paid", "deposit_session_id", "deposit_amount"])
+
+            if created:
+                send_booking_confirmation(appt)
+
+            return redirect(
+                f"{FRONTEND_URL}/booking-confirmed"
+                f"?service={metadata.get('service_name','')}"
+                f"&barber={metadata.get('barber_name','')}"
+                f"&date={metadata.get('date','')}"
+                f"&time={metadata.get('time','')}"
+                f"&deposit={metadata.get('deposit_amount','10.00')}"
+                f"&remaining={metadata.get('remaining','0.00')}"
+                f"&payment=deposit"
+            )
+        except Exception as e:
+            return redirect(f"{FRONTEND_URL}/book?deposit_error=true")
+
+
+def send_strike_email(user, profile, reason, appt):
+    """Send email to client when a strike is issued."""
+    email = user.email
+    if not email:
+        return
+
+    reason_label = "No Show" if reason == "no_show" else "Late Cancellation (within 2 hours)"
+    next_deposit = profile.get_deposit_fee()
+    increase     = next_deposit - DEPOSIT_BASE
+    service_name = appt.service.name if appt.service else "your appointment"
+    appt_date    = appt.date.strftime("%B %d, %Y") if appt.date else "—"
+
+    subject = f"⚡ Strike Added to Your HEADZ UP Account"
+
+    plain = f"""
+Hi {user.username},
+
+A strike has been added to your HEADZ UP account.
+
+Reason: {reason_label}
+Appointment: {service_name} on {appt_date}
+Your total strikes: {profile.strike_count}
+Your next deposit fee: ${next_deposit:.2f}
+
+What this means:
+Your standard deposit is $10.00. Each strike after your first adds $1.50 to your
+next booking deposit. Your current deposit is ${next_deposit:.2f}
+{"(increased by $" + f"{increase:.2f}" + " due to your strikes)." if increase > 0 else "(standard rate — this was your first strike)."}
+
+Please review our Deposit & Cancellation Policy when you next book.
+
+Questions? Contact HEADZ UP Barbershop directly.
+
+— HEADZ UP Barbershop
+4 Hub Dr, Hattiesburg, MS 39402
+"""
+
+    html = f"""
+<div style="background:#000;color:#fff;font-family:'Helvetica Neue',Arial,sans-serif;max-width:520px;margin:0 auto;padding:0;">
+  <div style="background:linear-gradient(to right,#ef4444,#f59e0b);height:3px;"></div>
+  <div style="padding:32px 28px;">
+    <p style="font-size:11px;letter-spacing:0.5em;text-transform:uppercase;color:rgba(245,158,11,0.7);margin:0 0 8px;">HEADZ UP BARBERSHOP</p>
+    <h1 style="font-size:22px;font-weight:900;text-transform:uppercase;letter-spacing:-0.02em;margin:0 0 24px;color:#fff;">
+      ⚡ Strike Added
+    </h1>
+    <div style="background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.25);padding:16px 18px;margin-bottom:20px;">
+      <p style="font-size:12px;color:#f87171;margin:0 0 4px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;">Strike #{profile.strike_count} Issued</p>
+      <p style="font-size:13px;color:#a1a1aa;margin:0;line-height:1.6;">Reason: <strong style="color:#fff;">{reason_label}</strong></p>
+      <p style="font-size:13px;color:#a1a1aa;margin:4px 0 0;line-height:1.6;">Appointment: <strong style="color:#fff;">{service_name} on {appt_date}</strong></p>
+    </div>
+    <div style="background:rgba(245,158,11,0.06);border:1px solid rgba(245,158,11,0.2);padding:16px 18px;margin-bottom:24px;">
+      <p style="font-size:11px;color:rgba(245,158,11,0.6);text-transform:uppercase;letter-spacing:0.4em;margin:0 0 10px;">Your Next Deposit</p>
+      <p style="font-size:28px;font-weight:900;color:#f59e0b;margin:0 0 6px;">${next_deposit:.2f}</p>
+      <p style="font-size:12px;color:#71717a;margin:0;line-height:1.6;">
+        Base $10.00 + ${increase:.2f} increase from {profile.strike_count} strike{"s" if profile.strike_count > 1 else ""}.<br/>
+        Each additional strike adds another $1.50.
+      </p>
+    </div>
+    <p style="font-size:12px;color:#52525b;line-height:1.8;margin:0 0 24px;">
+      No-shows and last-minute cancellations cost your barber real money. Our deposit policy protects their time. Please review the Deposit &amp; Cancellation Policy next time you book.
+    </p>
+    <div style="border-top:1px solid rgba(255,255,255,0.07);padding-top:20px;">
+      <p style="font-size:11px;color:#27272a;margin:0;">HEADZ UP Barbershop · 4 Hub Dr, Hattiesburg, MS 39402</p>
+    </div>
+  </div>
+  <div style="background:linear-gradient(to right,#ef4444,#f59e0b);height:2px;"></div>
+</div>
+"""
+    _sendgrid_send(email, subject, plain, html)
+
+
+class IssueStrikeView(APIView):
+    """
+    POST — barber marks a client as no-show or late cancel.
+    Issues a strike and increases their next deposit fee by $1.50.
+    Barber only.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, pk):
+        if not request.user.is_staff:
+            return Response({"error": "Barbers only"}, status=403)
+        try:
+            appt = Appointment.objects.get(pk=pk)
+        except Appointment.DoesNotExist:
+            return Response({"error": "Appointment not found"}, status=404)
+
+        reason = request.data.get("reason", "no_show")  # no_show | late_cancel
+
+        # Update appointment status
+        if reason == "no_show":
+            appt.status = "no_show"
+        elif reason == "late_cancel":
+            appt.status    = "cancelled"
+            appt.late_cancel = True
+        appt.save(update_fields=["status", "late_cancel"])
+
+        # Issue strike to client
+        profile = issue_strike(appt.user, reason)
+
+        # Email the client
+        try:
+            send_strike_email(appt.user, profile, reason, appt)
+        except Exception:
+            pass
+
+        return Response({
+            "message":       f"Strike issued for {reason.replace('_',' ')}",
+            "client":        appt.user.username,
+            "strike_count":  profile.strike_count,
+            "next_deposit":  str(profile.get_deposit_fee()),
+        })
+
+
+class BarberClientStrikesView(APIView):
+    """GET — barber sees all strikes/deposit info for their clients."""
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        if not request.user.is_staff:
+            return Response({"error": "Barbers only"}, status=403)
+
+        barber = get_barber_for_user(request.user)
+        if not barber:
+            return Response({"error": "No barber profile"}, status=403)
+
+        # Get all clients who have booked with this barber
+        client_ids = Appointment.objects.filter(
+            barber=barber
+        ).values_list("user_id", flat=True).distinct()
+
+        results = []
+        for uid in client_ids:
+            try:
+                user    = User.objects.get(pk=uid)
+                profile = getattr(user, "profile", None)
+                recent  = Appointment.objects.filter(
+                    user=user, barber=barber
+                ).order_by("-date", "-time").first()
+                results.append({
+                    "user_id":      uid,
+                    "username":     user.username,
+                    "strike_count": profile.strike_count if profile else 0,
+                    "next_deposit": str(profile.get_deposit_fee()) if profile else "10.00",
+                    "no_shows":     Appointment.objects.filter(user=user, barber=barber, status="no_show").count(),
+                    "late_cancels": Appointment.objects.filter(user=user, barber=barber, late_cancel=True).count(),
+                    "last_visit":   str(recent.date) if recent else None,
+                })
+            except User.DoesNotExist:
+                continue
+
+        return Response(results)
+
 
 class StripeConnectOnboardView(APIView):
     """

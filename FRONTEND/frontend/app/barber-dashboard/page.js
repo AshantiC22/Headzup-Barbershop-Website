@@ -184,6 +184,7 @@ function ApptTicket({
   onReschedule,
   onCancel,
   onNotes,
+  onStrike,
   isMobile,
 }) {
   const [open, setOpen] = useState(false);
@@ -192,6 +193,7 @@ function ApptTicket({
   const status = appt.status || "confirmed";
   const sCfg = STATUS_CFG[status] || STATUS_CFG.confirmed;
   const isOnline = appt.payment_method === "online";
+  const hasDeposit = appt.deposit_paid;
 
   const saveNote = async () => {
     setSaving(true);
@@ -217,7 +219,6 @@ function ApptTicket({
       onMouseEnter={(e) => (e.currentTarget.style.borderColor = T.amberBorder)}
       onMouseLeave={(e) => (e.currentTarget.style.borderColor = T.border)}
     >
-      {/* Top color strip */}
       <div
         style={{
           height: 2,
@@ -225,8 +226,6 @@ function ApptTicket({
           opacity: 0.7,
         }}
       />
-
-      {/* Main row */}
       <div
         style={{
           padding: isMobile ? "14px 12px" : "16px 20px",
@@ -236,7 +235,6 @@ function ApptTicket({
           flexWrap: "wrap",
         }}
       >
-        {/* Time block */}
         <div
           style={{
             width: isMobile ? 52 : 64,
@@ -263,8 +261,6 @@ function ApptTicket({
             {fmtShort(appt.date)}
           </p>
         </div>
-
-        {/* Info */}
         <div style={{ flex: 1, minWidth: 0 }}>
           <p
             style={{
@@ -305,8 +301,6 @@ function ApptTicket({
             )}
           </div>
         </div>
-
-        {/* Badges */}
         <div
           style={{
             display: "flex",
@@ -331,7 +325,22 @@ function ApptTicket({
               WALK-IN
             </span>
           )}
-          {isOnline && (
+          {hasDeposit && (
+            <span
+              style={{
+                ...sf,
+                fontSize: 5,
+                letterSpacing: "0.15em",
+                padding: "3px 8px",
+                background: "rgba(34,197,94,0.08)",
+                border: "1px solid rgba(34,197,94,0.25)",
+                color: "#4ade80",
+              }}
+            >
+              💰 DEPOSIT
+            </span>
+          )}
+          {isOnline && !hasDeposit && (
             <span
               style={{
                 ...sf,
@@ -360,8 +369,6 @@ function ApptTicket({
             {sCfg.label}
           </span>
         </div>
-
-        {/* Expand toggle */}
         <button
           onClick={() => setOpen(!open)}
           style={{
@@ -392,7 +399,6 @@ function ApptTicket({
         </button>
       </div>
 
-      {/* Expanded panel */}
       {open && (
         <div
           style={{
@@ -401,7 +407,6 @@ function ApptTicket({
             background: T.amberDim,
           }}
         >
-          {/* Status selector */}
           <p
             style={{
               ...sf,
@@ -444,7 +449,90 @@ function ApptTicket({
             ))}
           </div>
 
-          {/* Notes */}
+          {(status === "confirmed" || status === "no_show") && (
+            <div
+              style={{
+                marginBottom: 16,
+                padding: "12px 14px",
+                background: "rgba(239,68,68,0.04)",
+                border: "1px solid rgba(239,68,68,0.12)",
+              }}
+            >
+              <p
+                style={{
+                  ...sf,
+                  fontSize: 6,
+                  letterSpacing: "0.4em",
+                  color: "#ef4444",
+                  textTransform: "uppercase",
+                  marginBottom: 10,
+                }}
+              >
+                ⚡ Issue Strike
+              </p>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                <button
+                  onClick={() => onStrike && onStrike(appt.id, "no_show")}
+                  style={{
+                    padding: "7px 14px",
+                    background: "rgba(239,68,68,0.08)",
+                    border: "1px solid rgba(239,68,68,0.3)",
+                    color: "#f87171",
+                    ...sf,
+                    fontSize: 6,
+                    letterSpacing: "0.1em",
+                    textTransform: "uppercase",
+                    cursor: "pointer",
+                    transition: "all 0.2s",
+                  }}
+                  onMouseEnter={(e) =>
+                    (e.currentTarget.style.background = "rgba(239,68,68,0.15)")
+                  }
+                  onMouseLeave={(e) =>
+                    (e.currentTarget.style.background = "rgba(239,68,68,0.08)")
+                  }
+                >
+                  No Show +1 Strike
+                </button>
+                <button
+                  onClick={() => onStrike && onStrike(appt.id, "late_cancel")}
+                  style={{
+                    padding: "7px 14px",
+                    background: "rgba(245,158,11,0.06)",
+                    border: "1px solid rgba(245,158,11,0.2)",
+                    color: "#f59e0b",
+                    ...sf,
+                    fontSize: 6,
+                    letterSpacing: "0.1em",
+                    textTransform: "uppercase",
+                    cursor: "pointer",
+                    transition: "all 0.2s",
+                  }}
+                  onMouseEnter={(e) =>
+                    (e.currentTarget.style.background = "rgba(245,158,11,0.12)")
+                  }
+                  onMouseLeave={(e) =>
+                    (e.currentTarget.style.background = "rgba(245,158,11,0.06)")
+                  }
+                >
+                  Late Cancel +1 Strike
+                </button>
+              </div>
+              <p
+                style={{
+                  ...mono,
+                  fontSize: 9,
+                  color: "#52525b",
+                  marginTop: 8,
+                  lineHeight: 1.6,
+                }}
+              >
+                Issuing a strike increases the client's deposit by $1.50 on
+                their next booking.
+              </p>
+            </div>
+          )}
+
           <p
             style={{
               ...sf,
@@ -478,8 +566,6 @@ function ApptTicket({
             onFocus={(e) => (e.target.style.borderColor = T.amber)}
             onBlur={(e) => (e.target.style.borderColor = T.border)}
           />
-
-          {/* Actions */}
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
             <button
               onClick={saveNote}
@@ -555,7 +641,6 @@ function ApptTicket({
   );
 }
 
-/* ────────────────────────── reschedule modal ────────────────────── */
 /* ── Stripe Connect Panel ─────────────────────────────────────────────────── */
 function StripeConnectPanel({ barber, isMobile }) {
   const sf = { fontFamily: "'Syncopate',sans-serif" };
@@ -1693,6 +1778,31 @@ export default function BarberDashboard() {
     }
   };
 
+  const issueStrike = async (id, reason) => {
+    const label = reason === "no_show" ? "no-show" : "late cancellation";
+    if (
+      !confirm(
+        `Issue a strike to this client for ${label}? Their deposit fee will increase by $1.50 on their next booking.`,
+      )
+    )
+      return;
+    try {
+      const r = await API.post(`barber/appointments/${id}/strike/`, { reason });
+      setSchedule((p) =>
+        p.map((a) =>
+          a.id === id
+            ? { ...a, status: reason === "no_show" ? "no_show" : "cancelled" }
+            : a,
+        ),
+      );
+      showToast(
+        `⚡ Strike issued — client now has ${r.data.strike_count} strike(s). Next deposit: $${r.data.next_deposit}`,
+      );
+    } catch (e) {
+      showToast(e.response?.data?.error || "Could not issue strike.", "error");
+    }
+  };
+
   const handleCancel = async (id) => {
     if (!confirm("Cancel this appointment?")) return;
     try {
@@ -2731,6 +2841,7 @@ export default function BarberDashboard() {
                         appt={appt}
                         isMobile={isMobile}
                         onStatusChange={handleStatusChange}
+                        onStrike={issueStrike}
                         onReschedule={(a) => setReschedModal(a)}
                         onCancel={handleCancel}
                         onNotes={(id, note) =>

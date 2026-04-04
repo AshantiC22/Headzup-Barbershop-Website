@@ -107,6 +107,8 @@ function BookingConfirmedInner() {
     date: "",
     time: "",
     payment: "shop",
+    deposit: "",
+    remaining: "",
   });
   const [bookingRef, setBookingRef] = useState("");
   const [entered, setEntered] = useState(false);
@@ -119,6 +121,8 @@ function BookingConfirmedInner() {
     const dt = searchParams.get("date");
     const tm = searchParams.get("time");
     const pay = searchParams.get("payment") || "shop";
+    const deposit = searchParams.get("deposit") || "";
+    const remaining = searchParams.get("remaining") || "";
 
     if (svc)
       setData((p) => ({
@@ -128,6 +132,8 @@ function BookingConfirmedInner() {
         date: dt || "",
         time: tm || "",
         payment: pay,
+        deposit,
+        remaining,
       }));
 
     const load = async () => {
@@ -159,7 +165,7 @@ function BookingConfirmedInner() {
     return () => window.removeEventListener("popstate", onPop);
   }, []);
 
-  const isPaid = data.payment === "online";
+  const isPaid = data.payment === "online" || data.payment === "deposit";
   const accent = isPaid ? "#f59e0b" : "#22c55e";
   const accentDim = isPaid ? "rgba(245,158,11,0.12)" : "rgba(34,197,94,0.1)";
   const accentBdr = isPaid ? "rgba(245,158,11,0.3)" : "rgba(34,197,94,0.25)";
@@ -187,15 +193,33 @@ function BookingConfirmedInner() {
     return `${hr % 12 || 12}:${m} ${hr >= 12 ? "PM" : "AM"}`;
   };
 
+  const isDeposit = data.payment === "deposit";
   const rows = [
     { label: "Service", value: data.service || "—" },
     { label: "Barber", value: data.barber || "—" },
     { label: "Date", value: fmtDate(data.date) },
     { label: "Time", value: fmtTime(data.time) },
-    {
-      label: "Payment",
-      value: isPaid ? "Paid Online · Stripe" : "Pay In Shop · Cash or Card",
-    },
+    ...(isDeposit
+      ? [
+          {
+            label: "Deposit Paid",
+            value: `$${data.deposit} — Secured your chair ✓`,
+            highlight: true,
+          },
+          {
+            label: "Due at Shop",
+            value: `$${data.remaining} — Pay when you arrive`,
+            highlight: false,
+          },
+        ]
+      : [
+          {
+            label: "Payment",
+            value: isPaid
+              ? "Paid Online · Stripe"
+              : "Pay In Shop · Cash or Card",
+          },
+        ]),
     { label: "Location", value: "4 Hub Dr, Hattiesburg, MS 39402" },
   ];
 
@@ -623,7 +647,7 @@ function BookingConfirmedInner() {
 
             {/* Rows */}
             <div>
-              {rows.map(({ label, value }, i) => (
+              {rows.map(({ label, value, highlight }, i) => (
                 <div
                   key={label}
                   className="row-enter"
@@ -638,13 +662,18 @@ function BookingConfirmedInner() {
                         : "none",
                     gap: 8,
                     flexWrap: "wrap",
+                    background: highlight
+                      ? "rgba(245,158,11,0.03)"
+                      : "transparent",
+                    margin: highlight ? "0 -4px" : "0",
+                    padding: highlight ? "13px 4px" : "13px 0",
                   }}
                 >
                   <p
                     style={{
                       ...mono,
                       fontSize: 9,
-                      color: "#52525b",
+                      color: highlight ? "#f59e0b" : "#52525b",
                       letterSpacing: "0.2em",
                       textTransform: "uppercase",
                       flexShrink: 0,
@@ -657,13 +686,16 @@ function BookingConfirmedInner() {
                     style={{
                       ...mono,
                       fontSize: isMobile ? 11 : 13,
-                      color:
-                        label === "Payment"
+                      color: highlight
+                        ? "#f59e0b"
+                        : label === "Payment"
                           ? accent
                           : label === "Location"
                             ? "#71717a"
-                            : "white",
-                      fontWeight: 500,
+                            : label === "Due at Shop"
+                              ? "#a1a1aa"
+                              : "white",
+                      fontWeight: highlight ? 700 : 500,
                       textAlign: "right",
                       lineHeight: 1.5,
                       flex: 1,

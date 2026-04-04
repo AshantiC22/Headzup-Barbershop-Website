@@ -9,6 +9,23 @@ class UserProfile(models.Model):
     security_question = models.CharField(max_length=200, blank=True, default="")
     security_answer   = models.CharField(max_length=200, blank=True, default="",
                                          help_text="Stored lowercase stripped for comparison")
+    # Strike system
+    strike_count      = models.PositiveIntegerField(default=0,
+                                                    help_text="Total no-shows + last-minute cancels")
+    deposit_fee       = models.DecimalField(max_digits=6, decimal_places=2, default=10.00,
+                                            help_text="Base $10. Increases $1.50 per strike after first.")
+    terms_accepted    = models.BooleanField(default=False,
+                                            help_text="Client accepted deposit & strike T&C")
+    terms_accepted_at = models.DateTimeField(null=True, blank=True)
+
+    def get_deposit_fee(self):
+        """Base $10 + $1.50 for every strike beyond the first."""
+        from decimal import Decimal
+        extra = max(0, self.strike_count - 1) * Decimal("1.50")
+        return Decimal("10.00") + extra
+
+    def __str__(self):
+        return f"{self.user.username} — strikes:{self.strike_count} deposit:${self.get_deposit_fee()}"
 
 
 class Service(models.Model):
@@ -82,19 +99,28 @@ class Appointment(models.Model):
         ("shop",   "Pay In Shop"),
     ]
 
-    user             = models.ForeignKey(User, on_delete=models.CASCADE)
-    barber           = models.ForeignKey(Barber, on_delete=models.CASCADE)
-    service          = models.ForeignKey(Service, on_delete=models.CASCADE)
-    date             = models.DateField()
-    time             = models.TimeField()
-    status           = models.CharField(max_length=20, choices=STATUS_CHOICES, default="confirmed")
-    payment_method   = models.CharField(max_length=20, choices=PAYMENT_CHOICES, default="shop")
-    created_at       = models.DateTimeField(auto_now_add=True)
-    review_notified  = models.BooleanField(default=False)
-    reminder_sent    = models.BooleanField(default=False)  # 24hr reminder sent
-    barber_notes     = models.TextField(blank=True, default="")  # barber's private notes
-    client_notes     = models.TextField(blank=True, default="")  # client's style request
-    is_walk_in       = models.BooleanField(default=False)  # walk-in booking flag
+    user              = models.ForeignKey(User, on_delete=models.CASCADE)
+    barber            = models.ForeignKey(Barber, on_delete=models.CASCADE)
+    service           = models.ForeignKey(Service, on_delete=models.CASCADE)
+    date              = models.DateField()
+    time              = models.TimeField()
+    status            = models.CharField(max_length=20, choices=STATUS_CHOICES, default="confirmed")
+    payment_method    = models.CharField(max_length=20, choices=PAYMENT_CHOICES, default="shop")
+    created_at        = models.DateTimeField(auto_now_add=True)
+    review_notified   = models.BooleanField(default=False)
+    reminder_sent     = models.BooleanField(default=False)
+    barber_notes      = models.TextField(blank=True, default="")
+    client_notes      = models.TextField(blank=True, default="")
+    is_walk_in        = models.BooleanField(default=False)
+    # Deposit system
+    deposit_amount    = models.DecimalField(max_digits=6, decimal_places=2, default=0.00,
+                                            help_text="Deposit charged at booking time")
+    deposit_paid      = models.BooleanField(default=False,
+                                            help_text="True once deposit payment confirmed")
+    deposit_session_id= models.CharField(max_length=200, blank=True, default="",
+                                         help_text="Stripe session ID for deposit payment")
+    late_cancel       = models.BooleanField(default=False,
+                                            help_text="True if cancelled within 2 hours of appointment")
 
     class Meta:
         unique_together = ("barber", "date", "time")

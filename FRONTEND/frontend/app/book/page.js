@@ -514,7 +514,12 @@ function BookContent() {
   const [selectedDate, setSelectedDate] = useState("");
   const [selectedTime, setSelectedTime] = useState("");
   const [paymentMethod, setPaymentMethod] = useState("online"); // "online" | "shop"
-  const [clientNotes, setClientNotes] = useState(""); // client's style request
+  const [clientNotes, setClientNotes] = useState("");
+
+  // Strike & deposit
+  const [strikeInfo, setStrikeInfo] = useState(null); // { strike_count, deposit_fee, terms_accepted }
+  const [showTerms, setShowTerms] = useState(false); // show T&C modal
+  const [termsAccepted, setTermsAccepted] = useState(false);
 
   // Available slots state
   const [availableSlots, setAvailableSlots] = useState([]);
@@ -659,6 +664,18 @@ function BookContent() {
     }
   }, [step, selectedDate, fetchSlots]);
 
+  // ── Fetch client's strike/deposit status when reaching payment step ──
+  useEffect(() => {
+    if (step === 4) {
+      API.get("client/strike-status/")
+        .then((r) => {
+          setStrikeInfo(r.data);
+          setTermsAccepted(r.data.terms_accepted);
+        })
+        .catch(() => {});
+    }
+  }, [step]);
+
   // ── Book (pay in shop) ──
   const handleBookInShop = async () => {
     setSubmitting(true);
@@ -691,12 +708,20 @@ function BookContent() {
     }
   };
 
-  // ── Pay online — Stripe Connect routes to barber directly ──
+  // ── Pay online — deposit routes to barber directly ──
   const handleCheckout = async () => {
     setSubmitting(true);
     setError("");
+
+    // Must accept terms before paying deposit
+    if (!termsAccepted && !strikeInfo?.terms_accepted) {
+      setShowTerms(true);
+      setSubmitting(false);
+      return;
+    }
+
     try {
-      const res = await API.post("create-checkout-session/", {
+      const res = await API.post("deposit/checkout/", {
         service: selectedService.id,
         barber: selectedBarber.id,
         date: selectedDate,
@@ -710,13 +735,7 @@ function BookContent() {
         return;
       }
 
-      if (res.data.method === "cashapp") {
-        // Fallback — barber has Cash App but no Stripe yet
-        window.location.href = res.data.cashapp_url;
-        return;
-      }
-
-      // Stripe checkout — payment goes directly to barber's Stripe account
+      // Redirect to Stripe deposit checkout
       window.location.href = res.data.url;
     } catch (e) {
       setError(
@@ -1739,19 +1758,9 @@ function BookContent() {
                         (e.target.style.borderColor = "rgba(255,255,255,0.1)")
                       }
                     />
-                    <p
-                      style={{
-                        fontSize: 11,
-                        color: "#71717a",
-                        marginTop: 6,
-                        fontFamily: "'DM Mono',monospace",
-                      }}
-                    >
-                      Your barber will see this before your appointment
-                    </p>
                   </div>
 
-                  {/* ── PAYMENT ── */}
+                  {/* ── DEPOSIT & PAYMENT ── */}
                   <div style={{ marginBottom: 24 }}>
                     <p
                       style={{
@@ -1766,60 +1775,156 @@ function BookContent() {
                       Payment Method
                     </p>
 
-                    {/* Amount due */}
+                    {/* Service price breakdown */}
                     <div
                       style={{
-                        padding: "14px 20px",
-                        background: "rgba(245,158,11,0.06)",
+                        padding: "16px 18px",
+                        background: "rgba(245,158,11,0.05)",
                         border: "1px solid rgba(245,158,11,0.2)",
-                        marginBottom: 14,
-                        display: "flex",
-                        justifyContent: "space-between",
-                        alignItems: "center",
+                        marginBottom: 12,
                         clipPath:
                           "polygon(0 0,calc(100% - 8px) 0,100% 8px,100% 100%,8px 100%,0 calc(100% - 8px))",
                       }}
                     >
-                      <div>
-                        <p
+                      <div
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          alignItems: "center",
+                          marginBottom: 8,
+                        }}
+                      >
+                        <span
                           style={{
                             fontFamily: "'DM Mono',monospace",
-                            fontSize: 10,
+                            fontSize: 11,
                             color: "#a1a1aa",
-                            marginBottom: 2,
                           }}
                         >
-                          Amount Due
-                        </p>
+                          {selectedService?.name}
+                        </span>
+                        <span
+                          style={{
+                            ...sf,
+                            fontSize: 18,
+                            fontWeight: 900,
+                            color: "white",
+                          }}
+                        >
+                          ${selectedService?.price}
+                        </span>
+                      </div>
+                      <div
+                        style={{
+                          height: 1,
+                          background: "rgba(255,255,255,0.06)",
+                          marginBottom: 8,
+                        }}
+                      />
+                      <div
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          alignItems: "center",
+                          marginBottom: 4,
+                        }}
+                      >
+                        <span
+                          style={{
+                            fontFamily: "'DM Mono',monospace",
+                            fontSize: 11,
+                            color: "#f59e0b",
+                          }}
+                        >
+                          Deposit due now
+                          {strikeInfo?.strike_count > 0 && (
+                            <span style={{ color: "#ef4444", marginLeft: 8 }}>
+                              ({strikeInfo.strike_count} strike
+                              {strikeInfo.strike_count > 1 ? "s" : ""} — fee
+                              increased)
+                            </span>
+                          )}
+                        </span>
+                        <span
+                          style={{
+                            ...sf,
+                            fontSize: 18,
+                            fontWeight: 900,
+                            color: "#f59e0b",
+                          }}
+                        >
+                          ${strikeInfo?.deposit_fee || "10.00"}
+                        </span>
+                      </div>
+                      <div
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          alignItems: "center",
+                        }}
+                      >
+                        <span
+                          style={{
+                            fontFamily: "'DM Mono',monospace",
+                            fontSize: 11,
+                            color: "#52525b",
+                          }}
+                        >
+                          Remaining at appointment
+                        </span>
+                        <span
+                          style={{
+                            fontFamily: "'DM Mono',monospace",
+                            fontSize: 13,
+                            color: "#71717a",
+                          }}
+                        >
+                          $
+                          {Math.max(
+                            0,
+                            parseFloat(selectedService?.price || 0) -
+                              parseFloat(strikeInfo?.deposit_fee || 10),
+                          ).toFixed(2)}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Strike warning */}
+                    {strikeInfo?.strike_count > 0 && (
+                      <div
+                        style={{
+                          padding: "10px 14px",
+                          background: "rgba(239,68,68,0.06)",
+                          border: "1px solid rgba(239,68,68,0.2)",
+                          marginBottom: 12,
+                          clipPath:
+                            "polygon(0 0,calc(100% - 6px) 0,100% 6px,100% 100%,6px 100%,0 calc(100% - 6px))",
+                        }}
+                      >
                         <p
                           style={{
                             fontFamily: "'DM Mono',monospace",
                             fontSize: 11,
-                            color: "#71717a",
+                            color: "#f87171",
+                            lineHeight: 1.6,
                           }}
                         >
-                          {selectedService?.name} · {selectedBarber?.name}
+                          ⚠ You have {strikeInfo.strike_count} strike
+                          {strikeInfo.strike_count > 1 ? "s" : ""} on your
+                          account due to previous no-shows or late
+                          cancellations. Your deposit has been increased by $
+                          {(parseFloat(strikeInfo.deposit_fee) - 10).toFixed(2)}
+                          .
                         </p>
                       </div>
-                      <p
-                        style={{
-                          ...sf,
-                          fontSize: 28,
-                          fontWeight: 900,
-                          color: "#f59e0b",
-                          letterSpacing: "-0.03em",
-                        }}
-                      >
-                        ${selectedService?.price}
-                      </p>
-                    </div>
+                    )}
 
-                    {/* Pay via Stripe / Card */}
+                    {/* Pay deposit online */}
                     <button
                       onClick={() => setPaymentMethod("online")}
                       style={{
                         width: "100%",
-                        padding: "20px 18px",
+                        padding: "18px 16px",
                         background:
                           paymentMethod === "online"
                             ? "rgba(99,91,255,0.08)"
@@ -1860,15 +1965,15 @@ function BookContent() {
                           style={{
                             display: "flex",
                             alignItems: "center",
-                            gap: 16,
+                            gap: 14,
                           }}
                         >
                           <div
                             style={{
-                              width: 48,
-                              height: 48,
+                              width: 44,
+                              height: 44,
                               background: "#635bff",
-                              borderRadius: 12,
+                              borderRadius: 10,
                               display: "flex",
                               alignItems: "center",
                               justifyContent: "center",
@@ -1881,31 +1986,29 @@ function BookContent() {
                           >
                             <span
                               style={{
-                                fontFamily: "'Syncopate',sans-serif",
-                                fontSize: 20,
+                                ...sf,
+                                fontSize: 18,
                                 fontWeight: 900,
                                 color: "white",
-                                letterSpacing: "-0.05em",
                               }}
                             >
                               S
                             </span>
                           </div>
-                          <div style={{ textAlign: "left" }}>
+                          <div>
                             <p
                               style={{
                                 ...sf,
-                                fontSize: 11,
+                                fontSize: 10,
                                 textTransform: "uppercase",
                                 color:
                                   paymentMethod === "online"
                                     ? "#a78bfa"
                                     : "white",
-                                margin: "0 0 4px",
-                                letterSpacing: "0.04em",
+                                margin: "0 0 3px",
                               }}
                             >
-                              Pay with Card
+                              Pay Deposit Online
                             </p>
                             <p
                               style={{
@@ -1918,28 +2021,27 @@ function BookContent() {
                                 margin: 0,
                               }}
                             >
-                              Visa · Mastercard · Amex · paid to{" "}
-                              {selectedBarber?.name}
+                              ${strikeInfo?.deposit_fee || "10.00"} secures your
+                              chair — rest due at shop
                             </p>
                           </div>
                         </div>
                         <div
                           style={{
-                            width: 22,
-                            height: 22,
+                            width: 20,
+                            height: 20,
                             borderRadius: "50%",
                             border: `2px solid ${paymentMethod === "online" ? "#635bff" : "rgba(255,255,255,0.2)"}`,
                             display: "flex",
                             alignItems: "center",
                             justifyContent: "center",
-                            flexShrink: 0,
                           }}
                         >
                           {paymentMethod === "online" && (
                             <div
                               style={{
-                                width: 11,
-                                height: 11,
+                                width: 10,
+                                height: 10,
                                 borderRadius: "50%",
                                 background: "#635bff",
                               }}
@@ -1947,33 +2049,6 @@ function BookContent() {
                           )}
                         </div>
                       </div>
-                      {paymentMethod === "online" && (
-                        <div
-                          style={{
-                            marginTop: 12,
-                            padding: "10px 14px",
-                            background: "rgba(99,91,255,0.05)",
-                            border: "1px solid rgba(99,91,255,0.15)",
-                          }}
-                        >
-                          <p
-                            style={{
-                              fontFamily: "'DM Mono',monospace",
-                              fontSize: 11,
-                              color: "rgba(167,139,250,0.75)",
-                              margin: 0,
-                              lineHeight: 1.6,
-                            }}
-                          >
-                            🔒 Secured by Stripe · ${selectedService?.price}{" "}
-                            charged to your card
-                            <br />✓ Money goes directly to{" "}
-                            {selectedBarber?.name}'s Stripe account
-                            <br />✓ Card declined automatically if insufficient
-                            funds
-                          </p>
-                        </div>
-                      )}
                     </button>
 
                     {/* Pay in shop */}
@@ -1981,7 +2056,7 @@ function BookContent() {
                       onClick={() => setPaymentMethod("shop")}
                       style={{
                         width: "100%",
-                        padding: "20px 18px",
+                        padding: "18px 16px",
                         background:
                           paymentMethod === "shop"
                             ? "rgba(255,255,255,0.04)"
@@ -1997,16 +2072,12 @@ function BookContent() {
                         if (paymentMethod !== "shop") {
                           e.currentTarget.style.borderColor =
                             "rgba(255,255,255,0.2)";
-                          e.currentTarget.style.background =
-                            "rgba(255,255,255,0.03)";
                         }
                       }}
                       onMouseLeave={(e) => {
                         if (paymentMethod !== "shop") {
                           e.currentTarget.style.borderColor =
                             "rgba(255,255,255,0.07)";
-                          e.currentTarget.style.background =
-                            "rgba(255,255,255,0.015)";
                         }
                       }}
                     >
@@ -2021,36 +2092,35 @@ function BookContent() {
                           style={{
                             display: "flex",
                             alignItems: "center",
-                            gap: 16,
+                            gap: 14,
                           }}
                         >
                           <div
                             style={{
-                              width: 48,
-                              height: 48,
-                              background: "rgba(255,255,255,0.06)",
-                              border: "1px solid rgba(255,255,255,0.12)",
-                              borderRadius: 12,
+                              width: 44,
+                              height: 44,
+                              background: "rgba(255,255,255,0.05)",
+                              border: "1px solid rgba(255,255,255,0.1)",
+                              borderRadius: 10,
                               display: "flex",
                               alignItems: "center",
                               justifyContent: "center",
                               flexShrink: 0,
                             }}
                           >
-                            <span style={{ fontSize: 22 }}>✂️</span>
+                            <span style={{ fontSize: 20 }}>✂️</span>
                           </div>
-                          <div style={{ textAlign: "left" }}>
+                          <div>
                             <p
                               style={{
                                 ...sf,
-                                fontSize: 11,
+                                fontSize: 10,
                                 textTransform: "uppercase",
                                 color:
                                   paymentMethod === "shop"
                                     ? "white"
                                     : "#71717a",
-                                margin: "0 0 4px",
-                                letterSpacing: "0.04em",
+                                margin: "0 0 3px",
                               }}
                             >
                               Pay In Shop
@@ -2063,27 +2133,26 @@ function BookContent() {
                                 margin: 0,
                               }}
                             >
-                              Cash · Card · Tap to pay at the chair
+                              Full ${selectedService?.price} due at the chair
                             </p>
                           </div>
                         </div>
                         <div
                           style={{
-                            width: 22,
-                            height: 22,
+                            width: 20,
+                            height: 20,
                             borderRadius: "50%",
                             border: `2px solid ${paymentMethod === "shop" ? "rgba(255,255,255,0.5)" : "rgba(255,255,255,0.2)"}`,
                             display: "flex",
                             alignItems: "center",
                             justifyContent: "center",
-                            flexShrink: 0,
                           }}
                         >
                           {paymentMethod === "shop" && (
                             <div
                               style={{
-                                width: 11,
-                                height: 11,
+                                width: 10,
+                                height: 10,
                                 borderRadius: "50%",
                                 background: "white",
                               }}
@@ -2092,6 +2161,81 @@ function BookContent() {
                         </div>
                       </div>
                     </button>
+
+                    {/* Terms acceptance */}
+                    <div
+                      style={{
+                        marginTop: 14,
+                        display: "flex",
+                        alignItems: "flex-start",
+                        gap: 10,
+                      }}
+                    >
+                      <button
+                        onClick={async () => {
+                          setTermsAccepted(!termsAccepted);
+                          if (!termsAccepted) {
+                            try {
+                              await API.post("client/accept-terms/");
+                            } catch {}
+                          }
+                        }}
+                        style={{
+                          width: 20,
+                          height: 20,
+                          flexShrink: 0,
+                          marginTop: 1,
+                          border: `2px solid ${termsAccepted ? "#f59e0b" : "rgba(255,255,255,0.2)"}`,
+                          background: termsAccepted
+                            ? "rgba(245,158,11,0.1)"
+                            : "transparent",
+                          cursor: "pointer",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          transition: "all 0.2s",
+                          minHeight: "auto",
+                          minWidth: "auto",
+                        }}
+                      >
+                        {termsAccepted && (
+                          <span
+                            style={{
+                              color: "#f59e0b",
+                              fontSize: 11,
+                              lineHeight: 1,
+                            }}
+                          >
+                            ✓
+                          </span>
+                        )}
+                      </button>
+                      <p
+                        style={{
+                          fontFamily: "'DM Mono',monospace",
+                          fontSize: 10,
+                          color: "#71717a",
+                          lineHeight: 1.6,
+                        }}
+                      >
+                        I have read and agree to the{" "}
+                        <button
+                          onClick={() => setShowTerms(true)}
+                          style={{
+                            background: "none",
+                            border: "none",
+                            color: "#f59e0b",
+                            cursor: "pointer",
+                            fontFamily: "'DM Mono',monospace",
+                            fontSize: 10,
+                            padding: 0,
+                            textDecoration: "underline",
+                          }}
+                        >
+                          Deposit & Cancellation Policy
+                        </button>
+                      </p>
+                    </div>
                   </div>
 
                   {error && (
@@ -2156,12 +2300,19 @@ function BookContent() {
                     </button>
                     <button
                       onClick={handlePay}
-                      disabled={submitting}
+                      disabled={
+                        submitting ||
+                        (paymentMethod === "online" && !termsAccepted)
+                      }
                       style={{
                         flex: 2,
                         padding: "16px",
                         border: "none",
-                        cursor: submitting ? "not-allowed" : "pointer",
+                        cursor:
+                          submitting ||
+                          (paymentMethod === "online" && !termsAccepted)
+                            ? "not-allowed"
+                            : "pointer",
                         transition: "all 0.25s",
                         display: "flex",
                         alignItems: "center",
@@ -2174,19 +2325,31 @@ function BookContent() {
                         letterSpacing: "0.2em",
                         background: submitting
                           ? "#111"
-                          : paymentMethod === "online"
-                            ? "#635bff"
-                            : "rgba(255,255,255,0.9)",
-                        color: submitting ? "#3f3f46" : "black",
+                          : paymentMethod === "online" && !termsAccepted
+                            ? "#1a1a1a"
+                            : paymentMethod === "online"
+                              ? "#635bff"
+                              : "rgba(255,255,255,0.9)",
+                        color:
+                          submitting ||
+                          (paymentMethod === "online" && !termsAccepted)
+                            ? "#3f3f46"
+                            : "black",
                         clipPath:
                           "polygon(0 0,calc(100% - 8px) 0,100% 8px,100% 100%,8px 100%,0 calc(100% - 8px))",
                         boxShadow:
-                          !submitting && paymentMethod === "online"
+                          !submitting &&
+                          paymentMethod === "online" &&
+                          termsAccepted
                             ? "0 0 28px rgba(99,91,255,0.35)"
                             : "none",
                       }}
                       onMouseEnter={(e) => {
-                        if (!submitting) e.currentTarget.style.opacity = "0.88";
+                        if (
+                          !submitting &&
+                          !(paymentMethod === "online" && !termsAccepted)
+                        )
+                          e.currentTarget.style.opacity = "0.88";
                       }}
                       onMouseLeave={(e) => {
                         e.currentTarget.style.opacity = "1";
@@ -2208,12 +2371,295 @@ function BookContent() {
                           Processing...
                         </>
                       ) : paymentMethod === "online" ? (
-                        `🔒 Pay $${selectedService?.price} with Card →`
+                        termsAccepted ? (
+                          `🔒 Pay $${strikeInfo?.deposit_fee || "10.00"} Deposit →`
+                        ) : (
+                          "Accept Terms to Continue"
+                        )
                       ) : (
                         "Book It — Pay In Shop →"
                       )}
                     </button>
                   </div>
+
+                  {/* ── TERMS & CONDITIONS MODAL ── */}
+                  {showTerms && (
+                    <div
+                      style={{
+                        position: "fixed",
+                        inset: 0,
+                        zIndex: 999,
+                        background: "rgba(0,0,0,0.92)",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        padding: 20,
+                      }}
+                      onClick={(e) => {
+                        if (e.target === e.currentTarget) setShowTerms(false);
+                      }}
+                    >
+                      <div
+                        style={{
+                          background: "#0a0a0a",
+                          border: "1px solid rgba(245,158,11,0.25)",
+                          maxWidth: 540,
+                          width: "100%",
+                          maxHeight: "85vh",
+                          overflow: "hidden",
+                          display: "flex",
+                          flexDirection: "column",
+                          clipPath:
+                            "polygon(0 0,calc(100% - 16px) 0,100% 16px,100% 100%,16px 100%,0 calc(100% - 16px))",
+                        }}
+                      >
+                        {/* Header */}
+                        <div
+                          style={{
+                            padding: "20px 24px 16px",
+                            borderBottom: "1px solid rgba(255,255,255,0.07)",
+                            display: "flex",
+                            justifyContent: "space-between",
+                            alignItems: "center",
+                            flexShrink: 0,
+                          }}
+                        >
+                          <div>
+                            <div
+                              style={{
+                                display: "flex",
+                                alignItems: "center",
+                                gap: 10,
+                                marginBottom: 4,
+                              }}
+                            >
+                              <div
+                                style={{
+                                  width: 3,
+                                  height: 20,
+                                  background:
+                                    "linear-gradient(to bottom,#ef4444,#f59e0b)",
+                                }}
+                              />
+                              <p
+                                style={{
+                                  fontFamily: "'DM Mono',monospace",
+                                  fontSize: 8,
+                                  color: "rgba(245,158,11,0.6)",
+                                  letterSpacing: "0.5em",
+                                  textTransform: "uppercase",
+                                }}
+                              >
+                                HEADZ UP BARBERSHOP
+                              </p>
+                            </div>
+                            <h3
+                              style={{
+                                fontFamily: "'Syncopate',sans-serif",
+                                fontSize: 13,
+                                fontWeight: 900,
+                                textTransform: "uppercase",
+                                letterSpacing: "-0.02em",
+                                color: "white",
+                              }}
+                            >
+                              Deposit & Cancellation Policy
+                            </h3>
+                          </div>
+                          <button
+                            onClick={() => setShowTerms(false)}
+                            style={{
+                              background: "none",
+                              border: "1px solid rgba(255,255,255,0.1)",
+                              color: "#52525b",
+                              width: 32,
+                              height: 32,
+                              cursor: "pointer",
+                              fontSize: 14,
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              flexShrink: 0,
+                              transition: "all 0.2s",
+                            }}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.color = "white";
+                              e.currentTarget.style.borderColor =
+                                "rgba(255,255,255,0.3)";
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.color = "#52525b";
+                              e.currentTarget.style.borderColor =
+                                "rgba(255,255,255,0.1)";
+                            }}
+                          >
+                            ✕
+                          </button>
+                        </div>
+
+                        {/* Body */}
+                        <div
+                          style={{
+                            padding: "20px 24px",
+                            overflowY: "auto",
+                            flex: 1,
+                          }}
+                        >
+                          {[
+                            {
+                              title: "📌 Deposit Requirement",
+                              body: `All online bookings require a non-refundable $10.00 deposit to secure your appointment. This deposit is applied toward your total service price. For example, if your service is $35.00, you pay $10.00 now and $25.00 at the shop.`,
+                            },
+                            {
+                              title: "⚠️ Strike System",
+                              body: `HEADZ UP operates a fair strike system to protect our barbers' time. A strike is issued when a client is a no-show, cancels within 2 hours of their appointment, or is a habitual last-minute canceler.`,
+                            },
+                            {
+                              title: "💰 Deposit Increases",
+                              body: `Your first booking always starts at the standard $10.00 deposit. Each strike after your first will increase your deposit fee by $1.50 for every future booking. For example: 1 strike = $10.00, 2 strikes = $11.50, 3 strikes = $13.00, and so on. This protects our barbers from lost income due to repeated no-shows.`,
+                            },
+                            {
+                              title: "🚫 No-Show Policy",
+                              body: `If you do not show up for your appointment without any notice, you will forfeit your full deposit. That money goes directly to your barber as compensation for the reserved time slot. A strike will be added to your account.`,
+                            },
+                            {
+                              title: "⏰ Late Cancellation Policy",
+                              body: `Cancellations made less than 2 hours before your scheduled appointment are considered late cancellations. Your deposit will not be refunded and a strike will be added to your account. We understand emergencies happen — if you have a genuine emergency please contact the shop directly.`,
+                            },
+                            {
+                              title: "✅ On-Time Cancellations",
+                              body: `Cancellations made more than 2 hours before your appointment will not result in a strike. However, deposits are non-refundable. You are welcome to reschedule your appointment at no additional deposit charge as long as you are not within the 2-hour window.`,
+                            },
+                            {
+                              title: "🔄 Rescheduling",
+                              body: `You may reschedule your appointment once at no penalty as long as you do so more than 2 hours before the original appointment time. Rescheduling within 2 hours of your appointment is treated as a late cancellation.`,
+                            },
+                            {
+                              title: "📞 Contact",
+                              body: `If you have questions about your strikes or deposit balance, please contact HEADZ UP Barbershop directly. We are always happy to work with our clients in good faith.`,
+                            },
+                          ].map(({ title, body }) => (
+                            <div
+                              key={title}
+                              style={{
+                                marginBottom: 18,
+                                paddingBottom: 18,
+                                borderBottom:
+                                  "1px solid rgba(255,255,255,0.04)",
+                              }}
+                            >
+                              <p
+                                style={{
+                                  fontFamily: "'Syncopate',sans-serif",
+                                  fontSize: 8,
+                                  fontWeight: 700,
+                                  textTransform: "uppercase",
+                                  letterSpacing: "0.04em",
+                                  color: "#f59e0b",
+                                  marginBottom: 8,
+                                }}
+                              >
+                                {title}
+                              </p>
+                              <p
+                                style={{
+                                  fontFamily: "'DM Mono',monospace",
+                                  fontSize: 12,
+                                  color: "#a1a1aa",
+                                  lineHeight: 1.8,
+                                }}
+                              >
+                                {body}
+                              </p>
+                            </div>
+                          ))}
+                          <p
+                            style={{
+                              fontFamily: "'DM Mono',monospace",
+                              fontSize: 10,
+                              color: "#52525b",
+                              lineHeight: 1.7,
+                              marginTop: 4,
+                            }}
+                          >
+                            By booking with HEADZ UP Barbershop you acknowledge
+                            that you have read, understood, and agree to this
+                            Deposit & Cancellation Policy. This policy exists to
+                            ensure fair treatment for both clients and barbers.
+                          </p>
+                        </div>
+
+                        {/* Footer */}
+                        <div
+                          style={{
+                            padding: "16px 24px",
+                            borderTop: "1px solid rgba(255,255,255,0.07)",
+                            display: "flex",
+                            gap: 10,
+                            flexShrink: 0,
+                          }}
+                        >
+                          <button
+                            onClick={() => setShowTerms(false)}
+                            style={{
+                              flex: 1,
+                              padding: "13px",
+                              background: "transparent",
+                              border: "1px solid rgba(255,255,255,0.1)",
+                              color: "#71717a",
+                              fontFamily: "'DM Mono',monospace",
+                              fontSize: 10,
+                              letterSpacing: "0.15em",
+                              textTransform: "uppercase",
+                              cursor: "pointer",
+                              transition: "all 0.2s",
+                            }}
+                            onMouseEnter={(e) =>
+                              (e.currentTarget.style.color = "white")
+                            }
+                            onMouseLeave={(e) =>
+                              (e.currentTarget.style.color = "#71717a")
+                            }
+                          >
+                            Close
+                          </button>
+                          <button
+                            onClick={async () => {
+                              setTermsAccepted(true);
+                              setShowTerms(false);
+                              try {
+                                await API.post("client/accept-terms/");
+                              } catch {}
+                            }}
+                            style={{
+                              flex: 2,
+                              padding: "13px",
+                              background: "#f59e0b",
+                              color: "black",
+                              fontFamily: "'Syncopate',sans-serif",
+                              fontSize: 8,
+                              fontWeight: 700,
+                              letterSpacing: "0.22em",
+                              textTransform: "uppercase",
+                              border: "none",
+                              cursor: "pointer",
+                              transition: "opacity 0.2s",
+                              clipPath:
+                                "polygon(0 0,calc(100% - 7px) 0,100% 7px,100% 100%,7px 100%,0 calc(100% - 7px))",
+                            }}
+                            onMouseEnter={(e) =>
+                              (e.currentTarget.style.opacity = "0.85")
+                            }
+                            onMouseLeave={(e) =>
+                              (e.currentTarget.style.opacity = "1")
+                            }
+                          >
+                            I Accept & Agree ✓
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </div>

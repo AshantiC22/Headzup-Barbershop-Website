@@ -375,6 +375,7 @@ function DashboardContent() {
   const [cancelling, setCancelling] = useState(null);
   const [reschedAppt, setReschedAppt] = useState(null);
   const [time, setTime] = useState("");
+  const [strikeInfo, setStrikeInfo] = useState(null);
 
   const showToast = (msg, type = "success") => {
     setToast({ msg, type });
@@ -420,15 +421,17 @@ function DashboardContent() {
   useEffect(() => {
     const load = async () => {
       try {
-        const [d, a] = await Promise.all([
+        const [d, a, s] = await Promise.all([
           API.get("dashboard/"),
           API.get("appointments/"),
+          API.get("client/strike-status/").catch(() => ({ data: null })),
         ]);
         setUser(d.data);
         const appts = Array.isArray(a.data) ? a.data : a.data.results || [];
         setAppointments(
           appts.sort((x, y) => new Date(y.date) - new Date(x.date)),
         );
+        if (s.data) setStrikeInfo(s.data);
       } catch {
         showToast("Could not load data.", "error");
       } finally {
@@ -445,17 +448,47 @@ function DashboardContent() {
   };
 
   const handleCancel = async (appt) => {
-    if (
-      !confirm(
-        `Cancel ${appt.service_name || "appointment"} on ${fmtDate(appt.date)}?`,
-      )
-    )
-      return;
+    // Check if within 2 hours — warn the client
+    const apptDT = new Date(`${appt.date}T${appt.time}`);
+    const now2 = new Date();
+    const diffHrs = (apptDT - now2) / (1000 * 60 * 60);
+    const isLate = diffHrs >= 0 && diffHrs < 2;
+
+    const msg = isLate
+      ? `⚠ You are cancelling within 2 hours of your appointment. This will result in a STRIKE on your account and your deposit fee will increase by $1.50 on your next booking.
+
+Your deposit is non-refundable.
+
+Cancel anyway?`
+      : `Cancel ${appt.service_name || "appointment"} on ${fmtDate(appt.date)}? Your deposit is non-refundable.`;
+
+    if (!confirm(msg)) return;
     setCancelling(appt.id);
     try {
-      await API.delete(`appointments/${appt.id}/`);
-      setAppointments((p) => p.filter((a) => a.id !== appt.id));
-      showToast("Appointment cancelled.");
+      await API.patch(`appointments/${appt.id}/`, { status: "cancelled" });
+      if (isLate) {
+        // Backend issues strike automatically via the late_cancel endpoint
+        try {
+          await API.post(`barber/appointments/${appt.id}/strike/`, {
+            reason: "late_cancel",
+          });
+        } catch {}
+      }
+      setAppointments((p) =>
+        p.map((a) => (a.id === appt.id ? { ...a, status: "cancelled" } : a)),
+      );
+      if (isLate) {
+        showToast(
+          "Appointment cancelled. A strike has been added to your account.",
+          "error",
+        );
+        // Refresh strike info
+        API.get("client/strike-status/")
+          .then((r) => setStrikeInfo(r.data))
+          .catch(() => {});
+      } else {
+        showToast("Appointment cancelled.");
+      }
     } catch {
       showToast("Could not cancel.", "error");
     } finally {
@@ -845,6 +878,111 @@ function DashboardContent() {
               : "52px 40px 80px",
           }}
         >
+          {/* ── STRIKE BANNER ── */}
+          {strikeInfo && strikeInfo.strike_count > 0 && (
+            <div
+              className="dc"
+              style={{
+                marginBottom: isMobile ? 20 : 28,
+                padding: "14px 18px",
+                background: "rgba(239,68,68,0.06)",
+                border: "1px solid rgba(239,68,68,0.2)",
+                display: "flex",
+                alignItems: isMobile ? "flex-start" : "center",
+                justifyContent: "space-between",
+                flexWrap: "wrap",
+                gap: 12,
+                clipPath:
+                  "polygon(0 0,calc(100% - 10px) 0,100% 10px,100% 100%,10px 100%,0 calc(100% - 10px))",
+              }}
+            >
+              <div
+                style={{ display: "flex", alignItems: "flex-start", gap: 12 }}
+              >
+                <span style={{ fontSize: 18, flexShrink: 0 }}>⚡</span>
+                <div>
+                  <p
+                    style={{
+                      ...sf,
+                      fontSize: 8,
+                      fontWeight: 700,
+                      textTransform: "uppercase",
+                      letterSpacing: "0.04em",
+                      color: "#f87171",
+                      marginBottom: 4,
+                    }}
+                  >
+                    {strikeInfo.strike_count} Strike
+                    {strikeInfo.strike_count > 1 ? "s" : ""} on Your Account
+                  </p>
+                  <p
+                    style={{
+                      ...mono,
+                      fontSize: 11,
+                      color: "#a1a1aa",
+                      lineHeight: 1.7,
+                    }}
+                  >
+                    Your next booking deposit is{" "}
+                    <strong style={{ color: "#f59e0b" }}>
+                      ${strikeInfo.deposit_fee}
+                    </strong>{" "}
+                    due to previous no-shows or late cancellations.
+                    {strikeInfo.strike_count === 1 &&
+                      " Each additional strike adds $1.50 to your deposit."}
+                  </p>
+                </div>
+              </div>
+              <div
+                style={{
+                  padding: "6px 14px",
+                  background: "rgba(239,68,68,0.08)",
+                  border: "1px solid rgba(239,68,68,0.2)",
+                  flexShrink: 0,
+                }}
+              >
+                <span style={{ ...mono, fontSize: 10, color: "#f87171" }}>
+                  {strikeInfo.strike_count} / ∞ strikes
+                </span>
+              </div>
+            </div>
+          )}
+
+          {/* ── DEPOSIT INFO banner (if no strikes, show standard) ── */}
+          {strikeInfo && strikeInfo.strike_count === 0 && (
+            <div
+              className="dc"
+              style={{
+                marginBottom: isMobile ? 20 : 28,
+                padding: "12px 16px",
+                background: "rgba(245,158,11,0.04)",
+                border: "1px solid rgba(245,158,11,0.12)",
+                display: "flex",
+                alignItems: "center",
+                gap: 10,
+                clipPath:
+                  "polygon(0 0,calc(100% - 8px) 0,100% 8px,100% 100%,8px 100%,0 calc(100% - 8px))",
+              }}
+            >
+              <span style={{ fontSize: 14 }}>💰</span>
+              <p
+                style={{
+                  ...mono,
+                  fontSize: 11,
+                  color: "#71717a",
+                  lineHeight: 1.6,
+                }}
+              >
+                Your current booking deposit is{" "}
+                <strong style={{ color: "#f59e0b" }}>
+                  ${strikeInfo.deposit_fee}
+                </strong>
+                . No-shows and late cancellations increase your deposit by $1.50
+                per strike.
+              </p>
+            </div>
+          )}
+
           {loading ? (
             <div
               style={{
