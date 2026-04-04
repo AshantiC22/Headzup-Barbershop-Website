@@ -909,11 +909,6 @@ class PasswordResetConfirmView(APIView):
         user.save()
         return Response({"message": "Password updated successfully"})
 
-            return Response({"error": "Invalid or expired token"}, status=400)
-        user.set_password(new_password)
-        user.save()
-        return Response({"message": "Password updated successfully"})
-
 
 # ── Strike & Deposit System ───────────────────────────────────────────────────
 
