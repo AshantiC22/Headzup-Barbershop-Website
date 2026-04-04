@@ -1201,8 +1201,8 @@ Questions? Contact HEADZ UP Barbershop directly.
       <p style="font-size:11px;color:rgba(245,158,11,0.6);text-transform:uppercase;letter-spacing:0.4em;margin:0 0 10px;">Your Next Deposit</p>
       <p style="font-size:28px;font-weight:900;color:#f59e0b;margin:0 0 6px;">${next_deposit:.2f}</p>
       <p style="font-size:12px;color:#71717a;margin:0;line-height:1.6;">
-        Base $10.00 + ${increase:.2f} increase from {profile.strike_count} strike{"s" if profile.strike_count > 1 else ""}.<br/>
-        Each additional strike adds another $1.50.
+        {"Your deposit stays at $10.00 for now — this is your first strike and serves as a warning." if profile.strike_count == 1 else f"Base $10.00 + ${increase:.2f} increase from {profile.strike_count - 1} previous strike{'s' if profile.strike_count > 2 else ''}."}<br/>
+        Each additional strike adds $1.50 to your next booking deposit.
       </p>
     </div>
     <p style="font-size:12px;color:#52525b;line-height:1.8;margin:0 0 24px;">

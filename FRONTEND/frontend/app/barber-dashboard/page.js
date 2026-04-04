@@ -527,8 +527,8 @@ function ApptTicket({
                   lineHeight: 1.6,
                 }}
               >
-                Issuing a strike increases the client's deposit by $1.50 on
-                their next booking.
+                Strike 1 = warning, deposit stays $10. Strike 2+ = deposit
+                increases $1.50 each time.
               </p>
             </div>
           )}
@@ -1795,9 +1795,13 @@ export default function BarberDashboard() {
             : a,
         ),
       );
-      showToast(
-        `⚡ Strike issued — client now has ${r.data.strike_count} strike(s). Next deposit: $${r.data.next_deposit}`,
-      );
+      const strikes = r.data.strike_count;
+      const deposit = r.data.next_deposit;
+      const msg =
+        strikes === 1
+          ? `⚡ Strike 1 issued — this is a warning. Deposit stays $${deposit} but will increase if they strike again.`
+          : `⚡ Strike ${strikes} issued — next deposit is now $${deposit} (+$${(parseFloat(deposit) - 10).toFixed(2)} increase)`;
+      showToast(msg);
     } catch (e) {
       showToast(e.response?.data?.error || "Could not issue strike.", "error");
     }
