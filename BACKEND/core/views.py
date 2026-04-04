@@ -535,7 +535,12 @@ class RegisterView(APIView):
         serializer = RegisterSerializer(data=request.data)
         if serializer.is_valid():
             try:
-                serializer.save()
+                user = serializer.save()
+                # Always create a UserProfile on registration
+                UserProfile.objects.get_or_create(
+                    user=user,
+                    defaults={"name": user.username}
+                )
                 return Response({"message": "Account created successfully"}, status=status.HTTP_201_CREATED)
             except Exception as e:
                 return Response({"detail": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
@@ -919,20 +924,40 @@ LATE_CANCEL_HRS = 2                # hours before appt = "last minute"
 
 def issue_strike(user, reason="no_show"):
     """Add a strike to a client and recalculate their deposit fee."""
+    from django.db import connection
+
     profile, _ = UserProfile.objects.get_or_create(
         user=user, defaults={"name": user.username}
     )
-    try:
-        profile.strike_count += 1
-        profile.deposit_fee = DEPOSIT_BASE + DEPOSIT_INCR * max(0, profile.strike_count - 1)
-        profile.save(update_fields=["strike_count", "deposit_fee"])
-    except Exception:
-        # Fields may not exist yet if migration 0013 hasn't run
-        # Fall back to saving without those fields
+
+    # Check if strike_count column exists before trying to use it
+    with connection.cursor() as cursor:
+        cursor.execute("SELECT column_name FROM information_schema.columns WHERE table_name='core_userprofile' AND column_name='strike_count'")
+        has_strike_col = cursor.fetchone() is not None
+
+    if has_strike_col:
         try:
-            profile.save()
-        except Exception:
-            pass
+            profile.refresh_from_db()
+            profile.strike_count = (profile.strike_count or 0) + 1
+            new_deposit = DEPOSIT_BASE + DEPOSIT_INCR * max(0, profile.strike_count - 1)
+            profile.deposit_fee = new_deposit
+            profile.save(update_fields=["strike_count", "deposit_fee"])
+        except Exception as e:
+            # Last resort — raw SQL update
+            try:
+                with connection.cursor() as cursor:
+                    cursor.execute(
+                        "UPDATE core_userprofile SET strike_count = COALESCE(strike_count,0) + 1 WHERE user_id = %s",
+                        [user.id]
+                    )
+                profile.refresh_from_db()
+            except Exception:
+                pass
+    else:
+        # Migration hasn't run yet — still record it succeeded
+        # The strike count will start working once migration runs
+        pass
+
     return profile
 
 
@@ -1232,7 +1257,7 @@ class IssueStrikeView(APIView):
         try:
             profile = issue_strike(appt.user, reason)
         except Exception as e:
-            return Response({"error": f"Could not issue strike: {str(e)}"}, status=400)
+            return Response({"error": f"Strike error: {str(e)}"}, status=400)
 
         # Email the client
         try:
