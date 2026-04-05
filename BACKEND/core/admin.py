@@ -422,7 +422,6 @@ class AppointmentAdmin(HeadzUpAdminMixin, admin.ModelAdmin):
     search_fields  = ("user__username", "user__email", "barber__name", "service__name")
     ordering       = ("-date", "-time")
     date_hierarchy = "date"
-    list_editable  = ("status",)
     list_per_page  = 25
     readonly_fields = ("created_at",)
 
@@ -755,7 +754,6 @@ class NewsletterPostAdmin(HeadzUpAdminMixin, admin.ModelAdmin):
     list_filter   = ("category", "pinned", "active", "barber")
     search_fields = ("title", "body")
     ordering      = ("-created_at",)
-    list_editable  = ("active",)
 
     @admin.display(description="Post")
     def post_display(self, obj):
