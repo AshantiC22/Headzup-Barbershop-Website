@@ -3054,12 +3054,23 @@ class BarberRescheduleListView(APIView):
             appt.time = rr.new_time
             appt.status = "confirmed"
             appt.save()
-            send_reschedule_response_email(rr, accepted=True)
+            # Re-fetch with all related data for email
+            rr_full = RescheduleRequest.objects.select_related(
+                "appointment","appointment__user",
+                "appointment__barber","appointment__barber__user",
+                "appointment__service",
+            ).get(pk=rr.pk)
+            send_reschedule_response_email(rr_full, accepted=True)
             return Response({"message": "Reschedule approved — client has been notified."})
         else:
             rr.status = "rejected"
             rr.save()
-            send_reschedule_response_email(rr, accepted=False)
+            rr_full = RescheduleRequest.objects.select_related(
+                "appointment","appointment__user",
+                "appointment__barber","appointment__barber__user",
+                "appointment__service",
+            ).get(pk=rr.pk)
+            send_reschedule_response_email(rr_full, accepted=False)
             return Response({"message": "Reschedule declined — client has been notified."})
 
 
@@ -3069,8 +3080,13 @@ class ClientRescheduleRequestView(APIView):
 
     def post(self, request, pk):
         import secrets
+        import logging
+        logger = logging.getLogger(__name__)
+
         try:
-            appt = Appointment.objects.get(pk=pk, user=request.user)
+            appt = Appointment.objects.select_related(
+                "user", "barber", "barber__user", "service"
+            ).get(pk=pk, user=request.user)
         except Appointment.DoesNotExist:
             return Response({"error": "Appointment not found."}, status=404)
 
@@ -3090,7 +3106,18 @@ class ClientRescheduleRequestView(APIView):
             new_time=new_time,
             token=token,
         )
-        send_reschedule_request_email(rr)
+
+        # Re-fetch with all related data so the email thread has everything it needs
+        rr_full = RescheduleRequest.objects.select_related(
+            "appointment",
+            "appointment__user",
+            "appointment__barber",
+            "appointment__barber__user",
+            "appointment__service",
+        ).get(pk=rr.pk)
+
+        logger.info(f"Reschedule request created id={rr.pk} for appt={appt.pk} by {request.user.username}")
+        send_reschedule_request_email(rr_full)
         return Response({"message": "Reschedule request sent to your barber.", "id": rr.id})
 
 
@@ -3121,13 +3148,23 @@ class RescheduleResponseView(APIView):
             appt.date = rr.new_date
             appt.time = rr.new_time
             appt.save()
-            send_reschedule_response_email(rr, accepted=True)
-            return redirect(f"{FRONTEND_URL}/?reschedule=accepted")
+            rr_full = RescheduleRequest.objects.select_related(
+                "appointment","appointment__user",
+                "appointment__barber","appointment__barber__user",
+                "appointment__service",
+            ).get(pk=rr.pk)
+            send_reschedule_response_email(rr_full, accepted=True)
+            return redirect(f"{FRONTEND_URL}/dashboard?reschedule=accepted")
         else:
             rr.status = "rejected"
             rr.save()
-            send_reschedule_response_email(rr, accepted=False)
-            return redirect(f"{FRONTEND_URL}/?reschedule=rejected")
+            rr_full = RescheduleRequest.objects.select_related(
+                "appointment","appointment__user",
+                "appointment__barber","appointment__barber__user",
+                "appointment__service",
+            ).get(pk=rr.pk)
+            send_reschedule_response_email(rr_full, accepted=False)
+            return redirect(f"{FRONTEND_URL}/dashboard?reschedule=rejected")
 
 
 class BarberRescheduleRequestView(APIView):
