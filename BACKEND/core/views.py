@@ -354,12 +354,16 @@ def _sendgrid_send(to_email, subject, plain, html):
 
 def send_reschedule_request_email(reschedule_request):
     """
-    Notify the other party about a reschedule request.
-    - Client requests → email the BARBER with Accept/Reject links
-    - Barber requests  → email the CLIENT with Accept/Reject links
+    Client requests reschedule:
+      → email BARBER: full HTML with original time, requested time, Approve/Decline buttons
+      → email CLIENT: "thank you, under review" confirmation
+
+    Barber requests reschedule:
+      → email CLIENT: full HTML with original time, proposed time, Accept/Reject buttons
     """
     import threading
-    import secrets
+    import logging
+    logger = logging.getLogger(__name__)
 
     rr   = reschedule_request
     appt = rr.appointment
@@ -368,6 +372,7 @@ def send_reschedule_request_email(reschedule_request):
         client_email  = appt.user.email
         client_name   = appt.user.first_name or appt.user.username
         barber_name   = appt.barber.name
+        barber_email  = appt.barber.user.email if appt.barber.user else None
         service_name  = appt.service.name if appt.service else "Appointment"
         old_date      = appt.date.strftime("%A, %B %d, %Y")
         old_time      = appt.time.strftime("%I:%M %p").lstrip("0")
@@ -375,80 +380,174 @@ def send_reschedule_request_email(reschedule_request):
         new_time_str  = rr.new_time.strftime("%I:%M %p").lstrip("0")
         accept_url    = f"{FRONTEND_URL}/reschedule/respond?token={rr.token}&action=accept"
         reject_url    = f"{FRONTEND_URL}/reschedule/respond?token={rr.token}&action=reject"
-    except Exception:
+    except Exception as e:
+        logger.error(f"send_reschedule_request_email prep failed: {e}")
         return
+
+    def _build_reschedule_html(headline, headline_color, subhead, rows_html, cta_buttons_html):
+        """Build a standalone reschedule email without using the fragile wrapper."""
+        return f"""<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#050505;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;color:#fff;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#050505;padding:40px 20px;">
+    <tr><td align="center">
+      <table width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;">
+        <tr><td style="padding-bottom:28px;">
+          <p style="font-family:'Courier New',monospace;font-size:22px;font-weight:900;letter-spacing:-0.05em;margin:0;text-transform:uppercase;">
+            HEADZ<span style="color:#f59e0b;font-style:italic;">UP</span>
+          </p>
+        </td></tr>
+        <tr><td style="padding-bottom:20px;">
+          <div style="width:52px;height:52px;background:rgba(245,158,11,0.12);border:1px solid rgba(245,158,11,0.3);display:inline-flex;align-items:center;justify-content:center;">
+            <span style="color:#f59e0b;font-size:24px;">↻</span>
+          </div>
+        </td></tr>
+        <tr><td style="padding-bottom:8px;">
+          <h1 style="font-family:'Courier New',monospace;font-size:26px;font-weight:900;text-transform:uppercase;margin:0;line-height:1.1;">
+            Reschedule<br><span style="color:{headline_color};font-style:italic;">{headline}</span>
+          </h1>
+        </td></tr>
+        <tr><td style="padding-bottom:24px;">
+          <p style="color:#71717a;font-size:13px;margin:0;line-height:1.6;">{subhead}</p>
+        </td></tr>
+        <tr><td style="background:#0a0a0a;border:1px solid rgba(255,255,255,0.1);padding:24px;">
+          {rows_html}
+        </td></tr>
+        {cta_buttons_html}
+        <tr><td style="border-top:1px solid rgba(255,255,255,0.06);padding-top:20px;margin-top:20px;">
+          <p style="font-size:11px;color:#3f3f46;margin:0;line-height:1.7;">HEADZ UP Barbershop &middot; 4 Hub Dr, Hattiesburg, MS 39402</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>"""
+
+    def _row(label, value, highlight=False):
+        color = "#f59e0b" if highlight else "white"
+        return f"""<table width="100%" cellpadding="0" cellspacing="0" style="border-bottom:1px solid rgba(255,255,255,0.05);margin-bottom:0;">
+          <tr><td style="padding:10px 0;">
+            <p style="font-family:'Courier New',monospace;font-size:9px;letter-spacing:0.3em;color:#52525b;text-transform:uppercase;margin:0 0 4px;">{label}</p>
+            <p style="font-size:14px;color:{color};margin:0;font-weight:700;">{value}</p>
+          </td></tr>
+        </table>"""
+
+    def _approve_reject_btns():
+        return f"""<tr><td style="padding:20px 0 0;">
+          <a href="{accept_url}" style="display:inline-block;padding:13px 26px;background:#22c55e;color:black;font-family:'Courier New',monospace;font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:0.15em;text-decoration:none;margin-right:10px;">✓ Approve</a>
+          <a href="{reject_url}" style="display:inline-block;padding:13px 26px;background:#f87171;color:black;font-family:'Courier New',monospace;font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:0.15em;text-decoration:none;">✕ Decline</a>
+        </td></tr>"""
 
     def _send():
         try:
             if rr.initiated_by == "client":
-                # 1. Email the BARBER with Accept/Reject buttons
-                barber_email = appt.barber.user.email if appt.barber.user else None
+                # ── 1. Email BARBER: full details + approve/decline buttons ──
                 if barber_email:
-                    subject_b  = f"Reschedule Request from {client_name} — HEADZ UP"
-                    rows_b     = _ticket_rows(
-                        ("Service",        service_name),
-                        ("Client",         client_name),
-                        ("Current Date",   old_date),
-                        ("Current Time",   old_time),
-                        ("Requested Date", f"<span style='color:#f59e0b'>{new_date_str}</span>"),
-                        ("Requested Time", f"<span style='color:#f59e0b'>{new_time_str}</span>"),
+                    rows_html = (
+                        _row("Client",         client_name) +
+                        _row("Service",        service_name) +
+                        _row("Original Date",  old_date) +
+                        _row("Original Time",  old_time) +
+                        _row("Requested Date", new_date_str, highlight=True) +
+                        _row("Requested Time", new_time_str, highlight=True)
                     )
-                    icon_b = '<div style="width:52px;height:52px;border-radius:50%;background:rgba(245,158,11,0.15);border:1px solid rgba(245,158,11,0.3);display:inline-block;text-align:center;line-height:52px;"><span style="color:#f59e0b;font-size:22px;">↻</span></div>'
-                    action_btns = f'''
-                      <a href="{accept_url}" style="display:inline-block;padding:12px 24px;background:#22c55e;color:black;font-family:'Courier New',monospace;font-size:10px;font-weight:900;text-transform:uppercase;text-decoration:none;margin-right:8px;">✓ Approve Reschedule</a>
-                      <a href="{reject_url}" style="display:inline-block;padding:12px 24px;background:#f87171;color:black;font-family:'Courier New',monospace;font-size:10px;font-weight:900;text-transform:uppercase;text-decoration:none;">✕ Decline</a>
-                    '''
-                    html_b = _html_email_wrapper("", icon_b, "Reschedule<br><span style='color:#f59e0b;font-style:italic;'>Request_</span>", f"{client_name} wants to reschedule their appointment.", rows_b, None, "")
-                    html_b = html_b.replace("</table>\n        </td></tr>", f"</table></td></tr><tr><td style='padding:20px 0;'>{action_btns}</td></tr>")
-                    plain_b = f"Reschedule request from {client_name}\nFrom: {old_date} {old_time}\nTo: {new_date_str} {new_time_str}\nApprove: {accept_url}\nDecline: {reject_url}"
-                    _sendgrid_send(barber_email, subject_b, plain_b, html_b)
+                    html_b = _build_reschedule_html(
+                        headline       = "Request_",
+                        headline_color = "#f59e0b",
+                        subhead        = f"{client_name} wants to reschedule their appointment with you. Review the request below and approve or decline.",
+                        rows_html      = rows_html,
+                        cta_buttons_html = _approve_reject_btns(),
+                    )
+                    plain_b = (
+                        f"Reschedule request from {client_name}\n\n"
+                        f"Service: {service_name}\n"
+                        f"Original: {old_date} at {old_time}\n"
+                        f"Requested: {new_date_str} at {new_time_str}\n\n"
+                        f"Approve: {accept_url}\n"
+                        f"Decline: {reject_url}\n\n"
+                        f"— HEADZ UP Barbershop"
+                    )
+                    _sendgrid_send(
+                        barber_email,
+                        f"↻ Reschedule Request from {client_name} — HEADZ UP",
+                        plain_b, html_b
+                    )
+                    logger.info(f"Reschedule request email sent to barber: {barber_email}")
 
-                # 2. Email the CLIENT a "thank you, under review" confirmation
+                # ── 2. Email CLIENT: "received, under review" confirmation ──
                 if client_email:
-                    subject_c = f"✓ Reschedule Request Received — HEADZ UP"
-                    rows_c    = _ticket_rows(
-                        ("Service",          service_name),
-                        ("Barber",           barber_name),
-                        ("Your Request",     f"{new_date_str} at {new_time_str}"),
-                        ("Current Booking",  f"{old_date} at {old_time}"),
-                        ("Status",           "<span style='color:#f59e0b'>Under Review</span>"),
+                    rows_html = (
+                        _row("Service",         service_name) +
+                        _row("Barber",          barber_name) +
+                        _row("Your Request",    f"{new_date_str} at {new_time_str}", highlight=True) +
+                        _row("Current Booking", f"{old_date} at {old_time}") +
+                        _row("Status",          "Under Review — awaiting barber approval", highlight=True)
                     )
-                    icon_c  = '<div style="width:52px;height:52px;border-radius:50%;background:rgba(34,197,94,0.15);border:1px solid rgba(34,197,94,0.3);display:inline-block;text-align:center;line-height:52px;"><span style="color:#22c55e;font-size:22px;">✓</span></div>'
-                    body_c  = f"Thank you for your reschedule request, {client_name}! Your barber {barber_name} has been notified and will review your request shortly. You will receive an email once it has been approved or declined. Until then, your original appointment on {old_date} at {old_time} remains active."
-                    html_c  = _html_email_wrapper("", icon_c, "Request<br><span style='color:#22c55e;font-style:italic;'>Received_</span>", body_c, rows_c, None, "")
-                    plain_c = f"Hi {client_name},\n\nYour reschedule request has been received.\n\nRequested: {new_date_str} at {new_time_str}\nBarber: {barber_name}\n\n{barber_name} will review and email you shortly with approval or decline.\nYour original appointment ({old_date} {old_time}) remains active until then.\n\n— HEADZ UP Barbershop"
-                    _sendgrid_send(client_email, subject_c, plain_c, html_c)
+                    html_c = _build_reschedule_html(
+                        headline       = "Received_",
+                        headline_color = "#22c55e",
+                        subhead        = f"Hi {client_name}! Your reschedule request has been sent to {barber_name}. You'll get an email as soon as they approve or decline. Your original appointment on {old_date} at {old_time} remains active until then.",
+                        rows_html      = rows_html,
+                        cta_buttons_html = f"""<tr><td style="padding:20px 0 0;">
+                          <a href="{FRONTEND_URL}/dashboard" style="display:inline-block;padding:13px 26px;background:#f59e0b;color:black;font-family:'Courier New',monospace;font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:0.15em;text-decoration:none;">View My Dashboard &rarr;</a>
+                        </td></tr>""",
+                    )
+                    plain_c = (
+                        f"Hi {client_name},\n\n"
+                        f"Your reschedule request has been received and sent to {barber_name}.\n\n"
+                        f"Requested: {new_date_str} at {new_time_str}\n"
+                        f"Service: {service_name}\n\n"
+                        f"You'll get an email once {barber_name} approves or declines.\n"
+                        f"Your original appointment ({old_date} at {old_time}) remains active until then.\n\n"
+                        f"— HEADZ UP Barbershop"
+                    )
+                    _sendgrid_send(
+                        client_email,
+                        f"✓ Reschedule Request Received — HEADZ UP",
+                        plain_c, html_c
+                    )
+                    logger.info(f"Reschedule confirmation email sent to client: {client_email}")
 
-                # Set recipient/subject/plain for the legacy return path (not used but kept for safety)
-                recipient = barber_email
-                subject   = f"Reschedule Request from {client_name} — HEADZ UP"
-                plain     = f"Reschedule request from {client_name}\nFrom: {old_date} {old_time}\nTo: {new_date_str} {new_time_str}"
-                return  # emails already sent above
             else:
-                # Email the client
-                recipient  = client_email
-                subject    = f"Your Appointment Has Been Rescheduled — HEADZ UP"
-                subhead    = f"{barber_name} has proposed a new time for your appointment."
-                rows       = _ticket_rows(
-                    ("Service", service_name),
-                    ("Barber",  barber_name),
-                    ("Original Date", old_date),
-                    ("Original Time", old_time),
-                    ("New Date", f"<span style='color:#f59e0b'>{new_date_str}</span>"),
-                    ("New Time", f"<span style='color:#f59e0b'>{new_time_str}</span>"),
-                )
-                icon = '<div style="width:52px;height:52px;border-radius:50%;background:rgba(245,158,11,0.15);border:1px solid rgba(245,158,11,0.3);display:inline-block;text-align:center;line-height:52px;"><span style="color:#f59e0b;font-size:22px;">↻</span></div>'
-                action_btns = f'''
-                  <a href="{accept_url}" style="display:inline-block;padding:12px 24px;background:#22c55e;color:black;font-family:'Courier New',monospace;font-size:10px;font-weight:900;text-transform:uppercase;text-decoration:none;margin-right:8px;">Accept Change</a>
-                  <a href="{reject_url}" style="display:inline-block;padding:12px 24px;background:#f87171;color:black;font-family:'Courier New',monospace;font-size:10px;font-weight:900;text-transform:uppercase;text-decoration:none;">Reject Change</a>
-                '''
-                html = _html_email_wrapper("", icon, "Appointment<br><span style='color:#f59e0b;font-style:italic;'>Update_</span>", subhead, rows, None, "")
-                html = html.replace("</table>\n        </td></tr>", f"</table></td></tr><tr><td style='padding:20px 0;'>{action_btns}</td></tr>")
-                plain = f"Reschedule from {barber_name}\nFrom: {old_date} {old_time}\nTo: {new_date_str} {new_time_str}\nAccept: {accept_url}\nReject: {reject_url}"
+                # ── Barber-initiated: email CLIENT with accept/reject ──
+                if client_email:
+                    rows_html = (
+                        _row("Service",       service_name) +
+                        _row("Barber",        barber_name) +
+                        _row("Original Date", old_date) +
+                        _row("Original Time", old_time) +
+                        _row("Proposed Date", new_date_str, highlight=True) +
+                        _row("Proposed Time", new_time_str, highlight=True)
+                    )
+                    html = _build_reschedule_html(
+                        headline       = "Proposed_",
+                        headline_color = "#f59e0b",
+                        subhead        = f"{barber_name} has proposed a new time for your appointment. Please accept or decline below.",
+                        rows_html      = rows_html,
+                        cta_buttons_html = f"""<tr><td style="padding:20px 0 0;">
+                          <a href="{accept_url}" style="display:inline-block;padding:13px 26px;background:#22c55e;color:black;font-family:'Courier New',monospace;font-size:10px;font-weight:900;text-transform:uppercase;text-decoration:none;margin-right:10px;">✓ Accept</a>
+                          <a href="{reject_url}" style="display:inline-block;padding:13px 26px;background:#f87171;color:black;font-family:'Courier New',monospace;font-size:10px;font-weight:900;text-transform:uppercase;text-decoration:none;">✕ Decline</a>
+                        </td></tr>""",
+                    )
+                    plain = (
+                        f"Hi {client_name},\n\n"
+                        f"{barber_name} wants to reschedule your appointment.\n\n"
+                        f"Original: {old_date} at {old_time}\n"
+                        f"Proposed: {new_date_str} at {new_time_str}\n\n"
+                        f"Accept: {accept_url}\n"
+                        f"Decline: {reject_url}\n\n"
+                        f"— HEADZ UP Barbershop"
+                    )
+                    _sendgrid_send(
+                        client_email,
+                        f"↻ Appointment Reschedule Proposed — HEADZ UP",
+                        plain, html
+                    )
+                    logger.info(f"Barber reschedule proposal sent to client: {client_email}")
 
-            _sendgrid_send(recipient, subject, plain, html)
-        except Exception:
-            pass
+        except Exception as e:
+            logger.error(f"send_reschedule_request_email _send failed: {e}", exc_info=True)
 
     threading.Thread(target=_send, daemon=True).start()
 
