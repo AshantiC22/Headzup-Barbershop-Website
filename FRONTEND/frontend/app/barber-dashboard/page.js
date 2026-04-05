@@ -23,9 +23,9 @@ const T = {
   redDim: "rgba(248,113,113,0.08)",
   redBorder: "rgba(248,113,113,0.2)",
   purple: "#a78bfa",
-  muted: "#71717a",
-  dim: "#3f3f46",
-  deep: "#27272a",
+  muted: "#a1a1aa",
+  dim: "#71717a",
+  deep: "#52525b",
 };
 const sf = { fontFamily: "'Syncopate', sans-serif" };
 const mono = { fontFamily: "'DM Mono', monospace" };
@@ -284,9 +284,14 @@ function ApptTicket({
               flexWrap: "wrap",
             }}
           >
-            <span style={{ ...mono, fontSize: 10, color: "#a1a1aa" }}>
+            <span style={{ ...mono, fontSize: 10, color: "#d4d4d4" }}>
               {appt.client_name || appt.client || appt.username || "Client"}
             </span>
+            {appt.barber_name && (
+              <span style={{ ...mono, fontSize: 9, color: T.amber }}>
+                ✂️ {appt.barber_name}
+              </span>
+            )}
             {appt.client_notes && (
               <span
                 style={{
@@ -299,6 +304,18 @@ function ApptTicket({
                 "{appt.client_notes}"
               </span>
             )}
+          </div>
+          <div
+            style={{ display: "flex", gap: 10, marginTop: 3, flexWrap: "wrap" }}
+          >
+            {appt.barber_name && (
+              <span style={{ ...mono, fontSize: 9, color: T.amber }}>
+                ✂ {appt.barber_name}
+              </span>
+            )}
+            <span style={{ ...mono, fontSize: 9, color: "#71717a" }}>
+              📍 4 Hub Dr, Hattiesburg, MS
+            </span>
           </div>
         </div>
         <div
@@ -1615,6 +1632,10 @@ export default function BarberDashboard() {
   const [reports, setReports] = useState(null);
   const [reportPeriod, setReportPeriod] = useState("month");
 
+  /* pay-in-shop payment tracker */
+  const [shopPayments, setShopPayments] = useState({}); // appt.id -> "pending"|"received"
+  const [blockList, setBlockList] = useState([]); // blocked client usernames
+
   /* availability */
   const [availability, setAvailability] = useState([]);
   const [editingDay, setEditingDay] = useState(null);
@@ -2334,7 +2355,7 @@ export default function BarberDashboard() {
                 </span>
               </div>
               {!isMobile && (
-                <span style={{ ...mono, fontSize: 11, color: T.muted }}>
+                <span style={{ ...mono, fontSize: 11, color: "#a1a1aa" }}>
                   {barber.name}
                 </span>
               )}
@@ -2342,27 +2363,30 @@ export default function BarberDashboard() {
             <button
               onClick={handleLogout}
               style={{
-                padding: isMobile ? "7px 10px" : "9px 16px",
+                padding: isMobile ? "10px 14px" : "9px 16px",
                 ...sf,
-                fontSize: 7,
+                fontSize: isMobile ? 7 : 7,
                 letterSpacing: "0.15em",
                 textTransform: "uppercase",
-                background: "transparent",
-                border: `1px solid ${T.border}`,
-                color: T.muted,
+                background: "rgba(248,113,113,0.12)",
+                border: "1px solid rgba(248,113,113,0.5)",
+                color: "#f87171",
                 cursor: "pointer",
                 transition: "all 0.2s",
+                fontWeight: 700,
+                clipPath:
+                  "polygon(0 0,calc(100% - 5px) 0,100% 5px,100% 100%,5px 100%,0 calc(100% - 5px))",
               }}
               onMouseEnter={(e) => {
-                e.currentTarget.style.color = "white";
-                e.currentTarget.style.borderColor = "rgba(255,255,255,0.2)";
+                e.currentTarget.style.background = "rgba(248,113,113,0.22)";
+                e.currentTarget.style.borderColor = "rgba(248,113,113,0.8)";
               }}
               onMouseLeave={(e) => {
-                e.currentTarget.style.color = T.muted;
-                e.currentTarget.style.borderColor = T.border;
+                e.currentTarget.style.background = "rgba(248,113,113,0.12)";
+                e.currentTarget.style.borderColor = "rgba(248,113,113,0.5)";
               }}
             >
-              {isMobile ? "Out" : "Sign Out"}
+              {isMobile ? "⏻ Sign Out" : "⏻ Sign Out"}
             </button>
           </div>
         </div>
@@ -2614,6 +2638,243 @@ export default function BarberDashboard() {
         {/* ══ SCHEDULE TAB ══ */}
         {activeTab === "schedule" && (
           <div className="bd-enter">
+            {/* ── TODAY'S QUICK STATS ── */}
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: `repeat(${isMobile ? 2 : 4},1fr)`,
+                gap: 8,
+                marginBottom: 20,
+              }}
+            >
+              {[
+                { label: "Today", value: schedule.length, color: T.amber },
+                {
+                  label: "Confirmed",
+                  value: schedule.filter((a) => a.status === "confirmed")
+                    .length,
+                  color: "#4ade80",
+                },
+                {
+                  label: "Completed",
+                  value: schedule.filter((a) => a.status === "completed")
+                    .length,
+                  color: "#a78bfa",
+                },
+                {
+                  label: "No Shows",
+                  value: schedule.filter((a) => a.status === "no_show").length,
+                  color: "#f87171",
+                },
+              ].map(({ label, value, color }) => (
+                <div
+                  key={label}
+                  style={{
+                    padding: "12px 14px",
+                    background: T.surface,
+                    border: `1px solid ${T.border}`,
+                    position: "relative",
+                    overflow: "hidden",
+                  }}
+                >
+                  <div
+                    style={{
+                      position: "absolute",
+                      top: 0,
+                      left: 0,
+                      right: 0,
+                      height: 2,
+                      background: color,
+                      opacity: 0.6,
+                    }}
+                  />
+                  <p
+                    style={{
+                      ...sf,
+                      fontSize: 5,
+                      letterSpacing: "0.35em",
+                      color,
+                      textTransform: "uppercase",
+                      marginBottom: 6,
+                    }}
+                  >
+                    {label}
+                  </p>
+                  <p
+                    style={{
+                      ...sf,
+                      fontSize: 24,
+                      fontWeight: 900,
+                      color,
+                      lineHeight: 1,
+                    }}
+                  >
+                    {value}
+                  </p>
+                </div>
+              ))}
+            </div>
+
+            {/* ── PAY IN SHOP TRACKER ── */}
+            {schedule.filter(
+              (a) => a.payment_method === "shop" && a.status === "confirmed",
+            ).length > 0 && (
+              <div
+                style={{
+                  marginBottom: 16,
+                  padding: "12px 16px",
+                  background: "rgba(245,158,11,0.04)",
+                  border: "1px solid rgba(245,158,11,0.15)",
+                }}
+              >
+                <p
+                  style={{
+                    ...sf,
+                    fontSize: 6,
+                    letterSpacing: "0.4em",
+                    color: T.amber,
+                    textTransform: "uppercase",
+                    marginBottom: 10,
+                  }}
+                >
+                  💵 Pay In Shop —{" "}
+                  {
+                    schedule.filter(
+                      (a) =>
+                        a.payment_method === "shop" && a.status === "confirmed",
+                    ).length
+                  }{" "}
+                  pending
+                </p>
+                <div
+                  style={{ display: "flex", flexDirection: "column", gap: 6 }}
+                >
+                  {schedule
+                    .filter(
+                      (a) =>
+                        a.payment_method === "shop" && a.status === "confirmed",
+                    )
+                    .map((a) => (
+                      <div
+                        key={a.id}
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          alignItems: "center",
+                          padding: "10px 14px",
+                          background: T.surface,
+                          border: `1px solid ${T.border}`,
+                          flexWrap: "wrap",
+                          gap: 8,
+                        }}
+                      >
+                        <div>
+                          <span
+                            style={{
+                              ...sf,
+                              fontSize: 9,
+                              fontWeight: 700,
+                              textTransform: "uppercase",
+                              color: "white",
+                            }}
+                          >
+                            {a.client_name || a.username || "Client"}
+                          </span>
+                          <span
+                            style={{
+                              ...mono,
+                              fontSize: 9,
+                              color: T.muted,
+                              marginLeft: 10,
+                            }}
+                          >
+                            {a.service_name}
+                          </span>
+                          <span
+                            style={{
+                              ...mono,
+                              fontSize: 9,
+                              color: T.amber,
+                              marginLeft: 10,
+                            }}
+                          >
+                            {fmtTime(a.time)}
+                          </span>
+                        </div>
+                        <div
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 10,
+                          }}
+                        >
+                          <span
+                            style={{
+                              ...sf,
+                              fontSize: 12,
+                              fontWeight: 900,
+                              color: T.amber,
+                            }}
+                          >
+                            ${a.service_price || "—"}
+                          </span>
+                          <button
+                            onClick={async () => {
+                              if (
+                                !confirm(
+                                  `Did you receive payment from ${a.client_name || "client"} for $${a.service_price || ""}?`,
+                                )
+                              )
+                                return;
+                              try {
+                                await API.patch(
+                                  `barber/appointments/${a.id}/`,
+                                  { status: "completed" },
+                                );
+                                setSchedule((p) =>
+                                  p.map((x) =>
+                                    x.id === a.id
+                                      ? { ...x, status: "completed" }
+                                      : x,
+                                  ),
+                                );
+                                showToast(
+                                  `✓ Payment confirmed — ${a.client_name || "client"} marked complete`,
+                                );
+                              } catch {
+                                showToast("Error.", "error");
+                              }
+                            }}
+                            style={{
+                              padding: "6px 12px",
+                              ...sf,
+                              fontSize: 6,
+                              letterSpacing: "0.1em",
+                              textTransform: "uppercase",
+                              background: "rgba(34,197,94,0.1)",
+                              border: "1px solid rgba(34,197,94,0.3)",
+                              color: "#4ade80",
+                              cursor: "pointer",
+                              transition: "all 0.2s",
+                            }}
+                            onMouseEnter={(e) =>
+                              (e.currentTarget.style.background =
+                                "rgba(34,197,94,0.2)")
+                            }
+                            onMouseLeave={(e) =>
+                              (e.currentTarget.style.background =
+                                "rgba(34,197,94,0.1)")
+                            }
+                          >
+                            ✓ Got Paid
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                </div>
+              </div>
+            )}
+
             <div
               style={{
                 display: "grid",
@@ -2839,24 +3100,148 @@ export default function BarberDashboard() {
                   <div
                     style={{ display: "flex", flexDirection: "column", gap: 6 }}
                   >
-                    {schedule.map((appt) => (
-                      <ApptTicket
-                        key={appt.id}
-                        appt={appt}
-                        isMobile={isMobile}
-                        onStatusChange={handleStatusChange}
-                        onStrike={issueStrike}
-                        onReschedule={(a) => setReschedModal(a)}
-                        onCancel={handleCancel}
-                        onNotes={(id, note) =>
-                          setSchedule((p) =>
-                            p.map((a) =>
-                              a.id === id ? { ...a, barber_notes: note } : a,
-                            ),
-                          )
-                        }
-                      />
-                    ))}
+                    {schedule.map((appt) => {
+                      const isShop = appt.payment_method === "shop";
+                      const apptPast =
+                        new Date(`${appt.date}T${appt.time}`) < new Date();
+                      const shopStatus = shopPayments[appt.id];
+                      return (
+                        <div key={appt.id}>
+                          <ApptTicket
+                            appt={appt}
+                            isMobile={isMobile}
+                            onStatusChange={handleStatusChange}
+                            onStrike={issueStrike}
+                            onReschedule={(a) => setReschedModal(a)}
+                            onCancel={handleCancel}
+                            onNotes={(id, note) =>
+                              setSchedule((p) =>
+                                p.map((a) =>
+                                  a.id === id
+                                    ? { ...a, barber_notes: note }
+                                    : a,
+                                ),
+                              )
+                            }
+                          />
+                          {/* Pay-in-shop tracker — show after appointment time passes */}
+                          {isShop &&
+                            apptPast &&
+                            appt.status !== "cancelled" &&
+                            appt.status !== "no_show" && (
+                              <div
+                                style={{
+                                  marginTop: -1,
+                                  padding: "10px 18px",
+                                  background:
+                                    shopStatus === "received"
+                                      ? "rgba(34,197,94,0.06)"
+                                      : "rgba(245,158,11,0.04)",
+                                  border: `1px solid ${shopStatus === "received" ? "rgba(34,197,94,0.2)" : "rgba(245,158,11,0.15)"}`,
+                                  display: "flex",
+                                  justifyContent: "space-between",
+                                  alignItems: "center",
+                                  flexWrap: "wrap",
+                                  gap: 10,
+                                }}
+                              >
+                                <div
+                                  style={{
+                                    display: "flex",
+                                    alignItems: "center",
+                                    gap: 10,
+                                  }}
+                                >
+                                  <span style={{ fontSize: 14 }}>💵</span>
+                                  <div>
+                                    <p
+                                      style={{
+                                        ...sf,
+                                        fontSize: 7,
+                                        textTransform: "uppercase",
+                                        letterSpacing: "0.15em",
+                                        color:
+                                          shopStatus === "received"
+                                            ? "#4ade80"
+                                            : T.amber,
+                                        marginBottom: 2,
+                                      }}
+                                    >
+                                      {shopStatus === "received"
+                                        ? "Payment Received ✓"
+                                        : "Did you get paid?"}
+                                    </p>
+                                    <p
+                                      style={{
+                                        ...mono,
+                                        fontSize: 10,
+                                        color: "#71717a",
+                                      }}
+                                    >
+                                      {appt.service_name} · Pay in shop
+                                    </p>
+                                  </div>
+                                </div>
+                                {shopStatus !== "received" && (
+                                  <div style={{ display: "flex", gap: 8 }}>
+                                    <button
+                                      onClick={() =>
+                                        setShopPayments((p) => ({
+                                          ...p,
+                                          [appt.id]: "received",
+                                        }))
+                                      }
+                                      style={{
+                                        padding: "7px 14px",
+                                        background: "rgba(34,197,94,0.1)",
+                                        border: "1px solid rgba(34,197,94,0.3)",
+                                        color: "#4ade80",
+                                        ...sf,
+                                        fontSize: 6.5,
+                                        letterSpacing: "0.15em",
+                                        textTransform: "uppercase",
+                                        cursor: "pointer",
+                                        transition: "all 0.2s",
+                                      }}
+                                      onMouseEnter={(e) =>
+                                        (e.currentTarget.style.background =
+                                          "rgba(34,197,94,0.2)")
+                                      }
+                                      onMouseLeave={(e) =>
+                                        (e.currentTarget.style.background =
+                                          "rgba(34,197,94,0.1)")
+                                      }
+                                    >
+                                      ✓ Got Paid
+                                    </button>
+                                    <button
+                                      onClick={() =>
+                                        setShopPayments((p) => ({
+                                          ...p,
+                                          [appt.id]: "pending",
+                                        }))
+                                      }
+                                      style={{
+                                        padding: "7px 14px",
+                                        background: "transparent",
+                                        border: `1px solid ${T.border}`,
+                                        color: T.muted,
+                                        ...sf,
+                                        fontSize: 6.5,
+                                        letterSpacing: "0.15em",
+                                        textTransform: "uppercase",
+                                        cursor: "pointer",
+                                      }}
+                                    >
+                                      Not Yet
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
               </div>
@@ -3039,116 +3424,283 @@ export default function BarberDashboard() {
               style={{
                 display: "flex",
                 alignItems: "center",
-                gap: 14,
+                justifyContent: "space-between",
                 marginBottom: 24,
+                flexWrap: "wrap",
+                gap: 12,
               }}
             >
+              <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+                <div
+                  style={{
+                    width: 4,
+                    height: 28,
+                    background: "linear-gradient(to bottom,#ef4444,#f59e0b)",
+                  }}
+                />
+                <div>
+                  <p
+                    style={{
+                      ...mono,
+                      fontSize: 7,
+                      color: "rgba(245,158,11,0.5)",
+                      letterSpacing: "0.5em",
+                      textTransform: "uppercase",
+                      marginBottom: 2,
+                    }}
+                  >
+                    HEADZ UP · QUEUE
+                  </p>
+                  <p
+                    style={{
+                      ...sf,
+                      fontSize: 13,
+                      fontWeight: 900,
+                      textTransform: "uppercase",
+                    }}
+                  >
+                    Waitlist
+                  </p>
+                </div>
+              </div>
               <div
                 style={{
-                  width: 32,
-                  height: 1,
-                  background: `rgba(245,158,11,0.5)`,
-                }}
-              />
-              <p
-                style={{
-                  ...mono,
-                  fontSize: 8,
-                  color: T.amber,
-                  letterSpacing: "0.5em",
-                  textTransform: "uppercase",
+                  padding: "8px 14px",
+                  background: "rgba(245,158,11,0.08)",
+                  border: "1px solid rgba(245,158,11,0.2)",
                 }}
               >
-                Waitlist
-              </p>
+                <span style={{ ...mono, fontSize: 11, color: T.amber }}>
+                  {waitlist.length} waiting
+                </span>
+              </div>
             </div>
+
             {waitlist.length === 0 ? (
               <div
                 style={{
-                  padding: "60px 20px",
+                  padding: "64px 20px",
                   textAlign: "center",
                   border: `1px solid ${T.border}`,
+                  background: T.surface,
+                  clipPath:
+                    "polygon(0 0,calc(100% - 12px) 0,100% 12px,100% 100%,12px 100%,0 calc(100% - 12px))",
                 }}
               >
+                <p style={{ fontSize: 32, marginBottom: 12 }}>🎉</p>
                 <p
                   style={{
                     ...sf,
                     fontSize: 9,
-                    color: "rgba(255,255,255,0.08)",
+                    color: "rgba(255,255,255,0.15)",
                     textTransform: "uppercase",
+                    letterSpacing: "0.1em",
                   }}
                 >
                   Waitlist is empty
                 </p>
+                <p
+                  style={{
+                    ...mono,
+                    fontSize: 11,
+                    color: T.muted,
+                    marginTop: 8,
+                  }}
+                >
+                  All clients have been served
+                </p>
               </div>
             ) : (
-              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                {waitlist.map((w) => (
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                {waitlist.map((w, i) => (
                   <div
                     key={w.id}
                     style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "center",
-                      padding: "14px 18px",
                       background: T.surface,
                       border: `1px solid ${w.notified ? T.border : T.amberBorder}`,
-                      flexWrap: "wrap",
-                      gap: 12,
+                      overflow: "hidden",
+                      clipPath:
+                        "polygon(0 0,calc(100% - 10px) 0,100% 10px,100% 100%,10px 100%,0 calc(100% - 10px))",
                     }}
                   >
-                    <div>
-                      <p
-                        style={{
-                          ...sf,
-                          fontSize: 10,
-                          fontWeight: 700,
-                          textTransform: "uppercase",
-                          marginBottom: 4,
-                        }}
-                      >
-                        {w.client_name}
-                      </p>
-                      <div
-                        style={{ display: "flex", gap: 12, flexWrap: "wrap" }}
-                      >
-                        <span style={{ ...mono, fontSize: 10, color: T.muted }}>
-                          {w.service_name || w.service}
-                        </span>
-                        {(w.phone || w.client_phone) && (
-                          <span
-                            style={{ ...mono, fontSize: 10, color: T.muted }}
-                          >
-                            {w.phone || w.client_phone}
-                          </span>
-                        )}
-                        {w.date && (
-                          <span
-                            style={{ ...mono, fontSize: 10, color: T.amber }}
-                          >
-                            {fmtShort(w.date)}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                    <button
-                      onClick={() => !w.notified && notifyWaitlist(w.id)}
-                      disabled={w.notified}
+                    <div
                       style={{
-                        padding: "8px 16px",
-                        ...sf,
-                        fontSize: 7,
-                        letterSpacing: "0.15em",
-                        textTransform: "uppercase",
-                        background: w.notified ? T.deep : T.amberDim,
-                        border: `1px solid ${w.notified ? T.border : T.amberBorder}`,
-                        color: w.notified ? T.dim : T.amber,
-                        cursor: w.notified ? "default" : "pointer",
-                        transition: "all 0.2s",
+                        height: 2,
+                        background: w.notified
+                          ? "rgba(255,255,255,0.05)"
+                          : `linear-gradient(to right,#ef4444,#f59e0b)`,
+                      }}
+                    />
+                    <div
+                      style={{
+                        padding: "16px 18px",
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        flexWrap: "wrap",
+                        gap: 12,
                       }}
                     >
-                      {w.notified ? "✓ Notified" : "Notify →"}
-                    </button>
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 14,
+                        }}
+                      >
+                        {/* Queue number */}
+                        <div
+                          style={{
+                            width: 36,
+                            height: 36,
+                            background: w.notified ? T.surface2 : T.amberDim,
+                            border: `1px solid ${w.notified ? T.border : T.amberBorder}`,
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            flexShrink: 0,
+                          }}
+                        >
+                          <span
+                            style={{
+                              ...sf,
+                              fontSize: 13,
+                              fontWeight: 900,
+                              color: w.notified ? T.muted : T.amber,
+                            }}
+                          >
+                            {i + 1}
+                          </span>
+                        </div>
+                        <div>
+                          <p
+                            style={{
+                              ...sf,
+                              fontSize: 11,
+                              fontWeight: 700,
+                              textTransform: "uppercase",
+                              marginBottom: 4,
+                              color: w.notified ? "#71717a" : "white",
+                            }}
+                          >
+                            {w.client_name}
+                          </p>
+                          <div
+                            style={{
+                              display: "flex",
+                              gap: 10,
+                              flexWrap: "wrap",
+                            }}
+                          >
+                            {(w.service_name || w.service) && (
+                              <span
+                                style={{
+                                  ...mono,
+                                  fontSize: 10,
+                                  color: T.amber,
+                                }}
+                              >
+                                ✂️ {w.service_name || w.service}
+                              </span>
+                            )}
+                            {(w.phone || w.client_phone) && (
+                              <span
+                                style={{
+                                  ...mono,
+                                  fontSize: 10,
+                                  color: "#a1a1aa",
+                                }}
+                              >
+                                📱 {w.phone || w.client_phone}
+                              </span>
+                            )}
+                            {w.date && (
+                              <span
+                                style={{
+                                  ...mono,
+                                  fontSize: 10,
+                                  color: "#a1a1aa",
+                                }}
+                              >
+                                📅 {fmtShort(w.date)}
+                              </span>
+                            )}
+                          </div>
+                          {w.notes && (
+                            <p
+                              style={{
+                                ...mono,
+                                fontSize: 10,
+                                color: "#71717a",
+                                marginTop: 4,
+                                fontStyle: "italic",
+                              }}
+                            >
+                              "{w.notes}"
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                      <div style={{ display: "flex", gap: 8 }}>
+                        <button
+                          onClick={() => !w.notified && notifyWaitlist(w.id)}
+                          disabled={w.notified}
+                          style={{
+                            padding: "9px 18px",
+                            ...sf,
+                            fontSize: 7,
+                            letterSpacing: "0.15em",
+                            textTransform: "uppercase",
+                            background: w.notified ? T.surface2 : T.amber,
+                            border: `1px solid ${w.notified ? T.border : T.amber}`,
+                            color: w.notified ? T.muted : "black",
+                            cursor: w.notified ? "default" : "pointer",
+                            transition: "all 0.2s",
+                            clipPath:
+                              "polygon(0 0,calc(100% - 5px) 0,100% 5px,100% 100%,5px 100%,0 calc(100% - 5px))",
+                          }}
+                        >
+                          {w.notified ? "✓ Notified" : "Notify →"}
+                        </button>
+                        <button
+                          onClick={async () => {
+                            if (
+                              !confirm(`Remove ${w.client_name} from waitlist?`)
+                            )
+                              return;
+                            try {
+                              await API.delete(`barber/waitlist/${w.id}/`);
+                              setWaitlist((p) =>
+                                p.filter((x) => x.id !== w.id),
+                              );
+                              showToast("Removed from waitlist.");
+                            } catch {
+                              showToast("Error removing.", "error");
+                            }
+                          }}
+                          style={{
+                            padding: "9px 14px",
+                            background: "transparent",
+                            border: `1px solid ${T.redBorder}`,
+                            color: T.red,
+                            ...sf,
+                            fontSize: 7,
+                            letterSpacing: "0.12em",
+                            textTransform: "uppercase",
+                            cursor: "pointer",
+                            transition: "all 0.2s",
+                          }}
+                          onMouseEnter={(e) =>
+                            (e.currentTarget.style.background = T.redDim)
+                          }
+                          onMouseLeave={(e) =>
+                            (e.currentTarget.style.background = "transparent")
+                          }
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -3163,293 +3715,631 @@ export default function BarberDashboard() {
               style={{
                 display: "flex",
                 alignItems: "center",
-                gap: 14,
+                justifyContent: "space-between",
                 marginBottom: 24,
+                flexWrap: "wrap",
+                gap: 12,
               }}
             >
-              <div
-                style={{
-                  width: 32,
-                  height: 1,
-                  background: `rgba(245,158,11,0.5)`,
-                }}
-              />
-              <p
-                style={{
-                  ...mono,
-                  fontSize: 8,
-                  color: T.amber,
-                  letterSpacing: "0.5em",
-                  textTransform: "uppercase",
-                }}
-              >
-                Client Book
-              </p>
+              <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+                <div
+                  style={{
+                    width: 4,
+                    height: 28,
+                    background: "linear-gradient(to bottom,#ef4444,#f59e0b)",
+                  }}
+                />
+                <div>
+                  <p
+                    style={{
+                      ...mono,
+                      fontSize: 7,
+                      color: "rgba(245,158,11,0.5)",
+                      letterSpacing: "0.5em",
+                      textTransform: "uppercase",
+                      marginBottom: 2,
+                    }}
+                  >
+                    HEADZ UP · ROSTER
+                  </p>
+                  <p
+                    style={{
+                      ...sf,
+                      fontSize: 13,
+                      fontWeight: 900,
+                      textTransform: "uppercase",
+                    }}
+                  >
+                    Client Book
+                  </p>
+                </div>
+              </div>
+              {/* Stats pills */}
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                {[
+                  { label: "Total", val: clients.length, color: T.amber },
+                  {
+                    label: "VIP",
+                    val: clients.filter((c) => c.is_vip).length,
+                    color: "#a78bfa",
+                  },
+                  {
+                    label: "Strikes",
+                    val: clients.filter((c) => (c.strike_count || 0) > 0)
+                      .length,
+                    color: "#f87171",
+                  },
+                  { label: "Blocked", val: blockList.length, color: "#52525b" },
+                ].map(({ label, val, color }) => (
+                  <div
+                    key={label}
+                    style={{
+                      padding: "6px 12px",
+                      background: "rgba(255,255,255,0.03)",
+                      border: `1px solid rgba(255,255,255,0.08)`,
+                    }}
+                  >
+                    <span style={{ ...mono, fontSize: 9, color: "#71717a" }}>
+                      {label}{" "}
+                    </span>
+                    <span
+                      style={{ ...sf, fontSize: 10, fontWeight: 900, color }}
+                    >
+                      {val}
+                    </span>
+                  </div>
+                ))}
+              </div>
             </div>
 
             {/* Search */}
             <input
               value={clientSearch}
               onChange={(e) => setClientSearch(e.target.value)}
-              placeholder="Search clients..."
+              placeholder="Search by name or email..."
               style={{
                 width: "100%",
                 background: T.surface,
                 border: `1px solid ${T.border}`,
                 padding: "13px 16px",
                 color: "white",
-                fontSize: 16,
+                fontSize: 15,
                 ...mono,
                 outline: "none",
                 marginBottom: 16,
+                transition: "border-color 0.2s",
               }}
               onFocus={(e) => (e.target.style.borderColor = T.amber)}
               onBlur={(e) => (e.target.style.borderColor = T.border)}
             />
 
             {clientDetail ? (
-              /* Client detail */
-              <div
-                style={{
-                  background: T.surface,
-                  border: `1px solid ${T.amberBorder}`,
-                  padding: "24px 20px",
-                }}
-              >
+              /* ── CLIENT DETAIL VIEW ── */
+              <div>
+                <button
+                  onClick={() => setClientDetail(null)}
+                  style={{
+                    ...mono,
+                    fontSize: 10,
+                    color: T.muted,
+                    background: "none",
+                    border: "none",
+                    cursor: "pointer",
+                    marginBottom: 20,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 6,
+                    padding: 0,
+                    transition: "color 0.2s",
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.color = T.amber)}
+                  onMouseLeave={(e) => (e.currentTarget.style.color = T.muted)}
+                >
+                  ← Back to all clients
+                </button>
+
                 <div
                   style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                    marginBottom: 20,
+                    background: T.surface,
+                    border: `1px solid ${T.amberBorder}`,
+                    clipPath:
+                      "polygon(0 0,calc(100% - 14px) 0,100% 14px,100% 100%,14px 100%,0 calc(100% - 14px))",
                   }}
                 >
+                  {/* Client header */}
                   <div
-                    style={{ display: "flex", alignItems: "center", gap: 14 }}
-                  >
-                    <div
-                      style={{
-                        width: 48,
-                        height: 48,
-                        background: T.amber,
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                      }}
-                    >
-                      <span
-                        style={{
-                          ...sf,
-                          fontSize: 18,
-                          fontWeight: 900,
-                          color: "black",
-                        }}
-                      >
-                        {clientDetail.name?.charAt(0)?.toUpperCase() || "?"}
-                      </span>
-                    </div>
-                    <div>
-                      <p
-                        style={{
-                          ...sf,
-                          fontSize: 12,
-                          fontWeight: 700,
-                          textTransform: "uppercase",
-                        }}
-                      >
-                        {clientDetail.name}
-                      </p>
-                      <p style={{ ...mono, fontSize: 10, color: T.muted }}>
-                        {clientDetail.total_visits || 0} visits
-                      </p>
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => setClientDetail(null)}
                     style={{
-                      ...sf,
-                      fontSize: 7,
-                      letterSpacing: "0.15em",
-                      textTransform: "uppercase",
-                      padding: "7px 14px",
-                      background: "transparent",
-                      border: `1px solid ${T.border}`,
-                      color: T.muted,
-                      cursor: "pointer",
+                      padding: "24px 22px",
+                      borderBottom: `1px solid ${T.border}`,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      flexWrap: "wrap",
+                      gap: 16,
                     }}
                   >
-                    ← Back
-                  </button>
+                    <div
+                      style={{ display: "flex", alignItems: "center", gap: 16 }}
+                    >
+                      <div
+                        style={{
+                          width: 56,
+                          height: 56,
+                          background: clientDetail.is_vip
+                            ? T.amber
+                            : T.amberDim,
+                          border: `2px solid ${clientDetail.is_vip ? T.amber : T.amberBorder}`,
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          flexShrink: 0,
+                          clipPath:
+                            "polygon(0 0,calc(100% - 8px) 0,100% 8px,100% 100%,8px 100%,0 calc(100% - 8px))",
+                        }}
+                      >
+                        <span
+                          style={{
+                            ...sf,
+                            fontSize: 22,
+                            fontWeight: 900,
+                            color: clientDetail.is_vip ? "black" : T.amber,
+                          }}
+                        >
+                          {clientDetail.name?.charAt(0)?.toUpperCase() || "?"}
+                        </span>
+                      </div>
+                      <div>
+                        <div
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 10,
+                            marginBottom: 4,
+                          }}
+                        >
+                          <p
+                            style={{
+                              ...sf,
+                              fontSize: 14,
+                              fontWeight: 900,
+                              textTransform: "uppercase",
+                            }}
+                          >
+                            {clientDetail.name}
+                          </p>
+                          {clientDetail.is_vip && (
+                            <span
+                              style={{
+                                ...mono,
+                                fontSize: 7,
+                                color: "black",
+                                background: T.amber,
+                                padding: "2px 8px",
+                                letterSpacing: "0.2em",
+                              }}
+                            >
+                              VIP
+                            </span>
+                          )}
+                          {(clientDetail.strike_count || 0) > 0 && (
+                            <span
+                              style={{
+                                ...mono,
+                                fontSize: 7,
+                                color: "black",
+                                background: "#ef4444",
+                                padding: "2px 8px",
+                                letterSpacing: "0.2em",
+                              }}
+                            >
+                              ⚡ {clientDetail.strike_count} STRIKE
+                              {clientDetail.strike_count > 1 ? "S" : ""}
+                            </span>
+                          )}
+                        </div>
+                        <p style={{ ...mono, fontSize: 11, color: "#a1a1aa" }}>
+                          {clientDetail.email || "No email"}
+                        </p>
+                      </div>
+                    </div>
+                    {/* Action buttons */}
+                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                      <button
+                        onClick={async () => {
+                          try {
+                            await API.patch(
+                              `barber/clients/${clientDetail.id}/`,
+                              { is_vip: !clientDetail.is_vip },
+                            );
+                            setClientDetail((p) => ({
+                              ...p,
+                              is_vip: !p.is_vip,
+                            }));
+                            setClients((p) =>
+                              p.map((c) =>
+                                c.id === clientDetail.id
+                                  ? { ...c, is_vip: !c.is_vip }
+                                  : c,
+                              ),
+                            );
+                            showToast(
+                              clientDetail.is_vip
+                                ? "Removed VIP status"
+                                : "⭐ Marked as VIP!",
+                            );
+                          } catch {
+                            showToast("Error.", "error");
+                          }
+                        }}
+                        style={{
+                          padding: "9px 16px",
+                          ...sf,
+                          fontSize: 7,
+                          letterSpacing: "0.15em",
+                          textTransform: "uppercase",
+                          background: clientDetail.is_vip
+                            ? T.amberDim
+                            : "transparent",
+                          border: `1px solid ${clientDetail.is_vip ? T.amber : T.border}`,
+                          color: clientDetail.is_vip ? T.amber : T.muted,
+                          cursor: "pointer",
+                          transition: "all 0.2s",
+                        }}
+                      >
+                        {clientDetail.is_vip ? "★ VIP" : "☆ VIP"}
+                      </button>
+                      <button
+                        onClick={() => {
+                          const username =
+                            clientDetail.username || clientDetail.name;
+                          const isBlocked = blockList.includes(username);
+                          if (isBlocked) {
+                            setBlockList((p) =>
+                              p.filter((x) => x !== username),
+                            );
+                            showToast("Client unblocked.");
+                          } else {
+                            if (
+                              !confirm(
+                                `Block ${clientDetail.name}? They won't be able to book with you.`,
+                              )
+                            )
+                              return;
+                            setBlockList((p) => [...p, username]);
+                            showToast(
+                              `🚫 ${clientDetail.name} blocked.`,
+                              "error",
+                            );
+                          }
+                        }}
+                        style={{
+                          padding: "9px 16px",
+                          ...sf,
+                          fontSize: 7,
+                          letterSpacing: "0.15em",
+                          textTransform: "uppercase",
+                          background: blockList.includes(
+                            clientDetail.username || clientDetail.name,
+                          )
+                            ? T.redDim
+                            : "transparent",
+                          border: `1px solid ${blockList.includes(clientDetail.username || clientDetail.name) ? T.redBorder : T.border}`,
+                          color: blockList.includes(
+                            clientDetail.username || clientDetail.name,
+                          )
+                            ? T.red
+                            : T.muted,
+                          cursor: "pointer",
+                          transition: "all 0.2s",
+                        }}
+                      >
+                        🚫{" "}
+                        {blockList.includes(
+                          clientDetail.username || clientDetail.name,
+                        )
+                          ? "Unblock"
+                          : "Block"}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Stats row */}
+                  <div
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns: "repeat(4,1fr)",
+                      borderBottom: `1px solid ${T.border}`,
+                    }}
+                  >
+                    {[
+                      {
+                        label: "Visits",
+                        val: clientDetail.total_visits || 0,
+                        color: T.amber,
+                      },
+                      {
+                        label: "Completed",
+                        val: clientDetail.completed || 0,
+                        color: T.green,
+                      },
+                      {
+                        label: "No Shows",
+                        val: clientDetail.no_shows || 0,
+                        color: T.red,
+                      },
+                      {
+                        label: "Deposit",
+                        val: `$${clientDetail.deposit_fee || "10.00"}`,
+                        color: "#a78bfa",
+                      },
+                    ].map(({ label, val, color }) => (
+                      <div
+                        key={label}
+                        style={{
+                          padding: "16px 12px",
+                          borderRight: `1px solid ${T.border}`,
+                          textAlign: "center",
+                        }}
+                      >
+                        <p
+                          style={{
+                            ...sf,
+                            fontSize: 18,
+                            fontWeight: 900,
+                            color,
+                            lineHeight: 1,
+                            marginBottom: 4,
+                          }}
+                        >
+                          {val}
+                        </p>
+                        <p
+                          style={{
+                            ...mono,
+                            fontSize: 8,
+                            color: "#71717a",
+                            textTransform: "uppercase",
+                            letterSpacing: "0.2em",
+                          }}
+                        >
+                          {label}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Notes */}
+                  <div style={{ padding: "20px 22px" }}>
+                    <p
+                      style={{
+                        ...sf,
+                        fontSize: 6,
+                        letterSpacing: "0.4em",
+                        color: T.muted,
+                        textTransform: "uppercase",
+                        marginBottom: 10,
+                      }}
+                    >
+                      Barber Notes
+                    </p>
+                    <textarea
+                      value={clientNotes}
+                      onChange={(e) => setClientNotes(e.target.value)}
+                      rows={3}
+                      placeholder="Preferred style, allergies, notes..."
+                      style={{
+                        width: "100%",
+                        background: T.bg,
+                        border: `1px solid ${T.border}`,
+                        padding: "12px 14px",
+                        color: "white",
+                        fontSize: 14,
+                        ...mono,
+                        outline: "none",
+                        resize: "vertical",
+                        marginBottom: 12,
+                        borderRadius: 0,
+                        lineHeight: 1.6,
+                      }}
+                      onFocus={(e) => (e.target.style.borderColor = T.amber)}
+                      onBlur={(e) => (e.target.style.borderColor = T.border)}
+                    />
+                    <button
+                      onClick={async () => {
+                        setSavingCN(true);
+                        try {
+                          await API.patch(
+                            `barber/clients/${clientDetail.id}/`,
+                            { notes: clientNotes },
+                          );
+                          showToast("Notes saved.");
+                        } catch {
+                          showToast("Error.", "error");
+                        } finally {
+                          setSavingCN(false);
+                        }
+                      }}
+                      disabled={savingCN}
+                      style={{
+                        padding: "12px 24px",
+                        background: savingCN ? T.deep : T.amber,
+                        color: savingCN ? T.muted : "black",
+                        ...sf,
+                        fontSize: 8,
+                        fontWeight: 700,
+                        letterSpacing: "0.2em",
+                        textTransform: "uppercase",
+                        border: "none",
+                        cursor: savingCN ? "not-allowed" : "pointer",
+                        transition: "all 0.2s",
+                        clipPath:
+                          "polygon(0 0,calc(100% - 7px) 0,100% 7px,100% 100%,7px 100%,0 calc(100% - 7px))",
+                      }}
+                    >
+                      {savingCN ? "Saving..." : "Save Notes →"}
+                    </button>
+                  </div>
                 </div>
-                <label
-                  style={{
-                    ...sf,
-                    fontSize: 6,
-                    letterSpacing: "0.4em",
-                    color: T.muted,
-                    textTransform: "uppercase",
-                    display: "block",
-                    marginBottom: 8,
-                  }}
-                >
-                  Notes
-                </label>
-                <textarea
-                  value={clientNotes}
-                  onChange={(e) => setClientNotes(e.target.value)}
-                  rows={4}
-                  placeholder="VIP client, preferred style, allergies..."
-                  style={{
-                    width: "100%",
-                    background: T.bg,
-                    border: `1px solid ${T.border}`,
-                    padding: "12px 14px",
-                    color: "white",
-                    fontSize: 14,
-                    ...mono,
-                    outline: "none",
-                    resize: "vertical",
-                    marginBottom: 12,
-                    borderRadius: 0,
-                  }}
-                  onFocus={(e) => (e.target.style.borderColor = T.amber)}
-                  onBlur={(e) => (e.target.style.borderColor = T.border)}
-                />
-                <button
-                  onClick={async () => {
-                    setSavingCN(true);
-                    try {
-                      await API.patch(`barber/clients/${clientDetail.id}/`, {
-                        notes: clientNotes,
-                      });
-                      showToast("Notes saved.");
-                    } catch {
-                      showToast("Error.", "error");
-                    } finally {
-                      setSavingCN(false);
-                    }
-                  }}
-                  disabled={savingCN}
-                  style={{
-                    padding: "12px 24px",
-                    background: savingCN ? T.deep : T.amber,
-                    color: savingCN ? T.dim : "black",
-                    ...sf,
-                    fontSize: 8,
-                    fontWeight: 700,
-                    letterSpacing: "0.2em",
-                    textTransform: "uppercase",
-                    border: "none",
-                    cursor: savingCN ? "not-allowed" : "pointer",
-                    transition: "all 0.2s",
-                  }}
-                >
-                  {savingCN ? "Saving..." : "Save Notes →"}
-                </button>
               </div>
             ) : (
-              /* Client list */
-              <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+              /* ── CLIENT LIST ── */
+              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                 {clients
                   .filter(
                     (c) =>
                       !clientSearch ||
                       c.name
                         ?.toLowerCase()
+                        .includes(clientSearch.toLowerCase()) ||
+                      c.email
+                        ?.toLowerCase()
                         .includes(clientSearch.toLowerCase()),
                   )
-                  .map((c) => (
-                    <div
-                      key={c.id}
-                      onClick={() => {
-                        setClientDetail(c);
-                        setClientNotes(c.notes || "");
-                      }}
-                      style={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                        alignItems: "center",
-                        padding: "14px 18px",
-                        background: T.surface,
-                        border: `1px solid ${c.is_vip ? T.amberBorder : T.border}`,
-                        cursor: "pointer",
-                        transition: "all 0.2s",
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.borderColor = T.amber;
-                        e.currentTarget.style.background = T.amberDim;
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.borderColor = c.is_vip
-                          ? T.amberBorder
-                          : T.border;
-                        e.currentTarget.style.background = T.surface;
-                      }}
-                    >
+                  .map((c) => {
+                    const isBlocked = blockList.includes(c.username || c.name);
+                    const strikes = c.strike_count || 0;
+                    return (
                       <div
+                        key={c.id}
+                        onClick={() => {
+                          setClientDetail(c);
+                          setClientNotes(c.notes || "");
+                        }}
                         style={{
                           display: "flex",
+                          justifyContent: "space-between",
                           alignItems: "center",
-                          gap: 14,
+                          padding: "14px 18px",
+                          background: isBlocked
+                            ? "rgba(248,113,113,0.03)"
+                            : T.surface,
+                          border: `1px solid ${c.is_vip ? T.amberBorder : isBlocked ? T.redBorder : T.border}`,
+                          cursor: "pointer",
+                          transition: "all 0.2s",
+                          clipPath:
+                            "polygon(0 0,calc(100% - 8px) 0,100% 8px,100% 100%,8px 100%,0 calc(100% - 8px))",
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.borderColor = T.amber;
+                          e.currentTarget.style.background = T.amberDim;
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.borderColor = c.is_vip
+                            ? T.amberBorder
+                            : isBlocked
+                              ? T.redBorder
+                              : T.border;
+                          e.currentTarget.style.background = isBlocked
+                            ? "rgba(248,113,113,0.03)"
+                            : T.surface;
                         }}
                       >
                         <div
                           style={{
-                            width: 36,
-                            height: 36,
-                            background: c.is_vip ? T.amber : T.surface2,
-                            border: `1px solid ${c.is_vip ? T.amber : T.border}`,
                             display: "flex",
                             alignItems: "center",
-                            justifyContent: "center",
-                            flexShrink: 0,
+                            gap: 14,
                           }}
                         >
-                          <span
+                          <div
                             style={{
-                              ...sf,
-                              fontSize: 13,
-                              fontWeight: 900,
-                              color: c.is_vip ? "black" : T.muted,
+                              width: 40,
+                              height: 40,
+                              background: c.is_vip
+                                ? T.amber
+                                : isBlocked
+                                  ? T.redDim
+                                  : T.surface2,
+                              border: `1px solid ${c.is_vip ? T.amber : isBlocked ? T.redBorder : T.border}`,
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              flexShrink: 0,
+                              clipPath:
+                                "polygon(0 0,calc(100% - 5px) 0,100% 5px,100% 100%,5px 100%,0 calc(100% - 5px))",
                             }}
                           >
-                            {c.name?.charAt(0)?.toUpperCase() || "?"}
-                          </span>
-                        </div>
-                        <div>
-                          <p
-                            style={{
-                              ...sf,
-                              fontSize: 10,
-                              fontWeight: 700,
-                              textTransform: "uppercase",
-                              marginBottom: 2,
-                            }}
-                          >
-                            {c.name}
-                            {c.is_vip && (
-                              <span
+                            <span
+                              style={{
+                                ...sf,
+                                fontSize: 15,
+                                fontWeight: 900,
+                                color: c.is_vip
+                                  ? "black"
+                                  : isBlocked
+                                    ? T.red
+                                    : T.muted,
+                              }}
+                            >
+                              {c.name?.charAt(0)?.toUpperCase() || "?"}
+                            </span>
+                          </div>
+                          <div>
+                            <div
+                              style={{
+                                display: "flex",
+                                alignItems: "center",
+                                gap: 8,
+                                marginBottom: 2,
+                              }}
+                            >
+                              <p
                                 style={{
-                                  ...mono,
-                                  fontSize: 7,
-                                  color: T.amber,
-                                  marginLeft: 8,
+                                  ...sf,
+                                  fontSize: 10,
+                                  fontWeight: 700,
+                                  textTransform: "uppercase",
+                                  color: isBlocked ? "#71717a" : "white",
                                 }}
                               >
-                                VIP
-                              </span>
-                            )}
-                          </p>
-                          <p style={{ ...mono, fontSize: 9, color: T.muted }}>
-                            {c.total_visits || 0} visits
-                          </p>
+                                {c.name}
+                              </p>
+                              {c.is_vip && (
+                                <span
+                                  style={{
+                                    ...mono,
+                                    fontSize: 7,
+                                    color: T.amber,
+                                  }}
+                                >
+                                  ★ VIP
+                                </span>
+                              )}
+                              {strikes > 0 && (
+                                <span
+                                  style={{
+                                    ...mono,
+                                    fontSize: 7,
+                                    color: "#f87171",
+                                  }}
+                                >
+                                  ⚡ {strikes}
+                                </span>
+                              )}
+                              {isBlocked && (
+                                <span
+                                  style={{ ...mono, fontSize: 7, color: T.red }}
+                                >
+                                  🚫 BLOCKED
+                                </span>
+                              )}
+                            </div>
+                            <p
+                              style={{ ...mono, fontSize: 9, color: "#71717a" }}
+                            >
+                              {c.total_visits || 0} visits{" "}
+                              {c.last_visit
+                                ? `· Last: ${fmtShort(c.last_visit)}`
+                                : ""}{" "}
+                            </p>
+                          </div>
                         </div>
+                        <span style={{ ...mono, fontSize: 10, color: T.muted }}>
+                          →
+                        </span>
                       </div>
-                      <span style={{ ...mono, fontSize: 10, color: T.dim }}>
-                        →
-                      </span>
-                    </div>
-                  ))}
+                    );
+                  })}
                 {clients.filter(
                   (c) =>
                     !clientSearch ||
@@ -3457,9 +4347,10 @@ export default function BarberDashboard() {
                 ).length === 0 && (
                   <div
                     style={{
-                      padding: "40px 20px",
+                      padding: "48px 20px",
                       textAlign: "center",
                       border: `1px solid ${T.border}`,
+                      background: T.surface,
                     }}
                   >
                     <p
@@ -3468,6 +4359,7 @@ export default function BarberDashboard() {
                         fontSize: 9,
                         color: "rgba(255,255,255,0.08)",
                         textTransform: "uppercase",
+                        letterSpacing: "0.1em",
                       }}
                     >
                       No clients found
@@ -3495,32 +4387,45 @@ export default function BarberDashboard() {
               <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
                 <div
                   style={{
-                    width: 32,
-                    height: 1,
-                    background: `rgba(245,158,11,0.5)`,
+                    width: 4,
+                    height: 28,
+                    background: "linear-gradient(to bottom,#ef4444,#f59e0b)",
                   }}
                 />
-                <p
-                  style={{
-                    ...mono,
-                    fontSize: 8,
-                    color: T.amber,
-                    letterSpacing: "0.5em",
-                    textTransform: "uppercase",
-                  }}
-                >
-                  Reports
-                </p>
+                <div>
+                  <p
+                    style={{
+                      ...mono,
+                      fontSize: 7,
+                      color: "rgba(245,158,11,0.5)",
+                      letterSpacing: "0.5em",
+                      textTransform: "uppercase",
+                      marginBottom: 2,
+                    }}
+                  >
+                    HEADZ UP · ANALYTICS
+                  </p>
+                  <p
+                    style={{
+                      ...sf,
+                      fontSize: 13,
+                      fontWeight: 900,
+                      textTransform: "uppercase",
+                    }}
+                  >
+                    Reports
+                  </p>
+                </div>
               </div>
               <div style={{ display: "flex", gap: 6 }}>
-                {["week", "month", "year"].map((k) => (
+                {["week", "month", "year", "all"].map((k) => (
                   <button
                     key={k}
                     onClick={() => setReportPeriod(k)}
                     style={{
-                      padding: "8px 16px",
+                      padding: "8px 14px",
                       ...sf,
-                      fontSize: 7,
+                      fontSize: 6.5,
                       letterSpacing: "0.15em",
                       textTransform: "uppercase",
                       background: reportPeriod === k ? T.amber : T.surface,
@@ -3528,6 +4433,8 @@ export default function BarberDashboard() {
                       border: `1px solid ${reportPeriod === k ? T.amber : T.border}`,
                       cursor: "pointer",
                       transition: "all 0.2s",
+                      clipPath:
+                        "polygon(0 0,calc(100% - 5px) 0,100% 5px,100% 100%,5px 100%,0 calc(100% - 5px))",
                     }}
                   >
                     {k}
@@ -3537,22 +4444,25 @@ export default function BarberDashboard() {
             </div>
 
             {!reports ? (
-              <div style={{ padding: "40px 0", textAlign: "center" }}>
+              <div style={{ padding: "64px 0", textAlign: "center" }}>
                 <div
                   style={{
-                    width: 18,
-                    height: 18,
-                    border: `1.5px solid ${T.amberBorder}`,
+                    width: 20,
+                    height: 20,
+                    border: `2px solid rgba(245,158,11,0.2)`,
                     borderTopColor: T.amber,
                     borderRadius: "50%",
                     animation: "spin 0.8s linear infinite",
-                    margin: "0 auto",
+                    margin: "0 auto 12px",
                   }}
                 />
+                <p style={{ ...mono, fontSize: 11, color: T.muted }}>
+                  Loading analytics...
+                </p>
               </div>
             ) : (
               <>
-                {/* Summary cards */}
+                {/* ── BIG SUMMARY CARDS ── */}
                 <div
                   style={{
                     display: "grid",
@@ -3560,65 +4470,75 @@ export default function BarberDashboard() {
                       ? "repeat(2,1fr)"
                       : "repeat(4,1fr)",
                     gap: 8,
-                    marginBottom: 24,
+                    marginBottom: 12,
                   }}
                 >
                   {[
                     {
-                      label: "Total Cuts",
-                      value:
-                        reports.summary?.total ||
-                        reports.total_appointments ||
-                        0,
-                      amber: true,
+                      label: "Total Bookings",
+                      value: reports.summary?.total || 0,
+                      icon: "📅",
+                      color: T.amber,
+                      bg: T.amberDim,
+                      border: T.amberBorder,
                     },
                     {
                       label: "Completed",
-                      value:
-                        reports.summary?.completed || reports.completed || 0,
-                      amber: false,
+                      value: reports.summary?.completed || 0,
+                      icon: "✓",
+                      color: T.green,
+                      bg: T.greenDim,
+                      border: T.greenBorder,
                     },
                     {
-                      label: "Online Rev",
-                      value: `$${reports.summary?.online_revenue || reports.online_revenue || "0.00"}`,
-                      amber: false,
+                      label: "Cancelled",
+                      value: reports.summary?.cancelled || 0,
+                      icon: "✕",
+                      color: "#f87171",
+                      bg: "rgba(248,113,113,0.06)",
+                      border: "rgba(248,113,113,0.2)",
                     },
                     {
                       label: "No Shows",
-                      value: reports.summary?.no_shows || reports.no_shows || 0,
-                      amber: false,
+                      value: reports.summary?.no_shows || 0,
+                      icon: "⚡",
+                      color: "#f59e0b",
+                      bg: "rgba(245,158,11,0.06)",
+                      border: "rgba(245,158,11,0.2)",
                     },
-                  ].map(({ label, value, amber }) => (
+                  ].map(({ label, value, icon, color, bg, border }) => (
                     <div
                       key={label}
                       style={{
                         padding: isMobile ? "16px 12px" : "20px 16px",
-                        background: amber ? T.amberDim : T.surface,
-                        border: `1px solid ${amber ? T.amberBorder : T.border}`,
+                        background: bg,
+                        border: `1px solid ${border}`,
                         position: "relative",
                         overflow: "hidden",
+                        clipPath:
+                          "polygon(0 0,calc(100% - 8px) 0,100% 8px,100% 100%,8px 100%,0 calc(100% - 8px))",
                       }}
                     >
                       <div
                         style={{
                           position: "absolute",
-                          top: 0,
-                          right: 0,
-                          width: 40,
-                          height: 40,
-                          background: amber
-                            ? "linear-gradient(225deg,rgba(245,158,11,0.2),transparent)"
-                            : "linear-gradient(225deg,rgba(255,255,255,0.03),transparent)",
+                          top: 8,
+                          right: 12,
+                          fontSize: 20,
+                          opacity: 0.3,
                         }}
-                      />
+                      >
+                        {icon}
+                      </div>
                       <p
                         style={{
-                          ...sf,
-                          fontSize: 5,
-                          letterSpacing: "0.35em",
-                          color: amber ? T.amber : T.muted,
+                          ...mono,
+                          fontSize: 8,
+                          color: color,
                           textTransform: "uppercase",
-                          marginBottom: 10,
+                          letterSpacing: "0.3em",
+                          marginBottom: 8,
+                          opacity: 0.8,
                         }}
                       >
                         {label}
@@ -3626,9 +4546,96 @@ export default function BarberDashboard() {
                       <p
                         style={{
                           ...sf,
-                          fontSize: 26,
+                          fontSize: isMobile ? 28 : 34,
                           fontWeight: 900,
-                          color: amber ? T.amber : "white",
+                          color,
+                          lineHeight: 1,
+                          margin: 0,
+                        }}
+                      >
+                        {value}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+                {/* Second row — reschedules + strikes + walk-ins */}
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: isMobile
+                      ? "repeat(2,1fr)"
+                      : "repeat(4,1fr)",
+                    gap: 8,
+                    marginBottom: 20,
+                  }}
+                >
+                  {[
+                    {
+                      label: "Rescheduled",
+                      value: reports.summary?.reschedules || 0,
+                      icon: "↻",
+                      color: "#a78bfa",
+                    },
+                    {
+                      label: "On Strike",
+                      value: reports.summary?.clients_on_strike || 0,
+                      icon: "⚡",
+                      color: "#f87171",
+                    },
+                    {
+                      label: "Walk-ins",
+                      value: reports.summary?.walk_ins || 0,
+                      icon: "🚶",
+                      color: T.amber,
+                    },
+                    {
+                      label: "No-show Rate",
+                      value: `${reports.summary?.no_show_rate || 0}%`,
+                      icon: "📊",
+                      color: "#f59e0b",
+                    },
+                  ].map(({ label, value, icon, color }) => (
+                    <div
+                      key={label}
+                      style={{
+                        padding: isMobile ? "14px 12px" : "16px 16px",
+                        background: T.surface,
+                        border: `1px solid ${T.border}`,
+                        position: "relative",
+                        overflow: "hidden",
+                        clipPath:
+                          "polygon(0 0,calc(100% - 6px) 0,100% 6px,100% 100%,6px 100%,0 calc(100% - 6px))",
+                      }}
+                    >
+                      <div
+                        style={{
+                          position: "absolute",
+                          top: 6,
+                          right: 10,
+                          fontSize: 16,
+                          opacity: 0.2,
+                        }}
+                      >
+                        {icon}
+                      </div>
+                      <p
+                        style={{
+                          ...mono,
+                          fontSize: 7,
+                          color: "#71717a",
+                          textTransform: "uppercase",
+                          letterSpacing: "0.25em",
+                          marginBottom: 6,
+                        }}
+                      >
+                        {label}
+                      </p>
+                      <p
+                        style={{
+                          ...sf,
+                          fontSize: isMobile ? 22 : 26,
+                          fontWeight: 900,
+                          color,
                           lineHeight: 1,
                           margin: 0,
                         }}
@@ -3639,7 +4646,512 @@ export default function BarberDashboard() {
                   ))}
                 </div>
 
-                {/* Services breakdown */}
+                {/* ── REVENUE CARDS ── */}
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: isMobile ? "1fr" : "repeat(3,1fr)",
+                    gap: 8,
+                    marginBottom: 24,
+                  }}
+                >
+                  {[
+                    {
+                      label: "Total Revenue",
+                      value: `$${reports.summary?.total_revenue || "0.00"}`,
+                      color: T.amber,
+                    },
+                    {
+                      label: "Online Revenue",
+                      value: `$${reports.summary?.online_revenue || "0.00"}`,
+                      color: "#a78bfa",
+                    },
+                    {
+                      label: "Shop Revenue",
+                      value: `$${reports.summary?.shop_revenue || "0.00"}`,
+                      color: T.green,
+                    },
+                  ].map(({ label, value, color }) => (
+                    <div
+                      key={label}
+                      style={{
+                        padding: "18px 20px",
+                        background: T.surface,
+                        border: `1px solid ${T.border}`,
+                        clipPath:
+                          "polygon(0 0,calc(100% - 8px) 0,100% 8px,100% 100%,8px 100%,0 calc(100% - 8px))",
+                      }}
+                    >
+                      <p
+                        style={{
+                          ...mono,
+                          fontSize: 8,
+                          color: "#71717a",
+                          textTransform: "uppercase",
+                          letterSpacing: "0.3em",
+                          marginBottom: 6,
+                        }}
+                      >
+                        {label}
+                      </p>
+                      <p
+                        style={{
+                          ...sf,
+                          fontSize: 26,
+                          fontWeight: 900,
+                          color,
+                          lineHeight: 1,
+                        }}
+                      >
+                        {value}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+
+                {/* ── COMPLETION RATE VISUAL ── */}
+                <div
+                  style={{
+                    marginBottom: 20,
+                    background: T.surface,
+                    border: `1px solid ${T.border}`,
+                    padding: "20px",
+                    clipPath:
+                      "polygon(0 0,calc(100% - 10px) 0,100% 10px,100% 100%,10px 100%,0 calc(100% - 10px))",
+                  }}
+                >
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      marginBottom: 12,
+                    }}
+                  >
+                    <p
+                      style={{
+                        ...sf,
+                        fontSize: 7,
+                        letterSpacing: "0.3em",
+                        color: T.muted,
+                        textTransform: "uppercase",
+                      }}
+                    >
+                      Completion Rate
+                    </p>
+                    <p
+                      style={{
+                        ...sf,
+                        fontSize: 16,
+                        fontWeight: 900,
+                        color: T.green,
+                      }}
+                    >
+                      {reports.summary?.completion_rate || 0}%
+                    </p>
+                  </div>
+                  <div
+                    style={{
+                      height: 8,
+                      background: T.border,
+                      borderRadius: 4,
+                      overflow: "hidden",
+                    }}
+                  >
+                    <div
+                      style={{
+                        height: "100%",
+                        width: `${reports.summary?.completion_rate || 0}%`,
+                        background: `linear-gradient(to right,#22c55e,#4ade80)`,
+                        transition: "width 1s ease",
+                        borderRadius: 4,
+                      }}
+                    />
+                  </div>
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      marginTop: 8,
+                    }}
+                  >
+                    <span style={{ ...mono, fontSize: 9, color: "#71717a" }}>
+                      No-show rate: {reports.summary?.no_show_rate || 0}%
+                    </span>
+                    <span style={{ ...mono, fontSize: 9, color: "#71717a" }}>
+                      Walk-ins: {reports.summary?.walk_ins || 0}
+                    </span>
+                  </div>
+                </div>
+
+                {/* ── BAR CHART — Daily Revenue (last 14 days) ── */}
+                {reports.daily?.length > 0 && (
+                  <div
+                    style={{
+                      marginBottom: 20,
+                      background: T.surface,
+                      border: `1px solid ${T.border}`,
+                      padding: "20px",
+                      clipPath:
+                        "polygon(0 0,calc(100% - 10px) 0,100% 10px,100% 100%,10px 100%,0 calc(100% - 10px))",
+                    }}
+                  >
+                    <p
+                      style={{
+                        ...sf,
+                        fontSize: 7,
+                        letterSpacing: "0.3em",
+                        color: T.muted,
+                        textTransform: "uppercase",
+                        marginBottom: 16,
+                      }}
+                    >
+                      Revenue — Last 14 Days
+                    </p>
+                    {(() => {
+                      const last14 = reports.daily.slice(-14);
+                      const maxRev = Math.max(
+                        ...last14.map((d) => d.revenue || 0),
+                        1,
+                      );
+                      return (
+                        <div
+                          style={{
+                            display: "flex",
+                            alignItems: "flex-end",
+                            gap: isMobile ? 3 : 5,
+                            height: 100,
+                          }}
+                        >
+                          {last14.map((d, i) => {
+                            const pct = ((d.revenue || 0) / maxRev) * 100;
+                            const isToday = d.date === todayISO();
+                            return (
+                              <div
+                                key={i}
+                                style={{
+                                  flex: 1,
+                                  display: "flex",
+                                  flexDirection: "column",
+                                  alignItems: "center",
+                                  gap: 4,
+                                }}
+                              >
+                                <span
+                                  style={{
+                                    ...mono,
+                                    fontSize: 7,
+                                    color: T.amber,
+                                    opacity: d.revenue > 0 ? 1 : 0,
+                                  }}
+                                >
+                                  ${d.revenue || 0}
+                                </span>
+                                <div
+                                  style={{
+                                    width: "100%",
+                                    background: isToday
+                                      ? T.amber
+                                      : `linear-gradient(to top,rgba(245,158,11,0.6),rgba(245,158,11,0.3))`,
+                                    height: `${Math.max(pct, 3)}%`,
+                                    transition: "height 0.5s ease",
+                                    border: isToday
+                                      ? `1px solid ${T.amber}`
+                                      : "none",
+                                  }}
+                                />
+                                <span
+                                  style={{
+                                    ...mono,
+                                    fontSize: isMobile ? 6 : 7,
+                                    color: isToday ? T.amber : T.muted,
+                                    whiteSpace: "nowrap",
+                                  }}
+                                >
+                                  {d.label?.split(" ")[1] || d.label}
+                                </span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      );
+                    })()}
+                  </div>
+                )}
+
+                {/* ── PIE CHART — Booking Status ── (CSS-based) */}
+                {(() => {
+                  const s = reports.summary || {};
+                  const total = s.total || 1;
+                  const completed = Math.round(
+                    ((s.completed || 0) / total) * 100,
+                  );
+                  const cancelled = Math.round(
+                    ((s.cancelled || 0) / total) * 100,
+                  );
+                  const no_shows = Math.round(
+                    ((s.no_shows || 0) / total) * 100,
+                  );
+                  const confirmed = 100 - completed - cancelled - no_shows;
+                  return (
+                    <div
+                      style={{
+                        display: "grid",
+                        gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr",
+                        gap: 12,
+                        marginBottom: 20,
+                      }}
+                    >
+                      {/* Donut chart */}
+                      <div
+                        style={{
+                          background: T.surface,
+                          border: `1px solid ${T.border}`,
+                          padding: "20px",
+                          clipPath:
+                            "polygon(0 0,calc(100% - 10px) 0,100% 10px,100% 100%,10px 100%,0 calc(100% - 10px))",
+                        }}
+                      >
+                        <p
+                          style={{
+                            ...sf,
+                            fontSize: 7,
+                            letterSpacing: "0.3em",
+                            color: T.muted,
+                            textTransform: "uppercase",
+                            marginBottom: 16,
+                          }}
+                        >
+                          Booking Breakdown
+                        </p>
+                        <div
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 20,
+                          }}
+                        >
+                          {/* SVG donut */}
+                          <svg
+                            width="100"
+                            height="100"
+                            viewBox="0 0 100 100"
+                            style={{ flexShrink: 0 }}
+                          >
+                            {(() => {
+                              const data = [
+                                { pct: completed, color: "#22c55e" },
+                                { pct: confirmed, color: "#f59e0b" },
+                                { pct: cancelled, color: "#f87171" },
+                                { pct: no_shows, color: "#ef4444" },
+                              ];
+                              let offset = 0;
+                              const r = 35;
+                              const cx = 50;
+                              const cy = 50;
+                              const circ = 2 * Math.PI * r;
+                              return data.map((d, i) => {
+                                if (!d.pct) return null;
+                                const dash = (d.pct / 100) * circ;
+                                const el = (
+                                  <circle
+                                    key={i}
+                                    cx={cx}
+                                    cy={cy}
+                                    r={r}
+                                    fill="none"
+                                    stroke={d.color}
+                                    strokeWidth="14"
+                                    strokeDasharray={`${dash} ${circ - dash}`}
+                                    strokeDashoffset={(-offset * circ) / 100}
+                                    transform="rotate(-90 50 50)"
+                                    opacity="0.9"
+                                  />
+                                );
+                                offset += d.pct;
+                                return el;
+                              });
+                            })()}
+                            <circle cx="50" cy="50" r="21" fill={T.bg} />
+                            <text
+                              x="50"
+                              y="47"
+                              textAnchor="middle"
+                              style={{
+                                fill: "white",
+                                fontSize: "11px",
+                                fontWeight: 900,
+                              }}
+                            >
+                              {s.total || 0}
+                            </text>
+                            <text
+                              x="50"
+                              y="57"
+                              textAnchor="middle"
+                              style={{ fill: "#71717a", fontSize: "7px" }}
+                            >
+                              total
+                            </text>
+                          </svg>
+                          {/* Legend */}
+                          <div
+                            style={{
+                              display: "flex",
+                              flexDirection: "column",
+                              gap: 8,
+                            }}
+                          >
+                            {[
+                              {
+                                label: "Completed",
+                                pct: completed,
+                                color: "#22c55e",
+                              },
+                              {
+                                label: "Confirmed",
+                                pct: confirmed,
+                                color: T.amber,
+                              },
+                              {
+                                label: "Cancelled",
+                                pct: cancelled,
+                                color: "#f87171",
+                              },
+                              {
+                                label: "No Show",
+                                pct: no_shows,
+                                color: "#ef4444",
+                              },
+                            ].map(({ label, pct, color }) => (
+                              <div
+                                key={label}
+                                style={{
+                                  display: "flex",
+                                  alignItems: "center",
+                                  gap: 8,
+                                }}
+                              >
+                                <div
+                                  style={{
+                                    width: 10,
+                                    height: 10,
+                                    background: color,
+                                    flexShrink: 0,
+                                  }}
+                                />
+                                <span
+                                  style={{
+                                    ...mono,
+                                    fontSize: 9,
+                                    color: "#a1a1aa",
+                                  }}
+                                >
+                                  {label}
+                                </span>
+                                <span
+                                  style={{
+                                    ...sf,
+                                    fontSize: 9,
+                                    fontWeight: 900,
+                                    color,
+                                    marginLeft: "auto",
+                                  }}
+                                >
+                                  {pct}%
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Busiest hours bar */}
+                      <div
+                        style={{
+                          background: T.surface,
+                          border: `1px solid ${T.border}`,
+                          padding: "20px",
+                          clipPath:
+                            "polygon(0 0,calc(100% - 10px) 0,100% 10px,100% 100%,10px 100%,0 calc(100% - 10px))",
+                        }}
+                      >
+                        <p
+                          style={{
+                            ...sf,
+                            fontSize: 7,
+                            letterSpacing: "0.3em",
+                            color: T.muted,
+                            textTransform: "uppercase",
+                            marginBottom: 16,
+                          }}
+                        >
+                          Busiest Hours
+                        </p>
+                        {reports.busiest_hours?.length > 0 ? (
+                          <div
+                            style={{
+                              display: "flex",
+                              alignItems: "flex-end",
+                              gap: 3,
+                              height: 80,
+                            }}
+                          >
+                            {reports.busiest_hours.map((h, i) => {
+                              const maxC = Math.max(
+                                ...reports.busiest_hours.map(
+                                  (x) => x.bookings || 0,
+                                ),
+                                1,
+                              );
+                              const cnt = h.bookings || 0;
+                              const pct = (cnt / maxC) * 100;
+                              return (
+                                <div
+                                  key={i}
+                                  style={{
+                                    flex: 1,
+                                    display: "flex",
+                                    flexDirection: "column",
+                                    alignItems: "center",
+                                    gap: 3,
+                                  }}
+                                >
+                                  <div
+                                    style={{
+                                      width: "100%",
+                                      background:
+                                        pct > 60
+                                          ? T.amber
+                                          : "rgba(245,158,11,0.35)",
+                                      height: `${Math.max(pct, 4)}%`,
+                                      transition: "height 0.5s ease",
+                                    }}
+                                  />
+                                  <span
+                                    style={{
+                                      ...mono,
+                                      fontSize: 6,
+                                      color: T.muted,
+                                      whiteSpace: "nowrap",
+                                    }}
+                                  >
+                                    {h.label || h.hour}
+                                  </span>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        ) : (
+                          <p style={{ ...mono, fontSize: 11, color: T.muted }}>
+                            No data yet
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })()}
+
+                {/* ── TOP SERVICES ── */}
                 {reports.services?.length > 0 && (
                   <div
                     style={{
@@ -3647,13 +5159,15 @@ export default function BarberDashboard() {
                       background: T.surface,
                       border: `1px solid ${T.border}`,
                       padding: "20px",
+                      clipPath:
+                        "polygon(0 0,calc(100% - 10px) 0,100% 10px,100% 100%,10px 100%,0 calc(100% - 10px))",
                     }}
                   >
                     <p
                       style={{
                         ...sf,
-                        fontSize: 6,
-                        letterSpacing: "0.4em",
+                        fontSize: 7,
+                        letterSpacing: "0.3em",
                         color: T.muted,
                         textTransform: "uppercase",
                         marginBottom: 16,
@@ -3665,57 +5179,91 @@ export default function BarberDashboard() {
                       style={{
                         display: "flex",
                         flexDirection: "column",
-                        gap: 8,
+                        gap: 10,
                       }}
                     >
                       {reports.services.map((s, i) => {
-                        const total =
-                          reports.services[0]?.bookings ||
-                          reports.services[0]?.count ||
-                          1;
-                        const cnt = s.bookings || s.count || 0;
-                        const pct = Math.round((cnt / total) * 100);
+                        const maxB = reports.services[0]?.bookings || 1;
+                        const pct = Math.round(
+                          ((s.bookings || 0) / maxB) * 100,
+                        );
                         return (
                           <div key={i}>
                             <div
                               style={{
                                 display: "flex",
                                 justifyContent: "space-between",
-                                marginBottom: 5,
+                                marginBottom: 6,
                               }}
                             >
-                              <span
+                              <div
                                 style={{
-                                  ...mono,
-                                  fontSize: 11,
-                                  color: "#a1a1aa",
+                                  display: "flex",
+                                  alignItems: "center",
+                                  gap: 8,
                                 }}
                               >
-                                {s.name || s.service_name}
-                              </span>
-                              <span
+                                <span
+                                  style={{
+                                    ...mono,
+                                    fontSize: 9,
+                                    color: "#52525b",
+                                    minWidth: 20,
+                                  }}
+                                >
+                                  {String(i + 1).padStart(2, "0")}
+                                </span>
+                                <span
+                                  style={{
+                                    ...mono,
+                                    fontSize: 12,
+                                    color: "#d4d4d4",
+                                  }}
+                                >
+                                  {s.name}
+                                </span>
+                              </div>
+                              <div
                                 style={{
-                                  ...sf,
-                                  fontSize: 10,
-                                  color: T.amber,
-                                  fontWeight: 900,
+                                  display: "flex",
+                                  gap: 16,
+                                  alignItems: "center",
                                 }}
                               >
-                                {cnt}
-                              </span>
+                                <span
+                                  style={{
+                                    ...sf,
+                                    fontSize: 10,
+                                    color: T.amber,
+                                    fontWeight: 900,
+                                  }}
+                                >
+                                  {s.bookings} cuts
+                                </span>
+                                <span
+                                  style={{
+                                    ...mono,
+                                    fontSize: 10,
+                                    color: T.green,
+                                  }}
+                                >
+                                  ${s.revenue}
+                                </span>
+                              </div>
                             </div>
                             <div
                               style={{
-                                height: 2,
+                                height: 3,
                                 background: T.border,
-                                borderRadius: 1,
+                                borderRadius: 2,
+                                overflow: "hidden",
                               }}
                             >
                               <div
                                 style={{
                                   height: "100%",
                                   width: `${pct}%`,
-                                  background: T.amber,
+                                  background: `linear-gradient(to right,#f59e0b,#fbbf24)`,
                                   transition: "width 1s ease",
                                 }}
                               />
@@ -3727,81 +5275,100 @@ export default function BarberDashboard() {
                   </div>
                 )}
 
-                {/* Busiest hours */}
-                {reports.busiest_hours?.length > 0 && (
+                {/* ── TOP CLIENTS ── */}
+                {reports.top_clients?.length > 0 && (
                   <div
                     style={{
+                      marginBottom: 20,
                       background: T.surface,
                       border: `1px solid ${T.border}`,
                       padding: "20px",
+                      clipPath:
+                        "polygon(0 0,calc(100% - 10px) 0,100% 10px,100% 100%,10px 100%,0 calc(100% - 10px))",
                     }}
                   >
                     <p
                       style={{
                         ...sf,
-                        fontSize: 6,
-                        letterSpacing: "0.4em",
+                        fontSize: 7,
+                        letterSpacing: "0.3em",
                         color: T.muted,
                         textTransform: "uppercase",
                         marginBottom: 16,
                       }}
                     >
-                      Busiest Hours
+                      Top Clients
                     </p>
                     <div
                       style={{
                         display: "flex",
-                        alignItems: "flex-end",
-                        gap: 4,
-                        height: 80,
-                        overflowX: "auto",
+                        flexDirection: "column",
+                        gap: 8,
                       }}
                     >
-                      {reports.busiest_hours.map((h, i) => {
-                        const maxC = Math.max(
-                          ...reports.busiest_hours.map(
-                            (x) => x.bookings || x.count || 0,
-                          ),
-                        );
-                        const cnt = h.bookings || h.count || 0;
-                        const pct = maxC > 0 ? (cnt / maxC) * 100 : 0;
-                        return (
+                      {reports.top_clients.map((c, i) => (
+                        <div
+                          key={i}
+                          style={{
+                            display: "flex",
+                            justifyContent: "space-between",
+                            alignItems: "center",
+                            padding: "10px 14px",
+                            background: T.surface2,
+                            border: `1px solid ${T.border}`,
+                          }}
+                        >
                           <div
-                            key={i}
                             style={{
                               display: "flex",
-                              flexDirection: "column",
                               alignItems: "center",
-                              gap: 4,
-                              flex: 1,
-                              minWidth: 36,
+                              gap: 12,
                             }}
                           >
                             <div
                               style={{
-                                width: "100%",
-                                background: T.amber,
-                                opacity: 0.4 + pct / 150,
-                                height: `${Math.max(pct, 4)}%`,
-                                transition: "height 0.5s ease",
-                              }}
-                            />
-                            <span
-                              style={{
-                                ...mono,
-                                fontSize: 8,
-                                color: T.dim,
-                                whiteSpace: "nowrap",
+                                width: 28,
+                                height: 28,
+                                background: i === 0 ? T.amber : T.amberDim,
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                flexShrink: 0,
                               }}
                             >
-                              {h.label ||
-                                fmtTime(
-                                  String(h.hour || 0).padStart(2, "0") + ":00",
-                                )}
-                            </span>
+                              <span
+                                style={{
+                                  ...sf,
+                                  fontSize: 10,
+                                  fontWeight: 900,
+                                  color: i === 0 ? "black" : T.amber,
+                                }}
+                              >
+                                {i + 1}
+                              </span>
+                            </div>
+                            <p
+                              style={{
+                                ...mono,
+                                fontSize: 12,
+                                color: "#d4d4d4",
+                              }}
+                            >
+                              {c.name}
+                            </p>
                           </div>
-                        );
-                      })}
+                          <span
+                            style={{
+                              ...sf,
+                              fontSize: 11,
+                              fontWeight: 900,
+                              color: T.amber,
+                            }}
+                          >
+                            {c.visits} visits
+                          </span>
+                        </div>
+                      ))}
                     </div>
                   </div>
                 )}

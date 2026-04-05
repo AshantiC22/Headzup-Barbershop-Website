@@ -43,21 +43,23 @@ BACKEND_URL  = getattr(settings, "BACKEND_URL",  "https://headzup-barbershop-web
 def send_booking_confirmation(appointment):
     """
     Fires confirmation email in a background thread.
+    Sends to BOTH the client AND the barber.
     NEVER blocks or crashes a booking — email is best-effort only.
     """
     import threading
 
-    # Read all values before spawning thread (avoid DB access in thread)
     try:
         user_email    = appointment.user.email
         username      = appointment.user.username
         service_name  = appointment.service.name if appointment.service else "Appointment"
         barber_name   = appointment.barber.name  if appointment.barber  else "Your barber"
+        barber_email  = appointment.barber.user.email if (appointment.barber and appointment.barber.user) else None
         appt_date     = appointment.date.strftime("%A, %B %d, %Y")
         appt_time     = appointment.time.strftime("%I:%M %p").lstrip("0")
         payment_label = "Paid online via Stripe" if appointment.payment_method == "online" else "Pay in shop (cash or card)"
+        client_notes  = appointment.client_notes or ""
     except Exception:
-        return  # appointment data unavailable — skip silently
+        return
 
     def _send():
         try:
@@ -169,6 +171,84 @@ def send_booking_confirmation(appointment):
             )
             with urllib.request.urlopen(req, timeout=10) as resp:
                 logger.info(f"Confirmation email sent to {user_email} — SendGrid {resp.status}")
+
+            # Also email the BARBER so they know a new client booked
+            if barber_email:
+                barber_subject = f"📅 New Booking — {username} at {appt_time}"
+                barber_rows = ""
+                notes_row = f"""<tr><td style="padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.05);">
+                  <p style="font-family:'Courier New',monospace;font-size:9px;letter-spacing:0.3em;color:#52525b;text-transform:uppercase;margin:0 0 4px;">Client Notes</p>
+                  <p style="font-size:14px;color:#f59e0b;margin:0;font-style:italic;">"{client_notes}"</p>
+                </td></tr>""" if client_notes else ""
+                for label, value in [
+                    ("Client",   username),
+                    ("Service",  service_name),
+                    ("Date",     appt_date),
+                    ("Time",     appt_time),
+                    ("Payment",  payment_label),
+                    ("Location", "4 Hub Dr, Hattiesburg, MS 39402"),
+                ]:
+                    barber_rows += f"""<tr><td style="padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.05);">
+                      <p style="font-family:'Courier New',monospace;font-size:9px;letter-spacing:0.3em;color:#52525b;text-transform:uppercase;margin:0 0 4px;">{label}</p>
+                      <p style="font-size:14px;color:white;margin:0;font-weight:700;">{value}</p>
+                    </td></tr>"""
+                barber_html = f"""<!DOCTYPE html>
+<html><head><meta charset="utf-8"></head>
+<body style="margin:0;padding:0;background:#050505;font-family:'Helvetica Neue',Arial,sans-serif;color:#fff;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#050505;padding:40px 20px;">
+    <tr><td align="center">
+      <table width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;">
+        <tr><td style="padding-bottom:24px;">
+          <p style="font-family:'Courier New',monospace;font-size:22px;font-weight:900;letter-spacing:-0.05em;margin:0;text-transform:uppercase;">HEADZ<span style="color:#f59e0b;font-style:italic;">UP</span></p>
+        </td></tr>
+        <tr><td style="padding-bottom:16px;">
+          <div style="width:52px;height:52px;border-radius:50%;background:rgba(245,158,11,0.15);border:1px solid rgba(245,158,11,0.3);display:inline-block;text-align:center;line-height:52px;"><span style="color:#f59e0b;font-size:22px;">📅</span></div>
+        </td></tr>
+        <tr><td style="padding-bottom:8px;">
+          <h1 style="font-family:'Courier New',monospace;font-size:26px;font-weight:900;text-transform:uppercase;margin:0;">New<br><span style="color:#f59e0b;font-style:italic;">Booking_</span></h1>
+        </td></tr>
+        <tr><td style="padding-bottom:24px;">
+          <p style="color:#71717a;font-size:13px;margin:0;">Hey {barber_name}, you have a new appointment booked.</p>
+        </td></tr>
+        <tr><td style="background:#0a0a0a;border:1px solid rgba(255,255,255,0.1);padding:28px;">
+          <table width="100%" cellpadding="0" cellspacing="0">{barber_rows}{notes_row}</table>
+        </td></tr>
+        <tr><td style="padding:16px 0 32px;">
+          <a href="{FRONTEND_URL}/barber-dashboard" style="display:inline-block;padding:14px 28px;background:#f59e0b;color:black;font-family:'Courier New',monospace;font-size:10px;font-weight:900;text-transform:uppercase;text-decoration:none;">View Dashboard &rarr;</a>
+        </td></tr>
+        <tr><td style="border-top:1px solid rgba(255,255,255,0.06);padding-top:20px;">
+          <p style="font-size:11px;color:#3f3f46;margin:0;">HEADZ UP Barbershop &middot; 4 Hub Dr, Hattiesburg, MS 39402</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body></html>"""
+                barber_plain = f"New booking!\nClient: {username}\nService: {service_name}\nDate: {appt_date}\nTime: {appt_time}\nPayment: {payment_label}"
+                if client_notes:
+                    barber_plain += f"\nNotes: {client_notes}"
+                try:
+                    match2 = re.search(r'<(.+?)>', from_email)
+                    sender2 = match2.group(1) if match2 else from_email
+                    payload2 = {
+                        "personalizations": [{"to": [{"email": barber_email}]}],
+                        "from": {"email": sender2, "name": sender_name},
+                        "subject": barber_subject,
+                        "content": [
+                            {"type": "text/plain", "value": barber_plain},
+                            {"type": "text/html",  "value": barber_html},
+                        ],
+                    }
+                    data2 = json_lib.dumps(payload2).encode("utf-8")
+                    req2  = urllib.request.Request(
+                        "https://api.sendgrid.com/v3/mail/send",
+                        data=data2,
+                        headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+                        method="POST",
+                    )
+                    with urllib.request.urlopen(req2, timeout=10) as resp2:
+                        logger.info(f"Barber booking notification sent to {barber_email} — {resp2.status}")
+                except Exception as eb:
+                    logger.error(f"Barber email failed: {eb}")
         except Exception as e:
             import logging
             logging.getLogger(__name__).error(f"Email send failed: {e}")
@@ -301,28 +381,49 @@ def send_reschedule_request_email(reschedule_request):
     def _send():
         try:
             if rr.initiated_by == "client":
-                # Email the barber
-                recipient  = appt.barber.user.email if appt.barber.user else None
-                if not recipient:
-                    return
-                subject    = f"Reschedule Request from {client_name} — HEADZ UP"
-                subhead    = f"{client_name} wants to reschedule their appointment."
-                rows       = _ticket_rows(
-                    ("Service", service_name),
-                    ("Client",  client_name),
-                    ("Current Date", old_date),
-                    ("Current Time", old_time),
-                    ("Requested Date", f"<span style='color:#f59e0b'>{new_date_str}</span>"),
-                    ("Requested Time", f"<span style='color:#f59e0b'>{new_time_str}</span>"),
-                )
-                icon = '<div style="width:52px;height:52px;border-radius:50%;background:rgba(245,158,11,0.15);border:1px solid rgba(245,158,11,0.3);display:inline-block;text-align:center;line-height:52px;"><span style="color:#f59e0b;font-size:22px;">↻</span></div>'
-                action_btns = f'''
-                  <a href="{accept_url}" style="display:inline-block;padding:12px 24px;background:#22c55e;color:black;font-family:'Courier New',monospace;font-size:10px;font-weight:900;text-transform:uppercase;text-decoration:none;margin-right:8px;">Accept</a>
-                  <a href="{reject_url}" style="display:inline-block;padding:12px 24px;background:#f87171;color:black;font-family:'Courier New',monospace;font-size:10px;font-weight:900;text-transform:uppercase;text-decoration:none;">Reject</a>
-                '''
-                html = _html_email_wrapper("", icon, "Reschedule<br><span style='color:#f59e0b;font-style:italic;'>Request_</span>", subhead, rows, None, "")
-                html = html.replace("</table>\n        </td></tr>", f"</table></td></tr><tr><td style='padding:20px 0;'>{action_btns}</td></tr>")
-                plain = f"Reschedule request from {client_name}\nFrom: {old_date} {old_time}\nTo: {new_date_str} {new_time_str}\nAccept: {accept_url}\nReject: {reject_url}"
+                # 1. Email the BARBER with Accept/Reject buttons
+                barber_email = appt.barber.user.email if appt.barber.user else None
+                if barber_email:
+                    subject_b  = f"Reschedule Request from {client_name} — HEADZ UP"
+                    rows_b     = _ticket_rows(
+                        ("Service",        service_name),
+                        ("Client",         client_name),
+                        ("Current Date",   old_date),
+                        ("Current Time",   old_time),
+                        ("Requested Date", f"<span style='color:#f59e0b'>{new_date_str}</span>"),
+                        ("Requested Time", f"<span style='color:#f59e0b'>{new_time_str}</span>"),
+                    )
+                    icon_b = '<div style="width:52px;height:52px;border-radius:50%;background:rgba(245,158,11,0.15);border:1px solid rgba(245,158,11,0.3);display:inline-block;text-align:center;line-height:52px;"><span style="color:#f59e0b;font-size:22px;">↻</span></div>'
+                    action_btns = f'''
+                      <a href="{accept_url}" style="display:inline-block;padding:12px 24px;background:#22c55e;color:black;font-family:'Courier New',monospace;font-size:10px;font-weight:900;text-transform:uppercase;text-decoration:none;margin-right:8px;">✓ Approve Reschedule</a>
+                      <a href="{reject_url}" style="display:inline-block;padding:12px 24px;background:#f87171;color:black;font-family:'Courier New',monospace;font-size:10px;font-weight:900;text-transform:uppercase;text-decoration:none;">✕ Decline</a>
+                    '''
+                    html_b = _html_email_wrapper("", icon_b, "Reschedule<br><span style='color:#f59e0b;font-style:italic;'>Request_</span>", f"{client_name} wants to reschedule their appointment.", rows_b, None, "")
+                    html_b = html_b.replace("</table>\n        </td></tr>", f"</table></td></tr><tr><td style='padding:20px 0;'>{action_btns}</td></tr>")
+                    plain_b = f"Reschedule request from {client_name}\nFrom: {old_date} {old_time}\nTo: {new_date_str} {new_time_str}\nApprove: {accept_url}\nDecline: {reject_url}"
+                    _sendgrid_send(barber_email, subject_b, plain_b, html_b)
+
+                # 2. Email the CLIENT a "thank you, under review" confirmation
+                if client_email:
+                    subject_c = f"✓ Reschedule Request Received — HEADZ UP"
+                    rows_c    = _ticket_rows(
+                        ("Service",          service_name),
+                        ("Barber",           barber_name),
+                        ("Your Request",     f"{new_date_str} at {new_time_str}"),
+                        ("Current Booking",  f"{old_date} at {old_time}"),
+                        ("Status",           "<span style='color:#f59e0b'>Under Review</span>"),
+                    )
+                    icon_c  = '<div style="width:52px;height:52px;border-radius:50%;background:rgba(34,197,94,0.15);border:1px solid rgba(34,197,94,0.3);display:inline-block;text-align:center;line-height:52px;"><span style="color:#22c55e;font-size:22px;">✓</span></div>'
+                    body_c  = f"Thank you for your reschedule request, {client_name}! Your barber {barber_name} has been notified and will review your request shortly. You will receive an email once it has been approved or declined. Until then, your original appointment on {old_date} at {old_time} remains active."
+                    html_c  = _html_email_wrapper("", icon_c, "Request<br><span style='color:#22c55e;font-style:italic;'>Received_</span>", body_c, rows_c, None, "")
+                    plain_c = f"Hi {client_name},\n\nYour reschedule request has been received.\n\nRequested: {new_date_str} at {new_time_str}\nBarber: {barber_name}\n\n{barber_name} will review and email you shortly with approval or decline.\nYour original appointment ({old_date} {old_time}) remains active until then.\n\n— HEADZ UP Barbershop"
+                    _sendgrid_send(client_email, subject_c, plain_c, html_c)
+
+                # Set recipient/subject/plain for the legacy return path (not used but kept for safety)
+                recipient = barber_email
+                subject   = f"Reschedule Request from {client_name} — HEADZ UP"
+                plain     = f"Reschedule request from {client_name}\nFrom: {old_date} {old_time}\nTo: {new_date_str} {new_time_str}"
+                return  # emails already sent above
             else:
                 # Email the client
                 recipient  = client_email
@@ -2524,23 +2625,47 @@ class BarberReportsView(APIView):
             "visits":   c["visits"],
         } for c in top_clients_qs]
 
+        # ── Reschedule count ──
+        from django.db.models import Q
+        reschedules = RescheduleRequest.objects.filter(
+            appointment__barber=barber,
+            initiated_by="client",
+        ).filter(date__gte=start).count() if start else RescheduleRequest.objects.filter(
+            appointment__barber=barber,
+            initiated_by="client",
+        ).count()
+
+        # ── Strike count ──
+        clients_with_strikes = 0
+        try:
+            client_ids = Appointment.objects.filter(barber=barber).values_list("user_id", flat=True).distinct()
+            from django.contrib.auth import get_user_model as _gum
+            _User = _gum()
+            clients_with_strikes = UserProfile.objects.filter(
+                user_id__in=client_ids, strike_count__gt=0
+            ).count()
+        except Exception:
+            pass
+
         return Response({
             "period": period,
             "start":  str(start) if start else "all",
             "summary": {
-                "total":           total,
-                "completed":       completed,
-                "cancelled":       cancelled,
-                "no_shows":        no_shows,
-                "confirmed":       confirmed,
-                "walk_ins":        walk_ins,
-                "completion_rate": completion_rate,
-                "no_show_rate":    no_show_rate,
-                "online_revenue":  f"{online_revenue:.2f}",
-                "shop_revenue":    f"{shop_revenue:.2f}",
-                "total_revenue":   f"{total_revenue:.2f}",
-                "online_count":    online_appts.count(),
-                "shop_count":      shop_appts.count(),
+                "total":             total,
+                "completed":         completed,
+                "cancelled":         cancelled,
+                "no_shows":          no_shows,
+                "confirmed":         confirmed,
+                "walk_ins":          walk_ins,
+                "reschedules":       reschedules,
+                "clients_on_strike": clients_with_strikes,
+                "completion_rate":   completion_rate,
+                "no_show_rate":      no_show_rate,
+                "online_revenue":    f"{online_revenue:.2f}",
+                "shop_revenue":      f"{shop_revenue:.2f}",
+                "total_revenue":     f"{total_revenue:.2f}",
+                "online_count":      online_appts.count(),
+                "shop_count":        shop_appts.count(),
             },
             "services":     service_stats,
             "daily":        daily_data,

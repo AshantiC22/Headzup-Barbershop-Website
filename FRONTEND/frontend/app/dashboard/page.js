@@ -30,7 +30,7 @@ const STATUS = {
   },
   cancelled: {
     label: "Cancelled",
-    color: "#52525b",
+    color: "#a1a1aa",
     bg: "rgba(82,82,91,0.06)",
     border: "rgba(82,82,91,0.12)",
   },
@@ -164,7 +164,7 @@ function RescheduleModal({ appt, onClose, onDone }) {
               {appt.service_name || "Appointment"}
             </p>
             <p
-              style={{ ...mono, fontSize: 10, color: "#52525b", marginTop: 2 }}
+              style={{ ...mono, fontSize: 10, color: "#a1a1aa", marginTop: 2 }}
             >
               {fmtDate(appt.date)}
               {appt.time ? ` · ${fmtTime(appt.time)}` : ""}
@@ -177,7 +177,7 @@ function RescheduleModal({ appt, onClose, onDone }) {
               height: 32,
               background: "transparent",
               border: "1px solid rgba(255,255,255,0.08)",
-              color: "#52525b",
+              color: "#a1a1aa",
               cursor: "pointer",
               fontSize: 14,
               transition: "all 0.2s",
@@ -188,7 +188,7 @@ function RescheduleModal({ appt, onClose, onDone }) {
             }}
             onMouseLeave={(e) => {
               e.currentTarget.style.borderColor = "rgba(255,255,255,0.08)";
-              e.currentTarget.style.color = "#52525b";
+              e.currentTarget.style.color = "#a1a1aa";
             }}
           >
             ✕
@@ -237,7 +237,7 @@ function RescheduleModal({ appt, onClose, onDone }) {
               ...sf,
               fontSize: 6,
               letterSpacing: "0.4em",
-              color: "#52525b",
+              color: "#a1a1aa",
               textTransform: "uppercase",
               display: "block",
               marginBottom: 8,
@@ -274,7 +274,7 @@ function RescheduleModal({ appt, onClose, onDone }) {
               ...sf,
               fontSize: 6,
               letterSpacing: "0.4em",
-              color: "#52525b",
+              color: "#a1a1aa",
               textTransform: "uppercase",
               display: "block",
               marginBottom: 8,
@@ -303,7 +303,7 @@ function RescheduleModal({ appt, onClose, onDone }) {
                   border: `1px solid ${newTime === s ? "#f59e0b" : "rgba(255,255,255,0.08)"}`,
                   background:
                     newTime === s ? "rgba(245,158,11,0.1)" : "transparent",
-                  color: newTime === s ? "#f59e0b" : "#52525b",
+                  color: newTime === s ? "#f59e0b" : "#a1a1aa",
                   cursor: "pointer",
                   transition: "all 0.15s",
                 }}
@@ -326,7 +326,7 @@ function RescheduleModal({ appt, onClose, onDone }) {
               letterSpacing: "0.2em",
               textTransform: "uppercase",
               background: busy || !newDate || !newTime ? "#111" : "#f59e0b",
-              color: busy || !newDate || !newTime ? "#52525b" : "black",
+              color: busy || !newDate || !newTime ? "#a1a1aa" : "black",
               border: "none",
               cursor: busy || !newDate || !newTime ? "not-allowed" : "pointer",
               transition: "all 0.2s",
@@ -343,7 +343,7 @@ function RescheduleModal({ appt, onClose, onDone }) {
                     width: 14,
                     height: 14,
                     border: "2px solid #3f3f46",
-                    borderTopColor: "#71717a",
+                    borderTopColor: "#a1a1aa",
                     borderRadius: "50%",
                     display: "inline-block",
                     animation: "spin 0.7s linear infinite",
@@ -770,7 +770,7 @@ Cancel anyway?`
                 style={{
                   ...mono,
                   fontSize: 11,
-                  color: "#27272a",
+                  color: "#a1a1aa",
                   letterSpacing: "0.3em",
                 }}
               >
@@ -808,7 +808,7 @@ Cancel anyway?`
                       {(user.user || "?").charAt(0).toUpperCase()}
                     </span>
                   </div>
-                  <span style={{ ...mono, fontSize: 11, color: "#52525b" }}>
+                  <span style={{ ...mono, fontSize: 11, color: "#a1a1aa" }}>
                     {user.user}
                   </span>
                 </div>
@@ -841,28 +841,31 @@ Cancel anyway?`
               <button
                 onClick={handleLogout}
                 style={{
-                  padding: isMobile ? "8px 10px" : "10px 16px",
-                  background: "transparent",
-                  color: "#52525b",
+                  padding: isMobile ? "10px 14px" : "10px 16px",
+                  background: "rgba(248,113,113,0.1)",
+                  color: "#f87171",
                   ...sf,
                   fontSize: 7,
+                  fontWeight: 700,
                   letterSpacing: "0.15em",
                   textTransform: "uppercase",
-                  border: "1px solid rgba(255,255,255,0.08)",
+                  border: "1px solid rgba(248,113,113,0.35)",
                   cursor: "pointer",
                   transition: "all 0.2s",
                   whiteSpace: "nowrap",
+                  clipPath:
+                    "polygon(0 0,calc(100% - 5px) 0,100% 5px,100% 100%,5px 100%,0 calc(100% - 5px))",
                 }}
                 onMouseEnter={(e) => {
-                  e.currentTarget.style.color = "white";
-                  e.currentTarget.style.borderColor = "rgba(255,255,255,0.2)";
+                  e.currentTarget.style.background = "rgba(248,113,113,0.2)";
+                  e.currentTarget.style.borderColor = "rgba(248,113,113,0.6)";
                 }}
                 onMouseLeave={(e) => {
-                  e.currentTarget.style.color = "#52525b";
-                  e.currentTarget.style.borderColor = "rgba(255,255,255,0.08)";
+                  e.currentTarget.style.background = "rgba(248,113,113,0.1)";
+                  e.currentTarget.style.borderColor = "rgba(248,113,113,0.35)";
                 }}
               >
-                {isMobile ? "Out" : "Sign Out"}
+                ⏻ Sign Out
               </button>
             </div>
           </div>
@@ -969,7 +972,7 @@ Cancel anyway?`
                 style={{
                   ...mono,
                   fontSize: 11,
-                  color: "#71717a",
+                  color: "#a1a1aa",
                   lineHeight: 1.6,
                 }}
               >
@@ -1069,7 +1072,7 @@ Cancel anyway?`
                   style={{
                     ...mono,
                     fontSize: 13,
-                    color: "#52525b",
+                    color: "#a1a1aa",
                     maxWidth: 400,
                     lineHeight: 1.7,
                   }}
@@ -1142,7 +1145,7 @@ Cancel anyway?`
                         ...sf,
                         fontSize: 5,
                         letterSpacing: "0.3em",
-                        color: accent ? "#f59e0b" : "#52525b",
+                        color: accent ? "#f59e0b" : "#a1a1aa",
                         textTransform: "uppercase",
                         marginBottom: 10,
                       }}
@@ -1334,7 +1337,7 @@ Cancel anyway?`
                           textTransform: "uppercase",
                           background:
                             activeTab === tab ? "#f59e0b" : "transparent",
-                          color: activeTab === tab ? "black" : "#52525b",
+                          color: activeTab === tab ? "black" : "#a1a1aa",
                           border: "none",
                           cursor: "pointer",
                           transition: "all 0.2s",
@@ -1469,7 +1472,7 @@ Cancel anyway?`
                                 color:
                                   appt.status === "confirmed"
                                     ? "#f59e0b"
-                                    : "#52525b",
+                                    : "#a1a1aa",
                                 lineHeight: 1,
                               }}
                             >
@@ -1479,7 +1482,7 @@ Cancel anyway?`
                               style={{
                                 ...sf,
                                 fontSize: 6,
-                                color: "#3f3f46",
+                                color: "#a1a1aa",
                                 textTransform: "uppercase",
                                 letterSpacing: "0.1em",
                               }}
@@ -1520,13 +1523,14 @@ Cancel anyway?`
                                 display: "flex",
                                 gap: 8,
                                 flexWrap: "wrap",
+                                marginBottom: 3,
                               }}
                             >
                               <span
                                 style={{
                                   ...mono,
                                   fontSize: 10,
-                                  color: "#52525b",
+                                  color: "#a1a1aa",
                                 }}
                               >
                                 {fmtDate(appt.date)}
@@ -1542,6 +1546,34 @@ Cancel anyway?`
                                   {fmtTime(appt.time)}
                                 </span>
                               )}
+                            </div>
+                            <div
+                              style={{
+                                display: "flex",
+                                gap: 10,
+                                flexWrap: "wrap",
+                              }}
+                            >
+                              {appt.barber_name && (
+                                <span
+                                  style={{
+                                    ...mono,
+                                    fontSize: 9,
+                                    color: "#a1a1aa",
+                                  }}
+                                >
+                                  ✂️ {appt.barber_name}
+                                </span>
+                              )}
+                              <span
+                                style={{
+                                  ...mono,
+                                  fontSize: 9,
+                                  color: "#a1a1aa",
+                                }}
+                              >
+                                📍 4 Hub Dr, Hattiesburg
+                              </span>
                             </div>
                           </div>
 
@@ -1571,7 +1603,7 @@ Cancel anyway?`
                                 height: isMobile ? 34 : 28,
                                 background: "transparent",
                                 border: "1px solid rgba(245,158,11,0.25)",
-                                color: "#52525b",
+                                color: "#a1a1aa",
                                 cursor: "pointer",
                                 display: "flex",
                                 alignItems: "center",
@@ -1590,7 +1622,7 @@ Cancel anyway?`
                               onMouseLeave={(e) => {
                                 e.currentTarget.style.borderColor =
                                   "rgba(245,158,11,0.25)";
-                                e.currentTarget.style.color = "#52525b";
+                                e.currentTarget.style.color = "#a1a1aa";
                                 e.currentTarget.style.background =
                                   "transparent";
                               }}
@@ -1607,7 +1639,7 @@ Cancel anyway?`
                                 height: isMobile ? 34 : 28,
                                 background: "transparent",
                                 border: "1px solid rgba(248,113,113,0.2)",
-                                color: "#52525b",
+                                color: "#a1a1aa",
                                 cursor: "pointer",
                                 display: "flex",
                                 alignItems: "center",
@@ -1626,7 +1658,7 @@ Cancel anyway?`
                               onMouseLeave={(e) => {
                                 e.currentTarget.style.borderColor =
                                   "rgba(248,113,113,0.2)";
-                                e.currentTarget.style.color = "#52525b";
+                                e.currentTarget.style.color = "#a1a1aa";
                                 e.currentTarget.style.background =
                                   "transparent";
                               }}
@@ -1680,7 +1712,7 @@ Cancel anyway?`
                   style={{
                     padding: "18px 24px",
                     background: "transparent",
-                    color: "#52525b",
+                    color: "#a1a1aa",
                     ...sf,
                     fontSize: 8,
                     letterSpacing: "0.2em",
@@ -1694,7 +1726,7 @@ Cancel anyway?`
                     e.currentTarget.style.borderColor = "rgba(255,255,255,0.2)";
                   }}
                   onMouseLeave={(e) => {
-                    e.currentTarget.style.color = "#52525b";
+                    e.currentTarget.style.color = "#a1a1aa";
                     e.currentTarget.style.borderColor =
                       "rgba(255,255,255,0.08)";
                   }}
