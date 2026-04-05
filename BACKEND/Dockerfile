@@ -15,6 +15,9 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
+# Pre-create staticfiles dir so whitenoise warning disappears
+RUN mkdir -p /app/staticfiles
+
 # Force clean migrations every deploy + reminder loop in background
 CMD python manage.py migrate --noinput && \
     python manage.py collectstatic --noinput --clear && \
