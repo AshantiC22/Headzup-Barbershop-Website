@@ -24,8 +24,9 @@ from core.views import (
     RecoveryStep2View,
     RecoveryStep3View,
     SecurityQuestionsListView,
-    # Strike & deposit
-    ClientStrikeStatusView,
+    # Newsletter
+    NewsletterPostListView,
+    NewsletterPostManageView,
     AcceptTermsView,
     DepositCheckoutView,
     DepositSuccessView,
@@ -86,6 +87,11 @@ urlpatterns = [
     path("recovery/step1-by-question/",  RecoveryStep1ByQuestionView.as_view(), name="recovery_step1_question"),
     path("recovery/step2/",              RecoveryStep2View.as_view(),           name="recovery_step2"),
     path("recovery/step3/",              RecoveryStep3View.as_view(),           name="recovery_step3"),
+
+    # Newsletter / news feed
+    path("newsletter/",             NewsletterPostListView.as_view(),   name="newsletter_list"),
+    path("newsletter/manage/",      NewsletterPostManageView.as_view(), name="newsletter_manage"),
+    path("newsletter/manage/<int:pk>/", NewsletterPostManageView.as_view(), name="newsletter_manage_detail"),
 
     # Strike & deposit system
     path("client/strike-status/",               ClientStrikeStatusView.as_view(),   name="strike_status"),

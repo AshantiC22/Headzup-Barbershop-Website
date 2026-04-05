@@ -132,7 +132,31 @@ class Appointment(models.Model):
         return f"{self.user.username} - {self.barber.name} {self.date} {self.time}"
 
 
-class WaitlistEntry(models.Model):
+class NewsletterPost(models.Model):
+    """Barber-created news feed posts — deals, promotions, updates."""
+    CATEGORY_CHOICES = [
+        ("deal",      "Deal / Discount"),
+        ("promo",     "Promotion"),
+        ("update",    "Shop Update"),
+        ("event",     "Event"),
+        ("general",   "General"),
+    ]
+    barber      = models.ForeignKey(Barber, on_delete=models.CASCADE, related_name="posts",
+                                    null=True, blank=True)
+    title       = models.CharField(max_length=200)
+    body        = models.TextField()
+    category    = models.CharField(max_length=20, choices=CATEGORY_CHOICES, default="general")
+    emoji       = models.CharField(max_length=8, blank=True, default="✂️")
+    active      = models.BooleanField(default=True)
+    pinned      = models.BooleanField(default=False)
+    created_at  = models.DateTimeField(auto_now_add=True)
+    updated_at  = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-pinned", "-created_at"]
+
+    def __str__(self):
+        return f"{self.title} ({self.get_category_display()})"
     """Client added to waitlist for a fully booked slot."""
     barber      = models.ForeignKey(Barber, on_delete=models.CASCADE, related_name="waitlist")
     service     = models.ForeignKey(Service, on_delete=models.SET_NULL, null=True, blank=True)

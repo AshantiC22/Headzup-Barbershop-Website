@@ -6,7 +6,7 @@ from django.conf import settings
 from django.db import IntegrityError
 from django.shortcuts import redirect
 from rest_framework import viewsets
-from .models import Appointment, Barber, BarberAvailability, BarberTimeOff, Service, UserProfile, PushSubscription, Review, WaitlistEntry, BarberClient, RescheduleRequest
+from .models import Appointment, Barber, BarberAvailability, BarberTimeOff, Service, UserProfile, PushSubscription, Review, WaitlistEntry, BarberClient, RescheduleRequest, NewsletterPost
 from .serializers import AppointmentSerializer, BarberSerializer, ServiceSerializer, UserProfileSerializer, RegisterSerializer
 from rest_framework.permissions import IsAuthenticated, AllowAny, IsAdminUser
 from rest_framework.response import Response
@@ -2015,6 +2015,114 @@ class WalkInBookingView(APIView):
             "date": str(appt.date),
             "time": str(appt.time),
         }, status=201)
+
+
+# ── Newsletter / News Feed ────────────────────────────────────────────────────
+
+class NewsletterPostListView(APIView):
+    """
+    GET  /newsletter/          — public, returns all active posts
+    GET  /newsletter/?category= — filter by category
+    GET  /newsletter/?pinned=true — pinned only
+    """
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        from core.models import NewsletterPost
+        qs = NewsletterPost.objects.filter(active=True).select_related("barber")
+        category = request.query_params.get("category")
+        if category:
+            qs = qs.filter(category=category)
+        if request.query_params.get("pinned") == "true":
+            qs = qs.filter(pinned=True)
+        posts = []
+        for p in qs[:50]:
+            posts.append({
+                "id":           p.id,
+                "title":        p.title,
+                "body":         p.body,
+                "category":     p.category,
+                "category_label": p.get_category_display(),
+                "emoji":        p.emoji,
+                "pinned":       p.pinned,
+                "barber_name":  p.barber.name if p.barber else "HEADZ UP",
+                "created_at":   p.created_at.strftime("%B %d, %Y"),
+                "updated_at":   p.updated_at.isoformat(),
+            })
+        return Response(posts)
+
+
+class NewsletterPostManageView(APIView):
+    """
+    POST   /newsletter/manage/         — barber creates a post
+    PATCH  /newsletter/manage/<pk>/    — barber edits their post
+    DELETE /newsletter/manage/<pk>/    — barber deletes their post
+    GET    /newsletter/manage/         — barber sees their own posts
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        if not request.user.is_staff:
+            return Response({"error": "Barbers only"}, status=403)
+        from core.models import NewsletterPost
+        barber = get_barber_for_user(request.user)
+        qs = NewsletterPost.objects.filter(barber=barber).order_by("-created_at")
+        posts = [{
+            "id":       p.id,
+            "title":    p.title,
+            "body":     p.body,
+            "category": p.category,
+            "emoji":    p.emoji,
+            "active":   p.active,
+            "pinned":   p.pinned,
+            "created_at": p.created_at.strftime("%B %d, %Y"),
+        } for p in qs]
+        return Response(posts)
+
+    def post(self, request):
+        if not request.user.is_staff:
+            return Response({"error": "Barbers only"}, status=403)
+        from core.models import NewsletterPost
+        barber = get_barber_for_user(request.user)
+        title    = request.data.get("title", "").strip()
+        body     = request.data.get("body",  "").strip()
+        category = request.data.get("category", "general")
+        emoji    = request.data.get("emoji", "✂️")
+        pinned   = request.data.get("pinned", False)
+        if not title or not body:
+            return Response({"error": "Title and body required"}, status=400)
+        post = NewsletterPost.objects.create(
+            barber=barber, title=title, body=body,
+            category=category, emoji=emoji, pinned=pinned,
+        )
+        return Response({"message": "Post created", "id": post.id}, status=201)
+
+    def patch(self, request, pk=None):
+        if not request.user.is_staff:
+            return Response({"error": "Barbers only"}, status=403)
+        from core.models import NewsletterPost
+        barber = get_barber_for_user(request.user)
+        try:
+            post = NewsletterPost.objects.get(pk=pk, barber=barber)
+        except NewsletterPost.DoesNotExist:
+            return Response({"error": "Not found"}, status=404)
+        for field in ["title", "body", "category", "emoji", "active", "pinned"]:
+            if field in request.data:
+                setattr(post, field, request.data[field])
+        post.save()
+        return Response({"message": "Updated"})
+
+    def delete(self, request, pk=None):
+        if not request.user.is_staff:
+            return Response({"error": "Barbers only"}, status=403)
+        from core.models import NewsletterPost
+        barber = get_barber_for_user(request.user)
+        try:
+            post = NewsletterPost.objects.get(pk=pk, barber=barber)
+            post.delete()
+            return Response({"message": "Deleted"})
+        except NewsletterPost.DoesNotExist:
+            return Response({"error": "Not found"}, status=404)
 
 
 class WaitlistView(APIView):

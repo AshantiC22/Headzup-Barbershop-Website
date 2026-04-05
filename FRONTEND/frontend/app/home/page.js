@@ -2127,6 +2127,7 @@ export default function HomePage() {
                 ["#barber", "Barbers"],
                 ["#reviews", "Reviews"],
                 ["#location", "Visit"],
+                ["/newsletter", "News"],
               ].map(([h, l]) => (
                 <a
                   key={l}
@@ -2331,6 +2332,7 @@ export default function HomePage() {
               ["#barber", "Barbers"],
               ["#reviews", "Reviews"],
               ["#location", "Visit"],
+              ["/newsletter", "News"],
             ].map(([h, l]) => (
               <a
                 key={l}

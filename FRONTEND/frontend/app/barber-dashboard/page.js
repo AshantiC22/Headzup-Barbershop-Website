@@ -1635,6 +1635,19 @@ export default function BarberDashboard() {
   /* pay-in-shop payment tracker */
   const [shopPayments, setShopPayments] = useState({}); // appt.id -> "pending"|"received"
   const [blockList, setBlockList] = useState([]); // blocked client usernames
+  // Newsletter
+  const [nlPosts, setNlPosts] = useState([]);
+  const [nlLoading, setNlLoading] = useState(false);
+  const [nlForm, setNlForm] = useState({
+    title: "",
+    body: "",
+    category: "general",
+    emoji: "✂️",
+    pinned: false,
+  });
+  const [nlEditing, setNlEditing] = useState(null); // post id being edited
+  const [nlError, setNlError] = useState("");
+  const [nlSuccess, setNlSuccess] = useState("");
 
   /* availability */
   const [availability, setAvailability] = useState([]);
@@ -1787,6 +1800,20 @@ export default function BarberDashboard() {
   useEffect(() => {
     if (activeTab === "reports") loadReports(reportPeriod);
   }, [activeTab, reportPeriod, loadReports]);
+
+  const loadNewsletter = useCallback(async () => {
+    setNlLoading(true);
+    try {
+      const r = await API.get("newsletter/manage/");
+      setNlPosts(r.data);
+    } catch {
+    } finally {
+      setNlLoading(false);
+    }
+  }, []);
+  useEffect(() => {
+    if (activeTab === "newsletter") loadNewsletter();
+  }, [activeTab, loadNewsletter]);
 
   /* handlers */
   const handleStatusChange = async (id, status) => {
@@ -2064,6 +2091,7 @@ export default function BarberDashboard() {
     { key: "waitlist", label: "Waitlist", icon: "⏳" },
     { key: "clients", label: "Clients", icon: "👤" },
     { key: "reports", label: "Reports", icon: "📊" },
+    { key: "newsletter", label: "Newsletter", icon: "📣" },
     { key: "availability", label: "My Hours", icon: "⏰" },
     { key: "timeoff", label: "Time Off", icon: "🏖" },
   ];
@@ -5373,6 +5401,588 @@ export default function BarberDashboard() {
                   </div>
                 )}
               </>
+            )}
+          </div>
+        )}
+
+        {/* ══ NEWSLETTER TAB ══ */}
+        {activeTab === "newsletter" && (
+          <div className="bd-enter">
+            {/* Header */}
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                marginBottom: 24,
+                flexWrap: "wrap",
+                gap: 12,
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+                <div
+                  style={{
+                    width: 4,
+                    height: 28,
+                    background: "linear-gradient(to bottom,#ef4444,#f59e0b)",
+                    flexShrink: 0,
+                  }}
+                />
+                <div>
+                  <p
+                    style={{
+                      ...mono,
+                      fontSize: 7,
+                      color: "rgba(245,158,11,0.5)",
+                      letterSpacing: "0.5em",
+                      textTransform: "uppercase",
+                      marginBottom: 2,
+                    }}
+                  >
+                    HEADZ UP · UPDATES
+                  </p>
+                  <p
+                    style={{
+                      ...sf,
+                      fontSize: 13,
+                      fontWeight: 900,
+                      textTransform: "uppercase",
+                    }}
+                  >
+                    Newsletter Posts
+                  </p>
+                </div>
+              </div>
+              <a
+                href="/newsletter"
+                target="_blank"
+                style={{
+                  ...mono,
+                  fontSize: 10,
+                  color: T.amber,
+                  border: `1px solid ${T.amberBorder}`,
+                  padding: "8px 14px",
+                  textDecoration: "none",
+                  transition: "all 0.2s",
+                }}
+                onMouseEnter={(e) =>
+                  (e.currentTarget.style.background = T.amberDim)
+                }
+                onMouseLeave={(e) =>
+                  (e.currentTarget.style.background = "transparent")
+                }
+              >
+                View Public Page →
+              </a>
+            </div>
+
+            {/* Create / Edit form */}
+            <div
+              style={{
+                background: T.surface,
+                border: `1px solid ${nlEditing ? "#635bff" : "rgba(245,158,11,0.2)"}`,
+                padding: "22px",
+                marginBottom: 24,
+                clipPath:
+                  "polygon(0 0,calc(100% - 12px) 0,100% 12px,100% 100%,12px 100%,0 calc(100% - 12px))",
+              }}
+            >
+              <p
+                style={{
+                  ...sf,
+                  fontSize: 7,
+                  letterSpacing: "0.4em",
+                  color: nlEditing ? "#a78bfa" : T.amber,
+                  textTransform: "uppercase",
+                  marginBottom: 16,
+                }}
+              >
+                {nlEditing ? "✏️ Editing Post" : "📣 Create New Post"}
+              </p>
+
+              {nlError && (
+                <p
+                  style={{
+                    ...mono,
+                    fontSize: 11,
+                    color: "#f87171",
+                    marginBottom: 10,
+                  }}
+                >
+                  ⚠ {nlError}
+                </p>
+              )}
+              {nlSuccess && (
+                <p
+                  style={{
+                    ...mono,
+                    fontSize: 11,
+                    color: "#4ade80",
+                    marginBottom: 10,
+                  }}
+                >
+                  ✓ {nlSuccess}
+                </p>
+              )}
+
+              {/* Title */}
+              <input
+                value={nlForm.title}
+                onChange={(e) =>
+                  setNlForm((p) => ({ ...p, title: e.target.value }))
+                }
+                placeholder="Post title..."
+                style={{
+                  width: "100%",
+                  background: T.bg,
+                  border: `1px solid ${T.border}`,
+                  padding: "13px 16px",
+                  color: "white",
+                  fontSize: 15,
+                  ...mono,
+                  outline: "none",
+                  marginBottom: 10,
+                  transition: "border-color 0.2s",
+                }}
+                onFocus={(e) => (e.target.style.borderColor = T.amber)}
+                onBlur={(e) => (e.target.style.borderColor = T.border)}
+              />
+
+              {/* Category + emoji row */}
+              <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
+                <select
+                  value={nlForm.category}
+                  onChange={(e) =>
+                    setNlForm((p) => ({ ...p, category: e.target.value }))
+                  }
+                  style={{
+                    flex: 2,
+                    background: T.bg,
+                    border: `1px solid ${T.border}`,
+                    padding: "12px 14px",
+                    color: "white",
+                    fontSize: 14,
+                    ...mono,
+                    outline: "none",
+                    cursor: "pointer",
+                  }}
+                >
+                  {[
+                    ["deal", "💸 Deal / Discount"],
+                    ["promo", "🎯 Promotion"],
+                    ["update", "📢 Shop Update"],
+                    ["event", "🎉 Event"],
+                    ["general", "✂️ General"],
+                  ].map(([v, l]) => (
+                    <option key={v} value={v}>
+                      {l}
+                    </option>
+                  ))}
+                </select>
+                <input
+                  value={nlForm.emoji}
+                  onChange={(e) =>
+                    setNlForm((p) => ({ ...p, emoji: e.target.value }))
+                  }
+                  placeholder="Emoji"
+                  style={{
+                    width: 60,
+                    background: T.bg,
+                    border: `1px solid ${T.border}`,
+                    padding: "12px",
+                    color: "white",
+                    fontSize: 20,
+                    outline: "none",
+                    textAlign: "center",
+                  }}
+                />
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 8,
+                    padding: "12px 14px",
+                    background: T.bg,
+                    border: `1px solid ${T.border}`,
+                    cursor: "pointer",
+                  }}
+                  onClick={() =>
+                    setNlForm((p) => ({ ...p, pinned: !p.pinned }))
+                  }
+                >
+                  <div
+                    style={{
+                      width: 16,
+                      height: 16,
+                      border: `2px solid ${nlForm.pinned ? T.amber : "rgba(255,255,255,0.2)"}`,
+                      background: nlForm.pinned
+                        ? "rgba(245,158,11,0.15)"
+                        : "transparent",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
+                    {nlForm.pinned && (
+                      <span style={{ color: T.amber, fontSize: 10 }}>✓</span>
+                    )}
+                  </div>
+                  <span
+                    style={{
+                      ...mono,
+                      fontSize: 10,
+                      color: nlForm.pinned ? T.amber : "#71717a",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    Pin
+                  </span>
+                </div>
+              </div>
+
+              {/* Body */}
+              <textarea
+                value={nlForm.body}
+                onChange={(e) =>
+                  setNlForm((p) => ({ ...p, body: e.target.value }))
+                }
+                placeholder="Write your post — deals, promos, shop news, hours changes..."
+                rows={5}
+                style={{
+                  width: "100%",
+                  background: T.bg,
+                  border: `1px solid ${T.border}`,
+                  padding: "13px 16px",
+                  color: "white",
+                  fontSize: 14,
+                  ...mono,
+                  outline: "none",
+                  resize: "vertical",
+                  marginBottom: 14,
+                  transition: "border-color 0.2s",
+                }}
+                onFocus={(e) => (e.target.style.borderColor = T.amber)}
+                onBlur={(e) => (e.target.style.borderColor = T.border)}
+              />
+
+              {/* Buttons */}
+              <div style={{ display: "flex", gap: 8 }}>
+                <button
+                  onClick={async () => {
+                    setNlError("");
+                    setNlSuccess("");
+                    if (!nlForm.title.trim() || !nlForm.body.trim()) {
+                      setNlError("Title and body required");
+                      return;
+                    }
+                    try {
+                      if (nlEditing) {
+                        await API.patch(
+                          `newsletter/manage/${nlEditing}/`,
+                          nlForm,
+                        );
+                        setNlSuccess("Post updated!");
+                      } else {
+                        await API.post("newsletter/manage/", nlForm);
+                        setNlSuccess("Post published!");
+                      }
+                      setNlForm({
+                        title: "",
+                        body: "",
+                        category: "general",
+                        emoji: "✂️",
+                        pinned: false,
+                      });
+                      setNlEditing(null);
+                      loadNewsletter();
+                    } catch (e) {
+                      setNlError(e.response?.data?.error || "Could not save.");
+                    }
+                  }}
+                  style={{
+                    padding: "12px 24px",
+                    background: nlEditing ? "#635bff" : T.amber,
+                    color: "black",
+                    ...sf,
+                    fontSize: 7.5,
+                    fontWeight: 700,
+                    letterSpacing: "0.2em",
+                    textTransform: "uppercase",
+                    border: "none",
+                    cursor: "pointer",
+                    transition: "opacity 0.2s",
+                    clipPath:
+                      "polygon(0 0,calc(100% - 7px) 0,100% 7px,100% 100%,7px 100%,0 calc(100% - 7px))",
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.85")}
+                  onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
+                >
+                  {nlEditing ? "Update Post →" : "Publish Post →"}
+                </button>
+                {nlEditing && (
+                  <button
+                    onClick={() => {
+                      setNlEditing(null);
+                      setNlForm({
+                        title: "",
+                        body: "",
+                        category: "general",
+                        emoji: "✂️",
+                        pinned: false,
+                      });
+                      setNlError("");
+                      setNlSuccess("");
+                    }}
+                    style={{
+                      padding: "12px 18px",
+                      background: "transparent",
+                      color: "#71717a",
+                      ...sf,
+                      fontSize: 7,
+                      letterSpacing: "0.15em",
+                      textTransform: "uppercase",
+                      border: `1px solid ${T.border}`,
+                      cursor: "pointer",
+                    }}
+                  >
+                    Cancel
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Posts list */}
+            {nlLoading ? (
+              <div style={{ padding: "40px", textAlign: "center" }}>
+                <div
+                  style={{
+                    width: 18,
+                    height: 18,
+                    border: `2px solid rgba(245,158,11,0.2)`,
+                    borderTopColor: T.amber,
+                    borderRadius: "50%",
+                    animation: "spin 0.8s linear infinite",
+                    margin: "0 auto",
+                  }}
+                />
+              </div>
+            ) : nlPosts.length === 0 ? (
+              <div
+                style={{
+                  padding: "48px 20px",
+                  textAlign: "center",
+                  border: `1px solid ${T.border}`,
+                  background: T.surface,
+                }}
+              >
+                <p style={{ fontSize: 32, marginBottom: 10 }}>📣</p>
+                <p
+                  style={{
+                    ...sf,
+                    fontSize: 9,
+                    color: "rgba(255,255,255,0.08)",
+                    textTransform: "uppercase",
+                  }}
+                >
+                  No posts yet
+                </p>
+                <p
+                  style={{
+                    ...mono,
+                    fontSize: 11,
+                    color: "#71717a",
+                    marginTop: 8,
+                  }}
+                >
+                  Create your first post above
+                </p>
+              </div>
+            ) : (
+              <div
+                style={{ display: "flex", flexDirection: "column", gap: 10 }}
+              >
+                {nlPosts.map((post) => (
+                  <div
+                    key={post.id}
+                    style={{
+                      background: T.surface,
+                      border: `1px solid ${post.pinned ? T.amberBorder : T.border}`,
+                      overflow: "hidden",
+                      clipPath:
+                        "polygon(0 0,calc(100% - 10px) 0,100% 10px,100% 100%,10px 100%,0 calc(100% - 10px))",
+                    }}
+                  >
+                    <div
+                      style={{
+                        height: 2,
+                        background: post.pinned
+                          ? "linear-gradient(to right,#ef4444,#f59e0b)"
+                          : "rgba(255,255,255,0.05)",
+                      }}
+                    />
+                    <div style={{ padding: "16px 20px" }}>
+                      <div
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          alignItems: "flex-start",
+                          gap: 10,
+                          marginBottom: 8,
+                          flexWrap: "wrap",
+                        }}
+                      >
+                        <div
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 10,
+                          }}
+                        >
+                          <span style={{ fontSize: 20 }}>{post.emoji}</span>
+                          <div>
+                            <div
+                              style={{
+                                display: "flex",
+                                alignItems: "center",
+                                gap: 8,
+                                marginBottom: 2,
+                              }}
+                            >
+                              <p
+                                style={{
+                                  ...sf,
+                                  fontSize: 10,
+                                  fontWeight: 700,
+                                  textTransform: "uppercase",
+                                }}
+                              >
+                                {post.title}
+                              </p>
+                              {post.pinned && (
+                                <span
+                                  style={{
+                                    ...mono,
+                                    fontSize: 7,
+                                    color: T.amber,
+                                    background: T.amberDim,
+                                    padding: "1px 6px",
+                                    border: `1px solid ${T.amberBorder}`,
+                                  }}
+                                >
+                                  📌 Pinned
+                                </span>
+                              )}
+                              <span
+                                style={{
+                                  ...mono,
+                                  fontSize: 7,
+                                  color: "#71717a",
+                                  background: "rgba(255,255,255,0.04)",
+                                  padding: "1px 8px",
+                                  border: "1px solid rgba(255,255,255,0.08)",
+                                }}
+                              >
+                                {post.category}
+                              </span>
+                            </div>
+                            <p
+                              style={{ ...mono, fontSize: 9, color: "#71717a" }}
+                            >
+                              {post.created_at}
+                            </p>
+                          </div>
+                        </div>
+                        <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
+                          <button
+                            onClick={() => {
+                              setNlEditing(post.id);
+                              setNlForm({
+                                title: post.title,
+                                body: post.body,
+                                category: post.category,
+                                emoji: post.emoji,
+                                pinned: post.pinned,
+                              });
+                              setNlError("");
+                              setNlSuccess("");
+                              window.scrollTo({ top: 0, behavior: "smooth" });
+                            }}
+                            style={{
+                              padding: "6px 14px",
+                              ...sf,
+                              fontSize: 6,
+                              letterSpacing: "0.15em",
+                              textTransform: "uppercase",
+                              background: "transparent",
+                              border: `1px solid ${T.border}`,
+                              color: "#a1a1aa",
+                              cursor: "pointer",
+                              transition: "all 0.2s",
+                            }}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.borderColor = T.amber;
+                              e.currentTarget.style.color = T.amber;
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.borderColor = T.border;
+                              e.currentTarget.style.color = "#a1a1aa";
+                            }}
+                          >
+                            Edit
+                          </button>
+                          <button
+                            onClick={async () => {
+                              if (!confirm("Delete this post?")) return;
+                              try {
+                                await API.delete(
+                                  `newsletter/manage/${post.id}/`,
+                                );
+                                setNlPosts((p) =>
+                                  p.filter((x) => x.id !== post.id),
+                                );
+                                showToast("Post deleted.");
+                              } catch {
+                                showToast("Error.", "error");
+                              }
+                            }}
+                            style={{
+                              padding: "6px 14px",
+                              ...sf,
+                              fontSize: 6,
+                              letterSpacing: "0.1em",
+                              textTransform: "uppercase",
+                              background: "transparent",
+                              border: `1px solid ${T.redBorder}`,
+                              color: T.red,
+                              cursor: "pointer",
+                              transition: "all 0.2s",
+                            }}
+                            onMouseEnter={(e) =>
+                              (e.currentTarget.style.background = T.redDim)
+                            }
+                            onMouseLeave={(e) =>
+                              (e.currentTarget.style.background = "transparent")
+                            }
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      </div>
+                      <p
+                        style={{
+                          ...mono,
+                          fontSize: 12,
+                          color: "#a1a1aa",
+                          lineHeight: 1.75,
+                          whiteSpace: "pre-wrap",
+                        }}
+                      >
+                        {post.body}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
             )}
           </div>
         )}
