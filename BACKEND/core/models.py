@@ -157,6 +157,9 @@ class NewsletterPost(models.Model):
 
     def __str__(self):
         return f"{self.title} ({self.get_category_display()})"
+
+
+class WaitlistEntry(models.Model):
     """Client added to waitlist for a fully booked slot."""
     barber      = models.ForeignKey(Barber, on_delete=models.CASCADE, related_name="waitlist")
     service     = models.ForeignKey(Service, on_delete=models.SET_NULL, null=True, blank=True)
