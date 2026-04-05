@@ -454,63 +454,167 @@ def send_reschedule_request_email(reschedule_request):
 
 
 def send_reschedule_response_email(reschedule_request, accepted):
-    """Notify originator of reschedule request that it was accepted or rejected."""
+    """
+    Notify the CLIENT that their reschedule was approved or declined.
+    Sends a polished HTML email with the new appointment details or original time.
+    """
     import threading
     rr   = reschedule_request
     appt = rr.appointment
 
     try:
-        client_email = appt.user.email
-        client_name  = appt.user.first_name or appt.user.username
-        barber_name  = appt.barber.name
-        service_name = appt.service.name if appt.service else "Appointment"
-        new_date_str = rr.new_date.strftime("%A, %B %d, %Y")
-        new_time_str = rr.new_time.strftime("%I:%M %p").lstrip("0")
+        client_email  = appt.user.email
+        client_name   = appt.user.first_name or appt.user.username
+        barber_name   = appt.barber.name
+        service_name  = appt.service.name if appt.service else "Appointment"
+        orig_date_str = appt.date.strftime("%A, %B %d, %Y")
+        orig_time_str = appt.time.strftime("%I:%M %p").lstrip("0")
+        new_date_str  = rr.new_date.strftime("%A, %B %d, %Y")
+        new_time_str  = rr.new_time.strftime("%I:%M %p").lstrip("0")
     except Exception:
         return
 
     def _send():
         try:
-            if accepted:
-                icon = '<div style="width:52px;height:52px;border-radius:50%;background:linear-gradient(135deg,#22c55e,#16a34a);display:inline-block;text-align:center;line-height:52px;"><span style="color:black;font-size:24px;font-weight:900;">&#10003;</span></div>'
-                if rr.initiated_by == "client":
-                    # Barber accepted client's request — email client
-                    subject = f"Reschedule Accepted — HEADZ UP"
-                    subhead = f"{barber_name} accepted your reschedule request."
-                    rows    = _ticket_rows(("Service", service_name), ("Barber", barber_name), ("New Date", new_date_str), ("New Time", new_time_str))
-                    html    = _html_email_wrapper("", icon, "Reschedule<br><span style='color:#4ade80;font-style:italic;'>Accepted_</span>", subhead, rows, f"{FRONTEND_URL}/dashboard", "View My Dashboard")
-                    plain   = f"Your reschedule was accepted.\nNew time: {new_date_str} {new_time_str}"
+            if rr.initiated_by == "client":
+                if accepted:
+                    # ── APPROVED — email client their new confirmed time ──
+                    subject = f"✅ Reschedule Approved — {service_name} at HEADZ UP"
+                    html = f"""<!DOCTYPE html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#050505;font-family:'Helvetica Neue',Arial,sans-serif;color:#fff;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#050505;padding:40px 20px;">
+    <tr><td align="center">
+      <table width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;">
+        <tr><td style="padding-bottom:28px;">
+          <p style="font-family:'Courier New',monospace;font-size:22px;font-weight:900;letter-spacing:-0.05em;margin:0;text-transform:uppercase;">
+            HEADZ<span style="color:#f59e0b;font-style:italic;">UP</span>
+          </p>
+        </td></tr>
+        <tr><td style="padding-bottom:20px;">
+          <div style="width:56px;height:56px;background:linear-gradient(135deg,#22c55e,#16a34a);display:inline-block;text-align:center;line-height:56px;">
+            <span style="color:black;font-size:26px;font-weight:900;">✓</span>
+          </div>
+        </td></tr>
+        <tr><td style="padding-bottom:8px;">
+          <h1 style="font-family:'Courier New',monospace;font-size:26px;font-weight:900;text-transform:uppercase;margin:0;line-height:1.1;">
+            Reschedule<br><span style="color:#22c55e;font-style:italic;">Approved_</span>
+          </h1>
+        </td></tr>
+        <tr><td style="padding-bottom:28px;">
+          <p style="color:#71717a;font-size:13px;margin:0;line-height:1.6;">
+            Great news, {client_name}! <strong style="color:white;">{barber_name}</strong> has approved your reschedule request. Your appointment has been updated.
+          </p>
+        </td></tr>
+        <tr><td style="background:#0a0a0a;border:1px solid rgba(255,255,255,0.1);padding:28px;">
+          <table width="100%" cellpadding="0" cellspacing="0">
+            <tr><td style="padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.05);">
+              <p style="font-family:'Courier New',monospace;font-size:9px;letter-spacing:0.3em;color:#52525b;text-transform:uppercase;margin:0 0 4px;">Service</p>
+              <p style="font-size:14px;color:white;margin:0;font-weight:700;">{service_name}</p>
+            </td></tr>
+            <tr><td style="padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.05);">
+              <p style="font-family:'Courier New',monospace;font-size:9px;letter-spacing:0.3em;color:#52525b;text-transform:uppercase;margin:0 0 4px;">Barber</p>
+              <p style="font-size:14px;color:white;margin:0;font-weight:700;">{barber_name}</p>
+            </td></tr>
+            <tr><td style="padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.05);">
+              <p style="font-family:'Courier New',monospace;font-size:9px;letter-spacing:0.3em;color:#52525b;text-transform:uppercase;margin:0 0 4px;">&#9003; Old Time</p>
+              <p style="font-size:13px;color:#52525b;margin:0;text-decoration:line-through;">{orig_date_str} at {orig_time_str}</p>
+            </td></tr>
+            <tr><td style="padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.05);">
+              <p style="font-family:'Courier New',monospace;font-size:9px;letter-spacing:0.3em;color:#22c55e;text-transform:uppercase;margin:0 0 4px;">✓ New Confirmed Time</p>
+              <p style="font-size:18px;color:#22c55e;margin:0;font-weight:900;">{new_date_str}</p>
+              <p style="font-size:18px;color:#22c55e;margin:4px 0 0;font-weight:900;">{new_time_str}</p>
+            </td></tr>
+            <tr><td style="padding:10px 0;">
+              <p style="font-family:'Courier New',monospace;font-size:9px;letter-spacing:0.3em;color:#52525b;text-transform:uppercase;margin:0 0 4px;">Location</p>
+              <p style="font-size:14px;color:white;margin:0;">4 Hub Dr, Hattiesburg, MS 39402</p>
+            </td></tr>
+          </table>
+        </td></tr>
+        <tr><td style="padding:20px 0 8px;">
+          <p style="font-size:12px;color:#71717a;margin:0;line-height:1.6;">Please arrive <strong style="color:white;">5 minutes early</strong>. Slots held <strong style="color:white;">15 minutes</strong> past appointment time.</p>
+        </td></tr>
+        <tr><td style="padding-bottom:32px;">
+          <a href="{FRONTEND_URL}/dashboard" style="display:inline-block;padding:14px 28px;background:#22c55e;color:black;font-family:'Courier New',monospace;font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:0.2em;text-decoration:none;">View My Dashboard &rarr;</a>
+        </td></tr>
+        <tr><td style="border-top:1px solid rgba(255,255,255,0.06);padding-top:20px;">
+          <p style="font-size:11px;color:#3f3f46;margin:0;">HEADZ UP Barbershop &middot; 4 Hub Dr, Hattiesburg, MS 39402</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body></html>"""
+                    plain = f"Hi {client_name},\n\nYour reschedule has been APPROVED by {barber_name}.\n\nNew Time: {new_date_str} at {new_time_str}\nService: {service_name}\nLocation: 4 Hub Dr, Hattiesburg, MS 39402\n\nSee you then!\n— HEADZ UP Barbershop"
                     _sendgrid_send(client_email, subject, plain, html)
+
                 else:
-                    # Client accepted barber's change — email barber
-                    barber_email = appt.barber.user.email if appt.barber.user else None
-                    if barber_email:
-                        subject = f"Client Accepted Reschedule — HEADZ UP"
-                        subhead = f"{client_name} accepted the new appointment time."
-                        rows    = _ticket_rows(("Client", client_name), ("Service", service_name), ("New Date", new_date_str), ("New Time", new_time_str))
-                        html    = _html_email_wrapper("", icon, "Reschedule<br><span style='color:#4ade80;font-style:italic;'>Confirmed_</span>", subhead, rows, f"{FRONTEND_URL}/barber-dashboard", "View Dashboard")
-                        plain   = f"{client_name} accepted the reschedule.\nNew time: {new_date_str} {new_time_str}"
-                        _sendgrid_send(barber_email, subject, plain, html)
-            else:
-                icon = '<div style="width:52px;height:52px;border-radius:50%;background:rgba(248,113,113,0.15);border:1px solid rgba(248,113,113,0.3);display:inline-block;text-align:center;line-height:52px;"><span style="color:#f87171;font-size:22px;">✕</span></div>'
-                if rr.initiated_by == "client":
-                    subject = f"Reschedule Declined — HEADZ UP"
-                    subhead = f"{barber_name} couldn't accommodate the new time. Your original appointment stands."
-                    rows    = _ticket_rows(("Service", service_name), ("Barber", barber_name), ("Your Appointment", f"{appt.date.strftime('%A, %B %d')} at {appt.time.strftime('%I:%M %p').lstrip('0')}"))
-                    html    = _html_email_wrapper("", icon, "Reschedule<br><span style='color:#f87171;font-style:italic;'>Declined_</span>", subhead, rows, f"{FRONTEND_URL}/dashboard", "View My Dashboard")
-                    plain   = f"Your reschedule request was declined. Original appointment stands."
+                    # ── DECLINED — email client their original time still stands ──
+                    subject = f"❌ Reschedule Declined — Your Original Appointment Stands"
+                    html = f"""<!DOCTYPE html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#050505;font-family:'Helvetica Neue',Arial,sans-serif;color:#fff;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#050505;padding:40px 20px;">
+    <tr><td align="center">
+      <table width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;">
+        <tr><td style="padding-bottom:28px;">
+          <p style="font-family:'Courier New',monospace;font-size:22px;font-weight:900;letter-spacing:-0.05em;margin:0;text-transform:uppercase;">
+            HEADZ<span style="color:#f59e0b;font-style:italic;">UP</span>
+          </p>
+        </td></tr>
+        <tr><td style="padding-bottom:20px;">
+          <div style="width:56px;height:56px;background:rgba(248,113,113,0.12);border:1px solid rgba(248,113,113,0.3);display:inline-block;text-align:center;line-height:56px;">
+            <span style="color:#f87171;font-size:26px;">✕</span>
+          </div>
+        </td></tr>
+        <tr><td style="padding-bottom:8px;">
+          <h1 style="font-family:'Courier New',monospace;font-size:26px;font-weight:900;text-transform:uppercase;margin:0;line-height:1.1;">
+            Reschedule<br><span style="color:#f87171;font-style:italic;">Declined_</span>
+          </h1>
+        </td></tr>
+        <tr><td style="padding-bottom:28px;">
+          <p style="color:#71717a;font-size:13px;margin:0;line-height:1.6;">
+            Hey {client_name}, <strong style="color:white;">{barber_name}</strong> was unable to accommodate your reschedule request. Don't worry — your <strong style="color:white;">original appointment still stands</strong>.
+          </p>
+        </td></tr>
+        <tr><td style="background:#0a0a0a;border:1px solid rgba(255,255,255,0.1);padding:28px;">
+          <table width="100%" cellpadding="0" cellspacing="0">
+            <tr><td style="padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.05);">
+              <p style="font-family:'Courier New',monospace;font-size:9px;letter-spacing:0.3em;color:#52525b;text-transform:uppercase;margin:0 0 4px;">Service</p>
+              <p style="font-size:14px;color:white;margin:0;font-weight:700;">{service_name}</p>
+            </td></tr>
+            <tr><td style="padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.05);">
+              <p style="font-family:'Courier New',monospace;font-size:9px;letter-spacing:0.3em;color:#52525b;text-transform:uppercase;margin:0 0 4px;">Barber</p>
+              <p style="font-size:14px;color:white;margin:0;font-weight:700;">{barber_name}</p>
+            </td></tr>
+            <tr><td style="padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.05);">
+              <p style="font-family:'Courier New',monospace;font-size:9px;letter-spacing:0.3em;color:#f59e0b;text-transform:uppercase;margin:0 0 4px;">Your Appointment (unchanged)</p>
+              <p style="font-size:18px;color:#f59e0b;margin:0;font-weight:900;">{orig_date_str}</p>
+              <p style="font-size:18px;color:#f59e0b;margin:4px 0 0;font-weight:900;">{orig_time_str}</p>
+            </td></tr>
+            <tr><td style="padding:10px 0;">
+              <p style="font-family:'Courier New',monospace;font-size:9px;letter-spacing:0.3em;color:#52525b;text-transform:uppercase;margin:0 0 4px;">Location</p>
+              <p style="font-size:14px;color:white;margin:0;">4 Hub Dr, Hattiesburg, MS 39402</p>
+            </td></tr>
+          </table>
+        </td></tr>
+        <tr><td style="padding:16px 0 8px;">
+          <p style="font-size:12px;color:#71717a;margin:0;line-height:1.6;">Need to cancel instead? You can do so from your dashboard up to 2 hours before your appointment.</p>
+        </td></tr>
+        <tr><td style="padding-bottom:32px;">
+          <a href="{FRONTEND_URL}/dashboard" style="display:inline-block;padding:14px 28px;background:#f59e0b;color:black;font-family:'Courier New',monospace;font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:0.2em;text-decoration:none;">View My Dashboard &rarr;</a>
+        </td></tr>
+        <tr><td style="border-top:1px solid rgba(255,255,255,0.06);padding-top:20px;">
+          <p style="font-size:11px;color:#3f3f46;margin:0;">HEADZ UP Barbershop &middot; 4 Hub Dr, Hattiesburg, MS 39402</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body></html>"""
+                    plain = f"Hi {client_name},\n\nYour reschedule request was declined by {barber_name}.\n\nYour original appointment still stands:\n{orig_date_str} at {orig_time_str}\nService: {service_name}\n\n— HEADZ UP Barbershop"
                     _sendgrid_send(client_email, subject, plain, html)
-                else:
-                    barber_email = appt.barber.user.email if appt.barber.user else None
-                    if barber_email:
-                        subject = f"Client Rejected Reschedule — HEADZ UP"
-                        subhead = f"{client_name} declined the new time. Original appointment stands."
-                        rows    = _ticket_rows(("Client", client_name), ("Service", service_name), ("Original Appt", f"{appt.date.strftime('%A, %B %d')} at {appt.time.strftime('%I:%M %p').lstrip('0')}"))
-                        html    = _html_email_wrapper("", icon, "Reschedule<br><span style='color:#f87171;font-style:italic;'>Rejected_</span>", subhead, rows, f"{FRONTEND_URL}/barber-dashboard", "View Dashboard")
-                        plain   = f"{client_name} rejected the reschedule."
-                        _sendgrid_send(barber_email, subject, plain, html)
-        except Exception:
-            pass
+        except Exception as e:
+            import logging
+            logging.getLogger(__name__).error(f"Reschedule response email failed: {e}")
 
     threading.Thread(target=_send, daemon=True).start()
 
@@ -2782,6 +2886,82 @@ class BarberReportsView(APIView):
             "busiest_hours":busiest_hours,
             "top_clients":  top_clients,
         })
+
+
+class BarberRescheduleListView(APIView):
+    """
+    GET  barber/reschedules/         — list all pending + recent reschedule requests for this barber
+    POST barber/reschedules/<pk>/    — approve or reject a reschedule request
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        barber = get_barber_for_user(request.user)
+        if not barber:
+            return Response({"error": "Not a barber account"}, status=403)
+
+        # Get all reschedule requests for this barber's appointments
+        requests = RescheduleRequest.objects.filter(
+            appointment__barber=barber,
+            initiated_by="client",
+        ).select_related(
+            "appointment", "appointment__user", "appointment__service"
+        ).order_by("-created_at")[:50]
+
+        data = []
+        for rr in requests:
+            appt = rr.appointment
+            data.append({
+                "id":            rr.id,
+                "status":        rr.status,
+                "client_name":   appt.user.first_name or appt.user.username,
+                "client_email":  appt.user.email,
+                "service_name":  appt.service.name if appt.service else "Appointment",
+                "service_price": str(appt.service.price) if appt.service else "—",
+                "original_date": appt.date.strftime("%A, %B %d, %Y"),
+                "original_time": appt.time.strftime("%I:%M %p").lstrip("0"),
+                "requested_date": rr.new_date.strftime("%A, %B %d, %Y"),
+                "requested_time": rr.new_time.strftime("%I:%M %p").lstrip("0"),
+                "created_at":    rr.created_at.strftime("%b %d, %Y %I:%M %p"),
+                "appointment_id": appt.id,
+            })
+        return Response(data)
+
+    def post(self, request, pk):
+        barber = get_barber_for_user(request.user)
+        if not barber:
+            return Response({"error": "Not a barber account"}, status=403)
+
+        action = request.data.get("action")  # "accept" or "reject"
+        if action not in ("accept", "reject"):
+            return Response({"error": "action must be accept or reject"}, status=400)
+
+        try:
+            rr = RescheduleRequest.objects.select_related(
+                "appointment", "appointment__user",
+                "appointment__barber", "appointment__service"
+            ).get(pk=pk, appointment__barber=barber)
+        except RescheduleRequest.DoesNotExist:
+            return Response({"error": "Reschedule request not found"}, status=404)
+
+        if rr.status != "pending":
+            return Response({"error": f"This request is already {rr.status}"}, status=400)
+
+        if action == "accept":
+            rr.status = "accepted"
+            rr.save()
+            appt = rr.appointment
+            appt.date = rr.new_date
+            appt.time = rr.new_time
+            appt.status = "confirmed"
+            appt.save()
+            send_reschedule_response_email(rr, accepted=True)
+            return Response({"message": "Reschedule approved — client has been notified."})
+        else:
+            rr.status = "rejected"
+            rr.save()
+            send_reschedule_response_email(rr, accepted=False)
+            return Response({"message": "Reschedule declined — client has been notified."})
 
 
 class ClientRescheduleRequestView(APIView):

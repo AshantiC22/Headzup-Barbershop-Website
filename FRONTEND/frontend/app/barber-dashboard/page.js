@@ -1645,9 +1645,12 @@ export default function BarberDashboard() {
     emoji: "✂️",
     pinned: false,
   });
-  const [nlEditing, setNlEditing] = useState(null); // post id being edited
+  const [nlEditing, setNlEditing] = useState(null);
   const [nlError, setNlError] = useState("");
   const [nlSuccess, setNlSuccess] = useState("");
+  // Reschedules
+  const [reschedules, setReschedules] = useState([]);
+  const [reschedLoading, setReschedLoading] = useState(false);
 
   /* availability */
   const [availability, setAvailability] = useState([]);
@@ -1814,6 +1817,29 @@ export default function BarberDashboard() {
   useEffect(() => {
     if (activeTab === "newsletter") loadNewsletter();
   }, [activeTab, loadNewsletter]);
+
+  const loadReschedules = useCallback(async () => {
+    setReschedLoading(true);
+    try {
+      const r = await API.get("barber/reschedules/");
+      setReschedules(r.data);
+    } catch {
+    } finally {
+      setReschedLoading(false);
+    }
+  }, []);
+  useEffect(() => {
+    if (activeTab === "reschedules") loadReschedules();
+  }, [activeTab, loadReschedules]);
+
+  // Load pending reschedule count on mount so notification badge shows immediately
+  useEffect(() => {
+    API.get("barber/reschedules/")
+      .then((r) => {
+        if (Array.isArray(r.data)) setReschedules(r.data);
+      })
+      .catch(() => {});
+  }, []);
 
   /* handlers */
   const handleStatusChange = async (id, status) => {
@@ -2087,6 +2113,7 @@ export default function BarberDashboard() {
 
   const TABS = [
     { key: "schedule", label: "Schedule", icon: "📅" },
+    { key: "reschedules", label: "Reschedules", icon: "↻" },
     { key: "walkin", label: "Walk-In", icon: "✂️" },
     { key: "waitlist", label: "Waitlist", icon: "⏳" },
     { key: "clients", label: "Clients", icon: "👤" },
@@ -2430,40 +2457,79 @@ export default function BarberDashboard() {
             WebkitOverflowScrolling: "touch",
           }}
         >
-          {TABS.map(({ key, label, icon }) => (
-            <button
-              key={key}
-              onClick={() => setActiveTab(key)}
-              style={{
-                padding: isMobile ? "8px 10px" : "11px 22px",
-                ...sf,
-                fontSize: isMobile ? 4.5 : 7,
-                letterSpacing: isMobile ? "0.02em" : "0.15em",
-                textTransform: "uppercase",
-                background: "transparent",
-                border: "none",
-                borderBottom: `2px solid ${activeTab === key ? T.amber : "transparent"}`,
-                color: activeTab === key ? T.amber : T.muted,
-                cursor: "pointer",
-                transition: "all 0.2s",
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                gap: isMobile ? 2 : 4,
-                whiteSpace: "nowrap",
-                flexShrink: 0,
-                flex: isMobile ? "1 0 auto" : "none",
-                minWidth: isMobile ? 48 : "auto",
-              }}
-            >
-              <span style={{ fontSize: isMobile ? 18 : 12 }}>{icon}</span>
-              <span
-                style={{ fontSize: isMobile ? "clamp(7px,2vw,9px)" : "7px" }}
+          {TABS.map(({ key, label, icon }) => {
+            const pendingCount =
+              key === "reschedules"
+                ? reschedules.filter((r) => r.status === "pending").length
+                : 0;
+            return (
+              <button
+                key={key}
+                onClick={() => setActiveTab(key)}
+                style={{
+                  padding: isMobile ? "8px 10px" : "11px 22px",
+                  ...sf,
+                  fontSize: isMobile ? 4.5 : 7,
+                  letterSpacing: isMobile ? "0.02em" : "0.15em",
+                  textTransform: "uppercase",
+                  background: "transparent",
+                  border: "none",
+                  borderBottom: `2px solid ${activeTab === key ? T.amber : "transparent"}`,
+                  color: activeTab === key ? T.amber : T.muted,
+                  cursor: "pointer",
+                  transition: "all 0.2s",
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  gap: isMobile ? 2 : 4,
+                  whiteSpace: "nowrap",
+                  flexShrink: 0,
+                  flex: isMobile ? "1 0 auto" : "none",
+                  minWidth: isMobile ? 48 : "auto",
+                  position: "relative",
+                }}
               >
-                {label}
-              </span>
-            </button>
-          ))}
+                <span
+                  style={{ fontSize: isMobile ? 18 : 12, position: "relative" }}
+                >
+                  {icon}
+                  {pendingCount > 0 && (
+                    <span
+                      style={{
+                        position: "absolute",
+                        top: -4,
+                        right: -6,
+                        width: 14,
+                        height: 14,
+                        background: "#ef4444",
+                        borderRadius: "50%",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                      }}
+                    >
+                      <span
+                        style={{
+                          ...mono,
+                          fontSize: 7,
+                          color: "white",
+                          fontWeight: 900,
+                          lineHeight: 1,
+                        }}
+                      >
+                        {pendingCount}
+                      </span>
+                    </span>
+                  )}
+                </span>
+                <span
+                  style={{ fontSize: isMobile ? "clamp(7px,2vw,9px)" : "7px" }}
+                >
+                  {label}
+                </span>
+              </button>
+            );
+          })}
         </div>
       </nav>
 
@@ -2662,6 +2728,567 @@ export default function BarberDashboard() {
             ))}
           </div>
         </div>
+
+        {/* ══ SCHEDULE TAB ══ */}
+        {/* ══ RESCHEDULES TAB ══ */}
+        {activeTab === "reschedules" && (
+          <div className="bd-enter">
+            {/* Header */}
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                marginBottom: 24,
+                flexWrap: "wrap",
+                gap: 12,
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+                <div
+                  style={{
+                    width: 4,
+                    height: 28,
+                    background: "linear-gradient(to bottom,#a78bfa,#f59e0b)",
+                    flexShrink: 0,
+                  }}
+                />
+                <div>
+                  <p
+                    style={{
+                      ...mono,
+                      fontSize: 7,
+                      color: "rgba(167,139,250,0.5)",
+                      letterSpacing: "0.5em",
+                      textTransform: "uppercase",
+                      marginBottom: 2,
+                    }}
+                  >
+                    HEADZ UP · REQUESTS
+                  </p>
+                  <p
+                    style={{
+                      ...sf,
+                      fontSize: 13,
+                      fontWeight: 900,
+                      textTransform: "uppercase",
+                    }}
+                  >
+                    Reschedule Requests
+                  </p>
+                </div>
+              </div>
+              <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                {reschedules.filter((r) => r.status === "pending").length >
+                  0 && (
+                  <div
+                    style={{
+                      padding: "6px 14px",
+                      background: "rgba(239,68,68,0.08)",
+                      border: "1px solid rgba(239,68,68,0.2)",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 6,
+                    }}
+                  >
+                    <div
+                      style={{
+                        width: 6,
+                        height: 6,
+                        borderRadius: "50%",
+                        background: "#ef4444",
+                        animation: "pulse 1.5s ease infinite",
+                      }}
+                    />
+                    <span style={{ ...mono, fontSize: 10, color: "#f87171" }}>
+                      {reschedules.filter((r) => r.status === "pending").length}{" "}
+                      pending
+                    </span>
+                  </div>
+                )}
+                <button
+                  onClick={loadReschedules}
+                  style={{
+                    padding: "8px 14px",
+                    ...sf,
+                    fontSize: 6,
+                    letterSpacing: "0.15em",
+                    textTransform: "uppercase",
+                    background: "transparent",
+                    border: `1px solid ${T.border}`,
+                    color: T.muted,
+                    cursor: "pointer",
+                    transition: "all 0.2s",
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.borderColor = T.amber;
+                    e.currentTarget.style.color = T.amber;
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.borderColor = T.border;
+                    e.currentTarget.style.color = T.muted;
+                  }}
+                >
+                  ↺ Refresh
+                </button>
+              </div>
+            </div>
+
+            {reschedLoading ? (
+              <div style={{ padding: "64px", textAlign: "center" }}>
+                <div
+                  style={{
+                    width: 20,
+                    height: 20,
+                    border: `2px solid rgba(245,158,11,0.2)`,
+                    borderTopColor: T.amber,
+                    borderRadius: "50%",
+                    animation: "spin 0.8s linear infinite",
+                    margin: "0 auto 12px",
+                  }}
+                />
+                <p style={{ ...mono, fontSize: 11, color: T.muted }}>
+                  Loading requests...
+                </p>
+              </div>
+            ) : reschedules.length === 0 ? (
+              <div
+                style={{
+                  padding: "64px 20px",
+                  textAlign: "center",
+                  border: `1px solid ${T.border}`,
+                  background: T.surface,
+                  clipPath:
+                    "polygon(0 0,calc(100% - 16px) 0,100% 16px,100% 100%,16px 100%,0 calc(100% - 16px))",
+                }}
+              >
+                <p style={{ fontSize: 36, marginBottom: 12 }}>↻</p>
+                <p
+                  style={{
+                    ...sf,
+                    fontSize: 9,
+                    color: "rgba(255,255,255,0.06)",
+                    textTransform: "uppercase",
+                    letterSpacing: "0.1em",
+                    marginBottom: 8,
+                  }}
+                >
+                  No Reschedule Requests
+                </p>
+                <p style={{ ...mono, fontSize: 11, color: "#52525b" }}>
+                  When clients request a reschedule it will appear here
+                </p>
+              </div>
+            ) : (
+              <div
+                style={{ display: "flex", flexDirection: "column", gap: 12 }}
+              >
+                {/* Pending first, then handled */}
+                {[
+                  ...reschedules.filter((r) => r.status === "pending"),
+                  ...reschedules.filter((r) => r.status !== "pending"),
+                ].map((rr) => {
+                  const isPending = rr.status === "pending";
+                  const isAccepted = rr.status === "accepted";
+                  const isRejected = rr.status === "rejected";
+                  const statusColor = isPending
+                    ? "#f59e0b"
+                    : isAccepted
+                      ? "#22c55e"
+                      : "#f87171";
+                  const statusBg = isPending
+                    ? "rgba(245,158,11,0.08)"
+                    : isAccepted
+                      ? "rgba(34,197,94,0.06)"
+                      : "rgba(248,113,113,0.06)";
+
+                  return (
+                    <div
+                      key={rr.id}
+                      style={{
+                        background: T.surface,
+                        border: `1px solid ${isPending ? "rgba(245,158,11,0.25)" : T.border}`,
+                        overflow: "hidden",
+                        clipPath:
+                          "polygon(0 0,calc(100% - 12px) 0,100% 12px,100% 100%,12px 100%,0 calc(100% - 12px))",
+                      }}
+                    >
+                      {/* Top color bar */}
+                      <div
+                        style={{
+                          height: 2,
+                          background: isPending
+                            ? "linear-gradient(to right,#f59e0b,#ef4444)"
+                            : isAccepted
+                              ? "#22c55e"
+                              : "#f87171",
+                          opacity: 0.7,
+                        }}
+                      />
+
+                      <div style={{ padding: "18px 20px" }}>
+                        {/* Client + status row */}
+                        <div
+                          style={{
+                            display: "flex",
+                            justifyContent: "space-between",
+                            alignItems: "center",
+                            marginBottom: 16,
+                            flexWrap: "wrap",
+                            gap: 10,
+                          }}
+                        >
+                          <div
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: 12,
+                            }}
+                          >
+                            <div
+                              style={{
+                                width: 40,
+                                height: 40,
+                                background: isPending
+                                  ? "rgba(245,158,11,0.12)"
+                                  : "rgba(255,255,255,0.04)",
+                                border: `1px solid ${isPending ? T.amberBorder : T.border}`,
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                flexShrink: 0,
+                              }}
+                            >
+                              <span
+                                style={{
+                                  ...sf,
+                                  fontSize: 14,
+                                  fontWeight: 900,
+                                  color: isPending ? T.amber : "#52525b",
+                                }}
+                              >
+                                {rr.client_name?.charAt(0)?.toUpperCase() ||
+                                  "?"}
+                              </span>
+                            </div>
+                            <div>
+                              <p
+                                style={{
+                                  ...sf,
+                                  fontSize: 11,
+                                  fontWeight: 700,
+                                  textTransform: "uppercase",
+                                  marginBottom: 2,
+                                }}
+                              >
+                                {rr.client_name}
+                              </p>
+                              <p
+                                style={{
+                                  ...mono,
+                                  fontSize: 9,
+                                  color: "#71717a",
+                                }}
+                              >
+                                {rr.service_name} · {rr.created_at}
+                              </p>
+                            </div>
+                          </div>
+                          <div
+                            style={{
+                              padding: "5px 14px",
+                              background: statusBg,
+                              border: `1px solid ${statusColor}33`,
+                            }}
+                          >
+                            <span
+                              style={{
+                                ...sf,
+                                fontSize: 6,
+                                letterSpacing: "0.25em",
+                                textTransform: "uppercase",
+                                color: statusColor,
+                              }}
+                            >
+                              {isPending
+                                ? "⏳ Pending"
+                                : isAccepted
+                                  ? "✓ Approved"
+                                  : "✕ Declined"}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Time comparison card */}
+                        <div
+                          style={{
+                            display: "grid",
+                            gridTemplateColumns: isMobile
+                              ? "1fr"
+                              : "1fr auto 1fr",
+                            gap: 8,
+                            marginBottom: isPending ? 20 : 0,
+                            alignItems: "stretch",
+                          }}
+                        >
+                          {/* Original time */}
+                          <div
+                            style={{
+                              padding: "14px 16px",
+                              background: "rgba(255,255,255,0.02)",
+                              border: `1px solid ${T.border}`,
+                            }}
+                          >
+                            <p
+                              style={{
+                                ...mono,
+                                fontSize: 8,
+                                color: "#52525b",
+                                letterSpacing: "0.3em",
+                                textTransform: "uppercase",
+                                marginBottom: 8,
+                              }}
+                            >
+                              Original
+                            </p>
+                            <p
+                              style={{
+                                ...sf,
+                                fontSize: isMobile ? 10 : 11,
+                                fontWeight: 700,
+                                color: isRejected ? "#f59e0b" : "#a1a1aa",
+                                marginBottom: 4,
+                              }}
+                            >
+                              {rr.original_date}
+                            </p>
+                            <p
+                              style={{
+                                ...sf,
+                                fontSize: isMobile ? 14 : 18,
+                                fontWeight: 900,
+                                color: isRejected ? "#f59e0b" : "#71717a",
+                              }}
+                            >
+                              {rr.original_time}
+                            </p>
+                          </div>
+
+                          {/* Arrow */}
+                          <div
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              padding: isMobile ? "4px 0" : "0 8px",
+                            }}
+                          >
+                            <span
+                              style={{
+                                ...mono,
+                                fontSize: isMobile ? 16 : 20,
+                                color: isPending ? "#f59e0b" : "#3f3f46",
+                              }}
+                            >
+                              →
+                            </span>
+                          </div>
+
+                          {/* Requested time */}
+                          <div
+                            style={{
+                              padding: "14px 16px",
+                              background: isPending
+                                ? "rgba(245,158,11,0.04)"
+                                : isAccepted
+                                  ? "rgba(34,197,94,0.04)"
+                                  : "rgba(255,255,255,0.02)",
+                              border: `1px solid ${isPending ? T.amberBorder : isAccepted ? "rgba(34,197,94,0.2)" : T.border}`,
+                            }}
+                          >
+                            <p
+                              style={{
+                                ...mono,
+                                fontSize: 8,
+                                color: isPending
+                                  ? "rgba(245,158,11,0.5)"
+                                  : isAccepted
+                                    ? "rgba(34,197,94,0.5)"
+                                    : "#52525b",
+                                letterSpacing: "0.3em",
+                                textTransform: "uppercase",
+                                marginBottom: 8,
+                              }}
+                            >
+                              {isAccepted ? "✓ Confirmed" : "Requested"}
+                            </p>
+                            <p
+                              style={{
+                                ...sf,
+                                fontSize: isMobile ? 10 : 11,
+                                fontWeight: 700,
+                                color: isPending
+                                  ? T.amber
+                                  : isAccepted
+                                    ? "#22c55e"
+                                    : "#71717a",
+                                marginBottom: 4,
+                              }}
+                            >
+                              {rr.requested_date}
+                            </p>
+                            <p
+                              style={{
+                                ...sf,
+                                fontSize: isMobile ? 14 : 18,
+                                fontWeight: 900,
+                                color: isPending
+                                  ? T.amber
+                                  : isAccepted
+                                    ? "#22c55e"
+                                    : "#71717a",
+                              }}
+                            >
+                              {rr.requested_time}
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Approve / Decline buttons — only for pending */}
+                        {isPending && (
+                          <div
+                            style={{
+                              display: "flex",
+                              gap: 10,
+                              flexWrap: "wrap",
+                            }}
+                          >
+                            <button
+                              onClick={async () => {
+                                if (
+                                  !confirm(
+                                    `Approve reschedule for ${rr.client_name}?\n\nNew time: ${rr.requested_date} at ${rr.requested_time}\n\nThe client will receive a confirmation email.`,
+                                  )
+                                )
+                                  return;
+                                try {
+                                  await API.post(
+                                    `barber/reschedules/${rr.id}/`,
+                                    { action: "accept" },
+                                  );
+                                  setReschedules((p) =>
+                                    p.map((r) =>
+                                      r.id === rr.id
+                                        ? { ...r, status: "accepted" }
+                                        : r,
+                                    ),
+                                  );
+                                  showToast(
+                                    `✓ Reschedule approved — ${rr.client_name} has been notified.`,
+                                  );
+                                } catch (e) {
+                                  showToast(
+                                    e.response?.data?.error ||
+                                      "Could not approve.",
+                                    "error",
+                                  );
+                                }
+                              }}
+                              style={{
+                                flex: isMobile ? 1 : "auto",
+                                padding: "12px 24px",
+                                background: "rgba(34,197,94,0.1)",
+                                border: "1px solid rgba(34,197,94,0.35)",
+                                color: "#4ade80",
+                                ...sf,
+                                fontSize: 7,
+                                fontWeight: 700,
+                                letterSpacing: "0.2em",
+                                textTransform: "uppercase",
+                                cursor: "pointer",
+                                transition: "all 0.2s",
+                                clipPath:
+                                  "polygon(0 0,calc(100% - 7px) 0,100% 7px,100% 100%,7px 100%,0 calc(100% - 7px))",
+                              }}
+                              onMouseEnter={(e) =>
+                                (e.currentTarget.style.background =
+                                  "rgba(34,197,94,0.18)")
+                              }
+                              onMouseLeave={(e) =>
+                                (e.currentTarget.style.background =
+                                  "rgba(34,197,94,0.1)")
+                              }
+                            >
+                              ✓ Approve Reschedule
+                            </button>
+                            <button
+                              onClick={async () => {
+                                if (
+                                  !confirm(
+                                    `Decline ${rr.client_name}'s reschedule request?\n\nTheir original appointment on ${rr.original_date} at ${rr.original_time} will remain active.\n\nThe client will be notified.`,
+                                  )
+                                )
+                                  return;
+                                try {
+                                  await API.post(
+                                    `barber/reschedules/${rr.id}/`,
+                                    { action: "reject" },
+                                  );
+                                  setReschedules((p) =>
+                                    p.map((r) =>
+                                      r.id === rr.id
+                                        ? { ...r, status: "rejected" }
+                                        : r,
+                                    ),
+                                  );
+                                  showToast(
+                                    `Reschedule declined — ${rr.client_name} has been notified.`,
+                                    "error",
+                                  );
+                                } catch (e) {
+                                  showToast(
+                                    e.response?.data?.error ||
+                                      "Could not decline.",
+                                    "error",
+                                  );
+                                }
+                              }}
+                              style={{
+                                flex: isMobile ? 1 : "auto",
+                                padding: "12px 24px",
+                                background: "transparent",
+                                border: `1px solid ${T.redBorder}`,
+                                color: T.red,
+                                ...sf,
+                                fontSize: 7,
+                                fontWeight: 700,
+                                letterSpacing: "0.2em",
+                                textTransform: "uppercase",
+                                cursor: "pointer",
+                                transition: "all 0.2s",
+                                clipPath:
+                                  "polygon(0 0,calc(100% - 7px) 0,100% 7px,100% 100%,7px 100%,0 calc(100% - 7px))",
+                              }}
+                              onMouseEnter={(e) =>
+                                (e.currentTarget.style.background = T.redDim)
+                              }
+                              onMouseLeave={(e) =>
+                                (e.currentTarget.style.background =
+                                  "transparent")
+                              }
+                            >
+                              ✕ Decline
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* ══ SCHEDULE TAB ══ */}
         {activeTab === "schedule" && (
@@ -3274,6 +3901,619 @@ export default function BarberDashboard() {
                 )}
               </div>
             </div>
+          </div>
+        )}
+
+        {/* ══ WALK-IN TAB ══ */}
+        {/* ══ RESCHEDULES TAB ══ */}
+        {activeTab === "reschedules" && (
+          <div className="bd-enter">
+            {/* Header */}
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                marginBottom: 24,
+                flexWrap: "wrap",
+                gap: 12,
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+                <div
+                  style={{
+                    width: 4,
+                    height: 28,
+                    background: "linear-gradient(to bottom,#a78bfa,#f59e0b)",
+                    flexShrink: 0,
+                  }}
+                />
+                <div>
+                  <p
+                    style={{
+                      ...mono,
+                      fontSize: 7,
+                      color: "rgba(167,139,250,0.6)",
+                      letterSpacing: "0.5em",
+                      textTransform: "uppercase",
+                      marginBottom: 2,
+                    }}
+                  >
+                    HEADZ UP · REQUESTS
+                  </p>
+                  <p
+                    style={{
+                      ...sf,
+                      fontSize: 13,
+                      fontWeight: 900,
+                      textTransform: "uppercase",
+                    }}
+                  >
+                    Reschedule Requests
+                  </p>
+                </div>
+              </div>
+              <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                {reschedules.filter((r) => r.status === "pending").length >
+                  0 && (
+                  <div
+                    style={{
+                      padding: "6px 14px",
+                      background: "rgba(239,68,68,0.08)",
+                      border: "1px solid rgba(239,68,68,0.2)",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 6,
+                    }}
+                  >
+                    <div
+                      style={{
+                        width: 6,
+                        height: 6,
+                        borderRadius: "50%",
+                        background: "#ef4444",
+                        animation: "pulse 1.5s ease infinite",
+                      }}
+                    />
+                    <span style={{ ...mono, fontSize: 10, color: "#f87171" }}>
+                      {reschedules.filter((r) => r.status === "pending").length}{" "}
+                      pending
+                    </span>
+                  </div>
+                )}
+                <button
+                  onClick={loadReschedules}
+                  style={{
+                    padding: "8px 14px",
+                    ...sf,
+                    fontSize: 6,
+                    letterSpacing: "0.2em",
+                    textTransform: "uppercase",
+                    background: "transparent",
+                    border: `1px solid ${T.border}`,
+                    color: T.muted,
+                    cursor: "pointer",
+                    transition: "all 0.2s",
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.borderColor = T.amber;
+                    e.currentTarget.style.color = T.amber;
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.borderColor = T.border;
+                    e.currentTarget.style.color = T.muted;
+                  }}
+                >
+                  Refresh
+                </button>
+              </div>
+            </div>
+
+            {reschedLoading ? (
+              <div style={{ padding: "48px", textAlign: "center" }}>
+                <div
+                  style={{
+                    width: 18,
+                    height: 18,
+                    border: `2px solid rgba(245,158,11,0.2)`,
+                    borderTopColor: T.amber,
+                    borderRadius: "50%",
+                    animation: "spin 0.8s linear infinite",
+                    margin: "0 auto",
+                  }}
+                />
+              </div>
+            ) : reschedules.length === 0 ? (
+              <div
+                style={{
+                  padding: "64px 20px",
+                  textAlign: "center",
+                  border: `1px solid ${T.border}`,
+                  background: T.surface,
+                  clipPath:
+                    "polygon(0 0,calc(100% - 16px) 0,100% 16px,100% 100%,16px 100%,0 calc(100% - 16px))",
+                }}
+              >
+                <p style={{ fontSize: 32, marginBottom: 10 }}>↻</p>
+                <p
+                  style={{
+                    ...sf,
+                    fontSize: 9,
+                    color: "rgba(255,255,255,0.07)",
+                    textTransform: "uppercase",
+                  }}
+                >
+                  No Reschedule Requests
+                </p>
+                <p
+                  style={{
+                    ...mono,
+                    fontSize: 11,
+                    color: T.muted,
+                    marginTop: 8,
+                  }}
+                >
+                  Requests from clients will appear here
+                </p>
+              </div>
+            ) : (
+              <div
+                style={{ display: "flex", flexDirection: "column", gap: 10 }}
+              >
+                {/* Pending first, then handled */}
+                {[
+                  ...reschedules.filter((r) => r.status === "pending"),
+                  ...reschedules.filter((r) => r.status !== "pending"),
+                ].map((rr) => {
+                  const isPending = rr.status === "pending";
+                  const isAccepted = rr.status === "accepted";
+                  const isRejected = rr.status === "rejected";
+                  const statusColor = isPending
+                    ? "#f59e0b"
+                    : isAccepted
+                      ? "#22c55e"
+                      : "#f87171";
+                  const statusBg = isPending
+                    ? "rgba(245,158,11,0.08)"
+                    : isAccepted
+                      ? "rgba(34,197,94,0.08)"
+                      : "rgba(248,113,113,0.06)";
+                  const statusBdr = isPending
+                    ? "rgba(245,158,11,0.25)"
+                    : isAccepted
+                      ? "rgba(34,197,94,0.2)"
+                      : "rgba(248,113,113,0.15)";
+
+                  return (
+                    <div
+                      key={rr.id}
+                      style={{
+                        background: T.surface,
+                        border: `1px solid ${isPending ? T.amberBorder : T.border}`,
+                        overflow: "hidden",
+                        clipPath:
+                          "polygon(0 0,calc(100% - 12px) 0,100% 12px,100% 100%,12px 100%,0 calc(100% - 12px))",
+                        transition: "border-color 0.2s",
+                      }}
+                    >
+                      {/* Color bar */}
+                      <div
+                        style={{
+                          height: 2,
+                          background: `linear-gradient(to right,${statusColor},transparent)`,
+                          opacity: 0.8,
+                        }}
+                      />
+
+                      <div style={{ padding: "18px 20px" }}>
+                        {/* Top row — client + status */}
+                        <div
+                          style={{
+                            display: "flex",
+                            justifyContent: "space-between",
+                            alignItems: "flex-start",
+                            marginBottom: 16,
+                            flexWrap: "wrap",
+                            gap: 10,
+                          }}
+                        >
+                          <div
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: 12,
+                            }}
+                          >
+                            <div
+                              style={{
+                                width: 38,
+                                height: 38,
+                                background: T.amberDim,
+                                border: `1px solid ${T.amberBorder}`,
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                flexShrink: 0,
+                              }}
+                            >
+                              <span
+                                style={{
+                                  ...sf,
+                                  fontSize: 14,
+                                  fontWeight: 900,
+                                  color: T.amber,
+                                }}
+                              >
+                                {rr.client_name?.charAt(0)?.toUpperCase() ||
+                                  "?"}
+                              </span>
+                            </div>
+                            <div>
+                              <p
+                                style={{
+                                  ...sf,
+                                  fontSize: 11,
+                                  fontWeight: 700,
+                                  textTransform: "uppercase",
+                                  marginBottom: 2,
+                                }}
+                              >
+                                {rr.client_name}
+                              </p>
+                              <p
+                                style={{
+                                  ...mono,
+                                  fontSize: 9,
+                                  color: "#71717a",
+                                }}
+                              >
+                                {rr.client_email}
+                              </p>
+                            </div>
+                          </div>
+                          <div
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: 8,
+                            }}
+                          >
+                            <span
+                              style={{ ...mono, fontSize: 9, color: "#52525b" }}
+                            >
+                              {rr.created_at}
+                            </span>
+                            <span
+                              style={{
+                                ...sf,
+                                fontSize: 6,
+                                letterSpacing: "0.2em",
+                                textTransform: "uppercase",
+                                padding: "4px 10px",
+                                background: statusBg,
+                                border: `1px solid ${statusBdr}`,
+                                color: statusColor,
+                              }}
+                            >
+                              {rr.status === "pending"
+                                ? "⏳ Pending"
+                                : rr.status === "accepted"
+                                  ? "✓ Approved"
+                                  : "✕ Declined"}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Appointment comparison */}
+                        <div
+                          style={{
+                            display: "grid",
+                            gridTemplateColumns: isMobile
+                              ? "1fr"
+                              : "1fr auto 1fr",
+                            gap: 12,
+                            alignItems: "center",
+                            marginBottom: isPending ? 16 : 0,
+                          }}
+                        >
+                          {/* Original */}
+                          <div
+                            style={{
+                              padding: "14px 16px",
+                              background: "rgba(255,255,255,0.03)",
+                              border: "1px solid rgba(255,255,255,0.07)",
+                            }}
+                          >
+                            <p
+                              style={{
+                                ...mono,
+                                fontSize: 8,
+                                color: "#52525b",
+                                letterSpacing: "0.35em",
+                                textTransform: "uppercase",
+                                marginBottom: 8,
+                              }}
+                            >
+                              Original Appointment
+                            </p>
+                            <p
+                              style={{
+                                ...sf,
+                                fontSize: 10,
+                                fontWeight: 700,
+                                color: "#a1a1aa",
+                                marginBottom: 4,
+                              }}
+                            >
+                              {rr.original_date}
+                            </p>
+                            <p
+                              style={{
+                                ...sf,
+                                fontSize: 16,
+                                fontWeight: 900,
+                                color: "#71717a",
+                              }}
+                            >
+                              {rr.original_time}
+                            </p>
+                            <p
+                              style={{
+                                ...mono,
+                                fontSize: 10,
+                                color: "#52525b",
+                                marginTop: 4,
+                              }}
+                            >
+                              {rr.service_name}
+                            </p>
+                          </div>
+
+                          {/* Arrow */}
+                          <div
+                            style={{
+                              textAlign: "center",
+                              padding: isMobile ? "8px 0" : "0",
+                            }}
+                          >
+                            <span
+                              style={{
+                                ...sf,
+                                fontSize: 18,
+                                color: T.amber,
+                                display: "block",
+                              }}
+                            >
+                              →
+                            </span>
+                            {isMobile && (
+                              <p
+                                style={{
+                                  ...mono,
+                                  fontSize: 8,
+                                  color: "#52525b",
+                                  marginTop: 4,
+                                }}
+                              >
+                                Requested change
+                              </p>
+                            )}
+                          </div>
+
+                          {/* Requested */}
+                          <div
+                            style={{
+                              padding: "14px 16px",
+                              background: isPending
+                                ? "rgba(245,158,11,0.05)"
+                                : isAccepted
+                                  ? "rgba(34,197,94,0.06)"
+                                  : "rgba(248,113,113,0.04)",
+                              border: `1px solid ${isPending ? T.amberBorder : isAccepted ? "rgba(34,197,94,0.2)" : "rgba(248,113,113,0.12)"}`,
+                            }}
+                          >
+                            <p
+                              style={{
+                                ...mono,
+                                fontSize: 8,
+                                color: isPending
+                                  ? "rgba(245,158,11,0.5)"
+                                  : isAccepted
+                                    ? "rgba(34,197,94,0.5)"
+                                    : "rgba(248,113,113,0.4)",
+                                letterSpacing: "0.35em",
+                                textTransform: "uppercase",
+                                marginBottom: 8,
+                              }}
+                            >
+                              {isPending
+                                ? "Requested Time"
+                                : isAccepted
+                                  ? "✓ Approved Time"
+                                  : "✕ Declined Request"}
+                            </p>
+                            <p
+                              style={{
+                                ...sf,
+                                fontSize: 10,
+                                fontWeight: 700,
+                                color: isPending
+                                  ? "#a1a1aa"
+                                  : isAccepted
+                                    ? "#4ade80"
+                                    : "#f87171",
+                                marginBottom: 4,
+                              }}
+                            >
+                              {rr.requested_date}
+                            </p>
+                            <p
+                              style={{
+                                ...sf,
+                                fontSize: 16,
+                                fontWeight: 900,
+                                color: isPending
+                                  ? T.amber
+                                  : isAccepted
+                                    ? "#22c55e"
+                                    : "#f87171",
+                              }}
+                            >
+                              {rr.requested_time}
+                            </p>
+                            <p
+                              style={{
+                                ...mono,
+                                fontSize: 10,
+                                color: isPending
+                                  ? "#71717a"
+                                  : isAccepted
+                                    ? "rgba(34,197,94,0.5)"
+                                    : "rgba(248,113,113,0.4)",
+                                marginTop: 4,
+                              }}
+                            >
+                              {rr.service_name}
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Action buttons — only for pending */}
+                        {isPending && (
+                          <div
+                            style={{
+                              display: "flex",
+                              gap: 10,
+                              flexWrap: "wrap",
+                              paddingTop: 16,
+                              borderTop: `1px solid rgba(255,255,255,0.06)`,
+                            }}
+                          >
+                            <button
+                              onClick={async () => {
+                                if (
+                                  !confirm(
+                                    `Approve reschedule for ${rr.client_name}?\n\nNew time: ${rr.requested_date} at ${rr.requested_time}\n\nTheir appointment will be updated and they'll get a confirmation email.`,
+                                  )
+                                )
+                                  return;
+                                try {
+                                  await API.post(
+                                    `barber/reschedules/${rr.id}/`,
+                                    { action: "accept" },
+                                  );
+                                  setReschedules((p) =>
+                                    p.map((x) =>
+                                      x.id === rr.id
+                                        ? { ...x, status: "accepted" }
+                                        : x,
+                                    ),
+                                  );
+                                  showToast(
+                                    `✓ Reschedule approved — ${rr.client_name} has been notified.`,
+                                  );
+                                } catch (e) {
+                                  showToast(
+                                    e.response?.data?.error ||
+                                      "Could not approve.",
+                                    "error",
+                                  );
+                                }
+                              }}
+                              style={{
+                                padding: "12px 24px",
+                                background: "rgba(34,197,94,0.1)",
+                                border: "1px solid rgba(34,197,94,0.35)",
+                                color: "#4ade80",
+                                ...sf,
+                                fontSize: 7,
+                                fontWeight: 700,
+                                letterSpacing: "0.2em",
+                                textTransform: "uppercase",
+                                cursor: "pointer",
+                                transition: "all 0.2s",
+                                flex: 1,
+                                clipPath:
+                                  "polygon(0 0,calc(100% - 7px) 0,100% 7px,100% 100%,7px 100%,0 calc(100% - 7px))",
+                              }}
+                              onMouseEnter={(e) =>
+                                (e.currentTarget.style.background =
+                                  "rgba(34,197,94,0.2)")
+                              }
+                              onMouseLeave={(e) =>
+                                (e.currentTarget.style.background =
+                                  "rgba(34,197,94,0.1)")
+                              }
+                            >
+                              ✓ Approve Reschedule
+                            </button>
+                            <button
+                              onClick={async () => {
+                                if (
+                                  !confirm(
+                                    `Decline reschedule request from ${rr.client_name}?\n\nTheir original appointment (${rr.original_date} at ${rr.original_time}) will remain.\nThey'll get an email letting them know.`,
+                                  )
+                                )
+                                  return;
+                                try {
+                                  await API.post(
+                                    `barber/reschedules/${rr.id}/`,
+                                    { action: "reject" },
+                                  );
+                                  setReschedules((p) =>
+                                    p.map((x) =>
+                                      x.id === rr.id
+                                        ? { ...x, status: "rejected" }
+                                        : x,
+                                    ),
+                                  );
+                                  showToast(
+                                    `Reschedule declined — ${rr.client_name} has been notified.`,
+                                    "error",
+                                  );
+                                } catch (e) {
+                                  showToast(
+                                    e.response?.data?.error ||
+                                      "Could not decline.",
+                                    "error",
+                                  );
+                                }
+                              }}
+                              style={{
+                                padding: "12px 24px",
+                                background: "rgba(248,113,113,0.06)",
+                                border: "1px solid rgba(248,113,113,0.25)",
+                                color: "#f87171",
+                                ...sf,
+                                fontSize: 7,
+                                fontWeight: 700,
+                                letterSpacing: "0.2em",
+                                textTransform: "uppercase",
+                                cursor: "pointer",
+                                transition: "all 0.2s",
+                                flex: 1,
+                                clipPath:
+                                  "polygon(0 0,calc(100% - 7px) 0,100% 7px,100% 100%,7px 100%,0 calc(100% - 7px))",
+                              }}
+                              onMouseEnter={(e) =>
+                                (e.currentTarget.style.background =
+                                  "rgba(248,113,113,0.14)")
+                              }
+                              onMouseLeave={(e) =>
+                                (e.currentTarget.style.background =
+                                  "rgba(248,113,113,0.06)")
+                              }
+                            >
+                              ✕ Decline
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         )}
 
