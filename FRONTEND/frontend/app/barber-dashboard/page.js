@@ -1442,148 +1442,332 @@ function MonthCal({
   onNext,
 }) {
   const today = todayISO();
-  const first = new Date(year, month, 1).getDay();
-  const days = new Date(year, month + 1, 0).getDate();
+  const sf = { fontFamily: "'Syncopate',sans-serif" };
+  const mono = { fontFamily: "'DM Mono',monospace" };
+
+  // First day of month (0=Sun) and total days
+  const firstDow = new Date(year, month, 1).getDay(); // 0=Sun
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+  // Build cells array — nulls for leading blanks
   const cells = [];
-  for (let i = 0; i < first; i++) cells.push(null);
-  for (let d = 1; d <= days; d++) cells.push(d);
-  const DAY_L = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
+  for (let i = 0; i < firstDow; i++) cells.push(null);
+  for (let d = 1; d <= daysInMonth; d++) cells.push(d);
+  // Pad to complete last row
+  while (cells.length % 7 !== 0) cells.push(null);
+
+  const monthLabel = new Date(year, month, 1).toLocaleDateString("en-US", {
+    month: "long",
+    year: "numeric",
+  });
+
+  // Count appointments per date for the badge
+  const apptCount = {};
+  (apptDates || []).forEach((d) => {
+    apptCount[d] = (apptCount[d] || 0) + 1;
+  });
+
   return (
     <div
       style={{
         background: T.surface,
         border: `1px solid ${T.border}`,
-        padding: "16px",
+        overflow: "hidden",
+        clipPath:
+          "polygon(0 0,calc(100% - 10px) 0,100% 10px,100% 100%,10px 100%,0 calc(100% - 10px))",
       }}
     >
+      {/* Header */}
       <div
         style={{
+          background: "#000",
+          padding: "14px 16px",
+          borderBottom: `1px solid ${T.border}`,
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
-          marginBottom: 12,
         }}
       >
         <button
           onClick={onPrev}
           style={{
-            width: 28,
-            height: 28,
+            width: 32,
+            height: 32,
             background: "transparent",
             border: `1px solid ${T.border}`,
             color: T.muted,
             cursor: "pointer",
-            fontSize: 12,
+            fontSize: 14,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            transition: "all 0.2s",
+            flexShrink: 0,
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.borderColor = T.amber;
+            e.currentTarget.style.color = T.amber;
+            e.currentTarget.style.background = T.amberDim;
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.borderColor = T.border;
+            e.currentTarget.style.color = T.muted;
+            e.currentTarget.style.background = "transparent";
           }}
         >
           ‹
         </button>
-        <p
-          style={{
-            ...sf,
-            fontSize: 8,
-            fontWeight: 700,
-            textTransform: "uppercase",
-            letterSpacing: "0.15em",
-          }}
-        >
-          {fmtMY(year, month)}
-        </p>
+        <div style={{ textAlign: "center" }}>
+          <p
+            style={{
+              ...sf,
+              fontSize: 8,
+              fontWeight: 700,
+              textTransform: "uppercase",
+              letterSpacing: "0.15em",
+              color: "white",
+              margin: 0,
+            }}
+          >
+            {monthLabel}
+          </p>
+        </div>
         <button
           onClick={onNext}
           style={{
-            width: 28,
-            height: 28,
+            width: 32,
+            height: 32,
             background: "transparent",
             border: `1px solid ${T.border}`,
             color: T.muted,
             cursor: "pointer",
-            fontSize: 12,
+            fontSize: 14,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            transition: "all 0.2s",
+            flexShrink: 0,
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.borderColor = T.amber;
+            e.currentTarget.style.color = T.amber;
+            e.currentTarget.style.background = T.amberDim;
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.borderColor = T.border;
+            e.currentTarget.style.color = T.muted;
+            e.currentTarget.style.background = "transparent";
           }}
         >
           ›
         </button>
       </div>
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(7,1fr)",
-          gap: 2,
-          marginBottom: 4,
-        }}
-      >
-        {DAY_L.map((d) => (
-          <p
-            key={d}
-            style={{
-              ...sf,
-              fontSize: 5,
-              textAlign: "center",
-              color: T.dim,
-              letterSpacing: "0.1em",
-              padding: "4px 0",
-            }}
-          >
-            {d}
-          </p>
-        ))}
-      </div>
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(7,1fr)",
-          gap: 2,
-        }}
-      >
-        {cells.map((d, i) => {
-          if (!d) return <div key={i} />;
-          const iso = `${year}-${String(month + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
-          const isToday = iso === today;
-          const isSel = iso === selectedDate;
-          const hasAppt = (apptDates || []).includes(iso);
-          return (
-            <button
-              key={i}
-              onClick={() => onSelect(iso)}
+
+      <div style={{ padding: "12px 12px 14px" }}>
+        {/* Day labels */}
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(7,1fr)",
+            marginBottom: 6,
+          }}
+        >
+          {DAY_LABELS.map((d) => (
+            <p
+              key={d}
               style={{
-                padding: "6px 2px",
-                background: isSel
-                  ? T.amber
-                  : isToday
-                    ? T.amberDim
-                    : "transparent",
-                border: `1px solid ${isSel ? T.amber : isToday ? T.amberBorder : "transparent"}`,
-                cursor: "pointer",
-                position: "relative",
-                transition: "all 0.15s",
+                ...sf,
+                fontSize: 5.5,
+                textAlign: "center",
+                color: d === "Sun" || d === "Sat" ? "#52525b" : T.dim,
+                letterSpacing: "0.1em",
+                textTransform: "uppercase",
+                margin: 0,
+                padding: "4px 0",
               }}
             >
-              <p
+              {d}
+            </p>
+          ))}
+        </div>
+
+        {/* Calendar grid */}
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(7,1fr)",
+            gap: 2,
+          }}
+        >
+          {cells.map((d, i) => {
+            if (!d) return <div key={i} />;
+
+            const iso = `${year}-${String(month + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+            const isToday = iso === today;
+            const isSel = iso === selectedDate;
+            const count = apptCount[iso] || 0;
+            const hasAppt = count > 0;
+            const isPast = iso < today;
+            const isSun = new Date(year, month, d).getDay() === 0;
+            const isSat = new Date(year, month, d).getDay() === 6;
+            const isWeekend = isSun || isSat;
+
+            return (
+              <button
+                key={i}
+                onClick={() => onSelect(iso)}
                 style={{
-                  ...sf,
-                  fontSize: 10,
-                  fontWeight: isSel || isToday ? 900 : 400,
-                  color: isSel ? "black" : isToday ? T.amber : "#a1a1aa",
-                  textAlign: "center",
-                  margin: 0,
+                  padding: "5px 2px 6px",
+                  background: isSel
+                    ? T.amber
+                    : isToday
+                      ? T.amberDim
+                      : "transparent",
+                  border: `1px solid ${isSel ? T.amber : isToday ? T.amberBorder : "transparent"}`,
+                  cursor: "pointer",
+                  position: "relative",
+                  transition: "all 0.15s",
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  gap: 2,
+                  borderRadius: 0,
+                }}
+                onMouseEnter={(e) => {
+                  if (!isSel) {
+                    e.currentTarget.style.background = T.amberDim;
+                    e.currentTarget.style.borderColor = T.amberBorder;
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (!isSel) {
+                    e.currentTarget.style.background = isToday
+                      ? T.amberDim
+                      : "transparent";
+                    e.currentTarget.style.borderColor = isToday
+                      ? T.amberBorder
+                      : "transparent";
+                  }
                 }}
               >
-                {d}
-              </p>
-              {hasAppt && !isSel && (
-                <div
+                {/* Day number */}
+                <span
                   style={{
-                    width: 3,
-                    height: 3,
-                    borderRadius: "50%",
-                    background: T.amber,
-                    margin: "2px auto 0",
+                    ...sf,
+                    fontSize: 10,
+                    fontWeight: isSel || isToday ? 900 : 400,
+                    color: isSel
+                      ? "black"
+                      : isToday
+                        ? T.amber
+                        : isPast
+                          ? "#3f3f46"
+                          : isWeekend
+                            ? "#71717a"
+                            : "#d4d4d4",
+                    lineHeight: 1,
                   }}
-                />
-              )}
-            </button>
-          );
-        })}
+                >
+                  {d}
+                </span>
+
+                {/* Appointment dot(s) */}
+                {hasAppt && (
+                  <div
+                    style={{
+                      display: "flex",
+                      gap: 1,
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
+                    {count >= 1 && (
+                      <div
+                        style={{
+                          width: 4,
+                          height: 4,
+                          borderRadius: "50%",
+                          background: isSel ? "rgba(0,0,0,0.5)" : T.amber,
+                          flexShrink: 0,
+                        }}
+                      />
+                    )}
+                    {count >= 3 && (
+                      <div
+                        style={{
+                          width: 4,
+                          height: 4,
+                          borderRadius: "50%",
+                          background: isSel ? "rgba(0,0,0,0.4)" : "#f59e0b",
+                          flexShrink: 0,
+                          opacity: 0.7,
+                        }}
+                      />
+                    )}
+                    {count >= 5 && (
+                      <div
+                        style={{
+                          width: 4,
+                          height: 4,
+                          borderRadius: "50%",
+                          background: isSel ? "rgba(0,0,0,0.3)" : "#ef4444",
+                          flexShrink: 0,
+                          opacity: 0.7,
+                        }}
+                      />
+                    )}
+                  </div>
+                )}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Legend */}
+        <div
+          style={{
+            display: "flex",
+            gap: 12,
+            marginTop: 12,
+            paddingTop: 10,
+            borderTop: `1px solid ${T.border}`,
+            flexWrap: "wrap",
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+            <div
+              style={{
+                width: 8,
+                height: 8,
+                background: T.amber,
+                borderRadius: "50%",
+              }}
+            />
+            <span style={{ ...mono, fontSize: 8, color: "#52525b" }}>
+              Appointments
+            </span>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+            <div
+              style={{
+                width: 12,
+                height: 12,
+                background: T.amberDim,
+                border: `1px solid ${T.amberBorder}`,
+              }}
+            />
+            <span style={{ ...mono, fontSize: 8, color: "#52525b" }}>
+              Today
+            </span>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+            <div style={{ width: 12, height: 12, background: T.amber }} />
+            <span style={{ ...mono, fontSize: 8, color: "#52525b" }}>
+              Selected
+            </span>
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -1735,14 +1919,16 @@ export default function BarberDashboard() {
     if (activeTab === "schedule") loadSchedule(selectedDate);
   }, [selectedDate, activeTab, loadSchedule]);
 
-  /* load all appt dates for calendar dots */
+  /* load all appt dates for calendar dots — load 180 days ahead */
   useEffect(() => {
-    API.get("barber/schedule/?days=60")
+    API.get("barber/schedule/?days=180")
       .then((r) => {
         const arr = Array.isArray(r.data)
           ? r.data
           : r.data.appointments || r.data.results || [];
-        setAllApptDates([...new Set(arr.map((a) => a.date))]);
+        // Store as array of {date, count} objects for the badge
+        const dateArr = arr.map((a) => a.date);
+        setAllApptDates(dateArr);
       })
       .catch(() => {});
   }, []);
