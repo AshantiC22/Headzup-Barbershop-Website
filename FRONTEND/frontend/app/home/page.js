@@ -2660,7 +2660,7 @@ export default function HomePage() {
                       letterSpacing: "0.2em",
                     }}
                   >
-                    4 Hub Dr · Hattiesburg MS
+                    2509 W 4th St · Hattiesburg MS
                   </span>
                 </>
               )}
@@ -3534,7 +3534,7 @@ export default function HomePage() {
                   }}
                 >
                   {[
-                    ["📍", "Address", "4 Hub Dr, Hattiesburg, MS 39402"],
+                    ["📍", "Address", "2509 W 4th St, Hattiesburg, MS 39401"],
                     ["🕐", "Mon – Fri", "9:00 AM – 6:00 PM"],
                     ["✂️", "Saturday", "9:00 AM – 4:00 PM"],
                     ["🚫", "Sunday", "Closed"],
@@ -3680,7 +3680,7 @@ export default function HomePage() {
                       HEADZ UP BARBERSHOP
                     </p>
                     <p style={{ ...M, fontSize: 12, color: "#d4d4d4" }}>
-                      4 Hub Dr, Hattiesburg MS 39402
+                      2509 W 4th St, Hattiesburg MS 39401
                     </p>
                   </div>
                   <p

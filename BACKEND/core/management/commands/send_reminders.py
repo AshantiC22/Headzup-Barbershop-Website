@@ -78,7 +78,7 @@ class Command(BaseCommand):
                             f"Need to cancel? Please do so at least 2 hours before your "
                             f"appointment to avoid a strike on your account.\n\n"
                             f"See you tomorrow!\n\n"
-                            f"— HEADZ UP Barbershop\n  4 Hub Dr, Hattiesburg, MS 39402"
+                            f"— HEADZ UP Barbershop\n  2509 W 4th St, Hattiesburg, MS 39401"
                         )
                         html = _build_client_html(
                             client_nm, svc_name, barber_nm, appt_date, appt_time,
@@ -106,7 +106,7 @@ class Command(BaseCommand):
                             f"  Barber  : {barber_nm}\n"
                             f"  Time    : {appt_time} today\n\n"
                             f"Please be on time — your barber is ready for you.\n\n"
-                            f"— HEADZ UP Barbershop\n  4 Hub Dr, Hattiesburg, MS 39402"
+                            f"— HEADZ UP Barbershop\n  2509 W 4th St, Hattiesburg, MS 39401"
                         )
                         html = _build_client_html(
                             client_nm, svc_name, barber_nm, "Today", appt_time,
@@ -225,7 +225,7 @@ def _build_client_html(client, service, barber, date, time, headline, color, ico
         ⚠ Cancellations within 2 hours of your appointment result in a strike and forfeit your deposit.
       </p>
     </div>
-    <p style="font-size:12px;color:#52525b;margin:0;">HEADZ UP Barbershop · 4 Hub Dr, Hattiesburg, MS 39402</p>
+    <p style="font-size:12px;color:#52525b;margin:0;">HEADZ UP Barbershop · 2509 W 4th St, Hattiesburg, MS 39401</p>
   </div>
   <div style="background:linear-gradient(to right,{color},{color}99);height:2px;"></div>
 </div>"""
@@ -262,7 +262,7 @@ def _build_barber_html(barber, client, service, date, time, notes, headline, col
         {notes_row}
       </table>
     </div>
-    <p style="font-size:12px;color:#52525b;margin:0;">HEADZ UP Barbershop · 4 Hub Dr, Hattiesburg, MS 39402</p>
+    <p style="font-size:12px;color:#52525b;margin:0;">HEADZ UP Barbershop · 2509 W 4th St, Hattiesburg, MS 39401</p>
   </div>
   <div style="background:linear-gradient(to right,{color},{color}99);height:2px;"></div>
 </div>"""

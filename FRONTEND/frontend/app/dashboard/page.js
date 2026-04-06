@@ -1572,7 +1572,7 @@ Cancel anyway?`
                                   color: "#a1a1aa",
                                 }}
                               >
-                                📍 4 Hub Dr, Hattiesburg
+                                📍 2509 W 4th St, Hattiesburg
                               </span>
                             </div>
                           </div>

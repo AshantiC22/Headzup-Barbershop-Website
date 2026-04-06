@@ -86,14 +86,14 @@ def send_booking_confirmation(appointment):
                 f"Service:  {service_name}\nBarber:   {barber_name}\n"
                 f"Date:     {appt_date}\nTime:     {appt_time}\n"
                 f"Payment:  {payment_label}\n\n"
-                f"Please arrive 5 minutes early.\n\nHEADZ UP Barbershop\n4 Hub Dr, Hattiesburg, MS 39402"
+                f"Please arrive 5 minutes early.\n\nHEADZ UP Barbershop\n2509 W 4th St, Hattiesburg, MS 39401"
             )
 
             ticket_rows = ""
             for label, value in [
                 ("Service", service_name), ("Barber", barber_name),
                 ("Date", appt_date), ("Time", appt_time), ("Payment", payment_label),
-                ("Location", "4 Hub Dr, Hattiesburg, MS 39402"),
+                ("Location", "2509 W 4th St, Hattiesburg, MS 39401"),
             ]:
                 ticket_rows += f"""<tr><td style="padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.05);">
                   <p style="font-family:'Courier New',monospace;font-size:9px;letter-spacing:0.3em;color:#52525b;text-transform:uppercase;margin:0 0 4px;">{label}</p>
@@ -131,7 +131,7 @@ def send_booking_confirmation(appointment):
           <a href="{FRONTEND_URL}/dashboard" style="display:inline-block;padding:14px 28px;background:#f59e0b;color:black;font-family:'Courier New',monospace;font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:0.2em;text-decoration:none;">View My Dashboard &rarr;</a>
         </td></tr>
         <tr><td style="border-top:1px solid rgba(255,255,255,0.06);padding-top:24px;">
-          <p style="font-size:11px;color:#3f3f46;margin:0;line-height:1.7;">HEADZ UP Barbershop &middot; 4 Hub Dr, Hattiesburg, MS 39402<br>Mon-Sat 9AM-6PM &middot; Closed Sundays</p>
+          <p style="font-size:11px;color:#3f3f46;margin:0;line-height:1.7;">HEADZ UP Barbershop &middot; 2509 W 4th St, Hattiesburg, MS 39401<br>Mon-Sat 9AM-6PM &middot; Closed Sundays</p>
         </td></tr>
       </table>
     </td></tr>
@@ -186,7 +186,7 @@ def send_booking_confirmation(appointment):
                     ("Date",     appt_date),
                     ("Time",     appt_time),
                     ("Payment",  payment_label),
-                    ("Location", "4 Hub Dr, Hattiesburg, MS 39402"),
+                    ("Location", "2509 W 4th St, Hattiesburg, MS 39401"),
                 ]:
                     barber_rows += f"""<tr><td style="padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.05);">
                       <p style="font-family:'Courier New',monospace;font-size:9px;letter-spacing:0.3em;color:#52525b;text-transform:uppercase;margin:0 0 4px;">{label}</p>
@@ -217,7 +217,7 @@ def send_booking_confirmation(appointment):
           <a href="{FRONTEND_URL}/barber-dashboard" style="display:inline-block;padding:14px 28px;background:#f59e0b;color:black;font-family:'Courier New',monospace;font-size:10px;font-weight:900;text-transform:uppercase;text-decoration:none;">View Dashboard &rarr;</a>
         </td></tr>
         <tr><td style="border-top:1px solid rgba(255,255,255,0.06);padding-top:20px;">
-          <p style="font-size:11px;color:#3f3f46;margin:0;">HEADZ UP Barbershop &middot; 4 Hub Dr, Hattiesburg, MS 39402</p>
+          <p style="font-size:11px;color:#3f3f46;margin:0;">HEADZ UP Barbershop &middot; 2509 W 4th St, Hattiesburg, MS 39401</p>
         </td></tr>
       </table>
     </td></tr>
@@ -256,7 +256,7 @@ def send_booking_confirmation(appointment):
     threading.Thread(target=_send, daemon=True).start()
 
 
-def _html_email_wrapper(logo, icon_html, headline, subhead, body_rows, cta_url, cta_label, footer="HEADZ UP Barbershop · 4 Hub Dr, Hattiesburg, MS 39402"):
+def _html_email_wrapper(logo, icon_html, headline, subhead, body_rows, cta_url, cta_label, footer="HEADZ UP Barbershop · 2509 W 4th St, Hattiesburg, MS 39401"):
     """Shared HTML email shell."""
     return f"""<!DOCTYPE html>
 <html>
@@ -416,7 +416,7 @@ def send_reschedule_request_email(reschedule_request):
         </td></tr>
         {cta_buttons_html}
         <tr><td style="border-top:1px solid rgba(255,255,255,0.06);padding-top:20px;margin-top:20px;">
-          <p style="font-size:11px;color:#3f3f46;margin:0;line-height:1.7;">HEADZ UP Barbershop &middot; 4 Hub Dr, Hattiesburg, MS 39402</p>
+          <p style="font-size:11px;color:#3f3f46;margin:0;line-height:1.7;">HEADZ UP Barbershop &middot; 2509 W 4th St, Hattiesburg, MS 39401</p>
         </td></tr>
       </table>
     </td></tr>
@@ -626,7 +626,7 @@ def send_reschedule_response_email(reschedule_request, accepted):
             </td></tr>
             <tr><td style="padding:10px 0;">
               <p style="font-family:'Courier New',monospace;font-size:9px;letter-spacing:0.3em;color:#52525b;text-transform:uppercase;margin:0 0 4px;">Location</p>
-              <p style="font-size:14px;color:white;margin:0;">4 Hub Dr, Hattiesburg, MS 39402</p>
+              <p style="font-size:14px;color:white;margin:0;">2509 W 4th St, Hattiesburg, MS 39401</p>
             </td></tr>
           </table>
         </td></tr>
@@ -637,13 +637,13 @@ def send_reschedule_response_email(reschedule_request, accepted):
           <a href="{FRONTEND_URL}/dashboard" style="display:inline-block;padding:14px 28px;background:#22c55e;color:black;font-family:'Courier New',monospace;font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:0.2em;text-decoration:none;">View My Dashboard &rarr;</a>
         </td></tr>
         <tr><td style="border-top:1px solid rgba(255,255,255,0.06);padding-top:20px;">
-          <p style="font-size:11px;color:#3f3f46;margin:0;">HEADZ UP Barbershop &middot; 4 Hub Dr, Hattiesburg, MS 39402</p>
+          <p style="font-size:11px;color:#3f3f46;margin:0;">HEADZ UP Barbershop &middot; 2509 W 4th St, Hattiesburg, MS 39401</p>
         </td></tr>
       </table>
     </td></tr>
   </table>
 </body></html>"""
-                    plain = f"Hi {client_name},\n\nYour reschedule has been APPROVED by {barber_name}.\n\nNew Time: {new_date_str} at {new_time_str}\nService: {service_name}\nLocation: 4 Hub Dr, Hattiesburg, MS 39402\n\nSee you then!\n— HEADZ UP Barbershop"
+                    plain = f"Hi {client_name},\n\nYour reschedule has been APPROVED by {barber_name}.\n\nNew Time: {new_date_str} at {new_time_str}\nService: {service_name}\nLocation: 2509 W 4th St, Hattiesburg, MS 39401\n\nSee you then!\n— HEADZ UP Barbershop"
                     _sendgrid_send(client_email, subject, plain, html)
 
                 else:
@@ -692,7 +692,7 @@ def send_reschedule_response_email(reschedule_request, accepted):
             </td></tr>
             <tr><td style="padding:10px 0;">
               <p style="font-family:'Courier New',monospace;font-size:9px;letter-spacing:0.3em;color:#52525b;text-transform:uppercase;margin:0 0 4px;">Location</p>
-              <p style="font-size:14px;color:white;margin:0;">4 Hub Dr, Hattiesburg, MS 39402</p>
+              <p style="font-size:14px;color:white;margin:0;">2509 W 4th St, Hattiesburg, MS 39401</p>
             </td></tr>
           </table>
         </td></tr>
@@ -703,7 +703,7 @@ def send_reschedule_response_email(reschedule_request, accepted):
           <a href="{FRONTEND_URL}/dashboard" style="display:inline-block;padding:14px 28px;background:#f59e0b;color:black;font-family:'Courier New',monospace;font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:0.2em;text-decoration:none;">View My Dashboard &rarr;</a>
         </td></tr>
         <tr><td style="border-top:1px solid rgba(255,255,255,0.06);padding-top:20px;">
-          <p style="font-size:11px;color:#3f3f46;margin:0;">HEADZ UP Barbershop &middot; 4 Hub Dr, Hattiesburg, MS 39402</p>
+          <p style="font-size:11px;color:#3f3f46;margin:0;">HEADZ UP Barbershop &middot; 2509 W 4th St, Hattiesburg, MS 39401</p>
         </td></tr>
       </table>
     </td></tr>
@@ -1485,7 +1485,7 @@ Please review our Deposit & Cancellation Policy when you next book.
 Questions? Contact HEADZ UP Barbershop directly.
 
 — HEADZ UP Barbershop
-4 Hub Dr, Hattiesburg, MS 39402
+2509 W 4th St, Hattiesburg, MS 39401
 """
 
     html = f"""
@@ -1513,7 +1513,7 @@ Questions? Contact HEADZ UP Barbershop directly.
       No-shows and last-minute cancellations cost your barber real money. Our deposit policy protects their time. Please review the Deposit &amp; Cancellation Policy next time you book.
     </p>
     <div style="border-top:1px solid rgba(255,255,255,0.07);padding-top:20px;">
-      <p style="font-size:11px;color:#27272a;margin:0;">HEADZ UP Barbershop · 4 Hub Dr, Hattiesburg, MS 39402</p>
+      <p style="font-size:11px;color:#27272a;margin:0;">HEADZ UP Barbershop · 2509 W 4th St, Hattiesburg, MS 39401</p>
     </div>
   </div>
   <div style="background:linear-gradient(to right,#ef4444,#f59e0b);height:2px;"></div>
@@ -3213,7 +3213,7 @@ class BarberRescheduleRequestView(APIView):
                     f"Original: {old_date_str} at {old_time_str}\n"
                     f"New Time: {new_date_str} at {new_time_str}\n\n"
                     f"If you have questions, please contact the shop.\n\n"
-                    f"HEADZ UP Barbershop\n4 Hub Dr, Hattiesburg, MS"
+                    f"HEADZ UP Barbershop\n2509 W 4th St, Hattiesburg, MS"
                 )
                 rows = _ticket_rows(
                     ("Service",       service_name),
@@ -3222,7 +3222,7 @@ class BarberRescheduleRequestView(APIView):
                     ("Original Time", old_time_str),
                     ("New Date",      f"<span style='color:#f59e0b;font-weight:900'>{new_date_str}</span>"),
                     ("New Time",      f"<span style='color:#f59e0b;font-weight:900'>{new_time_str}</span>"),
-                    ("Location",      "4 Hub Dr, Hattiesburg, MS 39402"),
+                    ("Location",      "2509 W 4th St, Hattiesburg, MS 39401"),
                 )
                 icon = '<div style="width:52px;height:52px;border-radius:50%;background:rgba(245,158,11,0.15);border:1px solid rgba(245,158,11,0.4);display:inline-block;text-align:center;line-height:52px;"><span style="color:#f59e0b;font-size:22px;">↻</span></div>'
                 html = _html_email_wrapper(

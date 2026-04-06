@@ -314,7 +314,7 @@ function ApptTicket({
               </span>
             )}
             <span style={{ ...mono, fontSize: 9, color: "#71717a" }}>
-              📍 4 Hub Dr, Hattiesburg, MS
+              📍 2509 W 4th St, Hattiesburg, MS
             </span>
           </div>
         </div>

@@ -220,7 +220,7 @@ function BookingConfirmedInner() {
               : "Pay In Shop · Cash or Card",
           },
         ]),
-    { label: "Location", value: "4 Hub Dr, Hattiesburg, MS 39402" },
+    { label: "Location", value: "2509 W 4th St, Hattiesburg, MS 39401" },
   ];
 
   return (
@@ -761,7 +761,7 @@ function BookingConfirmedInner() {
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
               <span style={{ fontSize: 16, flexShrink: 0 }}>📍</span>
               <p style={{ ...mono, fontSize: 11, color: "#71717a" }}>
-                4 Hub Dr, Hattiesburg, MS 39402
+                2509 W 4th St, Hattiesburg, MS 39401
               </p>
             </div>
 
