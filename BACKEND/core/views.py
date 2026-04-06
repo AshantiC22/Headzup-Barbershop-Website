@@ -1950,35 +1950,46 @@ class AdminAppointmentUpdateView(APIView):
 class BarberWorkingDaysView(APIView):
     """
     GET barbers/<pk>/working-days/
-    Returns which days of the week this barber works so the booking
-    calendar can grey out unavailable days.
+    Returns ALL 7 days with working status so the booking calendar
+    can accurately show which days have a slash (unavailable).
     Public — no auth required.
     """
     permission_classes = [AllowAny]
 
     def get(self, request, pk):
         from datetime import date as date_type, timedelta
-        import calendar
 
-        # Get barber availability
-        avail_qs = BarberAvailability.objects.filter(barber_id=pk)
+        # Get all availability rows for this barber
+        avail_qs  = BarberAvailability.objects.filter(barber_id=pk)
         avail_map = {a.day_of_week: a for a in avail_qs}
 
-        # Build working_days list: 0=Mon ... 6=Sun (Python weekday)
-        # If no availability row exists for a day, default to not working
-        working_days = []
+        has_any_schedule = len(avail_map) > 0
+
+        # Return ALL 7 days so frontend knows explicitly what's off
+        # Python weekday: 0=Mon, 1=Tue, 2=Wed, 3=Thu, 4=Fri, 5=Sat, 6=Sun
+        all_days = []
         for dow in range(7):
             a = avail_map.get(dow)
-            if a and a.is_working:
-                working_days.append({
-                    "day_of_week": dow,  # 0=Mon, 6=Sun
-                    "start_time":  str(a.start_time),
-                    "end_time":    str(a.end_time),
+            if a:
+                all_days.append({
+                    "day_of_week": dow,
+                    "is_working":  a.is_working,
+                    "start_time":  str(a.start_time) if a.is_working else None,
+                    "end_time":    str(a.end_time)   if a.is_working else None,
+                })
+            else:
+                # No row saved for this day — treat as not working if barber has ANY schedule
+                # If barber has NO schedule at all, treat every day as potentially available
+                all_days.append({
+                    "day_of_week": dow,
+                    "is_working":  not has_any_schedule,  # unknown = allow if no schedule set
+                    "start_time":  None,
+                    "end_time":    None,
                 })
 
-        # Also get time-off dates for the next 90 days
+        # Also get time-off dates for the next 180 days
         today    = date_type.today()
-        end_date = today + timedelta(days=90)
+        end_date = today + timedelta(days=180)
         time_off_dates = list(
             BarberTimeOff.objects.filter(
                 barber_id=pk, date__gte=today, date__lte=end_date
@@ -1986,7 +1997,8 @@ class BarberWorkingDaysView(APIView):
         )
 
         return Response({
-            "working_days":   working_days,
+            "has_schedule":   has_any_schedule,
+            "all_days":       all_days,
             "time_off_dates": [str(d) for d in time_off_dates],
         })
 

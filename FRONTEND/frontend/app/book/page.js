@@ -133,6 +133,8 @@ function BookingCalendar({
     "November",
     "December",
   ];
+  // JS day names for legend
+  const DOW_NAMES_JS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
   const firstDay = new Date(viewYear, viewMonth, 1).getDay();
   const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
@@ -153,21 +155,26 @@ function BookingCalendar({
   const toISO = (y, m, d) =>
     `${y}-${String(m + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
 
-  // Build set of working day-of-week numbers (JS: 0=Sun, 1=Mon...6=Sat)
-  // Backend sends Python weekday: 0=Mon...6=Sun — convert to JS
-  // Python 0(Mon)→JS 1, Python 1(Tue)→JS 2 ... Python 5(Sat)→JS 6, Python 6(Sun)→JS 0
-  const workingDowSet = new Set(
-    workingDays.map((w) => (w.day_of_week + 1) % 7),
-  );
+  // workingDays = all_days array from API: [{day_of_week: 0(Mon)..6(Sun), is_working: bool}]
+  // Convert Python DOW (0=Mon) to JS DOW (0=Sun): jsDay = (pythonDay + 1) % 7
+  // Build a map: jsDay → is_working
   const hasSchedule = workingDays.length > 0;
+  const dowWorkMap = {}; // jsDay -> is_working
+  workingDays.forEach((d) => {
+    const jsDay = (d.day_of_week + 1) % 7;
+    dowWorkMap[jsDay] = d.is_working;
+  });
+
   const timeOffSet = new Set(timeOffDates);
 
   const cells = [];
   for (let i = 0; i < firstDay; i++) cells.push(null);
   for (let d = 1; d <= daysInMonth; d++) cells.push(d);
 
-  // Build working day labels for legend
-  const DOW_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  // Build open days label for legend
+  const openDays = workingDays
+    .filter((d) => d.is_working)
+    .map((d) => DOW_NAMES_JS[(d.day_of_week + 1) % 7]);
 
   return (
     <div
@@ -296,18 +303,31 @@ function BookingCalendar({
             if (!day) return <div key={`e${i}`} />;
             const iso = toISO(viewYear, viewMonth, day);
             const date = new Date(viewYear, viewMonth, day);
-            const jsDow = date.getDay(); // 0=Sun...6=Sat
+            const jsDow = date.getDay(); // 0=Sun, 1=Mon ... 6=Sat
             const isPast = date < today;
+
+            // Is this day unavailable?
+            let isUnavailable = false;
+            if (hasSchedule) {
+              // Barber has schedule saved — use it
+              // If no entry for this JS day, treat as off
+              const isWorking = dowWorkMap.hasOwnProperty(jsDow)
+                ? dowWorkMap[jsDow]
+                : false;
+              isUnavailable = !isWorking;
+            } else {
+              // No schedule at all — only block Sunday by default
+              isUnavailable = jsDow === 0;
+            }
+
             const isTimeOff = timeOffSet.has(iso);
-            // If barber has a schedule set, check if this day is a working day
-            const isOffDay = hasSchedule
-              ? !workingDowSet.has(jsDow)
-              : jsDow === 0; // default: only block Sunday
-            const disabled = isPast || isOffDay || isTimeOff;
+            const disabled = isPast || isUnavailable || isTimeOff;
             const isToday =
               iso ===
               toISO(today.getFullYear(), today.getMonth(), today.getDate());
             const selected = iso === selectedDate;
+            // Show slash on future unavailable/timeoff days (not on past — they're already greyed)
+            const showSlash = !isPast && (isUnavailable || isTimeOff);
 
             return (
               <button
@@ -331,11 +351,13 @@ function BookingCalendar({
                       : "transparent",
                   color: selected
                     ? "black"
-                    : disabled
-                      ? "#2a2a2a"
-                      : isToday
-                        ? "#f59e0b"
-                        : "#d4d4d4",
+                    : isPast
+                      ? "#252525"
+                      : isUnavailable || isTimeOff
+                        ? "#3a3a3a"
+                        : isToday
+                          ? "#f59e0b"
+                          : "#d4d4d4",
                   border: selected
                     ? "1px solid #f59e0b"
                     : isToday
@@ -366,8 +388,8 @@ function BookingCalendar({
                   }
                 }}
               >
-                {/* Diagonal slash on unavailable days */}
-                {(isOffDay || isTimeOff) && !isPast && (
+                {/* Red diagonal slash on unavailable future days */}
+                {showSlash && (
                   <svg
                     style={{
                       position: "absolute",
@@ -377,13 +399,14 @@ function BookingCalendar({
                       pointerEvents: "none",
                     }}
                     viewBox="0 0 40 40"
+                    preserveAspectRatio="none"
                   >
                     <line
-                      x1="2"
-                      y1="38"
-                      x2="38"
-                      y2="2"
-                      stroke="rgba(248,113,113,0.25)"
+                      x1="4"
+                      y1="36"
+                      x2="36"
+                      y2="4"
+                      stroke="rgba(239,68,68,0.45)"
                       strokeWidth="1.5"
                     />
                   </svg>
@@ -399,7 +422,7 @@ function BookingCalendar({
         <div
           style={{
             display: "flex",
-            gap: 12,
+            gap: 10,
             marginTop: 12,
             paddingTop: 10,
             borderTop: "1px solid rgba(255,255,255,0.05)",
@@ -424,8 +447,8 @@ function BookingCalendar({
               style={{
                 width: 14,
                 height: 14,
-                background: "rgba(248,113,113,0.06)",
-                border: "1px solid rgba(248,113,113,0.1)",
+                background: "transparent",
+                border: "1px solid rgba(255,255,255,0.08)",
                 position: "relative",
                 overflow: "hidden",
               }}
@@ -438,13 +461,14 @@ function BookingCalendar({
                   height: "100%",
                 }}
                 viewBox="0 0 14 14"
+                preserveAspectRatio="none"
               >
                 <line
-                  x1="1"
-                  y1="13"
-                  x2="13"
-                  y2="1"
-                  stroke="rgba(248,113,113,0.4)"
+                  x1="2"
+                  y1="12"
+                  x2="12"
+                  y2="2"
+                  stroke="rgba(239,68,68,0.5)"
                   strokeWidth="1.5"
                 />
               </svg>
@@ -453,21 +477,18 @@ function BookingCalendar({
               Unavailable
             </span>
           </div>
-          {hasSchedule && (
+          {openDays.length > 0 && (
             <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
               <div
                 style={{
                   width: 14,
                   height: 14,
-                  background: "rgba(245,158,11,0.15)",
-                  border: "1px solid rgba(245,158,11,0.4)",
+                  background: "rgba(74,222,128,0.1)",
+                  border: "1px solid rgba(74,222,128,0.25)",
                 }}
               />
               <span style={{ ...mono, fontSize: 8, color: "#52525b" }}>
-                Open:{" "}
-                {workingDays
-                  .map((w) => DOW_NAMES[(w.day_of_week + 1) % 7])
-                  .join(", ")}
+                Open: {openDays.join(", ")}
               </span>
             </div>
           )}
@@ -1443,7 +1464,7 @@ function BookContent() {
                           // Fetch this barber's working days so calendar can show availability
                           API.get(`barbers/${b.id}/working-days/`)
                             .then((r) => {
-                              setWorkingDays(r.data.working_days || []);
+                              setWorkingDays(r.data.all_days || []);
                               setTimeOffDates(r.data.time_off_dates || []);
                             })
                             .catch(() => {
