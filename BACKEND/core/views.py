@@ -719,44 +719,427 @@ def send_reschedule_response_email(reschedule_request, accepted):
 
 
 def send_cancellation_email(appointment, cancelled_by="client"):
-    """Notify the other party when an appointment is cancelled."""
+    """
+    Fires when an appointment is cancelled.
+    - Client cancels → email BARBER: slot freed up notification
+    - Barber cancels → email CLIENT: sorry, please rebook
+    """
     import threading
+    import logging
+    logger = logging.getLogger(__name__)
+
+    try:
+        client_email  = appointment.user.email
+        client_name   = appointment.user.first_name or appointment.user.username
+        barber_name   = appointment.barber.name
+        service_name  = appointment.service.name if appointment.service else "Appointment"
+        appt_date     = appointment.date.strftime("%A, %B %d, %Y")
+        appt_time     = appointment.time.strftime("%I:%M %p").lstrip("0")
+        barber_email  = appointment.barber.user.email if appointment.barber.user else None
+    except Exception as e:
+        logger.error(f"send_cancellation_email prep failed: {e}")
+        return
+
+    def _send():
+        try:
+            if cancelled_by == "client" and barber_email:
+                # ── Notify BARBER that client cancelled ──
+                html = f"""<!DOCTYPE html>
+<html><head><meta charset="utf-8"></head>
+<body style="margin:0;padding:0;background:#050505;font-family:'Helvetica Neue',Arial,sans-serif;color:#fff;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#050505;padding:40px 20px;">
+    <tr><td align="center">
+      <table width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;">
+        <tr><td style="padding-bottom:24px;">
+          <p style="font-family:'Courier New',monospace;font-size:22px;font-weight:900;letter-spacing:-0.05em;margin:0;text-transform:uppercase;">
+            HEADZ<span style="color:#f59e0b;font-style:italic;">UP</span>
+          </p>
+        </td></tr>
+        <tr><td style="padding-bottom:16px;">
+          <div style="width:52px;height:52px;background:rgba(248,113,113,0.1);border:1px solid rgba(248,113,113,0.3);display:inline-flex;align-items:center;justify-content:center;">
+            <span style="font-size:22px;">📅</span>
+          </div>
+        </td></tr>
+        <tr><td style="padding-bottom:8px;">
+          <h1 style="font-family:'Courier New',monospace;font-size:24px;font-weight:900;text-transform:uppercase;margin:0;line-height:1.1;">
+            Appointment<br><span style="color:#f87171;font-style:italic;">Cancelled_</span>
+          </h1>
+        </td></tr>
+        <tr><td style="padding-bottom:24px;">
+          <p style="color:#71717a;font-size:13px;margin:0;line-height:1.6;">
+            <strong style="color:white;">{client_name}</strong> has cancelled their appointment. That slot is now open.
+          </p>
+        </td></tr>
+        <tr><td style="background:#0a0a0a;border:1px solid rgba(255,255,255,0.08);padding:24px;margin-bottom:20px;">
+          <table width="100%" cellpadding="0" cellspacing="0">
+            <tr><td style="padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.05);">
+              <p style="font-family:'Courier New',monospace;font-size:9px;letter-spacing:0.3em;color:#52525b;text-transform:uppercase;margin:0 0 4px;">Client</p>
+              <p style="font-size:14px;color:white;margin:0;font-weight:700;">{client_name}</p>
+            </td></tr>
+            <tr><td style="padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.05);">
+              <p style="font-family:'Courier New',monospace;font-size:9px;letter-spacing:0.3em;color:#52525b;text-transform:uppercase;margin:0 0 4px;">Service</p>
+              <p style="font-size:14px;color:white;margin:0;font-weight:700;">{service_name}</p>
+            </td></tr>
+            <tr><td style="padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.05);">
+              <p style="font-family:'Courier New',monospace;font-size:9px;letter-spacing:0.3em;color:#52525b;text-transform:uppercase;margin:0 0 4px;">Date</p>
+              <p style="font-size:14px;color:#f87171;margin:0;font-weight:700;">{appt_date}</p>
+            </td></tr>
+            <tr><td style="padding:10px 0;">
+              <p style="font-family:'Courier New',monospace;font-size:9px;letter-spacing:0.3em;color:#52525b;text-transform:uppercase;margin:0 0 4px;">Time</p>
+              <p style="font-size:18px;color:#f87171;margin:0;font-weight:900;">{appt_time}</p>
+            </td></tr>
+          </table>
+        </td></tr>
+        <tr><td style="padding:20px 0 0;">
+          <a href="{FRONTEND_URL}/barber-dashboard" style="display:inline-block;padding:13px 26px;background:#f59e0b;color:black;font-family:'Courier New',monospace;font-size:10px;font-weight:900;text-transform:uppercase;text-decoration:none;">View Dashboard &rarr;</a>
+        </td></tr>
+        <tr><td style="border-top:1px solid rgba(255,255,255,0.06);padding-top:20px;margin-top:20px;">
+          <p style="font-size:11px;color:#3f3f46;margin:0;">HEADZ UP Barbershop &middot; 2509 W 4th St, Hattiesburg, MS 39401</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body></html>"""
+                plain = (
+                    f"{client_name} cancelled their appointment.\n\n"
+                    f"Service: {service_name}\n"
+                    f"Date: {appt_date} at {appt_time}\n\n"
+                    f"That slot is now open.\n— HEADZ UP Barbershop"
+                )
+                _sendgrid_send(barber_email, f"📅 Appointment Cancelled by {client_name} — HEADZ UP", plain, html)
+                logger.info(f"Cancellation email sent to barber: {barber_email}")
+
+            elif cancelled_by == "barber" and client_email:
+                # ── Notify CLIENT that barber cancelled ──
+                html = f"""<!DOCTYPE html>
+<html><head><meta charset="utf-8"></head>
+<body style="margin:0;padding:0;background:#050505;font-family:'Helvetica Neue',Arial,sans-serif;color:#fff;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#050505;padding:40px 20px;">
+    <tr><td align="center">
+      <table width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;">
+        <tr><td style="padding-bottom:24px;">
+          <p style="font-family:'Courier New',monospace;font-size:22px;font-weight:900;letter-spacing:-0.05em;margin:0;text-transform:uppercase;">
+            HEADZ<span style="color:#f59e0b;font-style:italic;">UP</span>
+          </p>
+        </td></tr>
+        <tr><td style="padding-bottom:16px;">
+          <div style="width:52px;height:52px;background:rgba(248,113,113,0.1);border:1px solid rgba(248,113,113,0.3);display:inline-flex;align-items:center;justify-content:center;">
+            <span style="font-size:22px;">✕</span>
+          </div>
+        </td></tr>
+        <tr><td style="padding-bottom:8px;">
+          <h1 style="font-family:'Courier New',monospace;font-size:24px;font-weight:900;text-transform:uppercase;margin:0;line-height:1.1;">
+            Appointment<br><span style="color:#f87171;font-style:italic;">Cancelled_</span>
+          </h1>
+        </td></tr>
+        <tr><td style="padding-bottom:24px;">
+          <p style="color:#71717a;font-size:13px;margin:0;line-height:1.6;">
+            Hey {client_name}, we're sorry — your appointment with <strong style="color:white;">{barber_name}</strong> has been cancelled. Please rebook at your convenience.
+          </p>
+        </td></tr>
+        <tr><td style="background:#0a0a0a;border:1px solid rgba(255,255,255,0.08);padding:24px;">
+          <table width="100%" cellpadding="0" cellspacing="0">
+            <tr><td style="padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.05);">
+              <p style="font-family:'Courier New',monospace;font-size:9px;letter-spacing:0.3em;color:#52525b;text-transform:uppercase;margin:0 0 4px;">Service</p>
+              <p style="font-size:14px;color:white;margin:0;font-weight:700;">{service_name}</p>
+            </td></tr>
+            <tr><td style="padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.05);">
+              <p style="font-family:'Courier New',monospace;font-size:9px;letter-spacing:0.3em;color:#52525b;text-transform:uppercase;margin:0 0 4px;">Barber</p>
+              <p style="font-size:14px;color:white;margin:0;font-weight:700;">{barber_name}</p>
+            </td></tr>
+            <tr><td style="padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.05);">
+              <p style="font-family:'Courier New',monospace;font-size:9px;letter-spacing:0.3em;color:#52525b;text-transform:uppercase;margin:0 0 4px;">Was Scheduled For</p>
+              <p style="font-size:14px;color:#f87171;margin:0;font-weight:700;">{appt_date} at {appt_time}</p>
+            </td></tr>
+          </table>
+        </td></tr>
+        <tr><td style="padding:20px 0 0;">
+          <a href="{FRONTEND_URL}/book" style="display:inline-block;padding:13px 26px;background:#f59e0b;color:black;font-family:'Courier New',monospace;font-size:10px;font-weight:900;text-transform:uppercase;text-decoration:none;">Book Again &rarr;</a>
+        </td></tr>
+        <tr><td style="border-top:1px solid rgba(255,255,255,0.06);padding-top:20px;margin-top:20px;">
+          <p style="font-size:11px;color:#3f3f46;margin:0;">HEADZ UP Barbershop &middot; 2509 W 4th St, Hattiesburg, MS 39401</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body></html>"""
+                plain = (
+                    f"Hey {client_name},\n\nYour appointment with {barber_name} has been cancelled.\n\n"
+                    f"Service: {service_name}\nDate: {appt_date} at {appt_time}\n\n"
+                    f"Please rebook at your convenience: {FRONTEND_URL}/book\n\n"
+                    f"— HEADZ UP Barbershop"
+                )
+                _sendgrid_send(client_email, f"Your Appointment Has Been Cancelled — HEADZ UP", plain, html)
+                logger.info(f"Cancellation email sent to client: {client_email}")
+
+        except Exception as e:
+            logger.error(f"send_cancellation_email failed: {e}", exc_info=True)
+
+    threading.Thread(target=_send, daemon=True).start()
+
+
+def send_welcome_email(user):
+    """
+    Sent immediately when a new client registers.
+    Welcomes them, introduces the platform, drives first booking.
+    """
+    import threading, logging
+    logger = logging.getLogger(__name__)
+    if not user.email:
+        return
+    name = user.first_name or user.username
+
+    def _send():
+        try:
+            subject = "✂️ Welcome to HEADZ UP Barbershop"
+            html = f"""<!DOCTYPE html>
+<html><head><meta charset="utf-8"></head>
+<body style="margin:0;padding:0;background:#050505;font-family:'Helvetica Neue',Arial,sans-serif;color:#fff;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#050505;padding:40px 20px;">
+    <tr><td align="center">
+      <table width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;">
+        <tr><td style="padding-bottom:24px;">
+          <p style="font-family:'Courier New',monospace;font-size:28px;font-weight:900;letter-spacing:-0.05em;margin:0;text-transform:uppercase;">
+            HEADZ<span style="color:#f59e0b;font-style:italic;">UP</span>
+          </p>
+        </td></tr>
+        <tr><td style="padding-bottom:8px;">
+          <h1 style="font-family:'Courier New',monospace;font-size:26px;font-weight:900;text-transform:uppercase;margin:0;line-height:1.1;">
+            Welcome<br><span style="color:#f59e0b;font-style:italic;">{name}_</span>
+          </h1>
+        </td></tr>
+        <tr><td style="padding-bottom:28px;">
+          <p style="color:#71717a;font-size:13px;margin:0;line-height:1.8;">
+            Your HEADZ UP account is ready. Book your first appointment in under a minute — pick your barber, choose a time, and lock in your spot.
+          </p>
+        </td></tr>
+        <tr><td style="background:#0a0a0a;border:1px solid rgba(255,255,255,0.08);padding:24px;margin-bottom:20px;">
+          <table width="100%" cellpadding="0" cellspacing="0">
+            <tr><td style="padding:12px 0;border-bottom:1px solid rgba(255,255,255,0.05);">
+              <p style="font-size:13px;color:white;margin:0;">✂️ &nbsp;<strong>Pick your barber</strong> — view styles and specialties</p>
+            </td></tr>
+            <tr><td style="padding:12px 0;border-bottom:1px solid rgba(255,255,255,0.05);">
+              <p style="font-size:13px;color:white;margin:0;">📅 &nbsp;<strong>Choose a time</strong> — see real-time availability</p>
+            </td></tr>
+            <tr><td style="padding:12px 0;border-bottom:1px solid rgba(255,255,255,0.05);">
+              <p style="font-size:13px;color:white;margin:0;">💰 &nbsp;<strong>Pay in shop or online</strong> — your choice</p>
+            </td></tr>
+            <tr><td style="padding:12px 0;">
+              <p style="font-size:13px;color:white;margin:0;">🔔 &nbsp;<strong>Get reminders</strong> — we'll remind you 24hr and 2hr before</p>
+            </td></tr>
+          </table>
+        </td></tr>
+        <tr><td style="padding:24px 0 0;">
+          <a href="{FRONTEND_URL}/book" style="display:inline-block;padding:16px 32px;background:#f59e0b;color:black;font-family:'Courier New',monospace;font-size:11px;font-weight:900;text-transform:uppercase;letter-spacing:0.2em;text-decoration:none;">Book Your First Appointment &rarr;</a>
+        </td></tr>
+        <tr><td style="padding:24px 0 0;">
+          <p style="font-size:12px;color:#52525b;margin:0;line-height:1.7;">
+            📍 2509 W 4th St, Hattiesburg, MS 39401<br>
+            Mon–Fri 9AM–6PM &middot; Sat 9AM–4PM &middot; Closed Sundays
+          </p>
+        </td></tr>
+        <tr><td style="border-top:1px solid rgba(255,255,255,0.06);padding-top:20px;margin-top:20px;">
+          <p style="font-size:11px;color:#3f3f46;margin:0;">HEADZ UP Barbershop &middot; 2509 W 4th St, Hattiesburg, MS 39401</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body></html>"""
+            plain = (
+                f"Welcome to HEADZ UP, {name}!\n\n"
+                f"Your account is ready. Book your first appointment at:\n"
+                f"{FRONTEND_URL}/book\n\n"
+                f"📍 2509 W 4th St, Hattiesburg, MS 39401\n"
+                f"Mon–Fri 9AM–6PM · Sat 9AM–4PM · Closed Sundays\n\n"
+                f"— HEADZ UP Barbershop"
+            )
+            _sendgrid_send(user.email, subject, plain, html)
+            logger.info(f"Welcome email sent to {user.email}")
+        except Exception as e:
+            logger.error(f"send_welcome_email failed: {e}", exc_info=True)
+
+    threading.Thread(target=_send, daemon=True).start()
+
+
+def send_deposit_paid_email(appointment):
+    """
+    Sent to the BARBER when a client pays their deposit online.
+    Lets them know the booking is locked in with deposit.
+    """
+    import threading, logging
+    logger = logging.getLogger(__name__)
+
+    try:
+        client_name  = appointment.user.first_name or appointment.user.username
+        barber_name  = appointment.barber.name
+        barber_email = appointment.barber.user.email if appointment.barber.user else None
+        service_name = appointment.service.name if appointment.service else "Appointment"
+        appt_date    = appointment.date.strftime("%A, %B %d, %Y")
+        appt_time    = appointment.time.strftime("%I:%M %p").lstrip("0")
+        deposit_amt  = appointment.deposit_amount or "10.00"
+    except Exception as e:
+        logger.error(f"send_deposit_paid_email prep failed: {e}")
+        return
+
+    if not barber_email:
+        return
+
+    def _send():
+        try:
+            subject = f"💰 Deposit Received from {client_name} — HEADZ UP"
+            html = f"""<!DOCTYPE html>
+<html><head><meta charset="utf-8"></head>
+<body style="margin:0;padding:0;background:#050505;font-family:'Helvetica Neue',Arial,sans-serif;color:#fff;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#050505;padding:40px 20px;">
+    <tr><td align="center">
+      <table width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;">
+        <tr><td style="padding-bottom:24px;">
+          <p style="font-family:'Courier New',monospace;font-size:22px;font-weight:900;letter-spacing:-0.05em;margin:0;text-transform:uppercase;">
+            HEADZ<span style="color:#f59e0b;font-style:italic;">UP</span>
+          </p>
+        </td></tr>
+        <tr><td style="padding-bottom:16px;">
+          <div style="width:52px;height:52px;background:rgba(34,197,94,0.12);border:1px solid rgba(34,197,94,0.3);display:inline-flex;align-items:center;justify-content:center;">
+            <span style="font-size:24px;">💰</span>
+          </div>
+        </td></tr>
+        <tr><td style="padding-bottom:8px;">
+          <h1 style="font-family:'Courier New',monospace;font-size:24px;font-weight:900;text-transform:uppercase;margin:0;line-height:1.1;">
+            Deposit<br><span style="color:#22c55e;font-style:italic;">Received_</span>
+          </h1>
+        </td></tr>
+        <tr><td style="padding-bottom:24px;">
+          <p style="color:#71717a;font-size:13px;margin:0;line-height:1.6;">
+            <strong style="color:white;">{client_name}</strong> has paid their deposit. This booking is locked in.
+          </p>
+        </td></tr>
+        <tr><td style="background:#0a0a0a;border:1px solid rgba(255,255,255,0.08);padding:24px;">
+          <table width="100%" cellpadding="0" cellspacing="0">
+            <tr><td style="padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.05);">
+              <p style="font-family:'Courier New',monospace;font-size:9px;letter-spacing:0.3em;color:#52525b;text-transform:uppercase;margin:0 0 4px;">Client</p>
+              <p style="font-size:14px;color:white;margin:0;font-weight:700;">{client_name}</p>
+            </td></tr>
+            <tr><td style="padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.05);">
+              <p style="font-family:'Courier New',monospace;font-size:9px;letter-spacing:0.3em;color:#52525b;text-transform:uppercase;margin:0 0 4px;">Service</p>
+              <p style="font-size:14px;color:white;margin:0;font-weight:700;">{service_name}</p>
+            </td></tr>
+            <tr><td style="padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.05);">
+              <p style="font-family:'Courier New',monospace;font-size:9px;letter-spacing:0.3em;color:#52525b;text-transform:uppercase;margin:0 0 4px;">Date & Time</p>
+              <p style="font-size:14px;color:#f59e0b;margin:0;font-weight:700;">{appt_date} at {appt_time}</p>
+            </td></tr>
+            <tr><td style="padding:10px 0;">
+              <p style="font-family:'Courier New',monospace;font-size:9px;letter-spacing:0.3em;color:#52525b;text-transform:uppercase;margin:0 0 4px;">Deposit Paid</p>
+              <p style="font-size:22px;color:#22c55e;margin:0;font-weight:900;">${deposit_amt} ✓</p>
+            </td></tr>
+          </table>
+        </td></tr>
+        <tr><td style="padding:20px 0 0;">
+          <a href="{FRONTEND_URL}/barber-dashboard" style="display:inline-block;padding:13px 26px;background:#f59e0b;color:black;font-family:'Courier New',monospace;font-size:10px;font-weight:900;text-transform:uppercase;text-decoration:none;">View Dashboard &rarr;</a>
+        </td></tr>
+        <tr><td style="border-top:1px solid rgba(255,255,255,0.06);padding-top:20px;margin-top:20px;">
+          <p style="font-size:11px;color:#3f3f46;margin:0;">HEADZ UP Barbershop &middot; 2509 W 4th St, Hattiesburg, MS 39401</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body></html>"""
+            plain = (
+                f"Hey {barber_name},\n\n"
+                f"{client_name} paid their ${deposit_amt} deposit. Booking is confirmed.\n\n"
+                f"Service: {service_name}\nDate: {appt_date} at {appt_time}\n\n"
+                f"— HEADZ UP Barbershop"
+            )
+            _sendgrid_send(barber_email, subject, plain, html)
+            logger.info(f"Deposit paid email sent to barber: {barber_email}")
+        except Exception as e:
+            logger.error(f"send_deposit_paid_email failed: {e}", exc_info=True)
+
+    threading.Thread(target=_send, daemon=True).start()
+
+
+def send_review_request_email(appointment):
+    """
+    Sent to the CLIENT after the barber marks their appointment as completed.
+    Asks for a review of their experience.
+    """
+    import threading, logging
+    logger = logging.getLogger(__name__)
 
     try:
         client_email = appointment.user.email
         client_name  = appointment.user.first_name or appointment.user.username
         barber_name  = appointment.barber.name
         service_name = appointment.service.name if appointment.service else "Appointment"
-        appt_date    = appointment.date.strftime("%A, %B %d, %Y")
-        appt_time    = appointment.time.strftime("%I:%M %p").lstrip("0")
-        barber_email = appointment.barber.user.email if appointment.barber.user else None
-    except Exception:
+    except Exception as e:
+        logger.error(f"send_review_request_email prep failed: {e}")
         return
+
+    if not client_email:
+        return
+
+    review_url = f"{FRONTEND_URL}/dashboard"
 
     def _send():
         try:
-            if not getattr(settings, "EMAIL_HOST_PASSWORD", ""):
-                return
-
-            icon = '<div style="width:52px;height:52px;border-radius:50%;background:rgba(248,113,113,0.15);border:1px solid rgba(248,113,113,0.3);display:inline-block;text-align:center;line-height:52px;"><span style="color:#f87171;font-size:22px;">✕</span></div>'
-            rows = _ticket_rows(("Service", service_name), ("Date", appt_date), ("Time", appt_time))
-
-            if cancelled_by == "client" and barber_email:
-                # Notify barber
-                subject = f"Appointment Cancelled by {client_name} — HEADZ UP"
-                subhead = f"{client_name} has cancelled their appointment."
-                html    = _html_email_wrapper("", icon, "Appointment<br><span style='color:#f87171;font-style:italic;'>Cancelled_</span>", subhead, rows, f"{FRONTEND_URL}/barber-dashboard", "View Dashboard")
-                plain   = f"{client_name} cancelled their {service_name} on {appt_date} at {appt_time}."
-                _sendgrid_send(barber_email, subject, plain, html)
-            elif cancelled_by == "barber" and client_email:
-                # Notify client
-                subject = f"Your Appointment Has Been Cancelled — HEADZ UP"
-                subhead = f"We're sorry — your appointment with {barber_name} has been cancelled. Please rebook at your convenience."
-                html    = _html_email_wrapper("", icon, "Appointment<br><span style='color:#f87171;font-style:italic;'>Cancelled_</span>", subhead, rows, f"{FRONTEND_URL}/book", "Book Again")
-                plain   = f"Your {service_name} on {appt_date} at {appt_time} with {barber_name} has been cancelled."
-                _sendgrid_send(client_email, subject, plain, html)
-        except Exception:
-            pass
+            subject = f"How was your cut? ✂️ Leave a review for {barber_name}"
+            html = f"""<!DOCTYPE html>
+<html><head><meta charset="utf-8"></head>
+<body style="margin:0;padding:0;background:#050505;font-family:'Helvetica Neue',Arial,sans-serif;color:#fff;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#050505;padding:40px 20px;">
+    <tr><td align="center">
+      <table width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;">
+        <tr><td style="padding-bottom:24px;">
+          <p style="font-family:'Courier New',monospace;font-size:22px;font-weight:900;letter-spacing:-0.05em;margin:0;text-transform:uppercase;">
+            HEADZ<span style="color:#f59e0b;font-style:italic;">UP</span>
+          </p>
+        </td></tr>
+        <tr><td style="padding-bottom:16px;">
+          <div style="width:52px;height:52px;background:rgba(245,158,11,0.12);border:1px solid rgba(245,158,11,0.3);display:inline-flex;align-items:center;justify-content:center;">
+            <span style="font-size:24px;">⭐</span>
+          </div>
+        </td></tr>
+        <tr><td style="padding-bottom:8px;">
+          <h1 style="font-family:'Courier New',monospace;font-size:24px;font-weight:900;text-transform:uppercase;margin:0;line-height:1.1;">
+            How was<br><span style="color:#f59e0b;font-style:italic;">Your Cut_</span>
+          </h1>
+        </td></tr>
+        <tr><td style="padding-bottom:28px;">
+          <p style="color:#71717a;font-size:13px;margin:0;line-height:1.8;">
+            Hey {client_name}! Hope you're looking fresh. <strong style="color:white;">{barber_name}</strong> just finished your <strong style="color:white;">{service_name}</strong>. 
+            Take 10 seconds to leave a quick review — it means the world to your barber.
+          </p>
+        </td></tr>
+        <tr><td style="text-align:center;padding-bottom:28px;">
+          <p style="font-size:32px;margin:0;letter-spacing:4px;">⭐⭐⭐⭐⭐</p>
+          <p style="font-family:'Courier New',monospace;font-size:10px;color:#52525b;margin:8px 0 0;letter-spacing:0.3em;text-transform:uppercase;">Rate your experience</p>
+        </td></tr>
+        <tr><td style="text-align:center;padding-bottom:20px;">
+          <a href="{review_url}" style="display:inline-block;padding:16px 32px;background:#f59e0b;color:black;font-family:'Courier New',monospace;font-size:11px;font-weight:900;text-transform:uppercase;letter-spacing:0.2em;text-decoration:none;">Leave a Review &rarr;</a>
+        </td></tr>
+        <tr><td style="padding:16px 0 0;">
+          <p style="font-size:12px;color:#52525b;margin:0;line-height:1.7;">
+            Ready to book your next appointment? We're always here.<br>
+            <a href="{FRONTEND_URL}/book" style="color:#f59e0b;text-decoration:none;">Book again &rarr;</a>
+          </p>
+        </td></tr>
+        <tr><td style="border-top:1px solid rgba(255,255,255,0.06);padding-top:20px;margin-top:20px;">
+          <p style="font-size:11px;color:#3f3f46;margin:0;">HEADZ UP Barbershop &middot; 2509 W 4th St, Hattiesburg, MS 39401</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body></html>"""
+            plain = (
+                f"Hey {client_name}!\n\n"
+                f"Hope you're looking fresh after your {service_name} with {barber_name}.\n\n"
+                f"Leave a quick review — it means a lot:\n{review_url}\n\n"
+                f"Ready to book again? {FRONTEND_URL}/book\n\n"
+                f"— HEADZ UP Barbershop"
+            )
+            _sendgrid_send(client_email, subject, plain, html)
+            logger.info(f"Review request email sent to {client_email}")
+        except Exception as e:
+            logger.error(f"send_review_request_email failed: {e}", exc_info=True)
 
     threading.Thread(target=_send, daemon=True).start()
 
@@ -806,7 +1189,10 @@ class UserProfileViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         try:
             appt = serializer.save(user=self.request.user)
-            send_booking_confirmation(appt)
+            appt_full = Appointment.objects.select_related(
+                "user", "barber", "barber__user", "service"
+            ).get(pk=appt.pk)
+            send_booking_confirmation(appt_full)
         except IntegrityError:
             raise serializers.ValidationError("This time slot is already booked.")
 
@@ -845,6 +1231,8 @@ class RegisterView(APIView):
                     user=user,
                     defaults={"name": user.username}
                 )
+                # Send welcome email
+                send_welcome_email(user)
                 return Response({"message": "Account created successfully"}, status=status.HTTP_201_CREATED)
             except Exception as e:
                 return Response({"detail": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
@@ -954,7 +1342,11 @@ class AppointmentViewSet(viewsets.ModelViewSet):
             raise serializers.ValidationError("That time slot is already booked. Please choose another.")
         try:
             appt = serializer.save(user=self.request.user)
-            send_booking_confirmation(appt)
+            # Re-fetch with all relations for email thread
+            appt_full = Appointment.objects.select_related(
+                "user", "barber", "barber__user", "service"
+            ).get(pk=appt.pk)
+            send_booking_confirmation(appt_full)
         except IntegrityError:
             raise serializers.ValidationError("That time slot is already booked. Please choose another.")
 
@@ -967,10 +1359,18 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         if conflict.exists():
             raise serializers.ValidationError("That time slot is already booked. Please choose another.")
         try:
-            appt = serializer.save()
-            send_booking_confirmation(appt)
+            serializer.save()
+            # Do NOT resend confirmation email on every update
         except IntegrityError:
             raise serializers.ValidationError("That time slot is already booked. Please choose another.")
+
+    def perform_destroy(self, instance):
+        """Client cancels appointment — email the barber."""
+        appt_full = Appointment.objects.select_related(
+            "user", "barber", "barber__user", "service"
+        ).get(pk=instance.pk)
+        send_cancellation_email(appt_full, cancelled_by="client")
+        instance.delete()
 
 
 # ── Auth helpers ──────────────────────────────────────────────────────────────
@@ -1435,7 +1835,16 @@ class DepositSuccessView(APIView):
                 appt.save(update_fields=["deposit_paid", "deposit_session_id", "deposit_amount"])
 
             if created:
-                send_booking_confirmation(appt)
+                appt_full = Appointment.objects.select_related(
+                    "user", "barber", "barber__user", "service"
+                ).get(pk=appt.pk)
+                send_booking_confirmation(appt_full)
+                send_deposit_paid_email(appt_full)
+            elif not created and not appt.deposit_paid:
+                appt_full = Appointment.objects.select_related(
+                    "user", "barber", "barber__user", "service"
+                ).get(pk=appt.pk)
+                send_deposit_paid_email(appt_full)
 
             return redirect(
                 f"{FRONTEND_URL}/booking-confirmed"
@@ -1844,7 +2253,10 @@ class PaymentSuccessView(APIView):
                 },
             )
             if created:
-                send_booking_confirmation(appt)
+                appt_full = Appointment.objects.select_related(
+                    "user", "barber", "barber__user", "service"
+                ).get(pk=appt.pk)
+                send_booking_confirmation(appt_full)
 
             return redirect(
                 f"{FRONTEND_URL}/booking-confirmed"
@@ -2203,7 +2615,11 @@ class BarberAppointmentUpdateView(APIView):
             return Response({"error": "That slot is already booked"}, status=400)
 
         if new_status == "completed":
-            _schedule_review_notification(appt)
+            appt_full = Appointment.objects.select_related(
+                "user", "barber", "barber__user", "service"
+            ).get(pk=appt.pk)
+            _schedule_review_notification(appt_full)
+            send_review_request_email(appt_full)
 
         return Response({"message": "Updated", "id": appt.id, "barber_notes": appt.barber_notes})
 
