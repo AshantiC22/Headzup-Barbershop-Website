@@ -16,6 +16,7 @@ from core.views import (
     CheckUsernameView,
     PasswordResetView,
     PasswordResetConfirmView,
+    BarberWorkingDaysView,
     AvailableSlotsView,
     HeadzUpTokenView,
     # Account recovery
@@ -104,7 +105,8 @@ urlpatterns = [
     path("barber/client-strikes/",              BarberClientStrikesView.as_view(),   name="barber_client_strikes"),
 
     # Booking
-    path("available-slots/", AvailableSlotsView.as_view(), name="available_slots"),
+    path("available-slots/",              AvailableSlotsView.as_view(),      name="available_slots"),
+    path("barbers/<int:pk>/working-days/", BarberWorkingDaysView.as_view(),   name="barber_working_days"),
 
     # Stripe
     path("create-checkout-session/", CreateCheckoutSessionView.as_view(), name="create_checkout_session"),

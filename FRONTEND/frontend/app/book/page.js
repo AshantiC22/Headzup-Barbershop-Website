@@ -103,7 +103,12 @@ function StepItem({ n, label, active, done, onClick }) {
 }
 
 // ── Time slot grid ────────────────────────────────────────────────────────────
-function BookingCalendar({ selectedDate, onSelect }) {
+function BookingCalendar({
+  selectedDate,
+  onSelect,
+  workingDays = [],
+  timeOffDates = [],
+}) {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
@@ -148,25 +153,41 @@ function BookingCalendar({ selectedDate, onSelect }) {
   const toISO = (y, m, d) =>
     `${y}-${String(m + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
 
+  // Build set of working day-of-week numbers (JS: 0=Sun, 1=Mon...6=Sat)
+  // Backend sends Python weekday: 0=Mon...6=Sun — convert to JS
+  // Python 0(Mon)→JS 1, Python 1(Tue)→JS 2 ... Python 5(Sat)→JS 6, Python 6(Sun)→JS 0
+  const workingDowSet = new Set(
+    workingDays.map((w) => (w.day_of_week + 1) % 7),
+  );
+  const hasSchedule = workingDays.length > 0;
+  const timeOffSet = new Set(timeOffDates);
+
   const cells = [];
   for (let i = 0; i < firstDay; i++) cells.push(null);
   for (let d = 1; d <= daysInMonth; d++) cells.push(d);
+
+  // Build working day labels for legend
+  const DOW_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
   return (
     <div
       style={{
         background: "#0a0a0a",
         border: "1px solid rgba(255,255,255,0.1)",
-        padding: "16px",
+        overflow: "hidden",
+        clipPath:
+          "polygon(0 0,calc(100% - 10px) 0,100% 10px,100% 100%,10px 100%,0 calc(100% - 10px))",
       }}
     >
       {/* Month nav */}
       <div
         style={{
+          background: "#000",
+          padding: "12px 16px",
+          borderBottom: "1px solid rgba(255,255,255,0.07)",
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
-          marginBottom: 14,
         }}
       >
         <button
@@ -182,6 +203,15 @@ function BookingCalendar({ selectedDate, onSelect }) {
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
+            transition: "all 0.2s",
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.borderColor = "#f59e0b";
+            e.currentTarget.style.color = "#f59e0b";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)";
+            e.currentTarget.style.color = "#71717a";
           }}
         >
           ‹
@@ -212,127 +242,237 @@ function BookingCalendar({ selectedDate, onSelect }) {
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
+            transition: "all 0.2s",
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.borderColor = "#f59e0b";
+            e.currentTarget.style.color = "#f59e0b";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)";
+            e.currentTarget.style.color = "#71717a";
           }}
         >
           ›
         </button>
       </div>
 
-      {/* Day headers */}
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(7,1fr)",
-          gap: 2,
-          marginBottom: 4,
-        }}
-      >
-        {DAYS.map((d) => (
-          <div
-            key={d}
-            style={{
-              ...mono,
-              fontSize: 9,
-              color: "#3f3f46",
-              textAlign: "center",
-              padding: "4px 0",
-              textTransform: "uppercase",
-            }}
-          >
-            {d}
-          </div>
-        ))}
-      </div>
-
-      {/* Date cells */}
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(7,1fr)",
-          gap: 2,
-        }}
-      >
-        {cells.map((day, i) => {
-          if (!day) return <div key={`e${i}`} />;
-          const iso = toISO(viewYear, viewMonth, day);
-          const date = new Date(viewYear, viewMonth, day);
-          const isPast = date < today;
-          const isSunday = date.getDay() === 0;
-          const disabled = isPast || isSunday;
-          const isToday =
-            iso ===
-            toISO(today.getFullYear(), today.getMonth(), today.getDate());
-          const selected = iso === selectedDate;
-
-          return (
-            <button
-              key={iso}
-              onClick={() => !disabled && onSelect(iso)}
-              disabled={disabled}
+      <div style={{ padding: "12px 12px 14px" }}>
+        {/* Day headers */}
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(7,1fr)",
+            gap: 2,
+            marginBottom: 4,
+          }}
+        >
+          {DAYS.map((d) => (
+            <div
+              key={d}
               style={{
-                aspectRatio: "1",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
                 ...mono,
-                fontSize: 12,
-                fontWeight: selected ? 700 : 400,
-                background: selected
-                  ? "#f59e0b"
-                  : isToday
-                    ? "rgba(245,158,11,0.1)"
-                    : "transparent",
-                color: selected
-                  ? "black"
-                  : disabled
-                    ? "#27272a"
-                    : isToday
-                      ? "#f59e0b"
-                      : "white",
-                border: selected
-                  ? "1px solid #f59e0b"
-                  : isToday
-                    ? "1px solid rgba(245,158,11,0.3)"
-                    : "1px solid transparent",
-                cursor: disabled ? "not-allowed" : "pointer",
-                borderRadius: 0,
-                transition: "all 0.15s",
-              }}
-              onMouseEnter={(e) => {
-                if (!disabled && !selected) {
-                  e.currentTarget.style.background = "rgba(245,158,11,0.15)";
-                  e.currentTarget.style.borderColor = "rgba(245,158,11,0.3)";
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (!disabled && !selected) {
-                  e.currentTarget.style.background = isToday
-                    ? "rgba(245,158,11,0.1)"
-                    : "transparent";
-                  e.currentTarget.style.borderColor = isToday
-                    ? "rgba(245,158,11,0.3)"
-                    : "transparent";
-                }
+                fontSize: 9,
+                color: "#52525b",
+                textAlign: "center",
+                padding: "4px 0",
+                textTransform: "uppercase",
               }}
             >
-              {day}
-            </button>
-          );
-        })}
-      </div>
+              {d}
+            </div>
+          ))}
+        </div>
 
-      {/* Closed notice */}
-      <p
-        style={{
-          ...mono,
-          fontSize: 9,
-          color: "#27272a",
-          marginTop: 10,
-          textAlign: "center",
-        }}
-      >
-        Sundays — Closed
-      </p>
+        {/* Date cells */}
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(7,1fr)",
+            gap: 3,
+          }}
+        >
+          {cells.map((day, i) => {
+            if (!day) return <div key={`e${i}`} />;
+            const iso = toISO(viewYear, viewMonth, day);
+            const date = new Date(viewYear, viewMonth, day);
+            const jsDow = date.getDay(); // 0=Sun...6=Sat
+            const isPast = date < today;
+            const isTimeOff = timeOffSet.has(iso);
+            // If barber has a schedule set, check if this day is a working day
+            const isOffDay = hasSchedule
+              ? !workingDowSet.has(jsDow)
+              : jsDow === 0; // default: only block Sunday
+            const disabled = isPast || isOffDay || isTimeOff;
+            const isToday =
+              iso ===
+              toISO(today.getFullYear(), today.getMonth(), today.getDate());
+            const selected = iso === selectedDate;
+
+            return (
+              <button
+                key={iso}
+                onClick={() => !disabled && onSelect(iso)}
+                disabled={disabled}
+                style={{
+                  aspectRatio: "1",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  position: "relative",
+                  overflow: "hidden",
+                  ...mono,
+                  fontSize: 11,
+                  fontWeight: selected ? 700 : 400,
+                  background: selected
+                    ? "#f59e0b"
+                    : isToday
+                      ? "rgba(245,158,11,0.1)"
+                      : "transparent",
+                  color: selected
+                    ? "black"
+                    : disabled
+                      ? "#2a2a2a"
+                      : isToday
+                        ? "#f59e0b"
+                        : "#d4d4d4",
+                  border: selected
+                    ? "1px solid #f59e0b"
+                    : isToday
+                      ? "1px solid rgba(245,158,11,0.3)"
+                      : "1px solid transparent",
+                  cursor: disabled ? "not-allowed" : "pointer",
+                  borderRadius: 0,
+                  transition: "all 0.15s",
+                }}
+                onMouseEnter={(e) => {
+                  if (!disabled && !selected) {
+                    e.currentTarget.style.background = "rgba(245,158,11,0.15)";
+                    e.currentTarget.style.borderColor = "rgba(245,158,11,0.3)";
+                    e.currentTarget.style.color = "#f59e0b";
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (!disabled && !selected) {
+                    e.currentTarget.style.background = isToday
+                      ? "rgba(245,158,11,0.1)"
+                      : "transparent";
+                    e.currentTarget.style.borderColor = isToday
+                      ? "rgba(245,158,11,0.3)"
+                      : "transparent";
+                    e.currentTarget.style.color = isToday
+                      ? "#f59e0b"
+                      : "#d4d4d4";
+                  }
+                }}
+              >
+                {/* Diagonal slash on unavailable days */}
+                {(isOffDay || isTimeOff) && !isPast && (
+                  <svg
+                    style={{
+                      position: "absolute",
+                      inset: 0,
+                      width: "100%",
+                      height: "100%",
+                      pointerEvents: "none",
+                    }}
+                    viewBox="0 0 40 40"
+                  >
+                    <line
+                      x1="2"
+                      y1="38"
+                      x2="38"
+                      y2="2"
+                      stroke="rgba(248,113,113,0.25)"
+                      strokeWidth="1.5"
+                    />
+                  </svg>
+                )}
+
+                <span style={{ position: "relative", zIndex: 1 }}>{day}</span>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Legend */}
+        <div
+          style={{
+            display: "flex",
+            gap: 12,
+            marginTop: 12,
+            paddingTop: 10,
+            borderTop: "1px solid rgba(255,255,255,0.05)",
+            flexWrap: "wrap",
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+            <div
+              style={{
+                width: 14,
+                height: 14,
+                background: "rgba(245,158,11,0.1)",
+                border: "1px solid rgba(245,158,11,0.3)",
+              }}
+            />
+            <span style={{ ...mono, fontSize: 8, color: "#52525b" }}>
+              Today
+            </span>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+            <div
+              style={{
+                width: 14,
+                height: 14,
+                background: "rgba(248,113,113,0.06)",
+                border: "1px solid rgba(248,113,113,0.1)",
+                position: "relative",
+                overflow: "hidden",
+              }}
+            >
+              <svg
+                style={{
+                  position: "absolute",
+                  inset: 0,
+                  width: "100%",
+                  height: "100%",
+                }}
+                viewBox="0 0 14 14"
+              >
+                <line
+                  x1="1"
+                  y1="13"
+                  x2="13"
+                  y2="1"
+                  stroke="rgba(248,113,113,0.4)"
+                  strokeWidth="1.5"
+                />
+              </svg>
+            </div>
+            <span style={{ ...mono, fontSize: 8, color: "#52525b" }}>
+              Unavailable
+            </span>
+          </div>
+          {hasSchedule && (
+            <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+              <div
+                style={{
+                  width: 14,
+                  height: 14,
+                  background: "rgba(245,158,11,0.15)",
+                  border: "1px solid rgba(245,158,11,0.4)",
+                }}
+              />
+              <span style={{ ...mono, fontSize: 8, color: "#52525b" }}>
+                Open:{" "}
+                {workingDays
+                  .map((w) => DOW_NAMES[(w.day_of_week + 1) % 7])
+                  .join(", ")}
+              </span>
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
@@ -511,6 +651,8 @@ function BookContent() {
   const [step, setStep] = useState(1);
   const [selectedService, setSelectedService] = useState(null);
   const [selectedBarber, setSelectedBarber] = useState(null);
+  const [workingDays, setWorkingDays] = useState([]);
+  const [timeOffDates, setTimeOffDates] = useState([]);
   const [selectedDate, setSelectedDate] = useState("");
   const [selectedTime, setSelectedTime] = useState("");
   const [paymentMethod, setPaymentMethod] = useState("online"); // "online" | "shop"
@@ -1296,6 +1438,18 @@ function BookContent() {
                         key={b.id}
                         onClick={() => {
                           setSelectedBarber(b);
+                          setSelectedDate("");
+                          setSelectedTime("");
+                          // Fetch this barber's working days so calendar can show availability
+                          API.get(`barbers/${b.id}/working-days/`)
+                            .then((r) => {
+                              setWorkingDays(r.data.working_days || []);
+                              setTimeOffDates(r.data.time_off_dates || []);
+                            })
+                            .catch(() => {
+                              setWorkingDays([]);
+                              setTimeOffDates([]);
+                            });
                           setStep(3);
                         }}
                         style={{
@@ -1524,13 +1678,15 @@ function BookContent() {
                     >
                       Select Date
                     </label>
-                    {/* v2 — visual calendar */}
+                    {/* v2 — visual calendar with barber availability */}
                     <BookingCalendar
                       selectedDate={selectedDate}
                       onSelect={(date) => {
                         setSelectedDate(date);
                         setSelectedTime("");
                       }}
+                      workingDays={workingDays}
+                      timeOffDates={timeOffDates}
                     />
                   </div>
 

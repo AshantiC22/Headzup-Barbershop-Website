@@ -1947,6 +1947,50 @@ class AdminAppointmentUpdateView(APIView):
 
 
 # ── Available slots ───────────────────────────────────────────────────────────
+class BarberWorkingDaysView(APIView):
+    """
+    GET barbers/<pk>/working-days/
+    Returns which days of the week this barber works so the booking
+    calendar can grey out unavailable days.
+    Public — no auth required.
+    """
+    permission_classes = [AllowAny]
+
+    def get(self, request, pk):
+        from datetime import date as date_type, timedelta
+        import calendar
+
+        # Get barber availability
+        avail_qs = BarberAvailability.objects.filter(barber_id=pk)
+        avail_map = {a.day_of_week: a for a in avail_qs}
+
+        # Build working_days list: 0=Mon ... 6=Sun (Python weekday)
+        # If no availability row exists for a day, default to not working
+        working_days = []
+        for dow in range(7):
+            a = avail_map.get(dow)
+            if a and a.is_working:
+                working_days.append({
+                    "day_of_week": dow,  # 0=Mon, 6=Sun
+                    "start_time":  str(a.start_time),
+                    "end_time":    str(a.end_time),
+                })
+
+        # Also get time-off dates for the next 90 days
+        today    = date_type.today()
+        end_date = today + timedelta(days=90)
+        time_off_dates = list(
+            BarberTimeOff.objects.filter(
+                barber_id=pk, date__gte=today, date__lte=end_date
+            ).values_list("date", flat=True)
+        )
+
+        return Response({
+            "working_days":   working_days,
+            "time_off_dates": [str(d) for d in time_off_dates],
+        })
+
+
 class AvailableSlotsView(APIView):
     permission_classes = [IsAuthenticated]
 
