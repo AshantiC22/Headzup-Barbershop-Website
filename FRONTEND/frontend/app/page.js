@@ -2017,6 +2017,20 @@ export default function HomePage() {
         .rv.d3 {
           transition-delay: 0.24s;
         }
+        .donly {
+          display: flex !important;
+        }
+        .monly {
+          display: none !important;
+        }
+        @media (max-width: 768px) {
+          .donly {
+            display: none !important;
+          }
+          .monly {
+            display: flex !important;
+          }
+        }
       `}</style>
 
       {/* BG */}
@@ -2127,6 +2141,7 @@ export default function HomePage() {
                 ["#barber", "Barbers"],
                 ["#reviews", "Reviews"],
                 ["#location", "Visit"],
+                ["/newsletter", "News"],
               ].map(([h, l]) => (
                 <a
                   key={l}
@@ -2331,6 +2346,7 @@ export default function HomePage() {
               ["#barber", "Barbers"],
               ["#reviews", "Reviews"],
               ["#location", "Visit"],
+              ["/newsletter", "News"],
             ].map(([h, l]) => (
               <a
                 key={l}
