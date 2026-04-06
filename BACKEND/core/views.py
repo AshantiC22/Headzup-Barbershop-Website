@@ -2488,28 +2488,68 @@ class AvailableSlotsView(APIView):
 
 # ── Barber portal views ───────────────────────────────────────────────────────
 class BarberMeUpdateView(APIView):
-    """PATCH barber/me/update/ — lets barber update their Cash App tag and bio"""
+    """PATCH barber/me/update/ — lets barber update Cash App tag, bio, and profile photo"""
     permission_classes = [IsAuthenticated]
 
     def patch(self, request):
+        import base64, io
+        from django.core.files.base import ContentFile
+        import logging
+        logger = logging.getLogger(__name__)
+
         barber = get_barber_for_user(request.user)
         if not barber:
             return Response({"error": "Not a barber account"}, status=403)
 
         if "cashapp_tag" in request.data:
             tag = request.data["cashapp_tag"].strip()
-            if not tag.startswith("$"):
+            if tag and not tag.startswith("$"):
                 tag = f"${tag}"
             barber.cashapp_tag = tag
 
         if "bio" in request.data:
             barber.bio = request.data["bio"]
 
+        # Photo upload — accepts base64 encoded image string
+        # Format: "data:image/jpeg;base64,/9j/4AAQ..." or just the raw base64
+        if "photo" in request.data:
+            photo_data = request.data["photo"]
+            try:
+                if "," in photo_data:
+                    # Strip data URL header
+                    header, b64 = photo_data.split(",", 1)
+                    # Detect mime type from header
+                    ext = "jpg"
+                    if "png" in header:
+                        ext = "png"
+                    elif "webp" in header:
+                        ext = "webp"
+                else:
+                    b64 = photo_data
+                    ext = "jpg"
+
+                img_bytes = base64.b64decode(b64)
+                filename  = f"barber_{barber.id}.{ext}"
+                barber.photo.save(filename, ContentFile(img_bytes), save=False)
+                logger.info(f"Photo uploaded for barber {barber.id}")
+            except Exception as e:
+                logger.error(f"Photo upload failed: {e}")
+                return Response({"error": "Photo upload failed. Please try a smaller image."}, status=400)
+
         barber.save()
+
+        photo_url = None
+        if barber.photo:
+            try:
+                photo_url = request.build_absolute_uri(barber.photo.url)
+            except Exception:
+                pass
+
         return Response({
             "message":     "Updated",
             "cashapp_tag": barber.cashapp_tag,
             "bio":         barber.bio,
+            "photo_url":   photo_url,
         })
 
 
@@ -2526,10 +2566,19 @@ class BarberMeView(APIView):
         online_appts = Appointment.objects.filter(barber=barber, payment_method="online", status__in=["confirmed","completed"])
         online_rev  = sum(float(a.service.price) for a in online_appts if a.service)
         shop_count  = Appointment.objects.filter(barber=barber, payment_method="shop", status__in=["confirmed","completed"]).count()
+        photo_url = None
+        if barber.photo:
+            try:
+                photo_url = request.build_absolute_uri(barber.photo.url)
+            except Exception:
+                pass
+
         return Response({
             "id":             barber.id,
             "name":           barber.name,
             "bio":            barber.bio,
+            "cashapp_tag":    barber.cashapp_tag or "",
+            "photo_url":      photo_url,
             "today_count":    today_appts,
             "total_count":    total_appts,
             "online_revenue": f"{online_rev:.2f}",

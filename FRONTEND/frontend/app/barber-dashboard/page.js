@@ -1832,6 +1832,9 @@ export default function BarberDashboard() {
   const [nlEditing, setNlEditing] = useState(null);
   const [nlError, setNlError] = useState("");
   const [nlSuccess, setNlSuccess] = useState("");
+  // Photo upload
+  const [photoPreview, setPhotoPreview] = useState(null);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
   // Reschedules
   const [reschedules, setReschedules] = useState([]);
   const [reschedLoading, setReschedLoading] = useState(false);
@@ -7416,7 +7419,237 @@ export default function BarberDashboard() {
         {/* ══ AVAILABILITY TAB ══ */}
         {activeTab === "availability" && (
           <div className="bd-enter" style={{ maxWidth: 640 }}>
-            {/* ── Stripe Connect ── */}
+            {/* ── PROFILE PHOTO ── */}
+            <div
+              style={{
+                marginBottom: 28,
+                padding: "20px",
+                background: T.surface,
+                border: `1px solid ${T.border}`,
+                clipPath:
+                  "polygon(0 0,calc(100% - 10px) 0,100% 10px,100% 100%,10px 100%,0 calc(100% - 10px))",
+              }}
+            >
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 14,
+                  marginBottom: 16,
+                }}
+              >
+                <div
+                  style={{
+                    width: 3,
+                    height: 28,
+                    background: T.amber,
+                    flexShrink: 0,
+                  }}
+                />
+                <div>
+                  <p
+                    style={{
+                      ...mono,
+                      fontSize: 7,
+                      color: "rgba(245,158,11,0.5)",
+                      letterSpacing: "0.5em",
+                      textTransform: "uppercase",
+                      marginBottom: 2,
+                    }}
+                  >
+                    Profile
+                  </p>
+                  <p
+                    style={{
+                      ...sf,
+                      fontSize: 13,
+                      fontWeight: 900,
+                      textTransform: "uppercase",
+                    }}
+                  >
+                    Your Photo
+                  </p>
+                </div>
+              </div>
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 20,
+                  flexWrap: "wrap",
+                }}
+              >
+                {/* Current photo or placeholder */}
+                <div
+                  style={{
+                    width: 80,
+                    height: 80,
+                    flexShrink: 0,
+                    overflow: "hidden",
+                    background: "#111",
+                    border: `2px solid ${T.amberBorder}`,
+                    clipPath:
+                      "polygon(0 0,calc(100% - 8px) 0,100% 8px,100% 100%,8px 100%,0 calc(100% - 8px))",
+                  }}
+                >
+                  {photoPreview || barber?.photo_url ? (
+                    <img
+                      src={photoPreview || barber.photo_url}
+                      alt="profile"
+                      style={{
+                        width: "100%",
+                        height: "100%",
+                        objectFit: "cover",
+                      }}
+                    />
+                  ) : (
+                    <div
+                      style={{
+                        width: "100%",
+                        height: "100%",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                      }}
+                    >
+                      <span
+                        style={{
+                          ...sf,
+                          fontSize: 26,
+                          fontWeight: 900,
+                          color: T.amber,
+                        }}
+                      >
+                        {barber?.name?.charAt(0)?.toUpperCase() || "B"}
+                      </span>
+                    </div>
+                  )}
+                </div>
+                <div style={{ flex: 1 }}>
+                  <p
+                    style={{
+                      ...mono,
+                      fontSize: 11,
+                      color: "#a1a1aa",
+                      marginBottom: 10,
+                      lineHeight: 1.6,
+                    }}
+                  >
+                    This photo shows on the home page barber selector. Use a
+                    clear photo of your face against a clean background.
+                  </p>
+                  <label style={{ display: "inline-block", cursor: "pointer" }}>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      style={{ display: "none" }}
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+                        if (file.size > 5 * 1024 * 1024) {
+                          showToast("Image must be under 5MB", "error");
+                          return;
+                        }
+                        // Preview immediately
+                        const reader = new FileReader();
+                        reader.onload = (ev) =>
+                          setPhotoPreview(ev.target.result);
+                        reader.readAsDataURL(file);
+                      }}
+                    />
+                    <span
+                      style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: 6,
+                        padding: "9px 18px",
+                        background: T.amberDim,
+                        border: `1px solid ${T.amberBorder}`,
+                        color: T.amber,
+                        ...sf,
+                        fontSize: 7,
+                        fontWeight: 700,
+                        letterSpacing: "0.2em",
+                        textTransform: "uppercase",
+                        transition: "all 0.2s",
+                      }}
+                      onMouseEnter={(e) =>
+                        (e.currentTarget.style.background =
+                          "rgba(245,158,11,0.2)")
+                      }
+                      onMouseLeave={(e) =>
+                        (e.currentTarget.style.background = T.amberDim)
+                      }
+                    >
+                      📷 Choose Photo
+                    </span>
+                  </label>
+                  {photoPreview && (
+                    <button
+                      onClick={async () => {
+                        setUploadingPhoto(true);
+                        try {
+                          await API.patch("barber/me/update/", {
+                            photo: photoPreview,
+                          });
+                          setBarber((b) => ({ ...b, photo_url: photoPreview }));
+                          setPhotoPreview(null);
+                          showToast(
+                            "✓ Photo updated! It will appear on the home page.",
+                          );
+                        } catch (e) {
+                          showToast(
+                            e.response?.data?.error ||
+                              "Upload failed. Try a smaller image.",
+                            "error",
+                          );
+                        } finally {
+                          setUploadingPhoto(false);
+                        }
+                      }}
+                      disabled={uploadingPhoto}
+                      style={{
+                        marginLeft: 10,
+                        padding: "9px 18px",
+                        background: uploadingPhoto ? "#111" : "#f59e0b",
+                        color: uploadingPhoto ? "#52525b" : "black",
+                        ...sf,
+                        fontSize: 7,
+                        fontWeight: 700,
+                        letterSpacing: "0.2em",
+                        textTransform: "uppercase",
+                        border: "none",
+                        cursor: uploadingPhoto ? "not-allowed" : "pointer",
+                        transition: "all 0.2s",
+                        clipPath:
+                          "polygon(0 0,calc(100% - 6px) 0,100% 6px,100% 100%,6px 100%,0 calc(100% - 6px))",
+                      }}
+                    >
+                      {uploadingPhoto ? "Uploading..." : "Save Photo →"}
+                    </button>
+                  )}
+                  {photoPreview && (
+                    <button
+                      onClick={() => setPhotoPreview(null)}
+                      style={{
+                        marginLeft: 8,
+                        padding: "9px 14px",
+                        background: "transparent",
+                        border: `1px solid ${T.border}`,
+                        color: T.muted,
+                        ...sf,
+                        fontSize: 7,
+                        letterSpacing: "0.1em",
+                        textTransform: "uppercase",
+                        cursor: "pointer",
+                      }}
+                    >
+                      Cancel
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
             <div
               style={{
                 display: "flex",
