@@ -4,6 +4,7 @@ from rest_framework_simplejwt.views import TokenRefreshView
 
 from core.views import (
     BarberViewSet,
+    ClientStrikeStatusView,
     ServiceViewSet,
     AppointmentViewSet,
     UserProfileViewSet,
