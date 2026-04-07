@@ -4,7 +4,6 @@ from rest_framework_simplejwt.views import TokenRefreshView
 
 from core.views import (
     BarberViewSet,
-    ClientStrikeStatusView,
     ServiceViewSet,
     AppointmentViewSet,
     UserProfileViewSet,
@@ -30,6 +29,7 @@ from core.views import (
     NewsletterPostListView,
     NewsletterPostManageView,
     AcceptTermsView,
+    UpdatePhoneView,
     DepositCheckoutView,
     DepositSuccessView,
     IssueStrikeView,
@@ -99,6 +99,7 @@ urlpatterns = [
     # Strike & deposit system
     path("client/strike-status/",               ClientStrikeStatusView.as_view(),   name="strike_status"),
     path("client/accept-terms/",                AcceptTermsView.as_view(),           name="accept_terms"),
+    path("client/update-phone/",                UpdatePhoneView.as_view(),            name="update_phone"),
     path("deposit/checkout/",                   DepositCheckoutView.as_view(),       name="deposit_checkout"),
     path("deposit-success/",                    DepositSuccessView.as_view(),        name="deposit_success"),
     path("barber/appointments/<int:pk>/strike/",IssueStrikeView.as_view(),           name="issue_strike"),

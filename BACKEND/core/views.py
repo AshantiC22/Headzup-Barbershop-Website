@@ -1144,6 +1144,286 @@ def send_review_request_email(appointment):
     threading.Thread(target=_send, daemon=True).start()
 
 
+def _twilio_send(to_phone, body):
+    """
+    Send SMS via Twilio REST API — no SDK needed, pure HTTP.
+    Silently skips if TWILIO_ACCOUNT_SID / TWILIO_AUTH_TOKEN / TWILIO_FROM_NUMBER not set.
+    to_phone must be E.164 format: +16015551234
+    """
+    import urllib.request
+    import urllib.parse
+    import base64
+    import logging
+    logger = logging.getLogger(__name__)
+
+    account_sid = getattr(settings, "TWILIO_ACCOUNT_SID", "")
+    auth_token  = getattr(settings, "TWILIO_AUTH_TOKEN",  "")
+    from_number = getattr(settings, "TWILIO_FROM_NUMBER", "")
+
+    if not account_sid or not auth_token or not from_number:
+        logger.debug("Twilio not configured — skipping SMS")
+        return
+    if not to_phone or not to_phone.startswith("+"):
+        logger.debug(f"Invalid phone number for SMS: {to_phone!r}")
+        return
+
+    url  = f"https://api.twilio.com/2010-04-01/Accounts/{account_sid}/Messages.json"
+    data = urllib.parse.urlencode({
+        "To":   to_phone,
+        "From": from_number,
+        "Body": body,
+    }).encode("utf-8")
+    creds = base64.b64encode(f"{account_sid}:{auth_token}".encode()).decode()
+
+    try:
+        req = urllib.request.Request(
+            url, data=data,
+            headers={
+                "Authorization": f"Basic {creds}",
+                "Content-Type":  "application/x-www-form-urlencoded",
+            },
+            method="POST",
+        )
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            logger.info(f"SMS sent to {to_phone} — Twilio {resp.status}")
+    except Exception as e:
+        logger.error(f"Twilio SMS failed to {to_phone}: {e}")
+
+
+def _get_client_phone(user):
+    """Get client phone from UserProfile. Returns None if not set."""
+    try:
+        profile = user.profile
+        return profile.phone.strip() if profile.phone else None
+    except Exception:
+        return None
+
+
+def _get_barber_phone(barber):
+    """Get barber's phone from their User account (stored in UserProfile)."""
+    try:
+        if barber and barber.user:
+            return _get_client_phone(barber.user)
+    except Exception:
+        pass
+    return None
+
+
+# ── SMS notification functions ────────────────────────────────────────────────
+
+def sms_booking_confirmation(appointment):
+    """Client + barber both get an SMS when a booking is made."""
+    import threading
+    try:
+        client_phone = _get_client_phone(appointment.user)
+        barber_phone = _get_barber_phone(appointment.barber)
+        client_name  = appointment.user.first_name or appointment.user.username
+        barber_name  = appointment.barber.name if appointment.barber else "Your barber"
+        service_name = appointment.service.name if appointment.service else "Appointment"
+        appt_date    = appointment.date.strftime("%a %b %d")
+        appt_time    = appointment.time.strftime("%I:%M %p").lstrip("0")
+    except Exception:
+        return
+
+    def _send():
+        if client_phone:
+            _twilio_send(client_phone,
+                f"✂️ HEADZ UP: Booking confirmed!\n"
+                f"{service_name} w/ {barber_name}\n"
+                f"{appt_date} at {appt_time}\n"
+                f"2509 W 4th St, Hattiesburg MS\n"
+                f"Manage: {FRONTEND_URL}/dashboard"
+            )
+        if barber_phone:
+            _twilio_send(barber_phone,
+                f"📅 HEADZ UP: New booking!\n"
+                f"Client: {client_name}\n"
+                f"Service: {service_name}\n"
+                f"{appt_date} at {appt_time}"
+            )
+    threading.Thread(target=_send, daemon=True).start()
+
+
+def sms_reschedule_request(reschedule_request):
+    """Client gets SMS confirmation; barber gets SMS alert to check email."""
+    import threading
+    rr   = reschedule_request
+    appt = rr.appointment
+    try:
+        client_phone = _get_client_phone(appt.user)
+        barber_phone = _get_barber_phone(appt.barber)
+        client_name  = appt.user.first_name or appt.user.username
+        barber_name  = appt.barber.name
+        new_date     = rr.new_date.strftime("%a %b %d")
+        new_time     = rr.new_time.strftime("%I:%M %p").lstrip("0")
+        old_date     = appt.date.strftime("%a %b %d")
+        old_time     = appt.time.strftime("%I:%M %p").lstrip("0")
+    except Exception:
+        return
+
+    def _send():
+        if client_phone:
+            _twilio_send(client_phone,
+                f"↻ HEADZ UP: Reschedule request received.\n"
+                f"Requested: {new_date} at {new_time}\n"
+                f"Original: {old_date} at {old_time}\n"
+                f"{barber_name} will review and confirm soon."
+            )
+        if barber_phone:
+            _twilio_send(barber_phone,
+                f"↻ HEADZ UP: {client_name} wants to reschedule.\n"
+                f"New: {new_date} at {new_time}\n"
+                f"Check your email or dashboard to approve/decline:\n"
+                f"{FRONTEND_URL}/barber-dashboard"
+            )
+    threading.Thread(target=_send, daemon=True).start()
+
+
+def sms_reschedule_response(reschedule_request, accepted):
+    """Client gets SMS with result of their reschedule request."""
+    import threading
+    rr   = reschedule_request
+    appt = rr.appointment
+    try:
+        client_phone = _get_client_phone(appt.user)
+        barber_name  = appt.barber.name
+        new_date     = rr.new_date.strftime("%a %b %d")
+        new_time     = rr.new_time.strftime("%I:%M %p").lstrip("0")
+        old_date     = appt.date.strftime("%a %b %d")
+        old_time     = appt.time.strftime("%I:%M %p").lstrip("0")
+    except Exception:
+        return
+
+    def _send():
+        if client_phone:
+            if accepted:
+                _twilio_send(client_phone,
+                    f"✅ HEADZ UP: Reschedule APPROVED by {barber_name}!\n"
+                    f"New appointment: {new_date} at {new_time}\n"
+                    f"2509 W 4th St, Hattiesburg MS"
+                )
+            else:
+                _twilio_send(client_phone,
+                    f"❌ HEADZ UP: Reschedule declined by {barber_name}.\n"
+                    f"Your original appointment stands:\n"
+                    f"{old_date} at {old_time}"
+                )
+    threading.Thread(target=_send, daemon=True).start()
+
+
+def sms_cancellation(appointment, cancelled_by="client"):
+    """Notify the other party when an appointment is cancelled."""
+    import threading
+    try:
+        client_phone = _get_client_phone(appointment.user)
+        barber_phone = _get_barber_phone(appointment.barber)
+        client_name  = appointment.user.first_name or appointment.user.username
+        barber_name  = appointment.barber.name if appointment.barber else "barber"
+        service_name = appointment.service.name if appointment.service else "appointment"
+        appt_date    = appointment.date.strftime("%a %b %d")
+        appt_time    = appointment.time.strftime("%I:%M %p").lstrip("0")
+    except Exception:
+        return
+
+    def _send():
+        if cancelled_by == "client" and barber_phone:
+            _twilio_send(barber_phone,
+                f"📅 HEADZ UP: {client_name} cancelled.\n"
+                f"Service: {service_name}\n"
+                f"{appt_date} at {appt_time} — slot is now open."
+            )
+        elif cancelled_by == "barber" and client_phone:
+            _twilio_send(client_phone,
+                f"📅 HEADZ UP: Your appointment with {barber_name} was cancelled.\n"
+                f"Was: {appt_date} at {appt_time}\n"
+                f"Please rebook: {FRONTEND_URL}/book"
+            )
+    threading.Thread(target=_send, daemon=True).start()
+
+
+def sms_strike(user, profile, reason):
+    """Client gets SMS when a strike is issued."""
+    import threading
+    try:
+        phone      = _get_client_phone(user)
+        label      = "No Show" if reason == "no_show" else "Late Cancellation"
+        deposit    = profile.get_deposit_fee()
+        strikes    = profile.strike_count
+    except Exception:
+        return
+
+    def _send():
+        if phone:
+            _twilio_send(phone,
+                f"⚡ HEADZ UP: Strike #{strikes} added ({label}).\n"
+                f"Your next deposit: ${deposit:.2f}\n"
+                f"View account: {FRONTEND_URL}/dashboard"
+            )
+    threading.Thread(target=_send, daemon=True).start()
+
+
+def sms_welcome(user):
+    """New client gets a welcome SMS."""
+    import threading
+    try:
+        phone = _get_client_phone(user)
+        name  = user.first_name or user.username
+    except Exception:
+        return
+
+    def _send():
+        if phone:
+            _twilio_send(phone,
+                f"✂️ Welcome to HEADZ UP, {name}!\n"
+                f"Book your first appointment:\n"
+                f"{FRONTEND_URL}/book\n"
+                f"2509 W 4th St, Hattiesburg MS"
+            )
+    threading.Thread(target=_send, daemon=True).start()
+
+
+def sms_review_request(appointment):
+    """Client gets SMS asking for a review after their cut."""
+    import threading
+    try:
+        phone       = _get_client_phone(appointment.user)
+        barber_name = appointment.barber.name if appointment.barber else "your barber"
+    except Exception:
+        return
+
+    def _send():
+        if phone:
+            _twilio_send(phone,
+                f"⭐ HEADZ UP: How was your cut with {barber_name}?\n"
+                f"Leave a quick review:\n"
+                f"{FRONTEND_URL}/dashboard"
+            )
+    threading.Thread(target=_send, daemon=True).start()
+
+
+def sms_deposit_paid(appointment):
+    """Barber gets SMS when client pays a deposit."""
+    import threading
+    try:
+        barber_phone = _get_barber_phone(appointment.barber)
+        client_name  = appointment.user.first_name or appointment.user.username
+        service_name = appointment.service.name if appointment.service else "Appointment"
+        appt_date    = appointment.date.strftime("%a %b %d")
+        appt_time    = appointment.time.strftime("%I:%M %p").lstrip("0")
+        deposit_amt  = appointment.deposit_amount or "10.00"
+    except Exception:
+        return
+
+    def _send():
+        if barber_phone:
+            _twilio_send(barber_phone,
+                f"💰 HEADZ UP: Deposit received!\n"
+                f"{client_name} paid ${deposit_amt}\n"
+                f"{service_name} — {appt_date} at {appt_time}"
+            )
+    threading.Thread(target=_send, daemon=True).start()
+
+
 # ── Push notification helper ─────────────────────────────────────────────────
 def send_push_notification(user, title, body, data=None):
     """Send a Web Push notification to a user. Silently fails if not subscribed."""
@@ -1193,6 +1473,7 @@ class UserProfileViewSet(viewsets.ModelViewSet):
                 "user", "barber", "barber__user", "service"
             ).get(pk=appt.pk)
             send_booking_confirmation(appt_full)
+            sms_booking_confirmation(appt_full)
         except IntegrityError:
             raise serializers.ValidationError("This time slot is already booked.")
 
@@ -1231,8 +1512,9 @@ class RegisterView(APIView):
                     user=user,
                     defaults={"name": user.username}
                 )
-                # Send welcome email
+                # Send welcome email + SMS
                 send_welcome_email(user)
+                sms_welcome(user)
                 return Response({"message": "Account created successfully"}, status=status.HTTP_201_CREATED)
             except Exception as e:
                 return Response({"detail": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
@@ -1347,6 +1629,7 @@ class AppointmentViewSet(viewsets.ModelViewSet):
                 "user", "barber", "barber__user", "service"
             ).get(pk=appt.pk)
             send_booking_confirmation(appt_full)
+            sms_booking_confirmation(appt_full)
         except IntegrityError:
             raise serializers.ValidationError("That time slot is already booked. Please choose another.")
 
@@ -1370,6 +1653,7 @@ class AppointmentViewSet(viewsets.ModelViewSet):
             "user", "barber", "barber__user", "service"
         ).get(pk=instance.pk)
         send_cancellation_email(appt_full, cancelled_by="client")
+        sms_cancellation(appt_full, cancelled_by="client")
         instance.delete()
 
 
@@ -1666,7 +1950,7 @@ def issue_strike(user, reason="no_show"):
 
 
 class ClientStrikeStatusView(APIView):
-    """GET — returns the client's current strike count and deposit fee."""
+    """GET — returns the client's current strike count, deposit fee, and phone."""
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
@@ -1677,6 +1961,7 @@ class ClientStrikeStatusView(APIView):
             "strike_count":    profile.strike_count,
             "deposit_fee":     str(profile.get_deposit_fee()),
             "terms_accepted":  profile.terms_accepted,
+            "phone":           profile.phone or "",
         })
 
 
@@ -1693,6 +1978,49 @@ class AcceptTermsView(APIView):
         profile.terms_accepted_at = timezone.now()
         profile.save(update_fields=["terms_accepted", "terms_accepted_at"])
         return Response({"message": "Terms accepted", "terms_accepted": True})
+
+
+class UpdatePhoneView(APIView):
+    """
+    PATCH client/update-phone/
+    Lets a client add or update their phone number for SMS reminders.
+    Normalises to E.164 format (+1XXXXXXXXXX).
+    """
+    permission_classes = [IsAuthenticated]
+
+    def patch(self, request):
+        import re, logging
+        logger  = logging.getLogger(__name__)
+        phone   = request.data.get("phone", "").strip()
+
+        if not phone:
+            # Allow clearing the phone number
+            profile, _ = UserProfile.objects.get_or_create(
+                user=request.user, defaults={"name": request.user.username}
+            )
+            profile.phone = ""
+            profile.save(update_fields=["phone"])
+            return Response({"message": "Phone number removed.", "phone": ""})
+
+        # Normalise to +1XXXXXXXXXX
+        digits = re.sub(r"\D", "", phone)
+        if len(digits) == 10:
+            normalised = f"+1{digits}"
+        elif len(digits) == 11 and digits.startswith("1"):
+            normalised = f"+{digits}"
+        else:
+            return Response(
+                {"error": "Please enter a valid 10-digit US phone number."},
+                status=400
+            )
+
+        profile, _ = UserProfile.objects.get_or_create(
+            user=request.user, defaults={"name": request.user.username}
+        )
+        profile.phone = normalised
+        profile.save(update_fields=["phone"])
+        logger.info(f"Phone updated for user {request.user.username}: {normalised}")
+        return Response({"message": "Phone number saved.", "phone": normalised})
 
 
 class DepositCheckoutView(APIView):
@@ -1840,11 +2168,14 @@ class DepositSuccessView(APIView):
                 ).get(pk=appt.pk)
                 send_booking_confirmation(appt_full)
                 send_deposit_paid_email(appt_full)
+                sms_booking_confirmation(appt_full)
+                sms_deposit_paid(appt_full)
             elif not created and not appt.deposit_paid:
                 appt_full = Appointment.objects.select_related(
                     "user", "barber", "barber__user", "service"
                 ).get(pk=appt.pk)
                 send_deposit_paid_email(appt_full)
+                sms_deposit_paid(appt_full)
 
             return redirect(
                 f"{FRONTEND_URL}/booking-confirmed"
@@ -1975,6 +2306,7 @@ class IssueStrikeView(APIView):
         # Email the client
         try:
             send_strike_email(appt.user, profile, reason, appt)
+            sms_strike(appt.user, profile, reason)
         except Exception:
             pass
 
@@ -2669,6 +3001,7 @@ class BarberAppointmentUpdateView(APIView):
             ).get(pk=appt.pk)
             _schedule_review_notification(appt_full)
             send_review_request_email(appt_full)
+            sms_review_request(appt_full)
 
         return Response({"message": "Updated", "id": appt.id, "barber_notes": appt.barber_notes})
 
@@ -2679,6 +3012,7 @@ class BarberAppointmentUpdateView(APIView):
         try:
             appt = Appointment.objects.get(pk=pk, barber=barber)
             send_cancellation_email(appt, cancelled_by="barber")
+            sms_cancellation(appt, cancelled_by="barber")
             appt.delete()
             return Response({"message": "Deleted"}, status=204)
         except Appointment.DoesNotExist:
@@ -3582,6 +3916,7 @@ class BarberRescheduleListView(APIView):
                 "appointment__service",
             ).get(pk=rr.pk)
             send_reschedule_response_email(rr_full, accepted=True)
+            sms_reschedule_response(rr_full, accepted=True)
             return Response({"message": "Reschedule approved — client has been notified."})
         else:
             rr.status = "rejected"
@@ -3592,6 +3927,7 @@ class BarberRescheduleListView(APIView):
                 "appointment__service",
             ).get(pk=rr.pk)
             send_reschedule_response_email(rr_full, accepted=False)
+            sms_reschedule_response(rr_full, accepted=False)
             return Response({"message": "Reschedule declined — client has been notified."})
 
 
@@ -3639,6 +3975,7 @@ class ClientRescheduleRequestView(APIView):
 
         logger.info(f"Reschedule request created id={rr.pk} for appt={appt.pk} by {request.user.username}")
         send_reschedule_request_email(rr_full)
+        sms_reschedule_request(rr_full)
         return Response({"message": "Reschedule request sent to your barber.", "id": rr.id})
 
 
@@ -3675,6 +4012,7 @@ class RescheduleResponseView(APIView):
                 "appointment__service",
             ).get(pk=rr.pk)
             send_reschedule_response_email(rr_full, accepted=True)
+            sms_reschedule_response(rr_full, accepted=True)
             return redirect(f"{FRONTEND_URL}/dashboard?reschedule=accepted")
         else:
             rr.status = "rejected"
@@ -3685,6 +4023,7 @@ class RescheduleResponseView(APIView):
                 "appointment__service",
             ).get(pk=rr.pk)
             send_reschedule_response_email(rr_full, accepted=False)
+            sms_reschedule_response(rr_full, accepted=False)
             return redirect(f"{FRONTEND_URL}/dashboard?reschedule=rejected")
 
 

@@ -376,6 +376,10 @@ function DashboardContent() {
   const [reschedAppt, setReschedAppt] = useState(null);
   const [time, setTime] = useState("");
   const [strikeInfo, setStrikeInfo] = useState(null);
+  const [phoneNumber, setPhoneNumber] = useState("");
+  const [editingPhone, setEditingPhone] = useState(false);
+  const [phoneInput, setPhoneInput] = useState("");
+  const [phoneSaving, setPhoneSaving] = useState(false);
 
   const showToast = (msg, type = "success") => {
     setToast({ msg, type });
@@ -431,7 +435,13 @@ function DashboardContent() {
         setAppointments(
           appts.sort((x, y) => new Date(y.date) - new Date(x.date)),
         );
-        if (s.data) setStrikeInfo(s.data);
+        if (s.data) {
+          setStrikeInfo(s.data);
+          if (s.data.phone) {
+            setPhoneNumber(s.data.phone);
+            setPhoneInput(s.data.phone);
+          }
+        }
       } catch {
         showToast("Could not load data.", "error");
       } finally {
@@ -985,6 +995,193 @@ Cancel anyway?`
               </p>
             </div>
           )}
+
+          {/* ── PHONE NUMBER CARD ── */}
+          <div
+            className="dc"
+            style={{
+              marginBottom: isMobile ? 16 : 20,
+              padding: "14px 18px",
+              background: "rgba(255,255,255,0.02)",
+              border: "1px solid rgba(255,255,255,0.07)",
+              clipPath:
+                "polygon(0 0,calc(100% - 10px) 0,100% 10px,100% 100%,10px 100%,0 calc(100% - 10px))",
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                flexWrap: "wrap",
+                gap: 12,
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                <span style={{ fontSize: 16 }}>📱</span>
+                <div>
+                  <p
+                    style={{
+                      ...sf,
+                      fontSize: 7,
+                      fontWeight: 700,
+                      textTransform: "uppercase",
+                      letterSpacing: "0.15em",
+                      marginBottom: 2,
+                    }}
+                  >
+                    Text Reminders
+                  </p>
+                  {phoneNumber ? (
+                    <p style={{ ...mono, fontSize: 11, color: "#4ade80" }}>
+                      ✓ {phoneNumber}
+                    </p>
+                  ) : (
+                    <p style={{ ...mono, fontSize: 11, color: "#52525b" }}>
+                      No phone number — add one to get appointment texts
+                    </p>
+                  )}
+                </div>
+              </div>
+              {!editingPhone && (
+                <button
+                  onClick={() => {
+                    setEditingPhone(true);
+                    setPhoneInput(phoneNumber || "");
+                  }}
+                  style={{
+                    padding: "7px 14px",
+                    ...sf,
+                    fontSize: 6,
+                    fontWeight: 700,
+                    letterSpacing: "0.2em",
+                    textTransform: "uppercase",
+                    background: "transparent",
+                    border: "1px solid rgba(255,255,255,0.12)",
+                    color: "#a1a1aa",
+                    cursor: "pointer",
+                    transition: "all 0.2s",
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.borderColor = "#f59e0b";
+                    e.currentTarget.style.color = "#f59e0b";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.borderColor =
+                      "rgba(255,255,255,0.12)";
+                    e.currentTarget.style.color = "#a1a1aa";
+                  }}
+                >
+                  {phoneNumber ? "Edit" : "+ Add"}
+                </button>
+              )}
+            </div>
+            {editingPhone && (
+              <div
+                style={{
+                  marginTop: 14,
+                  paddingTop: 14,
+                  borderTop: "1px solid rgba(255,255,255,0.07)",
+                }}
+              >
+                <div
+                  style={{
+                    display: "flex",
+                    gap: 8,
+                    flexWrap: "wrap",
+                    alignItems: "center",
+                  }}
+                >
+                  <input
+                    type="tel"
+                    value={phoneInput}
+                    onChange={(e) => setPhoneInput(e.target.value)}
+                    placeholder="(601) 555-0100"
+                    style={{
+                      flex: 1,
+                      minWidth: 160,
+                      padding: "10px 14px",
+                      background: "#0a0a0a",
+                      border: "1px solid rgba(245,158,11,0.3)",
+                      color: "white",
+                      fontFamily: "'DM Mono',monospace",
+                      fontSize: 13,
+                      outline: "none",
+                    }}
+                  />
+                  <button
+                    onClick={async () => {
+                      setPhoneSaving(true);
+                      try {
+                        const r = await API.patch("client/update-phone/", {
+                          phone: phoneInput.trim(),
+                        });
+                        setPhoneNumber(r.data.phone || "");
+                        setEditingPhone(false);
+                        showToast(
+                          "✓ Phone number saved — you'll now get appointment texts!",
+                        );
+                      } catch (e) {
+                        showToast(
+                          e.response?.data?.error ||
+                            "Please enter a valid 10-digit US number.",
+                          "error",
+                        );
+                      } finally {
+                        setPhoneSaving(false);
+                      }
+                    }}
+                    disabled={phoneSaving}
+                    style={{
+                      padding: "10px 18px",
+                      background: "#f59e0b",
+                      color: "black",
+                      ...sf,
+                      fontSize: 7,
+                      fontWeight: 700,
+                      letterSpacing: "0.15em",
+                      textTransform: "uppercase",
+                      border: "none",
+                      cursor: phoneSaving ? "not-allowed" : "pointer",
+                      transition: "all 0.2s",
+                      clipPath:
+                        "polygon(0 0,calc(100% - 6px) 0,100% 6px,100% 100%,6px 100%,0 calc(100% - 6px))",
+                    }}
+                  >
+                    {phoneSaving ? "Saving..." : "Save"}
+                  </button>
+                  <button
+                    onClick={() => setEditingPhone(false)}
+                    style={{
+                      padding: "10px 14px",
+                      background: "transparent",
+                      border: "1px solid rgba(255,255,255,0.1)",
+                      color: "#71717a",
+                      ...sf,
+                      fontSize: 7,
+                      letterSpacing: "0.1em",
+                      textTransform: "uppercase",
+                      cursor: "pointer",
+                    }}
+                  >
+                    Cancel
+                  </button>
+                </div>
+                <p
+                  style={{
+                    ...mono,
+                    fontSize: 9,
+                    color: "#52525b",
+                    marginTop: 8,
+                  }}
+                >
+                  US numbers only. Standard messaging rates may apply. You'll
+                  get texts for confirmations, reminders, and reschedule
+                  updates.
+                </p>
+              </div>
+            )}
+          </div>
 
           {loading ? (
             <div

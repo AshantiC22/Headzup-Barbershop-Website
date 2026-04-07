@@ -196,6 +196,7 @@ function LoginContent() {
   const [regEmail, setRegEmail] = useState("");
   const [regPass, setRegPass] = useState("");
   const [regPass2, setRegPass2] = useState("");
+  const [regPhone, setRegPhone] = useState("");
   const [showRegPw, setShowRegPw] = useState(false);
   const [fieldErrors, setFieldErrors] = useState({});
   // Security question during registration
@@ -280,6 +281,7 @@ function LoginContent() {
         username: regUser.trim(),
         email: regEmail.trim(),
         password: regPass,
+        phone: regPhone.trim(),
       });
       const res = await API.post("token/", {
         username: regUser.trim(),
@@ -1014,6 +1016,28 @@ function LoginContent() {
                   error={fieldErrors.regEmail}
                   autoComplete="email"
                 />
+
+                <div>
+                  <Field
+                    label="Phone Number"
+                    type="tel"
+                    value={regPhone}
+                    onChange={(e) => setRegPhone(e.target.value)}
+                    placeholder="(601) 555-0100"
+                    error={fieldErrors.regPhone}
+                    autoComplete="tel"
+                  />
+                  <p
+                    style={{
+                      ...mono,
+                      fontSize: 9,
+                      color: "#52525b",
+                      marginTop: 6,
+                    }}
+                  >
+                    Optional — used for appointment text reminders only
+                  </p>
+                </div>
 
                 <div>
                   <Field
