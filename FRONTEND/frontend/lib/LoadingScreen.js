@@ -7,106 +7,253 @@ export default function LoadingScreen({ onComplete }) {
   const [visible, setVisible] = useState(true);
   const [tick, setTick] = useState(0);
   const [glitch, setGlitch] = useState(false);
+  const [scanLine, setScanLine] = useState(0);
   const canvasRef = useRef(null);
   const rafRef = useRef(null);
-  const particlesRef = useRef([]);
+  const fireRef = useRef([]);
 
-  // Progress engine — natural bursts + stalls
+  // ── Progress ──────────────────────────────────────────────────────────────
   useEffect(() => {
     let p = 0;
     const steps = [
-      { speed: 18, max: 30 },
-      { speed: 4, max: 52 },
-      { speed: 20, max: 78 },
-      { speed: 3, max: 91 },
-      { speed: 28, max: 100 },
+      { sp: 22, max: 35 },
+      { sp: 6, max: 68 },
+      { sp: 25, max: 100 },
     ];
     let si = 0;
     const id = setInterval(() => {
-      p = Math.min(p + Math.random() * steps[si].speed + 1.5, steps[si].max);
+      p = Math.min(p + Math.random() * steps[si].sp + 2, steps[si].max);
       setProgress(Math.round(p));
       if (p >= steps[si].max && si < steps.length - 1) si++;
       if (p >= 100) {
         clearInterval(id);
-        setTimeout(() => setPhase("out"), 350);
+        setTimeout(() => setPhase("out"), 300);
         setTimeout(() => {
           setVisible(false);
           onComplete?.();
-        }, 1050);
+        }, 950);
       }
-    }, 45);
+    }, 50);
     return () => clearInterval(id);
   }, [onComplete]);
 
-  // Animation tick
+  // ── Tick ──────────────────────────────────────────────────────────────────
   useEffect(() => {
-    const id = setInterval(() => setTick((t) => t + 1), 60);
+    const id = setInterval(() => setTick((t) => t + 1), 80);
     return () => clearInterval(id);
   }, []);
 
-  // Glitch bursts
+  // ── Glitch ────────────────────────────────────────────────────────────────
   useEffect(() => {
     const fire = () => {
       setGlitch(true);
-      setTimeout(() => setGlitch(false), 80 + Math.random() * 60);
-      setTimeout(fire, 2200 + Math.random() * 2000);
+      setTimeout(() => setGlitch(false), 120);
+      setTimeout(fire, 2800 + Math.random() * 1400);
     };
-    const t = setTimeout(fire, 1200);
+    const t = setTimeout(fire, 900);
     return () => clearTimeout(t);
   }, []);
 
-  // Canvas: falling hair strands
+  // ── Scanline ──────────────────────────────────────────────────────────────
+  useEffect(() => {
+    const id = setInterval(() => setScanLine((s) => (s + 2) % 100), 16);
+    return () => clearInterval(id);
+  }, []);
+
+  // ── Canvas: FIRE SYSTEM ───────────────────────────────────────────────────
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
+
     const resize = () => {
       canvas.width = window.innerWidth;
       canvas.height = window.innerHeight;
+      // Respawn fire particles anchored to bottom
+      const W = canvas.width;
+      const H = canvas.height;
+
+      fireRef.current = Array.from({ length: 160 }, (_, i) => {
+        const x = Math.random() * W;
+        return makeParticle(x, H, W, i);
+      });
     };
+
+    function makeParticle(x, H, W, seed = 0) {
+      const isSpark = Math.random() > 0.72;
+      const isEmber = !isSpark && Math.random() > 0.6;
+      const baseSize = isSpark
+        ? Math.random() * 1.5 + 0.5
+        : isEmber
+          ? Math.random() * 2.5 + 1.0
+          : Math.random() * 18 + 6;
+      const speed = isSpark
+        ? Math.random() * 3.5 + 2.5
+        : isEmber
+          ? Math.random() * 2.2 + 1.2
+          : Math.random() * 1.8 + 0.6;
+      return {
+        x,
+        y: H + Math.random() * 40,
+        baseX: x,
+        vy: -speed,
+        vx: (Math.random() - 0.5) * (isSpark ? 2.5 : isEmber ? 1.0 : 0.4),
+        wobble: Math.random() * Math.PI * 2,
+        wobbleSpeed: 0.04 + Math.random() * 0.05,
+        wobbleAmp: isSpark ? 0.8 : isEmber ? 1.5 : 3.5,
+        size: baseSize,
+        life: 1.0,
+        decay: isSpark
+          ? 0.025 + Math.random() * 0.02
+          : isEmber
+            ? 0.01 + Math.random() * 0.012
+            : 0.007 + Math.random() * 0.009,
+        isSpark,
+        isEmber,
+        // Colour tier: deep orange → bright amber → yellow-white tip
+        colorSeed: Math.random(),
+      };
+    }
+
     resize();
     window.addEventListener("resize", resize);
 
-    particlesRef.current = Array.from({ length: 80 }, () => ({
-      x: Math.random() * window.innerWidth,
-      y: Math.random() * window.innerHeight,
-      vy: Math.random() * 1.1 + 0.4,
-      vx: (Math.random() - 0.5) * 0.25,
-      len: Math.random() * 18 + 4,
-      curve: (Math.random() - 0.5) * 0.04,
-      alpha: Math.random() * 0.3 + 0.04,
-      color: Math.random() > 0.5 ? "#f59e0b" : "#a1a1aa",
-      width: Math.random() * 0.7 + 0.2,
-    }));
-
     const draw = () => {
       const ctx = canvas.getContext("2d");
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      particlesRef.current.forEach((p) => {
+      const W = canvas.width;
+      const H = canvas.height;
+      ctx.clearRect(0, 0, W, H);
+
+      // ── Bottom heat glow ──
+      const heatGrad = ctx.createLinearGradient(0, H, 0, H - 220);
+      heatGrad.addColorStop(0, "rgba(239,68,68,0.18)");
+      heatGrad.addColorStop(0.3, "rgba(245,158,11,0.10)");
+      heatGrad.addColorStop(0.7, "rgba(245,158,11,0.04)");
+      heatGrad.addColorStop(1, "transparent");
+      ctx.fillStyle = heatGrad;
+      ctx.fillRect(0, H - 220, W, 220);
+
+      fireRef.current.forEach((p, idx) => {
+        // Physics
+        p.wobble += p.wobbleSpeed;
+        p.x = p.baseX + Math.sin(p.wobble) * p.wobbleAmp;
+        p.baseX += p.vx;
         p.y += p.vy;
-        p.x += p.vx;
-        p.vx += p.curve;
-        if (p.y > canvas.height + 30) {
-          p.y = -20;
-          p.x = Math.random() * canvas.width;
+        p.life -= p.decay;
+
+        // Respawn at bottom
+        if (p.life <= 0 || p.y < -20) {
+          const np = makeParticle(Math.random() * W, H, W);
+          fireRef.current[idx] = np;
+          return;
         }
+
+        const a = Math.max(0, p.life);
+
+        if (p.isSpark) {
+          // Bright white-gold sparks
+          ctx.save();
+          ctx.globalAlpha = a * 0.9;
+          ctx.fillStyle = p.colorSeed > 0.5 ? "#fff8e1" : "#fbbf24";
+          ctx.shadowColor = "#fbbf24";
+          ctx.shadowBlur = 6;
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.restore();
+          return;
+        }
+
+        if (p.isEmber) {
+          // Small glowing embers — amber with red core
+          ctx.save();
+          ctx.globalAlpha = a * 0.75;
+          const eg = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.size);
+          eg.addColorStop(0, "rgba(255,255,220,0.95)");
+          eg.addColorStop(0.3, "rgba(251,191,36,0.9)");
+          eg.addColorStop(0.7, "rgba(245,158,11,0.7)");
+          eg.addColorStop(1, "rgba(239,68,68,0)");
+          ctx.fillStyle = eg;
+          ctx.shadowColor = "#f59e0b";
+          ctx.shadowBlur = 8;
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.restore();
+          return;
+        }
+
+        // ── MAIN FLAME TONGUE ──
+        // Height shrinks as life decays
+        const flameH = p.size * (1 + p.life * 2.5);
+        const flameW = p.size * 0.8;
+
         ctx.save();
-        ctx.globalAlpha = p.alpha;
-        ctx.strokeStyle = p.color;
-        ctx.lineWidth = p.width;
-        ctx.lineCap = "round";
-        ctx.beginPath();
-        ctx.moveTo(p.x, p.y);
-        ctx.quadraticCurveTo(
-          p.x + p.curve * p.len * 20,
-          p.y + p.len * 0.5,
-          p.x + p.curve * p.len * 30,
-          p.y + p.len,
+        ctx.globalAlpha = a * 0.55;
+
+        // Outer flame: deep red → orange
+        const fg1 = ctx.createRadialGradient(
+          p.x,
+          p.y,
+          0,
+          p.x,
+          p.y + flameH * 0.3,
+          flameH,
         );
-        ctx.stroke();
+        fg1.addColorStop(0, `rgba(255,240,180,${a * 0.9})`);
+        fg1.addColorStop(0.2, `rgba(251,191,36,${a * 0.85})`);
+        fg1.addColorStop(0.5, `rgba(245,158,11,${a * 0.7})`);
+        fg1.addColorStop(0.75, `rgba(239,68,68,${a * 0.5})`);
+        fg1.addColorStop(1, "transparent");
+
+        ctx.fillStyle = fg1;
+        ctx.shadowColor = "#f59e0b";
+        ctx.shadowBlur = 20;
+
+        // Draw teardrop flame shape
+        ctx.beginPath();
+        ctx.moveTo(p.x, p.y + flameH * 0.2);
+        ctx.bezierCurveTo(
+          p.x - flameW,
+          p.y,
+          p.x - flameW * 0.4,
+          p.y - flameH * 0.6,
+          p.x,
+          p.y - flameH,
+        );
+        ctx.bezierCurveTo(
+          p.x + flameW * 0.4,
+          p.y - flameH * 0.6,
+          p.x + flameW,
+          p.y,
+          p.x,
+          p.y + flameH * 0.2,
+        );
+        ctx.fill();
+
+        // Inner bright core
+        ctx.globalAlpha = a * 0.4;
+        const fg2 = ctx.createRadialGradient(
+          p.x,
+          p.y - flameH * 0.2,
+          0,
+          p.x,
+          p.y,
+          flameH * 0.5,
+        );
+        fg2.addColorStop(0, "rgba(255,255,255,0.8)");
+        fg2.addColorStop(0.3, "rgba(255,248,180,0.7)");
+        fg2.addColorStop(1, "transparent");
+        ctx.fillStyle = fg2;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y - flameH * 0.15, flameW * 0.5, 0, Math.PI * 2);
+        ctx.fill();
+
         ctx.restore();
       });
+
       rafRef.current = requestAnimationFrame(draw);
     };
+
     draw();
     return () => {
       cancelAnimationFrame(rafRef.current);
@@ -117,21 +264,8 @@ export default function LoadingScreen({ onComplete }) {
   if (!visible) return null;
 
   const pct = progress;
-  const scissors = tick % 14 < 7;
-  const TEETH = 24;
-  const filled = Math.floor((pct / 100) * TEETH);
-  const statusMsg =
-    pct < 20
-      ? "POWERING UP_"
-      : pct < 40
-        ? "LOADING BARBERS_"
-        : pct < 60
-          ? "SYNCING SCHEDULE_"
-          : pct < 80
-            ? "SHARPENING BLADES_"
-            : pct < 96
-              ? "ALMOST READY_"
-              : "LET'S GO_";
+  const segments = 20;
+  const filled = Math.floor((pct / 100) * segments);
 
   return (
     <div
@@ -140,82 +274,100 @@ export default function LoadingScreen({ onComplete }) {
         inset: 0,
         zIndex: 99999,
         background: "#000",
+        opacity: phase === "out" ? 0 : 1,
+        transform: phase === "out" ? "scale(1.04)" : "scale(1)",
+        transition: "opacity 0.65s ease, transform 0.65s ease",
+        pointerEvents: phase === "out" ? "none" : "all",
         overflow: "hidden",
         fontFamily: "'Syncopate',sans-serif",
-        opacity: phase === "out" ? 0 : 1,
-        transform: phase === "out" ? "scale(1.05) skewX(-2deg)" : "scale(1)",
-        transition:
-          phase === "out"
-            ? "opacity 0.7s cubic-bezier(0.4,0,1,1),transform 0.7s cubic-bezier(0.4,0,1,1)"
-            : "none",
-        pointerEvents: phase === "out" ? "none" : "all",
       }}
     >
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Syncopate:wght@400;700&family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&display=swap');
-        *,*::before,*::after{box-sizing:border-box;}
-        @keyframes ls-flicker{0%,88%,90%,92%,100%{opacity:1}89%,91%{opacity:0.05}}
-        @keyframes ls-rgb{
-          0%{text-shadow:4px 0 rgba(239,68,68,0.5),-4px 0 rgba(99,91,255,0.4)}
-          33%{text-shadow:-4px 0 rgba(239,68,68,0.5),4px 0 rgba(99,91,255,0.4)}
-          66%{text-shadow:0 3px rgba(239,68,68,0.5),0 -3px rgba(99,91,255,0.4)}
-          100%{text-shadow:4px 0 rgba(239,68,68,0.5),-4px 0 rgba(99,91,255,0.4)}
+        @import url('https://fonts.googleapis.com/css2?family=Syncopate:wght@400;700&family=DM+Mono:wght@400;500&display=swap');
+
+        @keyframes ls-flicker {
+          0%,89%,91%,93%,100%{opacity:1} 90%,92%{opacity:0.05}
         }
-        @keyframes ls-ga{
-          0%,100%{clip-path:inset(0 0 92% 0);transform:translate(-5px,0) skewX(-4deg)}
-          25%{clip-path:inset(33% 0 45% 0);transform:translate(5px,0) skewX(3deg)}
-          50%{clip-path:inset(62% 0 18% 0);transform:translate(-3px,0)}
-          75%{clip-path:inset(12% 0 70% 0);transform:translate(4px,0) skewX(-3deg)}
+        @keyframes ls-rgb {
+          0%  {text-shadow:3px 0 #f59e0b,-3px 0 rgba(239,68,68,0.6),0 0 20px rgba(245,158,11,0.4)}
+          33% {text-shadow:-3px 0 #f59e0b,3px 0 rgba(239,68,68,0.6),0 0 20px rgba(245,158,11,0.4)}
+          66% {text-shadow:0 3px #f59e0b,0 -3px rgba(239,68,68,0.6),0 0 20px rgba(245,158,11,0.4)}
+          100%{text-shadow:3px 0 #f59e0b,-3px 0 rgba(239,68,68,0.6),0 0 20px rgba(245,158,11,0.4)}
         }
-        @keyframes ls-gb{
-          0%,100%{clip-path:inset(55% 0 22% 0);transform:translate(4px,0);color:#ef4444}
-          33%{clip-path:inset(18% 0 58% 0);transform:translate(-4px,0);color:#f59e0b}
-          66%{clip-path:inset(75% 0 8% 0);transform:translate(3px,0);color:#ef4444}
+        @keyframes ls-glitch-1 {
+          0%,100%{clip-path:inset(0 0 95% 0);transform:translate(-4px,0)}
+          20%    {clip-path:inset(30% 0 50% 0);transform:translate(4px,0)}
+          40%    {clip-path:inset(60% 0 20% 0);transform:translate(-3px,0)}
+          60%    {clip-path:inset(10% 0 75% 0);transform:translate(3px,0)}
+          80%    {clip-path:inset(80% 0 5% 0);transform:translate(-2px,0)}
         }
-        @keyframes ls-scan{
-          0%{transform:translateY(-100%);opacity:0}5%{opacity:1}95%{opacity:1}100%{transform:translateY(100vh);opacity:0}
+        @keyframes ls-glitch-2 {
+          0%,100%{clip-path:inset(50% 0 30% 0);transform:translate(3px,0);color:#ef4444}
+          25%    {clip-path:inset(20% 0 60% 0);transform:translate(-3px,0);color:#f59e0b}
+          50%    {clip-path:inset(70% 0 10% 0);transform:translate(2px,0);color:#ef4444}
+          75%    {clip-path:inset(5% 0 80% 0);transform:translate(-2px,0);color:#f59e0b}
         }
-        @keyframes ls-pulse{0%,100%{opacity:0.4}50%{opacity:1}}
-        @keyframes ls-blink{0%,49%{opacity:1}50%,100%{opacity:0}}
-        @keyframes ls-slidein{from{opacity:0;transform:translateX(-24px)}to{opacity:1;transform:none}}
-        @keyframes ls-drift{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
-        @keyframes ls-chairbuild{from{stroke-dashoffset:800;opacity:0.1}to{stroke-dashoffset:0;opacity:1}}
-        @keyframes ls-spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
-        @keyframes ls-spinr{from{transform:rotate(0deg)}to{transform:rotate(-360deg)}}
-        .ls-title{animation:ls-flicker 5s ease infinite,ls-rgb 4s ease infinite}
-        .ls-ga{animation:ls-ga 0.12s steps(1) infinite}
-        .ls-gb{animation:ls-gb 0.16s steps(1) infinite}
-        .ls-chair{stroke-dasharray:800;animation:ls-chairbuild 2s cubic-bezier(0.16,1,0.3,1) both}
+        @keyframes ls-pulse  {0%,100%{opacity:0.3;transform:scale(1)}50%{opacity:1;transform:scale(1.02)}}
+        @keyframes ls-blink  {0%,49%{opacity:1}50%,100%{opacity:0}}
+        @keyframes ls-slidein{from{opacity:0;transform:translateX(-40px) skewX(-6deg)}to{opacity:1;transform:none}}
+        @keyframes ls-bar-flash{0%,100%{box-shadow:0 0 8px rgba(245,158,11,0.6)}50%{box-shadow:0 0 24px rgba(245,158,11,1),0 0 48px rgba(245,158,11,0.4)}}
+        @keyframes ls-rotate {from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+        @keyframes ls-heat   {0%,100%{opacity:0.6;transform:scaleY(1)}50%{opacity:1;transform:scaleY(1.05)}}
+        @keyframes ls-ember-drift {
+          0%  {transform:translate(0,0) scale(1);opacity:0.9}
+          50% {transform:translate(6px,-30px) scale(0.6);opacity:0.6}
+          100%{transform:translate(-4px,-60px) scale(0.2);opacity:0}
+        }
+
+        .ls-main-title {animation:ls-flicker 6s ease infinite,ls-rgb 3s ease infinite}
+        .ls-glitch-1   {animation:ls-glitch-1 0.15s steps(1) infinite}
+        .ls-glitch-2   {animation:ls-glitch-2 0.18s steps(1) infinite}
+        .ls-bar-seg    {animation:ls-bar-flash 1.2s ease infinite}
+        .ls-heat-shimmer{animation:ls-heat 2.4s ease infinite}
       `}</style>
 
-      {/* Falling hair canvas */}
+      {/* ── FIRE CANVAS (main effect) ── */}
       <canvas
         ref={canvasRef}
         style={{
           position: "absolute",
           inset: 0,
-          zIndex: 0,
+          zIndex: 1,
           pointerEvents: "none",
         }}
       />
 
-      {/* Scan line */}
+      {/* ── CRT SCANLINES ── */}
+      <div
+        style={{
+          position: "absolute",
+          inset: 0,
+          zIndex: 2,
+          pointerEvents: "none",
+          backgroundImage:
+            "repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.14) 2px,rgba(0,0,0,0.14) 3px)",
+        }}
+      />
+
+      {/* ── MOVING SCAN LINE ── */}
       <div
         style={{
           position: "absolute",
           left: 0,
           right: 0,
-          height: 1,
-          zIndex: 3,
+          height: 2,
+          zIndex: 4,
           pointerEvents: "none",
           background:
-            "linear-gradient(to right,transparent 0%,rgba(245,158,11,0.8) 30%,rgba(245,158,11,1) 50%,rgba(245,158,11,0.8) 70%,transparent 100%)",
-          boxShadow: "0 0 16px 2px rgba(245,158,11,0.5)",
-          animation: "ls-scan 3.2s cubic-bezier(0.4,0,0.6,1) infinite",
+            "linear-gradient(to right,transparent,rgba(245,158,11,0.6),rgba(245,158,11,0.9),rgba(245,158,11,0.6),transparent)",
+          animation: "none",
+          top: `${scanLine}%`,
+          boxShadow: "0 0 12px rgba(245,158,11,0.8)",
+          opacity: 0.7,
         }}
       />
 
-      {/* Grid */}
+      {/* ── GRID ── */}
       <div
         style={{
           position: "absolute",
@@ -224,184 +376,113 @@ export default function LoadingScreen({ onComplete }) {
           pointerEvents: "none",
           backgroundImage:
             "linear-gradient(rgba(245,158,11,0.025) 1px,transparent 1px),linear-gradient(90deg,rgba(245,158,11,0.025) 1px,transparent 1px)",
-          backgroundSize: "64px 64px",
+          backgroundSize: "48px 48px",
         }}
       />
 
-      {/* Radial glow */}
+      {/* ── RADIAL CENTER GLOW ── */}
       <div
         style={{
           position: "absolute",
           top: "50%",
           left: "50%",
           transform: "translate(-50%,-50%)",
-          width: 700,
-          height: 700,
-          borderRadius: "50%",
+          width: 500,
+          height: 500,
           background:
-            "radial-gradient(circle,rgba(245,158,11,0.07) 0%,rgba(239,68,68,0.03) 35%,transparent 68%)",
+            "radial-gradient(circle,rgba(245,158,11,0.06) 0%,rgba(239,68,68,0.03) 35%,transparent 70%)",
           pointerEvents: "none",
           zIndex: 0,
-          animation: "ls-drift 4s ease infinite",
         }}
       />
 
-      {/* ── RULER MARKS (replaces corner brackets) ── */}
-      {/* Top */}
-      <div
-        style={{
-          position: "absolute",
-          top: 0,
-          left: 56,
-          right: 56,
-          height: 16,
-          zIndex: 10,
-          pointerEvents: "none",
-          display: "flex",
-          alignItems: "flex-start",
-        }}
-      >
-        {Array.from({ length: 44 }).map((_, i) => (
-          <div
-            key={i}
-            style={{
-              flex: 1,
-              height: i % 11 === 0 ? 14 : i % 5 === 0 ? 9 : 5,
-              width: 1,
-              background: `rgba(245,158,11,${i % 11 === 0 ? 0.65 : i % 5 === 0 ? 0.35 : 0.15})`,
-            }}
-          />
-        ))}
-      </div>
-      {/* Bottom */}
-      <div
-        style={{
-          position: "absolute",
-          bottom: 0,
-          left: 56,
-          right: 56,
-          height: 16,
-          zIndex: 10,
-          pointerEvents: "none",
-          display: "flex",
-          alignItems: "flex-end",
-        }}
-      >
-        {Array.from({ length: 44 }).map((_, i) => (
-          <div
-            key={i}
-            style={{
-              flex: 1,
-              height: i % 11 === 0 ? 14 : i % 5 === 0 ? 9 : 5,
-              width: 1,
-              background: `rgba(245,158,11,${i % 11 === 0 ? 0.65 : i % 5 === 0 ? 0.35 : 0.15})`,
-            }}
-          />
-        ))}
-      </div>
-      {/* Left */}
-      <div
-        style={{
-          position: "absolute",
-          left: 0,
-          top: 56,
-          bottom: 56,
-          width: 16,
-          zIndex: 10,
-          pointerEvents: "none",
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "flex-start",
-        }}
-      >
-        {Array.from({ length: 30 }).map((_, i) => (
-          <div
-            key={i}
-            style={{
-              flex: 1,
-              width: i % 10 === 0 ? 14 : i % 5 === 0 ? 9 : 5,
-              height: 1,
-              background: `rgba(245,158,11,${i % 10 === 0 ? 0.65 : i % 5 === 0 ? 0.35 : 0.15})`,
-            }}
-          />
-        ))}
-      </div>
-      {/* Right */}
-      <div
-        style={{
-          position: "absolute",
-          right: 0,
-          top: 56,
-          bottom: 56,
-          width: 16,
-          zIndex: 10,
-          pointerEvents: "none",
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "flex-end",
-        }}
-      >
-        {Array.from({ length: 30 }).map((_, i) => (
-          <div
-            key={i}
-            style={{
-              flex: 1,
-              width: i % 10 === 0 ? 14 : i % 5 === 0 ? 9 : 5,
-              height: 1,
-              background: `rgba(245,158,11,${i % 10 === 0 ? 0.65 : i % 5 === 0 ? 0.35 : 0.15})`,
-            }}
-          />
-        ))}
-      </div>
+      {/* ── HUD CORNER BRACKETS ── */}
+      {[
+        {
+          top: 12,
+          left: 12,
+          borderTop: "2px solid rgba(245,158,11,0.8)",
+          borderLeft: "2px solid rgba(245,158,11,0.8)",
+        },
+        {
+          top: 12,
+          right: 12,
+          borderTop: "2px solid rgba(245,158,11,0.8)",
+          borderRight: "2px solid rgba(245,158,11,0.8)",
+        },
+        {
+          bottom: 12,
+          left: 12,
+          borderBottom: "2px solid rgba(245,158,11,0.8)",
+          borderLeft: "2px solid rgba(245,158,11,0.8)",
+        },
+        {
+          bottom: 12,
+          right: 12,
+          borderBottom: "2px solid rgba(245,158,11,0.8)",
+          borderRight: "2px solid rgba(245,158,11,0.8)",
+        },
+      ].map((s, i) => (
+        <div
+          key={i}
+          style={{
+            position: "absolute",
+            width: 24,
+            height: 24,
+            zIndex: 10,
+            ...s,
+          }}
+        />
+      ))}
 
-      {/* Top HUD */}
+      {/* ── TOP HUD ── */}
       <div
         style={{
           position: "absolute",
-          top: 20,
-          left: 76,
-          right: 76,
+          top: 16,
+          left: 48,
+          right: 48,
           zIndex: 10,
           display: "flex",
           justifyContent: "space-between",
-          pointerEvents: "none",
+          alignItems: "center",
         }}
       >
         <span
           style={{
             fontFamily: "'DM Mono',monospace",
             fontSize: 8,
-            color: "rgba(245,158,11,0.35)",
+            color: "rgba(245,158,11,0.4)",
             letterSpacing: "0.5em",
             textTransform: "uppercase",
           }}
         >
-          SYS://HEADZUP v3.0
+          SYS://HEADZUP_OS v2.6
         </span>
         <span
           style={{
             fontFamily: "'DM Mono',monospace",
             fontSize: 8,
-            color: "rgba(245,158,11,0.35)",
+            color: "rgba(245,158,11,0.4)",
             letterSpacing: "0.4em",
             textTransform: "uppercase",
           }}
         >
-          31.3271°N · 89.2903°W
+          HAT.MS · 31.3271°N
         </span>
       </div>
 
-      {/* Bottom HUD */}
+      {/* ── BOTTOM HUD ── */}
       <div
         style={{
           position: "absolute",
-          bottom: 20,
-          left: 76,
-          right: 76,
+          bottom: 16,
+          left: 48,
+          right: 48,
           zIndex: 10,
           display: "flex",
           justifyContent: "space-between",
-          pointerEvents: "none",
+          alignItems: "center",
         }}
       >
         <span
@@ -419,13 +500,13 @@ export default function LoadingScreen({ onComplete }) {
           style={{
             fontFamily: "'DM Mono',monospace",
             fontSize: 8,
-            color: "rgba(245,158,11,0.5)",
+            color: "rgba(245,158,11,0.3)",
             letterSpacing: "0.4em",
             textTransform: "uppercase",
             animation: "ls-blink 1s step-end infinite",
           }}
         >
-          ▮ {statusMsg}
+          ▮ INITIALIZING
         </span>
       </div>
 
@@ -434,401 +515,241 @@ export default function LoadingScreen({ onComplete }) {
         style={{
           position: "relative",
           zIndex: 5,
-          height: "100%",
           display: "flex",
           flexDirection: "column",
           alignItems: "center",
           justifyContent: "center",
+          height: "100%",
           gap: 0,
-          padding: "80px 20px",
+          padding: "60px 20px",
         }}
       >
-        {/* Barber chair SVG — blueprint build */}
-        <div
-          style={{
-            position: "relative",
-            width: 130,
-            height: 96,
-            marginBottom: 20,
-            animation: "ls-drift 4s ease infinite",
-          }}
-        >
-          <svg width="130" height="96" viewBox="0 0 130 96" fill="none">
-            <path
-              className="ls-chair"
-              d="M28 58 Q65 64 102 58 L98 74 Q65 80 32 74 Z"
-              stroke="#f59e0b"
-              strokeWidth="1.5"
-              fill="rgba(245,158,11,0.04)"
-              style={{ animationDelay: "0s" }}
-            />
-            <path
-              className="ls-chair"
-              d="M33 58 L35 20 Q65 14 95 20 L97 58"
-              stroke="#f59e0b"
-              strokeWidth="1.5"
-              fill="rgba(245,158,11,0.03)"
-              style={{ animationDelay: "0.15s" }}
-            />
-            <path
-              className="ls-chair"
-              d="M45 20 Q65 12 85 20 L83 7 Q65 2 47 7 Z"
-              stroke="#f59e0b"
-              strokeWidth="1.5"
-              fill="rgba(245,158,11,0.07)"
-              style={{ animationDelay: "0.3s" }}
-            />
-            <path
-              className="ls-chair"
-              d="M30 48 L20 48 L18 58 L30 58"
-              stroke="rgba(245,158,11,0.7)"
-              strokeWidth="1.2"
-              strokeDasharray="200"
-              style={{ animationDelay: "0.42s" }}
-            />
-            <path
-              className="ls-chair"
-              d="M100 48 L110 48 L112 58 L100 58"
-              stroke="rgba(245,158,11,0.7)"
-              strokeWidth="1.2"
-              strokeDasharray="200"
-              style={{ animationDelay: "0.42s" }}
-            />
-            <line
-              className="ls-chair"
-              x1="65"
-              y1="74"
-              x2="65"
-              y2="86"
-              stroke="#f59e0b"
-              strokeWidth="2"
-              strokeDasharray="100"
-              style={{ animationDelay: "0.55s" }}
-            />
-            <path
-              className="ls-chair"
-              d="M44 86 Q65 91 86 86"
-              stroke="#f59e0b"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeDasharray="200"
-              style={{ animationDelay: "0.65s" }}
-            />
-            <path
-              className="ls-chair"
-              d="M37 72 L22 78 M93 72 L108 78"
-              stroke="rgba(245,158,11,0.5)"
-              strokeWidth="1.2"
-              strokeLinecap="round"
-              strokeDasharray="150"
-              style={{ animationDelay: "0.5s" }}
-            />
-            <circle cx="65" cy="7" r="2.5" fill="#f59e0b" opacity="0.8">
-              <animate
-                attributeName="opacity"
-                values="0.3;1;0.3"
-                dur="1.8s"
-                repeatCount="indefinite"
-              />
-            </circle>
-          </svg>
-          {/* Orbit rings */}
+        {/* Scissors icon */}
+        <div style={{ marginBottom: 20, position: "relative" }}>
           <div
             style={{
-              position: "absolute",
-              inset: -14,
-              border: "1px solid rgba(245,158,11,0.1)",
-              borderRadius: "50%",
-              animation: "ls-spin 14s linear infinite",
+              width: 56,
+              height: 56,
+              border: "1px solid rgba(245,158,11,0.3)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              clipPath:
+                "polygon(0 0,calc(100% - 8px) 0,100% 8px,100% 100%,8px 100%,0 calc(100% - 8px))",
+              background: "rgba(245,158,11,0.06)",
+              boxShadow:
+                "0 0 20px rgba(245,158,11,0.15), inset 0 0 20px rgba(245,158,11,0.04)",
             }}
-          />
+          >
+            <svg width="28" height="28" viewBox="0 0 36 36" fill="none">
+              <line
+                x1={tick % 20 < 10 ? 8 : 3}
+                y1={tick % 20 < 10 ? 10 : 18}
+                x2="32"
+                y2="32"
+                stroke="#f59e0b"
+                strokeWidth="2"
+                strokeLinecap="round"
+                style={{ transition: "all 0.3s cubic-bezier(0.4,0,0.2,1)" }}
+              />
+              <line
+                x1={tick % 20 < 10 ? 8 : 3}
+                y1={tick % 20 < 10 ? 26 : 18}
+                x2="32"
+                y2="4"
+                stroke="#f59e0b"
+                strokeWidth="2"
+                strokeLinecap="round"
+                style={{ transition: "all 0.3s cubic-bezier(0.4,0,0.2,1)" }}
+              />
+              <circle
+                cx={tick % 20 < 10 ? 6 : 3}
+                cy={tick % 20 < 10 ? 9 : 18}
+                r="3.5"
+                stroke="#f59e0b"
+                strokeWidth="1.5"
+                fill="rgba(245,158,11,0.15)"
+                style={{ transition: "all 0.3s cubic-bezier(0.4,0,0.2,1)" }}
+              />
+              <circle
+                cx={tick % 20 < 10 ? 6 : 3}
+                cy={tick % 20 < 10 ? 27 : 18}
+                r="3.5"
+                stroke="#f59e0b"
+                strokeWidth="1.5"
+                fill="rgba(245,158,11,0.15)"
+                style={{ transition: "all 0.3s cubic-bezier(0.4,0,0.2,1)" }}
+              />
+            </svg>
+          </div>
+          {/* Fire glow under scissors icon */}
           <div
             style={{
               position: "absolute",
-              inset: -6,
-              border: "1px dashed rgba(245,158,11,0.07)",
-              borderRadius: "50%",
-              animation: "ls-spinr 9s linear infinite",
+              bottom: -8,
+              left: "50%",
+              transform: "translateX(-50%)",
+              width: 80,
+              height: 20,
+              background:
+                "radial-gradient(ellipse,rgba(245,158,11,0.35) 0%,rgba(239,68,68,0.15) 40%,transparent 70%)",
+              filter: "blur(4px)",
+              animation: "ls-heat 2.4s ease infinite",
             }}
           />
         </div>
 
-        {/* Scissors flanking wordmark */}
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 14,
-            marginBottom: 4,
-            position: "relative",
-          }}
-        >
-          {/* Left scissors */}
-          <svg
-            width="26"
-            height="34"
-            viewBox="0 0 26 34"
-            fill="none"
-            style={{ flexShrink: 0, opacity: 0.75 }}
+        {/* WORDMARK with glitch */}
+        <div style={{ position: "relative", marginBottom: 6 }}>
+          <h1
+            className="ls-main-title"
+            style={{
+              fontFamily: "'Syncopate',sans-serif",
+              fontSize: "clamp(3.2rem,12vw,6rem)",
+              fontWeight: 900,
+              letterSpacing: "-0.06em",
+              textTransform: "uppercase",
+              color: "white",
+              margin: 0,
+              lineHeight: 1,
+              userSelect: "none",
+            }}
           >
-            <line
-              x1="4"
-              y1={scissors ? 7 : 17}
-              x2="22"
-              y2={scissors ? 3 : 17}
-              stroke="#f59e0b"
-              strokeWidth="2"
-              strokeLinecap="round"
-              style={{ transition: "all 0.18s cubic-bezier(0.4,0,0.2,1)" }}
-            />
-            <circle
-              cx="4"
-              cy={scissors ? 7 : 17}
-              r="3.5"
-              stroke="#f59e0b"
-              strokeWidth="1.5"
-              fill="rgba(245,158,11,0.1)"
-              style={{ transition: "all 0.18s cubic-bezier(0.4,0,0.2,1)" }}
-            />
-            <line
-              x1="4"
-              y1={scissors ? 27 : 17}
-              x2="22"
-              y2={scissors ? 31 : 17}
-              stroke="#f59e0b"
-              strokeWidth="2"
-              strokeLinecap="round"
-              style={{ transition: "all 0.18s cubic-bezier(0.4,0,0.2,1)" }}
-            />
-            <circle
-              cx="4"
-              cy={scissors ? 27 : 17}
-              r="3.5"
-              stroke="#f59e0b"
-              strokeWidth="1.5"
-              fill="rgba(245,158,11,0.1)"
-              style={{ transition: "all 0.18s cubic-bezier(0.4,0,0.2,1)" }}
-            />
-          </svg>
-
-          {/* Wordmark */}
-          <div style={{ position: "relative" }}>
+            HEADZ
+            <span style={{ color: "#f59e0b", fontStyle: "italic" }}>UP</span>
+          </h1>
+          {glitch && (
             <h1
-              className="ls-title"
+              className="ls-glitch-1"
               style={{
                 fontFamily: "'Syncopate',sans-serif",
-                fontSize: "clamp(2.6rem,10vw,5.2rem)",
+                fontSize: "clamp(3.2rem,12vw,6rem)",
                 fontWeight: 900,
                 letterSpacing: "-0.06em",
                 textTransform: "uppercase",
-                color: "white",
+                color: "#ef4444",
                 margin: 0,
                 lineHeight: 1,
+                position: "absolute",
+                inset: 0,
+                pointerEvents: "none",
                 userSelect: "none",
               }}
             >
-              HEADZ
-              <span style={{ color: "#f59e0b", fontStyle: "italic" }}>UP</span>
+              HEADZ<span style={{ fontStyle: "italic" }}>UP</span>
             </h1>
-            {glitch && (
-              <>
-                <h1
-                  className="ls-ga"
-                  style={{
-                    fontFamily: "'Syncopate',sans-serif",
-                    fontSize: "clamp(2.6rem,10vw,5.2rem)",
-                    fontWeight: 900,
-                    letterSpacing: "-0.06em",
-                    textTransform: "uppercase",
-                    color: "#ef4444",
-                    margin: 0,
-                    lineHeight: 1,
-                    position: "absolute",
-                    inset: 0,
-                    pointerEvents: "none",
-                    userSelect: "none",
-                  }}
-                >
-                  HEADZ<span style={{ fontStyle: "italic" }}>UP</span>
-                </h1>
-                <h1
-                  className="ls-gb"
-                  style={{
-                    fontFamily: "'Syncopate',sans-serif",
-                    fontSize: "clamp(2.6rem,10vw,5.2rem)",
-                    fontWeight: 900,
-                    letterSpacing: "-0.06em",
-                    textTransform: "uppercase",
-                    color: "#635bff",
-                    margin: 0,
-                    lineHeight: 1,
-                    position: "absolute",
-                    inset: 0,
-                    pointerEvents: "none",
-                    userSelect: "none",
-                    opacity: 0.45,
-                  }}
-                >
-                  HEADZ<span style={{ fontStyle: "italic" }}>UP</span>
-                </h1>
-              </>
-            )}
-          </div>
-
-          {/* Right scissors (mirrored) */}
-          <svg
-            width="26"
-            height="34"
-            viewBox="0 0 26 34"
-            fill="none"
-            style={{ flexShrink: 0, opacity: 0.75, transform: "scaleX(-1)" }}
-          >
-            <line
-              x1="4"
-              y1={scissors ? 7 : 17}
-              x2="22"
-              y2={scissors ? 3 : 17}
-              stroke="#f59e0b"
-              strokeWidth="2"
-              strokeLinecap="round"
-              style={{ transition: "all 0.18s cubic-bezier(0.4,0,0.2,1)" }}
-            />
-            <circle
-              cx="4"
-              cy={scissors ? 7 : 17}
-              r="3.5"
-              stroke="#f59e0b"
-              strokeWidth="1.5"
-              fill="rgba(245,158,11,0.1)"
-              style={{ transition: "all 0.18s cubic-bezier(0.4,0,0.2,1)" }}
-            />
-            <line
-              x1="4"
-              y1={scissors ? 27 : 17}
-              x2="22"
-              y2={scissors ? 31 : 17}
-              stroke="#f59e0b"
-              strokeWidth="2"
-              strokeLinecap="round"
-              style={{ transition: "all 0.18s cubic-bezier(0.4,0,0.2,1)" }}
-            />
-            <circle
-              cx="4"
-              cy={scissors ? 27 : 17}
-              r="3.5"
-              stroke="#f59e0b"
-              strokeWidth="1.5"
-              fill="rgba(245,158,11,0.1)"
-              style={{ transition: "all 0.18s cubic-bezier(0.4,0,0.2,1)" }}
-            />
-          </svg>
+          )}
+          {glitch && (
+            <h1
+              className="ls-glitch-2"
+              style={{
+                fontFamily: "'Syncopate',sans-serif",
+                fontSize: "clamp(3.2rem,12vw,6rem)",
+                fontWeight: 900,
+                letterSpacing: "-0.06em",
+                textTransform: "uppercase",
+                color: "#f59e0b",
+                margin: 0,
+                lineHeight: 1,
+                position: "absolute",
+                inset: 0,
+                pointerEvents: "none",
+                userSelect: "none",
+                opacity: 0.5,
+              }}
+            >
+              HEADZ<span style={{ fontStyle: "italic" }}>UP</span>
+            </h1>
+          )}
+          {/* Fire glow rising from under wordmark */}
+          <div
+            style={{
+              position: "absolute",
+              bottom: -12,
+              left: "50%",
+              transform: "translateX(-50%)",
+              width: "110%",
+              height: 32,
+              background:
+                "radial-gradient(ellipse,rgba(245,158,11,0.25) 0%,rgba(239,68,68,0.12) 40%,transparent 70%)",
+              filter: "blur(6px)",
+              animation: "ls-heat 1.8s ease infinite",
+              zIndex: -1,
+            }}
+          />
         </div>
 
-        {/* Subtext */}
+        {/* Tagline */}
         <p
           style={{
             fontFamily: "'DM Mono',monospace",
-            fontSize: "clamp(7px,1.8vw,10px)",
-            color: "rgba(245,158,11,0.45)",
-            letterSpacing: "0.7em",
+            fontSize: "clamp(8px,2vw,11px)",
+            color: "rgba(245,158,11,0.55)",
+            letterSpacing: "0.65em",
             textTransform: "uppercase",
-            marginBottom: 32,
+            marginBottom: 40,
             animation: "ls-pulse 3s ease infinite",
           }}
         >
-          ✦ PRECISION CUTS · HATTIESBURG MS ✦
+          ✦ BARBERSHOP · HATTIESBURG MS ✦
         </p>
 
-        {/* ── COMB PROGRESS ── */}
-        <div style={{ width: "min(380px,82vw)", marginBottom: 12 }}>
+        {/* SEGMENTED PROGRESS BAR */}
+        <div style={{ width: "min(420px,85vw)", marginBottom: 12 }}>
           <div
             style={{
               display: "flex",
               justifyContent: "space-between",
-              alignItems: "baseline",
-              marginBottom: 10,
+              marginBottom: 8,
             }}
           >
             <span
               style={{
                 fontFamily: "'DM Mono',monospace",
                 fontSize: 8,
-                color: "rgba(245,158,11,0.4)",
+                color: "rgba(245,158,11,0.5)",
                 letterSpacing: "0.4em",
                 textTransform: "uppercase",
               }}
             >
-              BOOT SEQUENCE
+              LOADING
             </span>
             <span
               style={{
                 fontFamily: "'DM Mono',monospace",
-                fontSize: 14,
+                fontSize: 8,
                 color: "#f59e0b",
+                letterSpacing: "0.3em",
                 fontWeight: 500,
-                letterSpacing: "0.1em",
               }}
             >
-              {pct}
-              <span style={{ fontSize: 8, color: "rgba(245,158,11,0.5)" }}>
-                %
-              </span>
+              {pct}%
             </span>
           </div>
-          {/* Comb teeth + spine */}
-          <div
-            style={{
-              position: "relative",
-              height: 36,
-              display: "flex",
-              alignItems: "flex-start",
-              gap: 2,
-            }}
-          >
-            <div
-              style={{
-                position: "absolute",
-                bottom: 0,
-                left: 0,
-                right: 0,
-                height: 3,
-                background: "rgba(245,158,11,0.12)",
-              }}
-            />
-            <div
-              style={{
-                position: "absolute",
-                bottom: 0,
-                left: 0,
-                height: 3,
-                width: `${pct}%`,
-                background: "linear-gradient(to right,#f59e0b,#fbbf24)",
-                boxShadow:
-                  "0 0 8px rgba(245,158,11,0.8),0 0 24px rgba(245,158,11,0.3)",
-                transition: "width 0.15s ease",
-              }}
-            />
-            {Array.from({ length: TEETH }).map((_, i) => {
-              const f = i < filled;
-              const ia = i === filled;
-              const h = 8 + (i % 3) * 5;
+          <div style={{ display: "flex", gap: 3 }}>
+            {Array.from({ length: segments }).map((_, i) => {
+              const isFilled = i < filled;
+              const isActive = i === filled;
               return (
                 <div
                   key={i}
+                  className={isActive ? "ls-bar-seg" : ""}
                   style={{
                     flex: 1,
-                    height: f ? h + 4 : h,
-                    background: f
-                      ? `rgba(245,158,11,${0.45 + (i / TEETH) * 0.55})`
-                      : "rgba(255,255,255,0.06)",
-                    borderRadius: "1px 1px 0 0",
-                    alignSelf: "flex-start",
-                    boxShadow: ia
-                      ? "0 0 10px rgba(245,158,11,1),0 0 24px rgba(245,158,11,0.6)"
+                    height: 10,
+                    background: isFilled
+                      ? i < segments * 0.5
+                        ? "#f59e0b"
+                        : i < segments * 0.8
+                          ? "#fbbf24"
+                          : "#ef4444"
+                      : "rgba(255,255,255,0.05)",
+                    clipPath:
+                      "polygon(0 0,calc(100% - 2px) 0,100% 2px,100% 100%,2px 100%,0 calc(100% - 2px))",
+                    transition: "background 0.15s",
+                    boxShadow: isFilled
+                      ? "0 0 6px rgba(245,158,11,0.5)"
                       : "none",
-                    transition: "height 0.1s ease,background 0.1s ease",
-                    zIndex: 1,
-                    position: "relative",
                   }}
                 />
               );
@@ -836,53 +757,77 @@ export default function LoadingScreen({ onComplete }) {
           </div>
         </div>
 
-        {/* Status */}
-        <div style={{ height: 18, overflow: "hidden" }}>
+        {/* STATUS TEXT */}
+        <div style={{ height: 16, overflow: "hidden", marginBottom: 32 }}>
           <p
             style={{
               fontFamily: "'DM Mono',monospace",
               fontSize: 9,
-              color: "rgba(245,158,11,0.5)",
-              letterSpacing: "0.45em",
+              color: "rgba(245,158,11,0.4)",
+              letterSpacing: "0.5em",
               textTransform: "uppercase",
               margin: 0,
-              animation: "ls-slidein 0.25s ease both",
+              animation: "ls-slidein 0.3s ease both",
             }}
-            key={statusMsg}
+            key={Math.floor(pct / 10)}
           >
-            {statusMsg}
+            {pct < 25
+              ? "CONNECTING TO SERVER..."
+              : pct < 45
+                ? "LOADING BARBER PROFILES..."
+                : pct < 65
+                  ? "SYNCING APPOINTMENTS..."
+                  : pct < 82
+                    ? "CALIBRATING PRECISION..."
+                    : pct < 95
+                      ? "ALMOST READY..."
+                      : "HEADZ UP — LET'S GO"}
           </p>
         </div>
 
-        {/* EQ bars */}
-        <div
-          style={{
-            display: "flex",
-            alignItems: "flex-end",
-            gap: 3,
-            marginTop: 22,
-            height: 20,
-          }}
-        >
-          {Array.from({ length: 14 }).map((_, i) => {
-            const h = 4 + Math.abs(Math.sin(tick * 0.22 + i * 0.7)) * 14;
-            const f = i / 14 < pct / 100;
-            return (
+        {/* BOTTOM DECORATIVE + EQ */}
+        <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+          {/* Spinning hex */}
+          <div
+            style={{
+              width: 20,
+              height: 20,
+              border: "1px solid rgba(245,158,11,0.4)",
+              transform: `rotate(${tick * 4}deg)`,
+              transition: "none",
+              clipPath:
+                "polygon(50% 0%,100% 25%,100% 75%,50% 100%,0% 75%,0% 25%)",
+              background: "rgba(245,158,11,0.06)",
+            }}
+          />
+          {/* EQ bars */}
+          <div style={{ display: "flex", gap: 4 }}>
+            {[0, 1, 2, 3, 4].map((i) => (
               <div
                 key={i}
                 style={{
-                  width: 5,
-                  height: h,
-                  background: f
-                    ? `rgba(245,158,11,${0.25 + Math.abs(Math.sin(tick * 0.22 + i * 0.7)) * 0.65})`
-                    : "rgba(255,255,255,0.05)",
-                  transition: "height 0.06s",
-                  borderRadius: "1px 1px 0 0",
-                  boxShadow: f ? "0 0 4px rgba(245,158,11,0.4)" : "none",
+                  width: 4,
+                  height: 8 + Math.sin(tick * 0.3 + i * 0.8) * 6,
+                  background: `rgba(245,158,11,${0.2 + Math.abs(Math.sin(tick * 0.3 + i * 0.8)) * 0.7})`,
+                  transition: "height 0.08s",
+                  boxShadow: `0 0 4px rgba(245,158,11,${Math.abs(Math.sin(tick * 0.3 + i * 0.8)) * 0.6})`,
                 }}
               />
-            );
-          })}
+            ))}
+          </div>
+          {/* Second spinning hex (red) */}
+          <div
+            style={{
+              width: 20,
+              height: 20,
+              border: "1px solid rgba(239,68,68,0.4)",
+              transform: `rotate(${-tick * 3}deg)`,
+              transition: "none",
+              clipPath:
+                "polygon(50% 0%,100% 25%,100% 75%,50% 100%,0% 75%,0% 25%)",
+              background: "rgba(239,68,68,0.06)",
+            }}
+          />
         </div>
       </div>
     </div>
