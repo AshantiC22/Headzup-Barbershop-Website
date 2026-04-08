@@ -1,6 +1,53 @@
 "use client";
 import { useEffect, useState, useRef } from "react";
 
+// ─── Seeded pseudo-random (no Math.random drift per frame) ───────────────────
+function seededRand(seed) {
+  let s = seed;
+  return () => {
+    s = (s * 16807 + 0) % 2147483647;
+    return (s - 1) / 2147483646;
+  };
+}
+
+// ─── Simple value noise ──────────────────────────────────────────────────────
+function valueNoise(x, y, t) {
+  const xi = Math.floor(x);
+  const yi = Math.floor(y);
+  const ti = Math.floor(t);
+  const xf = x - xi;
+  const yf = y - yi;
+  const tf = t - ti;
+
+  const fade = (v) => v * v * v * (v * (v * 6 - 15) + 10);
+  const lerp = (a, b, t) => a + t * (b - a);
+
+  const hash = (xi, yi, ti) => {
+    let n = xi * 374761393 + yi * 668265263 + ti * 374761393;
+    n = (n ^ (n >> 13)) * 1274126177;
+    return ((n ^ (n >> 16)) & 0xffffffff) / 0xffffffff;
+  };
+
+  const u = fade(xf),
+    v = fade(yf),
+    w = fade(tf);
+
+  return lerp(
+    lerp(
+      lerp(hash(xi, yi, ti), hash(xi + 1, yi, ti), u),
+      lerp(hash(xi, yi + 1, ti), hash(xi + 1, yi + 1, ti), u),
+      v,
+    ),
+    lerp(
+      lerp(hash(xi, yi, ti + 1), hash(xi + 1, yi, ti + 1), u),
+      lerp(hash(xi, yi + 1, ti + 1), hash(xi + 1, yi + 1, ti + 1), u),
+      v,
+    ),
+    w,
+  );
+}
+
+// ─── Main component ──────────────────────────────────────────────────────────
 export default function LoadingScreen({ onComplete }) {
   const [progress, setProgress] = useState(0);
   const [phase, setPhase] = useState("in");
@@ -8,11 +55,13 @@ export default function LoadingScreen({ onComplete }) {
   const [tick, setTick] = useState(0);
   const [glitch, setGlitch] = useState(false);
   const [scanLine, setScanLine] = useState(0);
+
   const canvasRef = useRef(null);
   const rafRef = useRef(null);
-  const fireRef = useRef([]);
+  const timeRef = useRef(0);
+  const embersRef = useRef([]);
 
-  // ── Progress ──────────────────────────────────────────────────────────────
+  // ── Progress ─────────────────────────────────────────────────────────────
   useEffect(() => {
     let p = 0;
     const steps = [
@@ -37,7 +86,7 @@ export default function LoadingScreen({ onComplete }) {
     return () => clearInterval(id);
   }, [onComplete]);
 
-  // ── Tick ──────────────────────────────────────────────────────────────────
+  // ── UI tick ───────────────────────────────────────────────────────────────
   useEffect(() => {
     const id = setInterval(() => setTick((t) => t + 1), 80);
     return () => clearInterval(id);
@@ -54,13 +103,13 @@ export default function LoadingScreen({ onComplete }) {
     return () => clearTimeout(t);
   }, []);
 
-  // ── Scanline ──────────────────────────────────────────────────────────────
+  // ── Scan line ─────────────────────────────────────────────────────────────
   useEffect(() => {
     const id = setInterval(() => setScanLine((s) => (s + 2) % 100), 16);
     return () => clearInterval(id);
   }, []);
 
-  // ── Canvas: FIRE SYSTEM ───────────────────────────────────────────────────
+  // ── FIRE CANVAS ───────────────────────────────────────────────────────────
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -68,191 +117,196 @@ export default function LoadingScreen({ onComplete }) {
     const resize = () => {
       canvas.width = window.innerWidth;
       canvas.height = window.innerHeight;
-      // Respawn fire particles anchored to bottom
-      const W = canvas.width;
-      const H = canvas.height;
-
-      fireRef.current = Array.from({ length: 160 }, (_, i) => {
-        const x = Math.random() * W;
-        return makeParticle(x, H, W, i);
-      });
     };
-
-    function makeParticle(x, H, W, seed = 0) {
-      const isSpark = Math.random() > 0.72;
-      const isEmber = !isSpark && Math.random() > 0.6;
-      const baseSize = isSpark
-        ? Math.random() * 1.5 + 0.5
-        : isEmber
-          ? Math.random() * 2.5 + 1.0
-          : Math.random() * 18 + 6;
-      const speed = isSpark
-        ? Math.random() * 3.5 + 2.5
-        : isEmber
-          ? Math.random() * 2.2 + 1.2
-          : Math.random() * 1.8 + 0.6;
-      return {
-        x,
-        y: H + Math.random() * 40,
-        baseX: x,
-        vy: -speed,
-        vx: (Math.random() - 0.5) * (isSpark ? 2.5 : isEmber ? 1.0 : 0.4),
-        wobble: Math.random() * Math.PI * 2,
-        wobbleSpeed: 0.04 + Math.random() * 0.05,
-        wobbleAmp: isSpark ? 0.8 : isEmber ? 1.5 : 3.5,
-        size: baseSize,
-        life: 1.0,
-        decay: isSpark
-          ? 0.025 + Math.random() * 0.02
-          : isEmber
-            ? 0.01 + Math.random() * 0.012
-            : 0.007 + Math.random() * 0.009,
-        isSpark,
-        isEmber,
-        // Colour tier: deep orange → bright amber → yellow-white tip
-        colorSeed: Math.random(),
-      };
-    }
-
     resize();
     window.addEventListener("resize", resize);
 
-    const draw = () => {
+    // Init embers
+    embersRef.current = Array.from({ length: 55 }, () =>
+      spawnEmber(canvas.width, canvas.height, true),
+    );
+
+    function spawnEmber(W, H, randomY = false) {
+      const spread = W * 0.55;
+      const cx = W / 2;
+      return {
+        x: cx + (Math.random() - 0.5) * spread,
+        y: randomY ? H - Math.random() * H * 0.4 : H + 4,
+        vx: (Math.random() - 0.5) * 0.9,
+        vy: -(Math.random() * 1.6 + 0.5),
+        life: Math.random(),
+        decay: 0.004 + Math.random() * 0.007,
+        size: Math.random() * 2.2 + 0.6,
+        hot: Math.random() > 0.45, // white-hot vs amber
+        drift: (Math.random() - 0.5) * 0.015,
+      };
+    }
+
+    // ── DRAW LOOP ─────────────────────────────────────────────────────────
+    function draw() {
       const ctx = canvas.getContext("2d");
       const W = canvas.width;
       const H = canvas.height;
+
       ctx.clearRect(0, 0, W, H);
+      timeRef.current += 0.012;
+      const t = timeRef.current;
 
-      // ── Bottom heat glow ──
-      const heatGrad = ctx.createLinearGradient(0, H, 0, H - 220);
-      heatGrad.addColorStop(0, "rgba(239,68,68,0.18)");
-      heatGrad.addColorStop(0.3, "rgba(245,158,11,0.10)");
-      heatGrad.addColorStop(0.7, "rgba(245,158,11,0.04)");
-      heatGrad.addColorStop(1, "transparent");
-      ctx.fillStyle = heatGrad;
-      ctx.fillRect(0, H - 220, W, 220);
+      // ── Layer 1: FIRE FIELD (noise-driven columns) ──────────────────────
+      // We draw many vertical columns, each height driven by noise.
+      // This creates a continuous, organic fire sheet — not individual flames.
+      const COLS = Math.ceil(W / 3); // one column per 3px
+      const FIRE_HEIGHT = H * 0.52; // max flame height from bottom
 
-      fireRef.current.forEach((p, idx) => {
-        // Physics
-        p.wobble += p.wobbleSpeed;
-        p.x = p.baseX + Math.sin(p.wobble) * p.wobbleAmp;
-        p.baseX += p.vx;
-        p.y += p.vy;
-        p.life -= p.decay;
+      for (let col = 0; col < COLS; col++) {
+        const x = col * 3;
+        const nx = (col / COLS) * 3.5; // noise x scale
 
-        // Respawn at bottom
-        if (p.life <= 0 || p.y < -20) {
-          const np = makeParticle(Math.random() * W, H, W);
-          fireRef.current[idx] = np;
-          return;
-        }
+        // Multi-octave noise for organic shape
+        const n1 = valueNoise(nx, 0, t * 1.1);
+        const n2 = valueNoise(nx * 2.1, 0, t * 2.3 + 7) * 0.5;
+        const n3 = valueNoise(nx * 4.2, 0, t * 4.1 + 13) * 0.25;
+        const n = (n1 + n2 + n3) / 1.75;
 
-        const a = Math.max(0, p.life);
+        // Flame height: taller in centre, shorter at edges, modulated by noise
+        const edgeFade = 1 - Math.pow(Math.abs(col / COLS - 0.5) * 2, 1.6);
+        const flameH = n * FIRE_HEIGHT * edgeFade * (0.55 + n * 0.7);
 
-        if (p.isSpark) {
-          // Bright white-gold sparks
-          ctx.save();
-          ctx.globalAlpha = a * 0.9;
-          ctx.fillStyle = p.colorSeed > 0.5 ? "#fff8e1" : "#fbbf24";
-          ctx.shadowColor = "#fbbf24";
-          ctx.shadowBlur = 6;
-          ctx.beginPath();
-          ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
-          ctx.fill();
-          ctx.restore();
-          return;
-        }
+        if (flameH < 6) continue;
 
-        if (p.isEmber) {
-          // Small glowing embers — amber with red core
-          ctx.save();
-          ctx.globalAlpha = a * 0.75;
-          const eg = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.size);
-          eg.addColorStop(0, "rgba(255,255,220,0.95)");
-          eg.addColorStop(0.3, "rgba(251,191,36,0.9)");
-          eg.addColorStop(0.7, "rgba(245,158,11,0.7)");
-          eg.addColorStop(1, "rgba(239,68,68,0)");
-          ctx.fillStyle = eg;
-          ctx.shadowColor = "#f59e0b";
-          ctx.shadowBlur = 8;
-          ctx.beginPath();
-          ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
-          ctx.fill();
-          ctx.restore();
-          return;
-        }
+        const base = H;
+        const tip = H - flameH;
 
-        // ── MAIN FLAME TONGUE ──
-        // Height shrinks as life decays
-        const flameH = p.size * (1 + p.life * 2.5);
-        const flameW = p.size * 0.8;
+        // Gradient per column: deep red at base → amber → orange → yellow-white at tip
+        const grad = ctx.createLinearGradient(0, base, 0, tip - flameH * 0.15);
+        grad.addColorStop(0, "rgba(180,20,0,0.82)");
+        grad.addColorStop(0.15, "rgba(220,50,0,0.78)");
+        grad.addColorStop(0.35, "rgba(240,90,0,0.72)");
+        grad.addColorStop(0.55, "rgba(245,150,10,0.65)");
+        grad.addColorStop(0.72, "rgba(250,190,30,0.45)");
+        grad.addColorStop(0.86, "rgba(255,230,120,0.22)");
+        grad.addColorStop(1, "transparent");
 
         ctx.save();
-        ctx.globalAlpha = a * 0.55;
+        ctx.globalCompositeOperation = "lighter";
 
-        // Outer flame: deep red → orange
-        const fg1 = ctx.createRadialGradient(
-          p.x,
-          p.y,
-          0,
-          p.x,
-          p.y + flameH * 0.3,
-          flameH,
-        );
-        fg1.addColorStop(0, `rgba(255,240,180,${a * 0.9})`);
-        fg1.addColorStop(0.2, `rgba(251,191,36,${a * 0.85})`);
-        fg1.addColorStop(0.5, `rgba(245,158,11,${a * 0.7})`);
-        fg1.addColorStop(0.75, `rgba(239,68,68,${a * 0.5})`);
-        fg1.addColorStop(1, "transparent");
-
-        ctx.fillStyle = fg1;
-        ctx.shadowColor = "#f59e0b";
-        ctx.shadowBlur = 20;
-
-        // Draw teardrop flame shape
+        // Column width widens at base, narrows to a point at tip
+        const baseW = 3.5;
         ctx.beginPath();
-        ctx.moveTo(p.x, p.y + flameH * 0.2);
+        ctx.moveTo(x - baseW, base);
         ctx.bezierCurveTo(
-          p.x - flameW,
-          p.y,
-          p.x - flameW * 0.4,
-          p.y - flameH * 0.6,
-          p.x,
-          p.y - flameH,
+          x - baseW * 0.8,
+          base - flameH * 0.4,
+          x - baseW * 0.3,
+          base - flameH * 0.75,
+          x,
+          tip,
         );
         ctx.bezierCurveTo(
-          p.x + flameW * 0.4,
-          p.y - flameH * 0.6,
-          p.x + flameW,
-          p.y,
-          p.x,
-          p.y + flameH * 0.2,
+          x + baseW * 0.3,
+          base - flameH * 0.75,
+          x + baseW * 0.8,
+          base - flameH * 0.4,
+          x + baseW,
+          base,
         );
+        ctx.closePath();
+        ctx.fillStyle = grad;
+        ctx.fill();
+        ctx.restore();
+      }
+
+      // ── Layer 2: WIDE GLOW BASE (heat body) ────────────────────────────
+      // Horizontal gaussian-like glow that pulses with a slow noise value
+      const pulseN = valueNoise(1, 0, t * 0.6);
+      const glowH = H * (0.28 + pulseN * 0.12);
+      const glow = ctx.createLinearGradient(0, H, 0, H - glowH);
+      glow.addColorStop(0, "rgba(220,50,0,0.28)");
+      glow.addColorStop(0.3, "rgba(240,100,0,0.14)");
+      glow.addColorStop(0.65, "rgba(245,158,11,0.07)");
+      glow.addColorStop(1, "transparent");
+
+      ctx.save();
+      ctx.globalCompositeOperation = "lighter";
+      ctx.fillStyle = glow;
+      ctx.fillRect(0, H - glowH, W, glowH);
+      ctx.restore();
+
+      // ── Layer 3: EMBERS ────────────────────────────────────────────────
+      embersRef.current.forEach((e, i) => {
+        e.x += e.vx;
+        e.vx += e.drift;
+        e.vy *= 0.998; // very slight drag
+        e.y += e.vy;
+        e.life -= e.decay;
+
+        if (e.life <= 0 || e.y < -30) {
+          embersRef.current[i] = spawnEmber(W, H);
+          return;
+        }
+
+        const a = Math.pow(Math.max(0, e.life), 0.7);
+        const r = e.size * (0.5 + e.life * 0.5);
+
+        // Inner white-hot dot + outer amber halo
+        ctx.save();
+        ctx.globalCompositeOperation = "lighter";
+
+        // Halo
+        const hg = ctx.createRadialGradient(e.x, e.y, 0, e.x, e.y, r * 3.5);
+        hg.addColorStop(
+          0,
+          e.hot
+            ? `rgba(255,255,220,${a * 0.9})`
+            : `rgba(255,160,20,${a * 0.75})`,
+        );
+        hg.addColorStop(
+          0.35,
+          e.hot ? `rgba(255,200,50,${a * 0.7})` : `rgba(240,100,0,${a * 0.55})`,
+        );
+        hg.addColorStop(1, "transparent");
+        ctx.fillStyle = hg;
+        ctx.beginPath();
+        ctx.arc(e.x, e.y, r * 3.5, 0, Math.PI * 2);
         ctx.fill();
 
-        // Inner bright core
-        ctx.globalAlpha = a * 0.4;
-        const fg2 = ctx.createRadialGradient(
-          p.x,
-          p.y - flameH * 0.2,
-          0,
-          p.x,
-          p.y,
-          flameH * 0.5,
-        );
-        fg2.addColorStop(0, "rgba(255,255,255,0.8)");
-        fg2.addColorStop(0.3, "rgba(255,248,180,0.7)");
-        fg2.addColorStop(1, "transparent");
-        ctx.fillStyle = fg2;
+        // Core
+        ctx.fillStyle = e.hot
+          ? `rgba(255,255,255,${a})`
+          : `rgba(255,210,80,${a * 0.9})`;
         ctx.beginPath();
-        ctx.arc(p.x, p.y - flameH * 0.15, flameW * 0.5, 0, Math.PI * 2);
+        ctx.arc(e.x, e.y, r, 0, Math.PI * 2);
         ctx.fill();
 
         ctx.restore();
       });
 
+      // ── Layer 4: SMOKE (near-black wisps at very top of flames) ────────
+      // Thin, barely-visible dark wisps add depth without looking cartoony
+      for (let col = 0; col < COLS; col += 4) {
+        const x = col * 3;
+        const nx = (col / COLS) * 2.8;
+        const sn = valueNoise(nx, 0.5, t * 0.55 + 20);
+        const sh = sn * FIRE_HEIGHT * 0.18;
+        if (sh < 10) continue;
+
+        const edgeFade = 1 - Math.pow(Math.abs(col / COLS - 0.5) * 2, 2);
+        if (edgeFade < 0.2) continue;
+
+        const smokeY = H - FIRE_HEIGHT * edgeFade * 0.6;
+        const sg = ctx.createRadialGradient(x, smokeY, 0, x, smokeY, sh * 1.8);
+        sg.addColorStop(0, `rgba(20,10,5,${sn * 0.08 * edgeFade})`);
+        sg.addColorStop(1, "transparent");
+        ctx.save();
+        ctx.fillStyle = sg;
+        ctx.beginPath();
+        ctx.arc(x, smokeY, sh * 1.8, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
+
       rafRef.current = requestAnimationFrame(draw);
-    };
+    }
 
     draw();
     return () => {
@@ -285,23 +339,21 @@ export default function LoadingScreen({ onComplete }) {
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Syncopate:wght@400;700&family=DM+Mono:wght@400;500&display=swap');
 
-        @keyframes ls-flicker {
-          0%,89%,91%,93%,100%{opacity:1} 90%,92%{opacity:0.05}
-        }
-        @keyframes ls-rgb {
+        @keyframes ls-flicker{0%,89%,91%,93%,100%{opacity:1}90%,92%{opacity:0.05}}
+        @keyframes ls-rgb{
           0%  {text-shadow:3px 0 #f59e0b,-3px 0 rgba(239,68,68,0.6),0 0 20px rgba(245,158,11,0.4)}
           33% {text-shadow:-3px 0 #f59e0b,3px 0 rgba(239,68,68,0.6),0 0 20px rgba(245,158,11,0.4)}
           66% {text-shadow:0 3px #f59e0b,0 -3px rgba(239,68,68,0.6),0 0 20px rgba(245,158,11,0.4)}
           100%{text-shadow:3px 0 #f59e0b,-3px 0 rgba(239,68,68,0.6),0 0 20px rgba(245,158,11,0.4)}
         }
-        @keyframes ls-glitch-1 {
+        @keyframes ls-glitch-1{
           0%,100%{clip-path:inset(0 0 95% 0);transform:translate(-4px,0)}
           20%    {clip-path:inset(30% 0 50% 0);transform:translate(4px,0)}
           40%    {clip-path:inset(60% 0 20% 0);transform:translate(-3px,0)}
           60%    {clip-path:inset(10% 0 75% 0);transform:translate(3px,0)}
           80%    {clip-path:inset(80% 0 5% 0);transform:translate(-2px,0)}
         }
-        @keyframes ls-glitch-2 {
+        @keyframes ls-glitch-2{
           0%,100%{clip-path:inset(50% 0 30% 0);transform:translate(3px,0);color:#ef4444}
           25%    {clip-path:inset(20% 0 60% 0);transform:translate(-3px,0);color:#f59e0b}
           50%    {clip-path:inset(70% 0 10% 0);transform:translate(2px,0);color:#ef4444}
@@ -310,23 +362,34 @@ export default function LoadingScreen({ onComplete }) {
         @keyframes ls-pulse  {0%,100%{opacity:0.3;transform:scale(1)}50%{opacity:1;transform:scale(1.02)}}
         @keyframes ls-blink  {0%,49%{opacity:1}50%,100%{opacity:0}}
         @keyframes ls-slidein{from{opacity:0;transform:translateX(-40px) skewX(-6deg)}to{opacity:1;transform:none}}
-        @keyframes ls-bar-flash{0%,100%{box-shadow:0 0 8px rgba(245,158,11,0.6)}50%{box-shadow:0 0 24px rgba(245,158,11,1),0 0 48px rgba(245,158,11,0.4)}}
-        @keyframes ls-rotate {from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
-        @keyframes ls-heat   {0%,100%{opacity:0.6;transform:scaleY(1)}50%{opacity:1;transform:scaleY(1.05)}}
-        @keyframes ls-ember-drift {
-          0%  {transform:translate(0,0) scale(1);opacity:0.9}
-          50% {transform:translate(6px,-30px) scale(0.6);opacity:0.6}
-          100%{transform:translate(-4px,-60px) scale(0.2);opacity:0}
+        @keyframes ls-bar-flash{
+          0%,100%{box-shadow:0 0 8px rgba(245,158,11,0.6)}
+          50%    {box-shadow:0 0 24px rgba(245,158,11,1),0 0 48px rgba(245,158,11,0.4)}
+        }
+        @keyframes ls-shimmer{
+          0%  {transform:translateY(0px) scaleX(1);  opacity:0.18}
+          30% {transform:translateY(-3px) scaleX(1.02);opacity:0.28}
+          60% {transform:translateY(-1px) scaleX(0.98);opacity:0.20}
+          100%{transform:translateY(0px) scaleX(1);  opacity:0.18}
+        }
+        @keyframes ls-heatwave{
+          0%  {clip-path:inset(0 0 0 0);transform:skewY(0deg)}
+          20% {clip-path:inset(20% 0 0 0);transform:skewY(0.4deg)}
+          40% {clip-path:inset(0 0 30% 0);transform:skewY(-0.3deg)}
+          60% {clip-path:inset(10% 0 20% 0);transform:skewY(0.2deg)}
+          80% {clip-path:inset(30% 0 0 0);transform:skewY(-0.4deg)}
+          100%{clip-path:inset(0 0 0 0);transform:skewY(0deg)}
         }
 
-        .ls-main-title {animation:ls-flicker 6s ease infinite,ls-rgb 3s ease infinite}
-        .ls-glitch-1   {animation:ls-glitch-1 0.15s steps(1) infinite}
-        .ls-glitch-2   {animation:ls-glitch-2 0.18s steps(1) infinite}
-        .ls-bar-seg    {animation:ls-bar-flash 1.2s ease infinite}
-        .ls-heat-shimmer{animation:ls-heat 2.4s ease infinite}
+        .ls-main-title{animation:ls-flicker 6s ease infinite,ls-rgb 3s ease infinite}
+        .ls-glitch-1  {animation:ls-glitch-1 0.15s steps(1) infinite}
+        .ls-glitch-2  {animation:ls-glitch-2 0.18s steps(1) infinite}
+        .ls-bar-seg   {animation:ls-bar-flash 1.2s ease infinite}
+        .ls-shimmer   {animation:ls-shimmer 2.6s ease-in-out infinite}
+        .ls-heatwave  {animation:ls-heatwave 3.2s ease-in-out infinite}
       `}</style>
 
-      {/* ── FIRE CANVAS (main effect) ── */}
+      {/* ── FIRE CANVAS ── */}
       <canvas
         ref={canvasRef}
         style={{
@@ -345,7 +408,7 @@ export default function LoadingScreen({ onComplete }) {
           zIndex: 2,
           pointerEvents: "none",
           backgroundImage:
-            "repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.14) 2px,rgba(0,0,0,0.14) 3px)",
+            "repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.18) 2px,rgba(0,0,0,0.18) 3px)",
         }}
       />
 
@@ -358,10 +421,9 @@ export default function LoadingScreen({ onComplete }) {
           height: 2,
           zIndex: 4,
           pointerEvents: "none",
+          top: `${scanLine}%`,
           background:
             "linear-gradient(to right,transparent,rgba(245,158,11,0.6),rgba(245,158,11,0.9),rgba(245,158,11,0.6),transparent)",
-          animation: "none",
-          top: `${scanLine}%`,
           boxShadow: "0 0 12px rgba(245,158,11,0.8)",
           opacity: 0.7,
         }}
@@ -380,68 +442,13 @@ export default function LoadingScreen({ onComplete }) {
         }}
       />
 
-      {/* ── RADIAL CENTER GLOW ── */}
-      <div
-        style={{
-          position: "absolute",
-          top: "50%",
-          left: "50%",
-          transform: "translate(-50%,-50%)",
-          width: 500,
-          height: 500,
-          background:
-            "radial-gradient(circle,rgba(245,158,11,0.06) 0%,rgba(239,68,68,0.03) 35%,transparent 70%)",
-          pointerEvents: "none",
-          zIndex: 0,
-        }}
-      />
-
-      {/* ── HUD CORNER BRACKETS ── */}
-      {[
-        {
-          top: 12,
-          left: 12,
-          borderTop: "2px solid rgba(245,158,11,0.8)",
-          borderLeft: "2px solid rgba(245,158,11,0.8)",
-        },
-        {
-          top: 12,
-          right: 12,
-          borderTop: "2px solid rgba(245,158,11,0.8)",
-          borderRight: "2px solid rgba(245,158,11,0.8)",
-        },
-        {
-          bottom: 12,
-          left: 12,
-          borderBottom: "2px solid rgba(245,158,11,0.8)",
-          borderLeft: "2px solid rgba(245,158,11,0.8)",
-        },
-        {
-          bottom: 12,
-          right: 12,
-          borderBottom: "2px solid rgba(245,158,11,0.8)",
-          borderRight: "2px solid rgba(245,158,11,0.8)",
-        },
-      ].map((s, i) => (
-        <div
-          key={i}
-          style={{
-            position: "absolute",
-            width: 24,
-            height: 24,
-            zIndex: 10,
-            ...s,
-          }}
-        />
-      ))}
-
       {/* ── TOP HUD ── */}
       <div
         style={{
           position: "absolute",
           top: 16,
-          left: 48,
-          right: 48,
+          left: 24,
+          right: 24,
           zIndex: 10,
           display: "flex",
           justifyContent: "space-between",
@@ -477,8 +484,8 @@ export default function LoadingScreen({ onComplete }) {
         style={{
           position: "absolute",
           bottom: 16,
-          left: 48,
-          right: 48,
+          left: 24,
+          right: 24,
           zIndex: 10,
           display: "flex",
           justifyContent: "space-between",
@@ -524,7 +531,7 @@ export default function LoadingScreen({ onComplete }) {
           padding: "60px 20px",
         }}
       >
-        {/* Scissors icon */}
+        {/* Animated scissors */}
         <div style={{ marginBottom: 20, position: "relative" }}>
           <div
             style={{
@@ -538,7 +545,7 @@ export default function LoadingScreen({ onComplete }) {
                 "polygon(0 0,calc(100% - 8px) 0,100% 8px,100% 100%,8px 100%,0 calc(100% - 8px))",
               background: "rgba(245,158,11,0.06)",
               boxShadow:
-                "0 0 20px rgba(245,158,11,0.15), inset 0 0 20px rgba(245,158,11,0.04)",
+                "0 0 20px rgba(245,158,11,0.15),inset 0 0 20px rgba(245,158,11,0.04)",
             }}
           >
             <svg width="28" height="28" viewBox="0 0 36 36" fill="none">
@@ -582,25 +589,27 @@ export default function LoadingScreen({ onComplete }) {
               />
             </svg>
           </div>
-          {/* Fire glow under scissors icon */}
+        </div>
+
+        {/* WORDMARK */}
+        <div style={{ position: "relative", marginBottom: 6 }}>
+          {/* CSS heat shimmer layer (sits between wordmark and fire) */}
           <div
+            className="ls-shimmer"
             style={{
               position: "absolute",
               bottom: -8,
-              left: "50%",
-              transform: "translateX(-50%)",
-              width: 80,
-              height: 20,
+              left: "-5%",
+              right: "-5%",
+              height: "30%",
               background:
-                "radial-gradient(ellipse,rgba(245,158,11,0.35) 0%,rgba(239,68,68,0.15) 40%,transparent 70%)",
-              filter: "blur(4px)",
-              animation: "ls-heat 2.4s ease infinite",
+                "linear-gradient(to top,rgba(245,120,0,0.12),transparent)",
+              filter: "blur(3px)",
+              zIndex: -1,
+              pointerEvents: "none",
             }}
           />
-        </div>
 
-        {/* WORDMARK with glitch */}
-        <div style={{ position: "relative", marginBottom: 6 }}>
           <h1
             className="ls-main-title"
             style={{
@@ -618,6 +627,8 @@ export default function LoadingScreen({ onComplete }) {
             HEADZ
             <span style={{ color: "#f59e0b", fontStyle: "italic" }}>UP</span>
           </h1>
+
+          {/* Glitch layers */}
           {glitch && (
             <h1
               className="ls-glitch-1"
@@ -661,22 +672,6 @@ export default function LoadingScreen({ onComplete }) {
               HEADZ<span style={{ fontStyle: "italic" }}>UP</span>
             </h1>
           )}
-          {/* Fire glow rising from under wordmark */}
-          <div
-            style={{
-              position: "absolute",
-              bottom: -12,
-              left: "50%",
-              transform: "translateX(-50%)",
-              width: "110%",
-              height: 32,
-              background:
-                "radial-gradient(ellipse,rgba(245,158,11,0.25) 0%,rgba(239,68,68,0.12) 40%,transparent 70%)",
-              filter: "blur(6px)",
-              animation: "ls-heat 1.8s ease infinite",
-              zIndex: -1,
-            }}
-          />
         </div>
 
         {/* Tagline */}
@@ -785,9 +780,8 @@ export default function LoadingScreen({ onComplete }) {
           </p>
         </div>
 
-        {/* BOTTOM DECORATIVE + EQ */}
+        {/* BOTTOM DECORATORS */}
         <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-          {/* Spinning hex */}
           <div
             style={{
               width: 20,
@@ -800,7 +794,6 @@ export default function LoadingScreen({ onComplete }) {
               background: "rgba(245,158,11,0.06)",
             }}
           />
-          {/* EQ bars */}
           <div style={{ display: "flex", gap: 4 }}>
             {[0, 1, 2, 3, 4].map((i) => (
               <div
@@ -810,12 +803,11 @@ export default function LoadingScreen({ onComplete }) {
                   height: 8 + Math.sin(tick * 0.3 + i * 0.8) * 6,
                   background: `rgba(245,158,11,${0.2 + Math.abs(Math.sin(tick * 0.3 + i * 0.8)) * 0.7})`,
                   transition: "height 0.08s",
-                  boxShadow: `0 0 4px rgba(245,158,11,${Math.abs(Math.sin(tick * 0.3 + i * 0.8)) * 0.6})`,
+                  boxShadow: `0 0 4px rgba(245,158,11,${Math.abs(Math.sin(tick * 0.3 + i * 0.8)) * 0.5})`,
                 }}
               />
             ))}
           </div>
-          {/* Second spinning hex (red) */}
           <div
             style={{
               width: 20,
