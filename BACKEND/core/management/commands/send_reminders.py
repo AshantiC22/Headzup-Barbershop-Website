@@ -101,7 +101,91 @@ class Command(BaseCommand):
                 except Exception as e:
                     logger.error(f"Failed to send no-show email for appt {appt.id}: {e}")
 
-        # Fetch all confirmed appointments today and tomorrow
+        # ── WAITLIST NOTIFICATIONS ────────────────────────────────────────────
+        # For each cancelled/auto-released appointment, notify the next person
+        # on the waitlist for that barber/date who hasn't been notified yet.
+        try:
+            from core.models import WaitlistEntry
+            from core.views import _sendgrid_send, FRONTEND_URL
+
+            # Find open slots: barber+date combos with cancellations in the last 2hrs
+            recent_cancels = Appointment.objects.filter(
+                status__in=["cancelled", "no_show"],
+                date__gte=today,
+            ).values("barber_id", "date").distinct()
+
+            for rc in recent_cancels:
+                waiting = WaitlistEntry.objects.filter(
+                    barber_id=rc["barber_id"],
+                    date=rc["date"],
+                    notified=False,
+                ).order_by("created_at").first()
+
+                if not waiting:
+                    continue
+
+                # Mark as notified and send email
+                waiting.notified = True
+                waiting.save(update_fields=["notified"])
+
+                date_str  = waiting.date.strftime("%A, %B %d, %Y")
+                svc_str   = waiting.service.name if waiting.service else "your appointment"
+                book_url  = f"{FRONTEND_URL}/book"
+
+                try:
+                    html = f"""<!DOCTYPE html>
+<html><head><meta charset="utf-8"></head>
+<body style="margin:0;padding:0;background:#050505;font-family:'Helvetica Neue',Arial,sans-serif;color:#fff;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#050505;padding:40px 20px;">
+    <tr><td align="center">
+      <table width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;">
+        <tr><td style="padding-bottom:24px;">
+          <p style="font-family:'Courier New',monospace;font-size:22px;font-weight:900;letter-spacing:-0.05em;margin:0;text-transform:uppercase;">
+            HEADZ<span style="color:#f59e0b;font-style:italic;">UP</span>
+          </p>
+        </td></tr>
+        <tr><td style="padding-bottom:16px;">
+          <div style="width:52px;height:52px;background:rgba(74,222,128,0.12);border:1px solid rgba(74,222,128,0.3);display:inline-flex;align-items:center;justify-content:center;">
+            <span style="font-size:24px;">✂️</span>
+          </div>
+        </td></tr>
+        <tr><td style="padding-bottom:8px;">
+          <h1 style="font-family:'Courier New',monospace;font-size:24px;font-weight:900;text-transform:uppercase;margin:0;line-height:1.1;">
+            Slot<br><span style="color:#4ade80;font-style:italic;">Available_</span>
+          </h1>
+        </td></tr>
+        <tr><td style="padding-bottom:24px;">
+          <p style="color:#71717a;font-size:13px;margin:0;line-height:1.7;">
+            Hey {waiting.client_name}! A slot just opened up on <strong style="color:#f59e0b;">{date_str}</strong> — book it now before someone else does.
+          </p>
+        </td></tr>
+        <tr><td style="background:#0a0a0a;border:1px solid rgba(255,255,255,0.08);padding:20px;margin-bottom:20px;">
+          <p style="font-family:'Courier New',monospace;font-size:9px;letter-spacing:0.3em;color:#52525b;text-transform:uppercase;margin:0 0 6px;">Open Date</p>
+          <p style="font-size:20px;color:#4ade80;margin:0;font-weight:900;">{date_str}</p>
+          <p style="font-family:'Courier New',monospace;font-size:9px;letter-spacing:0.3em;color:#52525b;text-transform:uppercase;margin:16px 0 6px;">Service</p>
+          <p style="font-size:14px;color:white;margin:0;font-weight:700;">{svc_str}</p>
+        </td></tr>
+        <tr><td style="padding:20px 0 0;">
+          <a href="{book_url}" style="display:inline-block;padding:16px 32px;background:#4ade80;color:black;font-family:'Courier New',monospace;font-size:11px;font-weight:900;text-transform:uppercase;letter-spacing:0.2em;text-decoration:none;">Book Now &rarr;</a>
+        </td></tr>
+        <tr><td style="border-top:1px solid rgba(255,255,255,0.06);padding-top:20px;margin-top:20px;">
+          <p style="font-size:11px;color:#3f3f46;margin:0;">HEADZ UP Barbershop · 2509 W 4th St, Hattiesburg, MS 39401</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body></html>"""
+                    plain = f"Hey {waiting.client_name}! A slot opened up on {date_str}. Book now: {book_url}"
+                    _sendgrid_send(
+                        waiting.client_email,
+                        f"✂️ A Slot Opened Up — {date_str} — HEADZ UP",
+                        plain, html
+                    )
+                    logger.info(f"Waitlist notification sent to {waiting.client_email} for {date_str}")
+                except Exception as e:
+                    logger.error(f"Waitlist email failed: {e}")
+        except Exception as e:
+            logger.error(f"Waitlist pass failed: {e}")
         appts = Appointment.objects.filter(
             date__in=[today, today + timedelta(days=1)],
             status="confirmed",

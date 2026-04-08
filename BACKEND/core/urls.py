@@ -4,7 +4,6 @@ from rest_framework_simplejwt.views import TokenRefreshView
 
 from core.views import (
     BarberViewSet,
-    ClientStrikeStatusView,
     ServiceViewSet,
     AppointmentViewSet,
     UserProfileViewSet,
@@ -62,6 +61,8 @@ from core.views import (
     TriggerReviewNotificationView,
     HaircutReviewView,
     BarberReviewsView,
+    AdminStatsView,
+    ClientWaitlistView,
     VapidPublicKeyView,
 )
 
@@ -150,6 +151,10 @@ urlpatterns = [
     path("push/vapid-key/",              VapidPublicKeyView.as_view(),               name="vapid_key"),
     path("review/trigger/<int:pk>/",     TriggerReviewNotificationView.as_view(),    name="review_trigger"),
     path("review/submit/",               HaircutReviewView.as_view(),                name="review_submit"),
+    path("admin/stats/",                 AdminStatsView.as_view(),                   name="admin_stats"),
+    path("waitlist/join/",               ClientWaitlistView.as_view(),               name="waitlist_join"),
+    path("waitlist/mine/",               ClientWaitlistView.as_view(),               name="waitlist_mine"),
+    path("waitlist/<int:pk>/",           ClientWaitlistView.as_view(),               name="waitlist_remove"),
 
     path("", include(router.urls)),
 ]

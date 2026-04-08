@@ -3474,6 +3474,243 @@ class BarberReviewsView(APIView):
         return Response({"reviews": data, "average_rating": round(avg, 1), "total": len(data)})
 
 
+class AdminStatsView(APIView):
+    """
+    GET admin/stats/
+    Full platform analytics — staff only.
+    Returns revenue, appointments, top clients, busiest days, barber breakdown.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        if not request.user.is_staff:
+            return Response({"error": "Staff only"}, status=403)
+
+        from django.db.models import Count, Sum, Avg
+        from django.db.models.functions import TruncDate, TruncMonth
+        from datetime import timedelta
+
+        today  = date_type.today()
+        t30    = today - timedelta(days=30)
+        t7     = today - timedelta(days=7)
+        t365   = today - timedelta(days=365)
+
+        all_appts   = Appointment.objects.all()
+        done_appts  = all_appts.filter(status__in=["confirmed","completed"])
+        month_appts = done_appts.filter(date__gte=t30)
+        week_appts  = done_appts.filter(date__gte=t7)
+        today_appts = done_appts.filter(date=today)
+
+        # Revenue (online deposits)
+        total_revenue  = float(all_appts.filter(deposit_paid=True).aggregate(s=Sum("deposit_amount"))["s"] or 0)
+        month_revenue  = float(all_appts.filter(deposit_paid=True, date__gte=t30).aggregate(s=Sum("deposit_amount"))["s"] or 0)
+        week_revenue   = float(all_appts.filter(deposit_paid=True, date__gte=t7).aggregate(s=Sum("deposit_amount"))["s"] or 0)
+
+        # Appointment counts
+        total_bookings  = done_appts.count()
+        month_bookings  = month_appts.count()
+        week_bookings   = week_appts.count()
+        today_bookings  = today_appts.count()
+        cancelled_count = all_appts.filter(status="cancelled", date__gte=t30).count()
+        no_show_count   = all_appts.filter(status="no_show",   date__gte=t30).count()
+        pending_shop    = all_appts.filter(status="pending_shop").count()
+
+        # Top clients (by total bookings)
+        top_clients_qs = (
+            done_appts
+            .values("user__id","user__username","user__first_name","user__email")
+            .annotate(visits=Count("id"), spent=Sum("deposit_amount"))
+            .order_by("-visits")[:10]
+        )
+        top_clients = [{
+            "id":       c["user__id"],
+            "name":     c["user__first_name"] or c["user__username"],
+            "email":    c["user__email"],
+            "visits":   c["visits"],
+            "spent":    float(c["spent"] or 0),
+        } for c in top_clients_qs]
+
+        # Busiest days of week (0=Mon..6=Sun)
+        from django.db.models.functions import ExtractWeekDay
+        dow_counts = (
+            done_appts.filter(date__gte=t365)
+            .annotate(dow=ExtractWeekDay("date"))
+            .values("dow")
+            .annotate(count=Count("id"))
+            .order_by("dow")
+        )
+        DOW_NAMES = {1:"Sun",2:"Mon",3:"Tue",4:"Wed",5:"Thu",6:"Fri",7:"Sat"}
+        busiest_days = [{"day": DOW_NAMES.get(r["dow"],"?"), "count": r["count"]} for r in dow_counts]
+
+        # Bookings per month (last 12 months)
+        monthly = (
+            done_appts.filter(date__gte=t365)
+            .annotate(month=TruncMonth("date"))
+            .values("month")
+            .annotate(count=Count("id"), revenue=Sum("deposit_amount"))
+            .order_by("month")
+        )
+        monthly_data = [{
+            "month":   r["month"].strftime("%b %Y"),
+            "count":   r["count"],
+            "revenue": float(r["revenue"] or 0),
+        } for r in monthly]
+
+        # Per-barber breakdown
+        barbers = Barber.objects.all()
+        barber_stats = []
+        for barber in barbers:
+            bq = done_appts.filter(barber=barber)
+            rev = float(all_appts.filter(barber=barber, deposit_paid=True).aggregate(s=Sum("deposit_amount"))["s"] or 0)
+            avg_r = Review.objects.filter(barber=barber, completed=True).aggregate(a=Avg("rating"))["a"]
+            barber_stats.append({
+                "id":         barber.id,
+                "name":       barber.name,
+                "total":      bq.count(),
+                "this_month": bq.filter(date__gte=t30).count(),
+                "revenue":    rev,
+                "avg_rating": round(float(avg_r or 0), 1),
+                "reviews":    Review.objects.filter(barber=barber, completed=True).count(),
+                "no_shows":   all_appts.filter(barber=barber, status="no_show", date__gte=t30).count(),
+            })
+
+        # Recent reviews
+        recent_reviews = []
+        for r in Review.objects.filter(completed=True).select_related("barber","client").order_by("-created_at")[:20]:
+            recent_reviews.append({
+                "id":         r.id,
+                "client":     r.client.first_name or r.client.username,
+                "barber":     r.barber.name,
+                "rating":     r.rating,
+                "comment":    r.comment,
+                "created_at": r.created_at.strftime("%b %d, %Y"),
+            })
+
+        # Waitlist count
+        waitlist_count = WaitlistEntry.objects.filter(notified=False).count()
+
+        return Response({
+            "overview": {
+                "total_bookings":  total_bookings,
+                "month_bookings":  month_bookings,
+                "week_bookings":   week_bookings,
+                "today_bookings":  today_bookings,
+                "cancelled_30d":   cancelled_count,
+                "no_shows_30d":    no_show_count,
+                "pending_shop":    pending_shop,
+                "waitlist":        waitlist_count,
+                "total_revenue":   round(total_revenue, 2),
+                "month_revenue":   round(month_revenue, 2),
+                "week_revenue":    round(week_revenue, 2),
+            },
+            "top_clients":   top_clients,
+            "busiest_days":  busiest_days,
+            "monthly_data":  monthly_data,
+            "barber_stats":  barber_stats,
+            "recent_reviews": recent_reviews,
+        })
+
+
+class ClientWaitlistView(APIView):
+    """
+    POST waitlist/join/  — client joins waitlist for a date+barber
+    GET  waitlist/mine/  — client sees their active waitlist entries
+    DELETE waitlist/<pk>/ — client removes themselves
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        barber_id = request.data.get("barber_id")
+        service_id= request.data.get("service_id")
+        date_val  = request.data.get("date")
+        notes     = request.data.get("notes", "")
+
+        if not barber_id or not date_val:
+            return Response({"error": "barber_id and date required"}, status=400)
+
+        try:
+            barber  = Barber.objects.get(pk=barber_id)
+            service = Service.objects.get(pk=service_id) if service_id else None
+        except (Barber.DoesNotExist, Service.DoesNotExist):
+            return Response({"error": "Barber or service not found"}, status=404)
+
+        # Don't allow duplicate waitlist entries
+        exists = WaitlistEntry.objects.filter(
+            barber=barber, date=date_val,
+            client_email=request.user.email
+        ).exists()
+        if exists:
+            return Response({"error": "You are already on the waitlist for this date."}, status=400)
+
+        profile = getattr(request.user, "profile", None)
+        entry = WaitlistEntry.objects.create(
+            barber       = barber,
+            service      = service,
+            client_name  = request.user.first_name or request.user.username,
+            client_phone = profile.phone if profile else "",
+            client_email = request.user.email,
+            date         = date_val,
+            notes        = notes,
+        )
+
+        # Notify barber of new waitlist entry
+        import threading, logging
+        logger = logging.getLogger(__name__)
+        def _notify():
+            try:
+                barber_email = barber.user.email if barber.user else None
+                if barber_email:
+                    client_nm  = request.user.first_name or request.user.username
+                    svc_nm     = service.name if service else "Any service"
+                    date_str   = entry.date.strftime("%A, %B %d, %Y")
+                    plain      = f"{client_nm} joined the waitlist for {date_str} ({svc_nm})"
+                    from core.views import _sendgrid_send, FRONTEND_URL
+                    html = f"""<!DOCTYPE html><html><body style="background:#050505;color:white;font-family:'Helvetica Neue',Arial;padding:40px 20px;">
+<table style="max-width:520px;margin:0 auto;">
+<tr><td style="padding-bottom:20px;"><p style="font-family:'Courier New',monospace;font-size:20px;font-weight:900;text-transform:uppercase;">HEADZ<span style="color:#f59e0b;font-style:italic;">UP</span></p></td></tr>
+<tr><td style="padding-bottom:8px;">
+  <h1 style="font-family:'Courier New',monospace;font-size:22px;font-weight:900;text-transform:uppercase;margin:0;">Waitlist<br><span style="color:#f59e0b;font-style:italic;">New Entry_</span></h1>
+</td></tr>
+<tr><td style="padding:20px 0;background:#0a0a0a;border:1px solid rgba(255,255,255,0.08);padding:20px;">
+  <p style="font-size:13px;color:#a1a1aa;margin:0 0 8px;"><strong style="color:white;">{client_nm}</strong> wants in on <strong style="color:#f59e0b;">{date_str}</strong></p>
+  <p style="font-size:12px;color:#52525b;">Service: {svc_nm}</p>
+  <p style="font-size:12px;color:#52525b;">Email: {request.user.email}</p>
+</td></tr>
+<tr><td style="padding-top:20px;"><a href="{FRONTEND_URL}/barber-dashboard" style="display:inline-block;padding:13px 26px;background:#f59e0b;color:black;font-family:'Courier New',monospace;font-size:10px;font-weight:900;text-transform:uppercase;text-decoration:none;">View Dashboard &rarr;</a></td></tr>
+</table></body></html>"""
+                    _sendgrid_send(barber_email, f"⏳ New Waitlist Entry — {client_nm}", plain, html)
+            except Exception as e:
+                logger.error(f"Waitlist notify failed: {e}")
+        threading.Thread(target=_notify, daemon=True).start()
+
+        return Response({
+            "message": f"You're on the waitlist for {barber.name} on {entry.date.strftime('%A, %B %d')}. We'll email you if a slot opens up.",
+            "id":      entry.id,
+        }, status=201)
+
+    def get(self, request):
+        entries = WaitlistEntry.objects.filter(
+            client_email=request.user.email,
+            date__gte=date_type.today(),
+        ).select_related("barber","service").order_by("date")
+        return Response([{
+            "id":           e.id,
+            "barber_name":  e.barber.name,
+            "service_name": e.service.name if e.service else "Any",
+            "date":         e.date.strftime("%A, %B %d, %Y"),
+            "date_iso":     str(e.date),
+            "notified":     e.notified,
+        } for e in entries])
+
+    def delete(self, request, pk):
+        try:
+            entry = WaitlistEntry.objects.get(pk=pk, client_email=request.user.email)
+            entry.delete()
+            return Response({"message": "Removed from waitlist."}, status=204)
+        except WaitlistEntry.DoesNotExist:
+            return Response({"error": "Not found"}, status=404)
+
+
 # ── VAPID public key endpoint (needed by frontend to subscribe) ───────────────
 class VapidPublicKeyView(APIView):
     permission_classes = [AllowAny]

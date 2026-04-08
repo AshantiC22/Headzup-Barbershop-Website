@@ -599,9 +599,29 @@ function TimeSlotGrid({
         >
           Fully Booked
         </p>
-        <p style={{ ...mono, fontSize: 12, color: "#3f3f46" }}>
+        <p
+          style={{ ...mono, fontSize: 12, color: "#3f3f46", marginBottom: 14 }}
+        >
           No available slots for this day. Try another date.
         </p>
+        <a
+          href="/waitlist"
+          style={{
+            display: "inline-block",
+            padding: "10px 20px",
+            background: "rgba(245,158,11,0.08)",
+            border: "1px solid rgba(245,158,11,0.25)",
+            color: "#f59e0b",
+            ...sf,
+            fontSize: 7,
+            fontWeight: 700,
+            letterSpacing: "0.15em",
+            textTransform: "uppercase",
+            textDecoration: "none",
+          }}
+        >
+          Join Waitlist →
+        </a>
       </div>
     );
   }
