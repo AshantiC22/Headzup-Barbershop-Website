@@ -28,16 +28,84 @@ class Command(BaseCommand):
 
     def handle(self, *args, **kwargs):
         from core.models import Appointment
-        from core.views import _sendgrid_send
+        from core.views import _sendgrid_send, _twilio_send, send_cancellation_email, FRONTEND_URL
+        import datetime
 
         now   = timezone.localtime(timezone.now())
         today = now.date()
+
+        # ── AUTO-CANCEL stale pending_shop bookings ──────────────────────────
+        # If a pay-in-shop booking is still pending_shop 1 hour after the
+        # appointment time, the client was a no-show. Auto-cancel it and
+        # send the barber a notification. This prevents ghost bookings from
+        # blocking real clients' slots indefinitely.
+        stale_cutoff = now - timedelta(hours=1)
+        stale_pending = Appointment.objects.filter(
+            status="pending_shop",
+            payment_method="shop",
+        ).select_related("user", "barber", "barber__user", "service")
+
+        for appt in stale_pending:
+            try:
+                appt_dt = timezone.make_aware(
+                    datetime.datetime.combine(appt.date, appt.time)
+                )
+            except Exception:
+                continue
+            # Auto-cancel if appointment time was more than 1 hour ago
+            if appt_dt < stale_cutoff:
+                appt.status = "no_show"
+                appt.save(update_fields=["status"])
+                logger.info(f"Auto-cancelled pending_shop appt {appt.id} — no-show after 1hr")
+                # Notify barber
+                try:
+                    appt_full = Appointment.objects.select_related(
+                        "user", "barber", "barber__user", "service"
+                    ).get(pk=appt.pk)
+                    client_nm   = appt_full.user.first_name or appt_full.user.username
+                    barber_email = appt_full.barber.user.email if appt_full.barber.user else None
+                    if barber_email:
+                        svc    = appt_full.service.name if appt_full.service else "Appointment"
+                        t_str  = appt_full.time.strftime("%I:%M %p").lstrip("0")
+                        plain  = f"{client_nm} did not show for their {svc} at {t_str}. Slot auto-released."
+                        _sendgrid_send(
+                            barber_email,
+                            f"🚫 No-Show: {client_nm} — HEADZ UP",
+                            plain,
+                            f"""<!DOCTYPE html><html><body style="background:#050505;color:white;font-family:'Helvetica Neue',Arial;padding:40px 20px;">
+<table style="max-width:520px;margin:0 auto;">
+<tr><td style="padding-bottom:20px;">
+  <p style="font-family:'Courier New',monospace;font-size:20px;font-weight:900;text-transform:uppercase;">HEADZ<span style="color:#f59e0b;font-style:italic;">UP</span></p>
+</td></tr>
+<tr><td style="padding-bottom:12px;">
+  <div style="width:48px;height:48px;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);display:inline-flex;align-items:center;justify-content:center;">
+    <span style="font-size:20px;">🚫</span>
+  </div>
+</td></tr>
+<tr><td style="padding-bottom:8px;">
+  <h1 style="font-family:'Courier New',monospace;font-size:22px;font-weight:900;text-transform:uppercase;margin:0;">
+    No-Show<br><span style="color:#ef4444;font-style:italic;">Auto-Released_</span>
+  </h1>
+</td></tr>
+<tr><td style="padding-bottom:20px;">
+  <p style="color:#71717a;font-size:13px;line-height:1.7;">
+    <strong style="color:white;">{client_nm}</strong> did not show up for their {svc} at <strong style="color:#f59e0b;">{t_str}</strong>.
+    The slot has been automatically released. You may wish to issue a strike from your dashboard.
+  </p>
+</td></tr>
+<tr><td>
+  <a href="{FRONTEND_URL}/barber-dashboard" style="display:inline-block;padding:13px 26px;background:#f59e0b;color:black;font-family:'Courier New',monospace;font-size:10px;font-weight:900;text-transform:uppercase;text-decoration:none;">View Dashboard &rarr;</a>
+</td></tr>
+</table></body></html>"""
+                        )
+                except Exception as e:
+                    logger.error(f"Failed to send no-show email for appt {appt.id}: {e}")
 
         # Fetch all confirmed appointments today and tomorrow
         appts = Appointment.objects.filter(
             date__in=[today, today + timedelta(days=1)],
             status="confirmed",
-        ).select_related("user", "barber", "service", "barber__user")
+        ).select_related("user", "barber", "service", "barber__user", "user__profile")
 
         sent = 0
 
@@ -52,15 +120,27 @@ class Command(BaseCommand):
 
             diff_hours = (appt_dt - now).total_seconds() / 3600
 
-            svc_name   = appt.service.name  if appt.service else "Appointment"
-            barber_nm  = appt.barber.name   if appt.barber  else "Your barber"
-            appt_time  = appt.time.strftime("%I:%M %p")
-            appt_date  = appt.date.strftime("%A, %B %d")
-            client_nm  = appt.user.first_name or appt.user.username
+            svc_name      = appt.service.name  if appt.service else "Appointment"
+            barber_nm     = appt.barber.name   if appt.barber  else "Your barber"
+            appt_time     = appt.time.strftime("%I:%M %p").lstrip("0")
+            appt_date     = appt.date.strftime("%A, %B %d")
+            appt_date_short = appt.date.strftime("%a %b %d")
+            client_nm     = appt.user.first_name or appt.user.username
             client_email  = appt.user.email
             barber_email  = (appt.barber.user.email
                              if appt.barber and appt.barber.user else None)
             notes = appt.client_notes or ""
+
+            # Phone numbers
+            try:
+                client_phone = appt.user.profile.phone.strip() or None
+            except Exception:
+                client_phone = None
+            try:
+                barber_phone = (appt.barber.user.profile.phone.strip() or None
+                                if appt.barber and appt.barber.user else None)
+            except Exception:
+                barber_phone = None
 
             # ── 1. CLIENT 24HR REMINDER ──────────────────────────────────────
             # Fires once when appointment is 23–25 hours away
@@ -85,6 +165,14 @@ class Command(BaseCommand):
                             "Your appointment is tomorrow", "#f59e0b", "⏰"
                         )
                         _sendgrid_send(client_email, subj, plain, html)
+                        if client_phone:
+                            _twilio_send(client_phone,
+                                f"⏰ HEADZ UP Reminder: Appointment tomorrow!\n"
+                                f"{svc_name} w/ {barber_nm}\n"
+                                f"{appt_date_short} at {appt_time}\n"
+                                f"2509 W 4th St, Hattiesburg MS\n"
+                                f"Cancel 2hrs+ before to avoid a strike."
+                            )
                         appt.reminder_sent = True
                         appt.save(update_fields=["reminder_sent"])
                         sent += 1
@@ -113,6 +201,12 @@ class Command(BaseCommand):
                             "Your appointment is in 2 hours", "#ef4444", "✂️"
                         )
                         _sendgrid_send(client_email, subj, plain, html)
+                        if client_phone:
+                            _twilio_send(client_phone,
+                                f"✂️ HEADZ UP: 2 hours away!\n"
+                                f"{svc_name} w/ {barber_nm} at {appt_time} today.\n"
+                                f"Please be on time!"
+                            )
                         try:
                             appt.reminder_2hr_sent = True
                             appt.save(update_fields=["reminder_2hr_sent"])
@@ -145,6 +239,12 @@ class Command(BaseCommand):
                             f"{client_nm} arriving in 2 hours — get ready!", "#f59e0b", "⚡"
                         )
                         _sendgrid_send(barber_email, subj, plain, html)
+                        if barber_phone:
+                            _twilio_send(barber_phone,
+                                f"⚡ HEADZ UP: {client_nm} in 2 hours!\n"
+                                f"{svc_name} at {appt_time} today."
+                                + (f"\nNotes: {notes}" if notes else "")
+                            )
                         try:
                             appt.barber_reminder_2hr = True
                             appt.save(update_fields=["barber_reminder_2hr"])
@@ -176,6 +276,12 @@ class Command(BaseCommand):
                             f"{client_nm} is here — it's time!", "#22c55e", "🪑"
                         )
                         _sendgrid_send(barber_email, subj, plain, html)
+                        if barber_phone:
+                            _twilio_send(barber_phone,
+                                f"🪑 HEADZ UP: {client_nm} is up NOW!\n"
+                                f"{svc_name} at {appt_time}."
+                                + (f"\nNotes: {notes}" if notes else "")
+                            )
                         try:
                             appt.barber_reminder_now = True
                             appt.save(update_fields=["barber_reminder_now"])

@@ -83,6 +83,12 @@ const HOURS = Array.from({ length: 19 }, (_, i) => {
 }).filter((t) => t <= "18:00");
 
 const STATUS_CFG = {
+  pending_shop: {
+    label: "Awaiting Arrival",
+    color: "#fb923c",
+    bg: "rgba(251,146,60,0.08)",
+    border: "rgba(251,146,60,0.2)",
+  },
   confirmed: {
     label: "Confirmed",
     color: T.green,
@@ -424,6 +430,72 @@ function ApptTicket({
             background: T.amberDim,
           }}
         >
+          {/* Confirm Arrival — shown prominently for pending_shop */}
+          {status === "pending_shop" && (
+            <div
+              style={{
+                marginBottom: 16,
+                padding: "14px 16px",
+                background: "rgba(251,146,60,0.08)",
+                border: "1px solid rgba(251,146,60,0.3)",
+              }}
+            >
+              <p
+                style={{
+                  ...sf,
+                  fontSize: 6,
+                  letterSpacing: "0.35em",
+                  color: "#fb923c",
+                  textTransform: "uppercase",
+                  marginBottom: 10,
+                }}
+              >
+                📍 Client Arrival
+              </p>
+              <p
+                style={{
+                  ...mono,
+                  fontSize: 11,
+                  color: "#a1a1aa",
+                  marginBottom: 12,
+                  lineHeight: 1.6,
+                }}
+              >
+                Tap when the client arrives and pays. This confirms their spot
+                and releases reminders. Slots not confirmed within 1 hour of
+                appointment time are auto-released.
+              </p>
+              <button
+                onClick={() =>
+                  onStatusChange && onStatusChange(appt.id, "confirmed")
+                }
+                style={{
+                  padding: "11px 24px",
+                  background: "#fb923c",
+                  color: "black",
+                  ...sf,
+                  fontSize: 7,
+                  fontWeight: 700,
+                  letterSpacing: "0.15em",
+                  textTransform: "uppercase",
+                  border: "none",
+                  cursor: "pointer",
+                  transition: "all 0.2s",
+                  clipPath:
+                    "polygon(0 0,calc(100% - 6px) 0,100% 6px,100% 100%,6px 100%,0 calc(100% - 6px))",
+                }}
+                onMouseEnter={(e) =>
+                  (e.currentTarget.style.background = "white")
+                }
+                onMouseLeave={(e) =>
+                  (e.currentTarget.style.background = "#fb923c")
+                }
+              >
+                ✓ Confirm Arrival — Client Paid
+              </button>
+            </div>
+          )}
+
           <p
             style={{
               ...sf,

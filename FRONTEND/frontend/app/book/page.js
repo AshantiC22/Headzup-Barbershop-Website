@@ -388,9 +388,10 @@ function BookingCalendar({
                   }
                 }}
               >
-                {/* Red diagonal slash on unavailable future days */}
+                {/* Glowing red diagonal slash on unavailable future days */}
                 {showSlash && (
                   <svg
+                    className="slash-glow"
                     style={{
                       position: "absolute",
                       inset: 0,
@@ -406,8 +407,9 @@ function BookingCalendar({
                       y1="36"
                       x2="36"
                       y2="4"
-                      stroke="rgba(239,68,68,0.45)"
-                      strokeWidth="1.5"
+                      stroke="rgba(239,68,68,0.7)"
+                      strokeWidth="1.8"
+                      strokeLinecap="round"
                     />
                   </svg>
                 )}
@@ -507,6 +509,9 @@ function TimeSlotGrid({
   timeOff,
   message,
 }) {
+  const sf = { fontFamily: "'Syncopate', sans-serif" };
+  const mono = { fontFamily: "'DM Mono', monospace" };
+
   if (loading) {
     return (
       <div
@@ -565,7 +570,7 @@ function TimeSlotGrid({
         >
           Not Available
         </p>
-        <p style={{ fontSize: 12, color: "#52525b" }}>
+        <p style={{ ...mono, fontSize: 12, color: "#52525b" }}>
           {message || "The barber is not available on this day."}
         </p>
       </div>
@@ -594,7 +599,7 @@ function TimeSlotGrid({
         >
           Fully Booked
         </p>
-        <p style={{ fontSize: 12, color: "#3f3f46" }}>
+        <p style={{ ...mono, fontSize: 12, color: "#3f3f46" }}>
           No available slots for this day. Try another date.
         </p>
       </div>
@@ -602,59 +607,127 @@ function TimeSlotGrid({
   }
 
   return (
-    <div
-      style={{
-        display: "grid",
-        gridTemplateColumns: "repeat(auto-fill, minmax(90px, 1fr))",
-        gap: 6,
-      }}
-    >
-      {slots.map((slot) => {
-        const display = fmtTime(slot);
-        const isSelected = selectedTime === display;
-        const isBooked = bookedSlots.includes(slot);
+    <>
+      <style>{`
+        @keyframes slotPulse {
+          0%,100% { box-shadow: 0 0 0 0 rgba(245,158,11,0); }
+          50%      { box-shadow: 0 0 8px 2px rgba(245,158,11,0.18); }
+        }
+        @keyframes slashGlow {
+          0%,100% { filter: drop-shadow(0 0 0px rgba(239,68,68,0)); }
+          50%      { filter: drop-shadow(0 0 4px rgba(239,68,68,0.7)); }
+        }
+        .slot-avail { animation: slotPulse 2.8s ease-in-out infinite; }
+        .slot-avail:hover { animation: none !important; }
+        .slash-glow { animation: slashGlow 2s ease-in-out infinite; }
+      `}</style>
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fill, minmax(88px, 1fr))",
+          gap: 6,
+        }}
+      >
+        {slots.map((slot) => {
+          const display = fmtTime(slot);
+          const isSelected = selectedTime === display;
+          const isBooked = bookedSlots.includes(slot);
 
-        return (
-          <button
-            key={slot}
-            onClick={() => !isBooked && onSelect(display)}
-            disabled={isBooked}
-            style={{
-              padding: "12px 4px",
-              ...sf,
-              fontSize: 8,
-              letterSpacing: "0.05em",
-              textTransform: "uppercase",
-              border: `1px solid ${isSelected ? "#f59e0b" : isBooked ? "rgba(255,255,255,0.04)" : "rgba(255,255,255,0.08)"}`,
-              background: isSelected
-                ? "rgba(245,158,11,0.12)"
-                : isBooked
-                  ? "rgba(255,255,255,0.02)"
-                  : "transparent",
-              color: isSelected ? "#f59e0b" : isBooked ? "#27272a" : "#71717a",
-              cursor: isBooked ? "not-allowed" : "pointer",
-              transition: "all 0.18s",
-              textDecoration: isBooked ? "line-through" : "none",
-              position: "relative",
-            }}
-            onMouseEnter={(e) => {
-              if (!isBooked && !isSelected) {
-                e.currentTarget.style.borderColor = "rgba(245,158,11,0.4)";
-                e.currentTarget.style.color = "#f59e0b";
-              }
-            }}
-            onMouseLeave={(e) => {
-              if (!isBooked && !isSelected) {
-                e.currentTarget.style.borderColor = "rgba(255,255,255,0.08)";
-                e.currentTarget.style.color = "#71717a";
-              }
-            }}
-          >
-            {display}
-          </button>
-        );
-      })}
-    </div>
+          return (
+            <button
+              key={slot}
+              onClick={() => !isBooked && onSelect(display)}
+              disabled={isBooked}
+              className={!isBooked && !isSelected ? "slot-avail" : ""}
+              style={{
+                padding: "13px 4px",
+                ...sf,
+                fontSize: 8,
+                letterSpacing: "0.05em",
+                textTransform: "uppercase",
+                border: isSelected
+                  ? "1px solid #f59e0b"
+                  : isBooked
+                    ? "1px solid rgba(239,68,68,0.12)"
+                    : "1px solid rgba(245,158,11,0.2)",
+                background: isSelected
+                  ? "rgba(245,158,11,0.15)"
+                  : isBooked
+                    ? "rgba(239,68,68,0.03)"
+                    : "rgba(245,158,11,0.04)",
+                color: isSelected
+                  ? "#f59e0b"
+                  : isBooked
+                    ? "#2d1515"
+                    : "#a1a1aa",
+                cursor: isBooked ? "not-allowed" : "pointer",
+                transition: "all 0.18s",
+                position: "relative",
+                overflow: "hidden",
+              }}
+              onMouseEnter={(e) => {
+                if (!isBooked && !isSelected) {
+                  e.currentTarget.style.borderColor = "#f59e0b";
+                  e.currentTarget.style.color = "#f59e0b";
+                  e.currentTarget.style.background = "rgba(245,158,11,0.12)";
+                  e.currentTarget.style.boxShadow =
+                    "0 0 12px 2px rgba(245,158,11,0.25)";
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (!isBooked && !isSelected) {
+                  e.currentTarget.style.borderColor = "rgba(245,158,11,0.2)";
+                  e.currentTarget.style.color = "#a1a1aa";
+                  e.currentTarget.style.background = "rgba(245,158,11,0.04)";
+                  e.currentTarget.style.boxShadow = "";
+                }
+              }}
+            >
+              {/* Glowing red slash on booked slots */}
+              {isBooked && (
+                <svg
+                  className="slash-glow"
+                  style={{
+                    position: "absolute",
+                    inset: 0,
+                    width: "100%",
+                    height: "100%",
+                    pointerEvents: "none",
+                  }}
+                  viewBox="0 0 88 42"
+                  preserveAspectRatio="none"
+                >
+                  <line
+                    x1="4"
+                    y1="38"
+                    x2="84"
+                    y2="4"
+                    stroke="rgba(239,68,68,0.6)"
+                    strokeWidth="1.5"
+                    strokeLinecap="round"
+                  />
+                </svg>
+              )}
+              {/* Selected checkmark */}
+              {isSelected && (
+                <span
+                  style={{
+                    position: "absolute",
+                    top: 3,
+                    right: 4,
+                    fontSize: 8,
+                    color: "#f59e0b",
+                  }}
+                >
+                  ✓
+                </span>
+              )}
+              <span style={{ position: "relative", zIndex: 1 }}>{display}</span>
+            </button>
+          );
+        })}
+      </div>
+    </>
   );
 }
 
@@ -774,6 +847,9 @@ function BookContent() {
   }, [step]);
 
   // ── Load services + barbers ──
+  // Pre-fetched working days map: barberId → { all_days, time_off_dates }
+  const [barberSchedules, setBarberSchedules] = useState({});
+
   useEffect(() => {
     const load = async () => {
       try {
@@ -781,8 +857,28 @@ function BookContent() {
           API.get("services/"),
           API.get("barbers/"),
         ]);
+        const barberList = Array.isArray(b.data)
+          ? b.data
+          : b.data.results || [];
         setServices(Array.isArray(s.data) ? s.data : s.data.results || []);
-        setBarbers(Array.isArray(b.data) ? b.data : b.data.results || []);
+        setBarbers(barberList);
+
+        // Pre-fetch working days for ALL barbers immediately — no delay on select
+        const scheduleMap = {};
+        await Promise.all(
+          barberList.map(async (barber) => {
+            try {
+              const r = await API.get(`barbers/${barber.id}/working-days/`);
+              scheduleMap[barber.id] = {
+                all_days: r.data.all_days || [],
+                time_off_dates: r.data.time_off_dates || [],
+              };
+            } catch {
+              scheduleMap[barber.id] = { all_days: [], time_off_dates: [] };
+            }
+          }),
+        );
+        setBarberSchedules(scheduleMap);
       } catch {
         setDataError("Could not load booking data. Please refresh.");
       } finally {
@@ -953,6 +1049,33 @@ function BookContent() {
           100% {
             background-position: 200% center;
           }
+        }
+        @keyframes slashGlow {
+          0%,
+          100% {
+            filter: drop-shadow(0 0 0px rgba(239, 68, 68, 0));
+          }
+          50% {
+            filter: drop-shadow(0 0 5px rgba(239, 68, 68, 0.9));
+          }
+        }
+        @keyframes slotPulse {
+          0%,
+          100% {
+            box-shadow: 0 0 0 0 rgba(245, 158, 11, 0);
+          }
+          50% {
+            box-shadow: 0 0 8px 2px rgba(245, 158, 11, 0.2);
+          }
+        }
+        .slash-glow {
+          animation: slashGlow 2s ease-in-out infinite;
+        }
+        .slot-avail {
+          animation: slotPulse 2.8s ease-in-out infinite;
+        }
+        .slot-avail:hover {
+          animation: none !important;
         }
       `}</style>
 
@@ -1461,16 +1584,13 @@ function BookContent() {
                           setSelectedBarber(b);
                           setSelectedDate("");
                           setSelectedTime("");
-                          // Fetch this barber's working days so calendar can show availability
-                          API.get(`barbers/${b.id}/working-days/`)
-                            .then((r) => {
-                              setWorkingDays(r.data.all_days || []);
-                              setTimeOffDates(r.data.time_off_dates || []);
-                            })
-                            .catch(() => {
-                              setWorkingDays([]);
-                              setTimeOffDates([]);
-                            });
+                          // Use pre-fetched schedule — instant, no delay
+                          const sched = barberSchedules[b.id] || {
+                            all_days: [],
+                            time_off_dates: [],
+                          };
+                          setWorkingDays(sched.all_days);
+                          setTimeOffDates(sched.time_off_dates);
                           setStep(3);
                         }}
                         style={{
@@ -2640,7 +2760,7 @@ function BookContent() {
                                 color: "white",
                               }}
                             >
-                              Deposit & Cancellation Policy
+                              Booking Terms
                             </h3>
                           </div>
                           <button
@@ -2682,40 +2802,53 @@ function BookContent() {
                             flex: 1,
                           }}
                         >
+                          <p
+                            style={{
+                              fontFamily: "'DM Mono',monospace",
+                              fontSize: 12,
+                              color: "#71717a",
+                              lineHeight: 1.9,
+                              marginBottom: 20,
+                            }}
+                          >
+                            By booking with HEADZ UP you are agreeing to the
+                            rules of this shop. These rules are not up for
+                            debate — they exist to protect the barber's time and
+                            livelihood. Read them, understand them, and respect
+                            them.
+                          </p>
                           {[
                             {
-                              title: "📌 Deposit Requirement",
-                              body: `All online bookings require a non-refundable $10.00 deposit to secure your appointment. This deposit is applied toward your total service price. For example, if your service is $35.00, you pay $10.00 now and $25.00 at the shop.`,
+                              icon: "💳",
+                              title: "Deposit",
+                              body: `Online bookings require a deposit to hold your spot. The deposit comes off your total at the chair — you are not paying extra. The deposit is non-refundable under any circumstance.`,
                             },
                             {
-                              title: "⚠️ Strike System",
-                              body: `HEADZ UP operates a fair strike system to protect our barbers' time. A strike is issued when a client is a no-show, cancels within 2 hours of their appointment, or is a habitual last-minute canceler.`,
+                              icon: "🪑",
+                              title: "Show Up",
+                              body: `When you book a slot, that time belongs to you. The barber turns away other clients for it. If you do not show up, you have wasted their time and their income. No-shows receive a strike and forfeit their deposit — no exceptions.`,
                             },
                             {
-                              title: "💰 Deposit Increases",
-                              body: `Your first booking always starts at the standard $10.00 deposit. Each strike after your first will increase your deposit fee by $1.50 for every future booking. For example: 1 strike = $10.00, 2 strikes = $11.50, 3 strikes = $13.00, and so on. This protects our barbers from lost income due to repeated no-shows.`,
+                              icon: "⏰",
+                              title: "Cancellations",
+                              body: `Need to cancel? Do it more than 2 hours before your appointment — no strike, no problem. Cancel within 2 hours or simply disappear and you will receive a strike. The deposit is gone either way.`,
                             },
                             {
-                              title: "🚫 No-Show Policy",
-                              body: `If you do not show up for your appointment without any notice, you will forfeit your full deposit. That money goes directly to your barber as compensation for the reserved time slot. A strike will be added to your account.`,
+                              icon: "⚡",
+                              title: "Strike System",
+                              body: `Strikes are issued for no-shows and late cancellations. Strikes raise your deposit on future bookings. This system is final — the shop owner's decision on any strike matter is absolute and is not subject to dispute through this platform.`,
                             },
                             {
-                              title: "⏰ Late Cancellation Policy",
-                              body: `Cancellations made less than 2 hours before your scheduled appointment are considered late cancellations. Your deposit will not be refunded and a strike will be added to your account. We understand emergencies happen — if you have a genuine emergency please contact the shop directly.`,
+                              icon: "🔄",
+                              title: "Rescheduling",
+                              body: `You can request a reschedule as long as it is more than 2 hours before your appointment. The barber approves or denies all reschedule requests. Their decision is final.`,
                             },
                             {
-                              title: "✅ On-Time Cancellations",
-                              body: `Cancellations made more than 2 hours before your appointment will not result in a strike. However, deposits are non-refundable. You are welcome to reschedule your appointment at no additional deposit charge as long as you are not within the 2-hour window.`,
+                              icon: "📋",
+                              title: "This Platform",
+                              body: `This booking system — including the deposit requirement, strike tracking, scheduling, and all related features — is operated at the sole discretion of HEADZ UP Barbershop. Use of this platform constitutes full acceptance of these terms. These rules are not negotiable.`,
                             },
-                            {
-                              title: "🔄 Rescheduling",
-                              body: `You may reschedule your appointment once at no penalty as long as you do so more than 2 hours before the original appointment time. Rescheduling within 2 hours of your appointment is treated as a late cancellation.`,
-                            },
-                            {
-                              title: "📞 Contact",
-                              body: `If you have questions about your strikes or deposit balance, please contact HEADZ UP Barbershop directly. We are always happy to work with our clients in good faith.`,
-                            },
-                          ].map(({ title, body }) => (
+                          ].map(({ icon, title, body }) => (
                             <div
                               key={title}
                               style={{
@@ -2736,7 +2869,7 @@ function BookContent() {
                                   marginBottom: 8,
                                 }}
                               >
-                                {title}
+                                {icon} {title}
                               </p>
                               <p
                                 style={{
@@ -2754,15 +2887,13 @@ function BookContent() {
                             style={{
                               fontFamily: "'DM Mono',monospace",
                               fontSize: 10,
-                              color: "#52525b",
+                              color: "#3f3f46",
                               lineHeight: 1.7,
                               marginTop: 4,
                             }}
                           >
-                            By booking with HEADZ UP Barbershop you acknowledge
-                            that you have read, understood, and agree to this
-                            Deposit & Cancellation Policy. This policy exists to
-                            ensure fair treatment for both clients and barbers.
+                            Booking an appointment means you have read and
+                            accepted these terms in full.
                           </p>
                         </div>
 

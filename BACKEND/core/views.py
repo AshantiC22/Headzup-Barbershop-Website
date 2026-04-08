@@ -1612,19 +1612,25 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         return Appointment.objects.filter(user=self.request.user).order_by("date", "time")
 
     def perform_create(self, serializer):
-        barber_id = serializer.validated_data.get("barber").id
-        date      = serializer.validated_data.get("date")
-        time      = serializer.validated_data.get("time")
+        barber_id      = serializer.validated_data.get("barber").id
+        date           = serializer.validated_data.get("date")
+        time           = serializer.validated_data.get("time")
+        payment_method = serializer.validated_data.get("payment_method", "shop")
 
         if date < date_type.today():
             raise serializers.ValidationError("Cannot book appointments in the past.")
         if date.weekday() == 6:
             raise serializers.ValidationError("We are closed on Sundays.")
-        if Appointment.objects.filter(barber_id=barber_id, date=date, time=time).exists():
+        # Block slots already taken (exclude cancelled)
+        if Appointment.objects.filter(
+            barber_id=barber_id, date=date, time=time
+        ).exclude(status="cancelled").exists():
             raise serializers.ValidationError("That time slot is already booked. Please choose another.")
         try:
-            appt = serializer.save(user=self.request.user)
-            # Re-fetch with all relations for email thread
+            # Pay-in-shop → pending_shop (barber must confirm arrival, auto-cancels if no-show)
+            # Online deposit → confirmed (Stripe already secured the slot)
+            initial_status = "confirmed" if payment_method == "online" else "pending_shop"
+            appt = serializer.save(user=self.request.user, status=initial_status)
             appt_full = Appointment.objects.select_related(
                 "user", "barber", "barber__user", "service"
             ).get(pk=appt.pk)
@@ -2968,6 +2974,7 @@ class BarberAppointmentUpdateView(APIView):
     permission_classes = [IsAuthenticated]
 
     def patch(self, request, pk):
+        from django.utils import timezone as tz
         barber = get_barber_for_user(request.user)
         if not barber:
             return Response({"error": "Not a barber account"}, status=403)
@@ -2981,8 +2988,12 @@ class BarberAppointmentUpdateView(APIView):
         new_time   = request.data.get("time")
         new_notes  = request.data.get("barber_notes")
 
-        if new_status in ["confirmed", "completed", "no_show", "cancelled"]:
+        if new_status in ["pending_shop", "confirmed", "completed", "no_show", "cancelled"]:
             appt.status = new_status
+            # When barber confirms a shop booking arrival, stamp the time
+            if new_status == "confirmed" and appt.payment_method == "shop":
+                appt.shop_confirmed_at = tz.now()
+
         if new_date:
             appt.date = new_date
         if new_time:

@@ -17,6 +17,8 @@ class UserProfile(models.Model):
     terms_accepted    = models.BooleanField(default=False,
                                             help_text="Client accepted deposit & strike T&C")
     terms_accepted_at = models.DateTimeField(null=True, blank=True)
+    phone             = models.CharField(max_length=20, blank=True, default="",
+                                         help_text="Mobile number for SMS e.g. +16015551234")
 
     def get_deposit_fee(self):
         """Base $10 + $1.50 for every strike beyond the first."""
@@ -89,10 +91,11 @@ class BarberTimeOff(models.Model):
 
 class Appointment(models.Model):
     STATUS_CHOICES = [
-        ("confirmed", "Confirmed"),
-        ("completed", "Completed"),
-        ("no_show",   "No Show"),
-        ("cancelled", "Cancelled"),
+        ("pending_shop", "Pending Shop Confirmation"),
+        ("confirmed",    "Confirmed"),
+        ("completed",    "Completed"),
+        ("no_show",      "No Show"),
+        ("cancelled",    "Cancelled"),
     ]
     PAYMENT_CHOICES = [
         ("online", "Online"),
@@ -107,15 +110,16 @@ class Appointment(models.Model):
     status            = models.CharField(max_length=20, choices=STATUS_CHOICES, default="confirmed")
     payment_method    = models.CharField(max_length=20, choices=PAYMENT_CHOICES, default="shop")
     created_at        = models.DateTimeField(auto_now_add=True)
+    shop_confirmed_at = models.DateTimeField(null=True, blank=True,
+                                             help_text="When barber confirmed shop booking arrival")
     review_notified   = models.BooleanField(default=False)
-    reminder_sent          = models.BooleanField(default=False)   # client 24hr reminder
-    reminder_2hr_sent      = models.BooleanField(default=False)   # client 2hr reminder
-    barber_reminder_2hr    = models.BooleanField(default=False)   # barber 2hr reminder
-    barber_reminder_now    = models.BooleanField(default=False)   # barber at-time reminder
+    reminder_sent          = models.BooleanField(default=False)
+    reminder_2hr_sent      = models.BooleanField(default=False)
+    barber_reminder_2hr    = models.BooleanField(default=False)
+    barber_reminder_now    = models.BooleanField(default=False)
     barber_notes      = models.TextField(blank=True, default="")
     client_notes      = models.TextField(blank=True, default="")
     is_walk_in        = models.BooleanField(default=False)
-    # Deposit system
     deposit_amount    = models.DecimalField(max_digits=6, decimal_places=2, default=0.00,
                                             help_text="Deposit charged at booking time")
     deposit_paid      = models.BooleanField(default=False,
