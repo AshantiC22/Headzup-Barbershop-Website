@@ -937,7 +937,7 @@ function BookingConfirmedInner() {
             animation: "pulse 3s ease infinite",
           }}
         >
-          HEADZ UP · Hattiesburg, MS · {new Date().getFullYear()}
+          HEADZ UP · Hattiesburg, MS · 2026
         </p>
       </div>
     </>

@@ -1,4 +1,11 @@
 "use client";
+
+const validPhoto = (url) => {
+  if (!url) return null;
+  if (url.startsWith("data:")) return url;
+  if (url.startsWith("https://")) return url;
+  return null;
+};
 // HEADZ UP — Barber Dashboard v4
 
 import { useEffect, useState, useCallback, useRef } from "react";
@@ -2143,15 +2150,30 @@ export default function BarberDashboard() {
   };
 
   const handleCancel = async (id) => {
-    if (!confirm("Cancel this appointment?")) return;
+    const appt = schedule.find((a) => a.id === id);
+    const clientName = appt?.client_name || appt?.user_name || "this client";
+    if (
+      !confirm(
+        `Cancel appointment for ${clientName}?\n\nThey will receive a cancellation email immediately.`,
+      )
+    )
+      return;
     try {
-      await API.patch(`barber/appointments/${id}/`, { status: "cancelled" });
-      setSchedule((p) =>
-        p.map((a) => (a.id === id ? { ...a, status: "cancelled" } : a)),
-      );
-      showToast("Appointment cancelled.");
-    } catch {
-      showToast("Could not cancel.", "error");
+      // Use DELETE endpoint — fires send_cancellation_email(cancelled_by="barber") to client
+      await API.delete(`barber/appointments/${id}/`);
+      setSchedule((p) => p.filter((a) => a.id !== id));
+      showToast(`✓ Cancelled — ${clientName} has been notified by email.`);
+    } catch (e) {
+      // Fallback: if delete fails try patch
+      try {
+        await API.patch(`barber/appointments/${id}/`, { status: "cancelled" });
+        setSchedule((p) =>
+          p.map((a) => (a.id === id ? { ...a, status: "cancelled" } : a)),
+        );
+        showToast("Appointment cancelled.");
+      } catch {
+        showToast("Could not cancel.", "error");
+      }
     }
   };
 

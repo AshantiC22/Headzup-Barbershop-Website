@@ -1,4 +1,11 @@
 "use client";
+
+const validPhoto = (url) => {
+  if (!url) return null;
+  if (url.startsWith("data:")) return url;
+  if (url.startsWith("https://")) return url;
+  return null;
+};
 // v3 — visual calendar, creative redesign
 
 import { useEffect, useRef, useState, useCallback } from "react";
@@ -1650,9 +1657,9 @@ function BookContent() {
                             position: "relative",
                           }}
                         >
-                          {b.photo_url || b.photo ? (
+                          {validPhoto(b.photo_url || b.photo) ? (
                             <img
-                              src={b.photo_url || b.photo}
+                              src={validPhoto(b.photo_url || b.photo)}
                               alt={b.name}
                               style={{
                                 width: "100%",

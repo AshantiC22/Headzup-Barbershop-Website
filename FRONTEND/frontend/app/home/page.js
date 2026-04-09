@@ -9,6 +9,14 @@ const M = { fontFamily: "'DM Mono',monospace" };
 const A = "#f59e0b";
 const R = "#ef4444";
 
+// Only use photo if it's a base64 data URL or a real https URL — ignore stale Railway /media/ paths
+const validPhoto = (url) => {
+  if (!url) return null;
+  if (url.startsWith("data:")) return url; // base64 — always valid
+  if (url.startsWith("https://")) return url; // external https URL — valid
+  return null; // http:// or /media/ path — skip
+};
+
 /* ═══════════════════════════════════════════════════════════════════════════
    PERSONA SELECT  —  full-screen fighter-select like Def Jam / P5
 ═══════════════════════════════════════════════════════════════════════════ */
@@ -65,10 +73,10 @@ function PersonaSelect({ barbers, book, isMobile }) {
 
       {/* Full-bleed bg */}
       <div style={{ position: "absolute", inset: 0, zIndex: 0 }}>
-        {active.photo_url || active.photo ? (
+        {validPhoto(active.photo_url || active.photo) ? (
           <img
             key={`bg-${active.id}`}
-            src={active.photo_url || active.photo}
+            src={validPhoto(active.photo_url || active.photo)}
             alt=""
             style={{
               width: "100%",
@@ -301,9 +309,9 @@ function PersonaSelect({ barbers, book, isMobile }) {
                         : "none",
                   }}
                 >
-                  {b.photo_url || b.photo ? (
+                  {validPhoto(b.photo_url || b.photo) ? (
                     <img
-                      src={b.photo_url || b.photo}
+                      src={validPhoto(b.photo_url || b.photo)}
                       alt={b.name}
                       style={{
                         width: "100%",
@@ -611,9 +619,9 @@ function PersonaSelect({ barbers, book, isMobile }) {
                       marginLeft: i === sel ? 3 : 0,
                     }}
                   >
-                    {b.photo_url || b.photo ? (
+                    {validPhoto(b.photo_url || b.photo) ? (
                       <img
-                        src={b.photo_url || b.photo}
+                        src={validPhoto(b.photo_url || b.photo)}
                         alt={b.name}
                         style={{
                           width: "100%",
@@ -821,10 +829,10 @@ function PersonaSelect({ barbers, book, isMobile }) {
                       "polygon(0 0,calc(100% - 28px) 0,100% 28px,100% 100%,28px 100%,0 calc(100% - 28px))",
                   }}
                 >
-                  {active.photo_url || active.photo ? (
+                  {validPhoto(active.photo_url || active.photo) ? (
                     <img
                       key={`hero-${active.id}`}
-                      src={active.photo_url || active.photo}
+                      src={validPhoto(active.photo_url || active.photo)}
                       alt={active.name}
                       style={{
                         width: "100%",
@@ -3863,7 +3871,7 @@ export default function HomePage() {
                 textTransform: "uppercase",
               }}
             >
-              © {new Date().getFullYear()} · Hattiesburg, MS
+              © 2026 · Hattiesburg, MS
             </p>
             <div style={{ display: "flex", gap: 18 }}>
               {[
