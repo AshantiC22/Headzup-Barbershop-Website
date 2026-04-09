@@ -30,6 +30,7 @@ from core.views import (
     NewsletterPostManageView,
     AcceptTermsView,
     UpdatePhoneView,
+    ClientStrikeStatusView,
     DepositCheckoutView,
     DepositSuccessView,
     IssueStrikeView,
