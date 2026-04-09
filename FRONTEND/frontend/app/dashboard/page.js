@@ -57,33 +57,110 @@ function RescheduleModal({ appt, onClose, onDone }) {
   const [newTime, setNewTime] = useState("");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
-  const today = new Date().toISOString().split("T")[0];
 
-  const SLOTS = [
-    "9:00 AM",
-    "9:30 AM",
-    "10:00 AM",
-    "10:30 AM",
-    "11:00 AM",
-    "11:30 AM",
-    "12:00 PM",
-    "12:30 PM",
-    "1:00 PM",
-    "1:30 PM",
-    "2:00 PM",
-    "2:30 PM",
-    "3:00 PM",
-    "3:30 PM",
-    "4:00 PM",
-    "4:30 PM",
+  // Barber schedule (same data as booking page)
+  const [allDays, setAllDays] = useState([]);
+  const [timeOffDates, setTimeOffDates] = useState([]);
+  const [schedLoading, setSchedLoading] = useState(true);
+
+  // Available time slots for selected date
+  const [slots, setSlots] = useState([]);
+  const [bookedSlots, setBookedSlots] = useState([]);
+  const [slotsLoading, setSlotsLoading] = useState(false);
+  const [timeOff, setTimeOff] = useState(false);
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const todayISO = today.toISOString().split("T")[0];
+
+  // ── Fetch barber working days on mount ──────────────────────────────────
+  useEffect(() => {
+    if (!appt?.barber_id) {
+      setSchedLoading(false);
+      return;
+    }
+    API.get(`barbers/${appt.barber_id}/working-days/`)
+      .then((r) => {
+        setAllDays(r.data.all_days || []);
+        setTimeOffDates(r.data.time_off_dates || []);
+      })
+      .catch(() => {})
+      .finally(() => setSchedLoading(false));
+  }, [appt?.barber_id]);
+
+  // ── Fetch time slots when date changes ──────────────────────────────────
+  useEffect(() => {
+    if (!newDate || !appt?.barber_id) return;
+    setSlotsLoading(true);
+    setSlots([]);
+    setBookedSlots([]);
+    setTimeOff(false);
+    setNewTime("");
+    API.get(
+      `available-slots/?barber=${appt.barber_id}&date=${newDate}&service=${appt.service_id || ""}`,
+    )
+      .then((r) => {
+        if (r.data.time_off) {
+          setTimeOff(true);
+          return;
+        }
+        setSlots(r.data.available_slots || []);
+        setBookedSlots(r.data.booked_slots || []);
+      })
+      .catch(() => setTimeOff(true))
+      .finally(() => setSlotsLoading(false));
+  }, [newDate, appt?.barber_id, appt?.service_id]);
+
+  // ── DOW conversion: Python 0=Mon→JS 1, Python 6=Sun→JS 0 ────────────────
+  const hasSchedule = allDays.length > 0;
+  const dowWorkMap = {};
+  allDays.forEach((d) => {
+    dowWorkMap[(d.day_of_week + 1) % 7] = d.is_working;
+  });
+  const timeOffSet = new Set(timeOffDates);
+
+  // Calendar state
+  const [viewYear, setViewYear] = useState(today.getFullYear());
+  const [viewMonth, setViewMonth] = useState(today.getMonth());
+
+  const MONTHS = [
+    "January",
+    "February",
+    "March",
+    "April",
+    "May",
+    "June",
+    "July",
+    "August",
+    "September",
+    "October",
+    "November",
+    "December",
   ];
+  const DAY_LBLS = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
+  const firstDay = new Date(viewYear, viewMonth, 1).getDay();
+  const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
+  const cells = [];
+  for (let i = 0; i < firstDay; i++) cells.push(null);
+  for (let d = 1; d <= daysInMonth; d++) cells.push(d);
 
-  function to24(t) {
-    const [time, mod] = t.split(" ");
-    let [h, m] = time.split(":");
-    if (h === "12") h = "00";
-    if (mod === "PM") h = String(parseInt(h) + 12);
-    return `${h.padStart(2, "0")}:${m}:00`;
+  const toISO = (y, m, d) =>
+    `${y}-${String(m + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+
+  // Open days label for legend
+  const openDays = allDays
+    .filter((d) => d.is_working)
+    .map((d) => {
+      const js = (d.day_of_week + 1) % 7;
+      return ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][js];
+    });
+
+  function fmtSlot(t) {
+    if (!t) return t;
+    const [h, m] = t.split(":");
+    const hr = parseInt(h);
+    const ampm = hr >= 12 ? "PM" : "AM";
+    return `${hr % 12 || 12}:${m} ${ampm}`;
   }
 
   const submit = async () => {
@@ -94,9 +171,15 @@ function RescheduleModal({ appt, onClose, onDone }) {
     setBusy(true);
     setErr("");
     try {
+      // Convert "9:30 AM" → "09:30:00"
+      const [time, mod] = newTime.split(" ");
+      let [h, m] = time.split(":");
+      if (h === "12") h = "00";
+      if (mod === "PM") h = String(parseInt(h) + 12);
+      const time24 = `${h.padStart(2, "0")}:${m}:00`;
       await API.post(`appointments/${appt.id}/reschedule/`, {
         new_date: newDate,
-        new_time: to24(newTime),
+        new_time: time24,
       });
       onDone("Reschedule request sent to your barber!");
       onClose();
@@ -118,25 +201,33 @@ function RescheduleModal({ appt, onClose, onDone }) {
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        padding: 20,
+        padding: 16,
+        overflowY: "auto",
       }}
     >
       <div
         style={{
           width: "100%",
-          maxWidth: 440,
+          maxWidth: 480,
           background: "#0a0a0a",
           border: "1px solid rgba(245,158,11,0.3)",
+          clipPath:
+            "polygon(0 0,calc(100% - 12px) 0,100% 12px,100% 100%,12px 100%,0 calc(100% - 12px))",
+          maxHeight: "92vh",
+          display: "flex",
+          flexDirection: "column",
+          overflow: "hidden",
         }}
       >
         {/* Header */}
         <div
           style={{
-            padding: "20px 24px",
+            padding: "18px 22px",
             borderBottom: "1px solid rgba(255,255,255,0.07)",
             display: "flex",
             justifyContent: "space-between",
             alignItems: "center",
+            flexShrink: 0,
           }}
         >
           <div>
@@ -166,7 +257,7 @@ function RescheduleModal({ appt, onClose, onDone }) {
             <p
               style={{ ...mono, fontSize: 10, color: "#a1a1aa", marginTop: 2 }}
             >
-              {fmtDate(appt.date)}
+              with {appt.barber_name} · {fmtDate(appt.date)}
               {appt.time ? ` · ${fmtTime(appt.time)}` : ""}
             </p>
           </div>
@@ -181,6 +272,7 @@ function RescheduleModal({ appt, onClose, onDone }) {
               cursor: "pointer",
               fontSize: 14,
               transition: "all 0.2s",
+              flexShrink: 0,
             }}
             onMouseEnter={(e) => {
               e.currentTarget.style.borderColor = "#f87171";
@@ -195,7 +287,7 @@ function RescheduleModal({ appt, onClose, onDone }) {
           </button>
         </div>
 
-        <div style={{ padding: "20px 24px" }}>
+        <div style={{ padding: "18px 22px", overflowY: "auto", flex: 1 }}>
           {err && (
             <p
               style={{
@@ -209,7 +301,7 @@ function RescheduleModal({ appt, onClose, onDone }) {
             </p>
           )}
 
-          {/* Info note */}
+          {/* Info */}
           <div
             style={{
               padding: "10px 14px",
@@ -226,97 +318,519 @@ function RescheduleModal({ appt, onClose, onDone }) {
                 lineHeight: 1.6,
               }}
             >
-              Your request will be sent to your barber for approval. You'll get
-              an email when they respond.
+              Pick a date and time below. Only days{" "}
+              {appt.barber_name || "your barber"} works are selectable. Your
+              request needs their approval.
             </p>
           </div>
 
-          {/* Date */}
-          <label
+          {/* ── CALENDAR ─────────────────────────────────────────── */}
+          <p
             style={{
               ...sf,
               fontSize: 6,
               letterSpacing: "0.4em",
               color: "#a1a1aa",
               textTransform: "uppercase",
-              display: "block",
-              marginBottom: 8,
+              marginBottom: 10,
             }}
           >
-            New Date
-          </label>
-          <input
-            type="date"
-            value={newDate}
-            min={today}
-            onChange={(e) => setNewDate(e.target.value)}
-            style={{
-              width: "100%",
-              background: "#040404",
-              border: "1px solid rgba(255,255,255,0.1)",
-              padding: "12px 14px",
-              color: "white",
-              fontSize: 14,
-              ...mono,
-              outline: "none",
-              marginBottom: 16,
-              colorScheme: "dark",
-            }}
-            onFocus={(e) => (e.target.style.borderColor = "#f59e0b")}
-            onBlur={(e) =>
-              (e.target.style.borderColor = "rgba(255,255,255,0.1)")
-            }
-          />
+            Select New Date
+          </p>
 
-          {/* Time slots */}
-          <label
-            style={{
-              ...sf,
-              fontSize: 6,
-              letterSpacing: "0.4em",
-              color: "#a1a1aa",
-              textTransform: "uppercase",
-              display: "block",
-              marginBottom: 8,
-            }}
-          >
-            Preferred Time
-          </label>
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(4,1fr)",
-              gap: 5,
-              marginBottom: 20,
-            }}
-          >
-            {SLOTS.map((s) => (
-              <button
-                key={s}
-                onClick={() => setNewTime(s)}
+          {schedLoading ? (
+            <div style={{ padding: "24px", textAlign: "center" }}>
+              <div
                 style={{
-                  padding: "8px 4px",
-                  ...sf,
-                  fontSize: 5,
-                  letterSpacing: "0.05em",
-                  textTransform: "uppercase",
-                  border: `1px solid ${newTime === s ? "#f59e0b" : "rgba(255,255,255,0.08)"}`,
-                  background:
-                    newTime === s ? "rgba(245,158,11,0.1)" : "transparent",
-                  color: newTime === s ? "#f59e0b" : "#a1a1aa",
-                  cursor: "pointer",
-                  transition: "all 0.15s",
+                  width: 16,
+                  height: 16,
+                  border: "2px solid rgba(245,158,11,0.2)",
+                  borderTopColor: "#f59e0b",
+                  borderRadius: "50%",
+                  animation: "spin 0.8s linear infinite",
+                  margin: "0 auto",
+                }}
+              />
+            </div>
+          ) : (
+            <div
+              style={{
+                background: "#050505",
+                border: "1px solid rgba(255,255,255,0.08)",
+                marginBottom: 16,
+                overflow: "hidden",
+                clipPath:
+                  "polygon(0 0,calc(100% - 8px) 0,100% 8px,100% 100%,8px 100%,0 calc(100% - 8px))",
+              }}
+            >
+              {/* Month nav */}
+              <div
+                style={{
+                  background: "#000",
+                  padding: "10px 14px",
+                  borderBottom: "1px solid rgba(255,255,255,0.07)",
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
                 }}
               >
-                {s}
-              </button>
-            ))}
-          </div>
+                <button
+                  onClick={() => {
+                    if (viewMonth === 0) {
+                      setViewMonth(11);
+                      setViewYear((y) => y - 1);
+                    } else setViewMonth((m) => m - 1);
+                  }}
+                  style={{
+                    width: 28,
+                    height: 28,
+                    background: "transparent",
+                    border: "1px solid rgba(255,255,255,0.1)",
+                    color: "#71717a",
+                    cursor: "pointer",
+                    fontSize: 13,
+                    transition: "all 0.2s",
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.borderColor = "#f59e0b";
+                    e.currentTarget.style.color = "#f59e0b";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)";
+                    e.currentTarget.style.color = "#71717a";
+                  }}
+                >
+                  ‹
+                </button>
+                <p
+                  style={{
+                    ...sf,
+                    fontSize: 8,
+                    fontWeight: 700,
+                    textTransform: "uppercase",
+                    letterSpacing: "0.15em",
+                    margin: 0,
+                  }}
+                >
+                  {MONTHS[viewMonth]} {viewYear}
+                </p>
+                <button
+                  onClick={() => {
+                    if (viewMonth === 11) {
+                      setViewMonth(0);
+                      setViewYear((y) => y + 1);
+                    } else setViewMonth((m) => m + 1);
+                  }}
+                  style={{
+                    width: 28,
+                    height: 28,
+                    background: "transparent",
+                    border: "1px solid rgba(255,255,255,0.1)",
+                    color: "#71717a",
+                    cursor: "pointer",
+                    fontSize: 13,
+                    transition: "all 0.2s",
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.borderColor = "#f59e0b";
+                    e.currentTarget.style.color = "#f59e0b";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)";
+                    e.currentTarget.style.color = "#71717a";
+                  }}
+                >
+                  ›
+                </button>
+              </div>
+
+              <div style={{ padding: "10px 10px 12px" }}>
+                {/* Day labels */}
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "repeat(7,1fr)",
+                    marginBottom: 4,
+                  }}
+                >
+                  {DAY_LBLS.map((d) => (
+                    <p
+                      key={d}
+                      style={{
+                        ...mono,
+                        fontSize: 8,
+                        textAlign: "center",
+                        color: "#52525b",
+                        textTransform: "uppercase",
+                        margin: 0,
+                        padding: "3px 0",
+                      }}
+                    >
+                      {d}
+                    </p>
+                  ))}
+                </div>
+
+                {/* Date cells */}
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "repeat(7,1fr)",
+                    gap: 2,
+                  }}
+                >
+                  {cells.map((day, i) => {
+                    if (!day) return <div key={i} />;
+                    const iso = toISO(viewYear, viewMonth, day);
+                    const date = new Date(viewYear, viewMonth, day);
+                    const jsDow = date.getDay();
+                    const isPast = date < today;
+                    const isUnavail = hasSchedule
+                      ? dowWorkMap.hasOwnProperty(jsDow)
+                        ? !dowWorkMap[jsDow]
+                        : true
+                      : jsDow === 0;
+                    const isTimeOff = timeOffSet.has(iso);
+                    const disabled = isPast || isUnavail || isTimeOff;
+                    const isToday = iso === todayISO;
+                    const selected = iso === newDate;
+                    const showSlash = !isPast && (isUnavail || isTimeOff);
+
+                    return (
+                      <button
+                        key={iso}
+                        onClick={() => !disabled && setNewDate(iso)}
+                        disabled={disabled}
+                        style={{
+                          aspectRatio: "1",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          position: "relative",
+                          overflow: "hidden",
+                          ...mono,
+                          fontSize: 10,
+                          fontWeight: selected ? 700 : 400,
+                          background: selected
+                            ? "#f59e0b"
+                            : isToday
+                              ? "rgba(245,158,11,0.1)"
+                              : "transparent",
+                          color: selected
+                            ? "black"
+                            : isPast
+                              ? "#252525"
+                              : disabled
+                                ? "#2d2d2d"
+                                : isToday
+                                  ? "#f59e0b"
+                                  : "#d4d4d4",
+                          border: selected
+                            ? "1px solid #f59e0b"
+                            : isToday
+                              ? "1px solid rgba(245,158,11,0.3)"
+                              : "1px solid transparent",
+                          cursor: disabled ? "not-allowed" : "pointer",
+                          transition: "all 0.15s",
+                          borderRadius: 0,
+                        }}
+                        onMouseEnter={(e) => {
+                          if (!disabled && !selected) {
+                            e.currentTarget.style.background =
+                              "rgba(245,158,11,0.15)";
+                            e.currentTarget.style.color = "#f59e0b";
+                            e.currentTarget.style.borderColor =
+                              "rgba(245,158,11,0.3)";
+                          }
+                        }}
+                        onMouseLeave={(e) => {
+                          if (!disabled && !selected) {
+                            e.currentTarget.style.background = isToday
+                              ? "rgba(245,158,11,0.1)"
+                              : "transparent";
+                            e.currentTarget.style.color = isToday
+                              ? "#f59e0b"
+                              : "#d4d4d4";
+                            e.currentTarget.style.borderColor = isToday
+                              ? "rgba(245,158,11,0.3)"
+                              : "transparent";
+                          }
+                        }}
+                      >
+                        {showSlash && (
+                          <svg
+                            style={{
+                              position: "absolute",
+                              inset: 0,
+                              width: "100%",
+                              height: "100%",
+                              pointerEvents: "none",
+                            }}
+                            viewBox="0 0 40 40"
+                            preserveAspectRatio="none"
+                          >
+                            <line
+                              x1="4"
+                              y1="36"
+                              x2="36"
+                              y2="4"
+                              stroke="rgba(239,68,68,0.55)"
+                              strokeWidth="1.5"
+                              strokeLinecap="round"
+                              style={{
+                                filter:
+                                  "drop-shadow(0 0 3px rgba(239,68,68,0.6))",
+                              }}
+                            />
+                          </svg>
+                        )}
+                        <span style={{ position: "relative", zIndex: 1 }}>
+                          {day}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Legend */}
+                <div
+                  style={{
+                    display: "flex",
+                    gap: 10,
+                    marginTop: 10,
+                    paddingTop: 8,
+                    borderTop: "1px solid rgba(255,255,255,0.05)",
+                    flexWrap: "wrap",
+                  }}
+                >
+                  {openDays.length > 0 && (
+                    <p
+                      style={{
+                        ...mono,
+                        fontSize: 8,
+                        color: "#52525b",
+                        margin: 0,
+                      }}
+                    >
+                      ✓ Open:{" "}
+                      <span style={{ color: "#f59e0b" }}>
+                        {openDays.join(", ")}
+                      </span>
+                    </p>
+                  )}
+                  <p
+                    style={{
+                      ...mono,
+                      fontSize: 8,
+                      color: "#52525b",
+                      margin: 0,
+                    }}
+                  >
+                    ╱ = unavailable
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ── TIME SLOTS ───────────────────────────────────────── */}
+          {newDate && (
+            <>
+              <p
+                style={{
+                  ...sf,
+                  fontSize: 6,
+                  letterSpacing: "0.4em",
+                  color: "#a1a1aa",
+                  textTransform: "uppercase",
+                  marginBottom: 10,
+                }}
+              >
+                Available Times —{" "}
+                {new Date(newDate + "T00:00:00").toLocaleDateString("en-US", {
+                  weekday: "short",
+                  month: "short",
+                  day: "numeric",
+                })}
+              </p>
+
+              {slotsLoading ? (
+                <div style={{ padding: "20px", textAlign: "center" }}>
+                  <div
+                    style={{
+                      width: 16,
+                      height: 16,
+                      border: "2px solid rgba(245,158,11,0.2)",
+                      borderTopColor: "#f59e0b",
+                      borderRadius: "50%",
+                      animation: "spin 0.8s linear infinite",
+                      margin: "0 auto",
+                    }}
+                  />
+                  <p
+                    style={{
+                      ...mono,
+                      fontSize: 9,
+                      color: "#52525b",
+                      marginTop: 10,
+                    }}
+                  >
+                    Checking availability...
+                  </p>
+                </div>
+              ) : timeOff ? (
+                <div
+                  style={{
+                    padding: "14px",
+                    background: "rgba(248,113,113,0.05)",
+                    border: "1px solid rgba(248,113,113,0.15)",
+                    textAlign: "center",
+                    marginBottom: 16,
+                  }}
+                >
+                  <p
+                    style={{
+                      ...sf,
+                      fontSize: 8,
+                      color: "#f87171",
+                      letterSpacing: "0.2em",
+                      textTransform: "uppercase",
+                    }}
+                  >
+                    Not Available This Day
+                  </p>
+                </div>
+              ) : slots.length === 0 ? (
+                <div
+                  style={{
+                    padding: "14px",
+                    background: "rgba(255,255,255,0.02)",
+                    border: "1px solid rgba(255,255,255,0.06)",
+                    textAlign: "center",
+                    marginBottom: 16,
+                  }}
+                >
+                  <p
+                    style={{
+                      ...sf,
+                      fontSize: 8,
+                      color: "#52525b",
+                      letterSpacing: "0.2em",
+                      textTransform: "uppercase",
+                    }}
+                  >
+                    Fully Booked
+                  </p>
+                  <p
+                    style={{
+                      ...mono,
+                      fontSize: 11,
+                      color: "#3f3f46",
+                      marginTop: 4,
+                    }}
+                  >
+                    No open slots — try another date.
+                  </p>
+                </div>
+              ) : (
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "repeat(4,1fr)",
+                    gap: 5,
+                    marginBottom: 16,
+                  }}
+                >
+                  {slots.map((s) => {
+                    const display = fmtSlot(s);
+                    const isBooked = bookedSlots.includes(s);
+                    const isSelected = newTime === display;
+                    return (
+                      <button
+                        key={s}
+                        onClick={() => !isBooked && setNewTime(display)}
+                        disabled={isBooked}
+                        style={{
+                          padding: "8px 4px",
+                          position: "relative",
+                          overflow: "hidden",
+                          ...sf,
+                          fontSize: 5,
+                          letterSpacing: "0.05em",
+                          textTransform: "uppercase",
+                          border: `1px solid ${isSelected ? "#f59e0b" : isBooked ? "rgba(239,68,68,0.12)" : "rgba(245,158,11,0.2)"}`,
+                          background: isSelected
+                            ? "rgba(245,158,11,0.15)"
+                            : isBooked
+                              ? "rgba(239,68,68,0.03)"
+                              : "rgba(245,158,11,0.04)",
+                          color: isSelected
+                            ? "#f59e0b"
+                            : isBooked
+                              ? "#2a2a2a"
+                              : "#a1a1aa",
+                          cursor: isBooked ? "not-allowed" : "pointer",
+                          transition: "all 0.15s",
+                        }}
+                        onMouseEnter={(e) => {
+                          if (!isBooked && !isSelected) {
+                            e.currentTarget.style.borderColor = "#f59e0b";
+                            e.currentTarget.style.color = "#f59e0b";
+                            e.currentTarget.style.background =
+                              "rgba(245,158,11,0.12)";
+                          }
+                        }}
+                        onMouseLeave={(e) => {
+                          if (!isBooked && !isSelected) {
+                            e.currentTarget.style.borderColor =
+                              "rgba(245,158,11,0.2)";
+                            e.currentTarget.style.color = "#a1a1aa";
+                            e.currentTarget.style.background =
+                              "rgba(245,158,11,0.04)";
+                          }
+                        }}
+                      >
+                        {isBooked && (
+                          <svg
+                            style={{
+                              position: "absolute",
+                              inset: 0,
+                              width: "100%",
+                              height: "100%",
+                              pointerEvents: "none",
+                            }}
+                            viewBox="0 0 80 32"
+                            preserveAspectRatio="none"
+                          >
+                            <line
+                              x1="4"
+                              y1="28"
+                              x2="76"
+                              y2="4"
+                              stroke="rgba(239,68,68,0.5)"
+                              strokeWidth="1.2"
+                              style={{
+                                filter:
+                                  "drop-shadow(0 0 3px rgba(239,68,68,0.6))",
+                              }}
+                            />
+                          </svg>
+                        )}
+                        <span style={{ position: "relative", zIndex: 1 }}>
+                          {display}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </>
+          )}
 
           {/* Submit */}
           <button
             onClick={submit}
-            disabled={busy || !newDate || !newTime}
+            disabled={busy || !newDate || !newTime || timeOff}
             style={{
               width: "100%",
               padding: "15px",
@@ -325,15 +839,22 @@ function RescheduleModal({ appt, onClose, onDone }) {
               fontWeight: 700,
               letterSpacing: "0.2em",
               textTransform: "uppercase",
-              background: busy || !newDate || !newTime ? "#111" : "#f59e0b",
-              color: busy || !newDate || !newTime ? "#a1a1aa" : "black",
+              background:
+                busy || !newDate || !newTime || timeOff ? "#111" : "#f59e0b",
+              color:
+                busy || !newDate || !newTime || timeOff ? "#3f3f46" : "black",
               border: "none",
-              cursor: busy || !newDate || !newTime ? "not-allowed" : "pointer",
+              cursor:
+                busy || !newDate || !newTime || timeOff
+                  ? "not-allowed"
+                  : "pointer",
               transition: "all 0.2s",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
               gap: 10,
+              clipPath:
+                "polygon(0 0,calc(100% - 8px) 0,100% 8px,100% 100%,8px 100%,0 calc(100% - 8px))",
             }}
           >
             {busy ? (
