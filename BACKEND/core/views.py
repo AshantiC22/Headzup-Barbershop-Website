@@ -2853,31 +2853,34 @@ class BarberMeUpdateView(APIView):
         if "photo" in request.data:
             photo_data = request.data["photo"]
             try:
+                # Store as full data URL so it can be used directly as img src
+                # This persists in PostgreSQL — survives every Railway redeploy
                 if "," in photo_data:
-                    # Strip data URL header
-                    header, b64 = photo_data.split(",", 1)
-                    # Detect mime type from header
-                    ext = "jpg"
-                    if "png" in header:
-                        ext = "png"
-                    elif "webp" in header:
-                        ext = "webp"
+                    # Already a data URL — store as-is
+                    barber.photo_data = photo_data
                 else:
-                    b64 = photo_data
-                    ext = "jpg"
+                    # Raw base64 — wrap in data URL
+                    barber.photo_data = f"data:image/jpeg;base64,{photo_data}"
 
-                img_bytes = base64.b64decode(b64)
-                filename  = f"barber_{barber.id}.{ext}"
-                barber.photo.save(filename, ContentFile(img_bytes), save=False)
-                logger.info(f"Photo uploaded for barber {barber.id}")
+                # Also try to save to filesystem (works locally, optional on Railway)
+                try:
+                    raw_b64 = photo_data.split(",", 1)[-1]
+                    img_bytes = base64.b64decode(raw_b64)
+                    ext = "png" if "png" in photo_data[:30] else "webp" if "webp" in photo_data[:30] else "jpg"
+                    barber.photo.save(f"barber_{barber.id}.{ext}", ContentFile(img_bytes), save=False)
+                except Exception:
+                    pass  # filesystem save is best-effort only
+
+                logger.info(f"Photo saved for barber {barber.id}")
             except Exception as e:
                 logger.error(f"Photo upload failed: {e}")
                 return Response({"error": "Photo upload failed. Please try a smaller image."}, status=400)
 
         barber.save()
 
-        photo_url = None
-        if barber.photo:
+        # Return the base64 data URL — works even after filesystem wipe
+        photo_url = barber.photo_data or None
+        if not photo_url and barber.photo:
             try:
                 photo_url = request.build_absolute_uri(barber.photo.url)
             except Exception:
@@ -2904,8 +2907,8 @@ class BarberMeView(APIView):
         online_appts = Appointment.objects.filter(barber=barber, payment_method="online", status__in=["confirmed","completed"])
         online_rev  = sum(float(a.service.price) for a in online_appts if a.service)
         shop_count  = Appointment.objects.filter(barber=barber, payment_method="shop", status__in=["confirmed","completed"]).count()
-        photo_url = None
-        if barber.photo:
+        photo_url = barber.photo_data or None
+        if not photo_url and barber.photo:
             try:
                 photo_url = request.build_absolute_uri(barber.photo.url)
             except Exception:
@@ -3021,7 +3024,9 @@ class BarberAppointmentUpdateView(APIView):
         if not barber:
             return Response({"error": "Not a barber account"}, status=403)
         try:
-            appt = Appointment.objects.get(pk=pk, barber=barber)
+            appt = Appointment.objects.select_related(
+                "user", "barber", "barber__user", "service"
+            ).get(pk=pk, barber=barber)
             send_cancellation_email(appt, cancelled_by="barber")
             sms_cancellation(appt, cancelled_by="barber")
             appt.delete()

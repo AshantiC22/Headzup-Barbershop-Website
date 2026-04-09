@@ -54,6 +54,8 @@ class Barber(models.Model):
     )
     bio              = models.TextField(blank=True, default="")
     photo            = models.ImageField(upload_to="barbers/", blank=True, null=True)
+    photo_data       = models.TextField(blank=True, default="",
+                                        help_text="Base64 encoded photo — persists across deploys")
     cashapp_tag      = models.CharField(max_length=50, blank=True, default="",
                                         help_text="Cash App $cashtag for manual payouts")
     stripe_account_id = models.CharField(max_length=100, blank=True, default="",

@@ -17,6 +17,10 @@ class BarberSerializer(serializers.ModelSerializer):
         fields = ["id", "name", "bio", "photo", "photo_url", "cashapp_tag"]
 
     def get_photo_url(self, obj):
+        # photo_data (base64 stored in DB) always survives redeploys — prefer it
+        if obj.photo_data:
+            return obj.photo_data
+        # Fall back to filesystem URL (works locally / when file exists)
         if not obj.photo:
             return None
         request = self.context.get("request")
