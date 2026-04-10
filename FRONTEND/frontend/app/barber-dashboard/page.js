@@ -1927,8 +1927,6 @@ export default function BarberDashboard() {
   const [photoPreview, setPhotoPreview] = useState(null);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   // Reschedules
-  // Reschedules state moved further down to avoid redeclaration
-  // Reschedules
   const [reschedules, setReschedules] = useState([]);
   const [reschedLoading, setReschedLoading] = useState(false);
 
