@@ -3041,17 +3041,32 @@ class WalkInBookingView(APIView):
 
     def post(self, request):
         barber = get_barber_for_user(request.user)
-        if not barber:
+        if not barber and not request.user.is_staff:
             return Response({"error": "Not a barber account"}, status=403)
 
         client_name = request.data.get("client_name", "").strip()
-        service_id  = request.data.get("service")
-        date        = request.data.get("date")
-        time        = request.data.get("time")
+        service_id  = request.data.get("service_id") or request.data.get("service")
+        date_val    = request.data.get("date")
+        time_val    = request.data.get("time")
         notes       = request.data.get("notes", "")
         payment     = request.data.get("payment_method", "shop")
+        phone       = request.data.get("phone", "").strip()
+        email       = request.data.get("email", "").strip()
+        barber_id   = request.data.get("barber_id")
 
-        if not all([client_name, service_id, date, time]):
+        # Allow staff/admin to specify a barber; barbers default to themselves
+        if barber_id and (request.user.is_staff or barber):
+            try:
+                target_barber = Barber.objects.get(pk=barber_id)
+            except Barber.DoesNotExist:
+                return Response({"error": "Barber not found."}, status=404)
+        else:
+            target_barber = barber
+
+        if not target_barber:
+            return Response({"error": "No barber specified."}, status=400)
+
+        if not all([client_name, service_id, date_val, time_val]):
             return Response({"error": "client_name, service, date and time are required."}, status=400)
 
         try:
@@ -3060,7 +3075,7 @@ class WalkInBookingView(APIView):
             return Response({"error": "Service not found."}, status=404)
 
         # Create or get a placeholder user for walk-ins
-        username = f"walkin_{client_name.lower().replace(' ', '_')}_{date.replace('-', '')}"
+        username = f"walkin_{client_name.lower().replace(' ', '_')}_{date_val.replace('-', '')}"
         user, _ = User.objects.get_or_create(
             username=username[:150],
             defaults={"first_name": client_name}
@@ -3069,10 +3084,10 @@ class WalkInBookingView(APIView):
         try:
             appt = Appointment.objects.create(
                 user=user,
-                barber=barber,
+                barber=target_barber,
                 service=service,
-                date=date,
-                time=time,
+                date=date_val,
+                time=time_val,
                 status="confirmed",
                 payment_method=payment,
                 barber_notes=notes,
@@ -3081,13 +3096,133 @@ class WalkInBookingView(APIView):
         except Exception:
             return Response({"error": "That slot is already booked."}, status=400)
 
+        # ── Send welcome message to client ────────────────────────────────
+        import threading, logging
+        logger = logging.getLogger(__name__)
+
+        def _send_welcome():
+            try:
+                from datetime import date as date_type
+                try:
+                    appt_date = date_type.fromisoformat(str(date_val))
+                    date_str  = appt_date.strftime("%A, %B %d")
+                except Exception:
+                    date_str = str(date_val)
+
+                # Format time nicely
+                try:
+                    h, m, *_ = str(time_val).split(":")
+                    h = int(h); ampm = "PM" if h >= 12 else "AM"
+                    time_str = f"{h % 12 or 12}:{m} {ampm}"
+                except Exception:
+                    time_str = str(time_val)
+
+                welcome_msg = (
+                    f"Hey {client_name}! Welcome to HEADZ UP Barbershop ✂️🔥 "
+                    f"You're officially part of the family. "
+                    f"You're booked for {service.name} on {date_str} at {time_str} "
+                    f"with {target_barber.name}. See you in the chair!"
+                )
+
+                # SMS
+                if phone:
+                    try:
+                        _twilio_send(phone, welcome_msg)
+                    except Exception as e:
+                        logger.error(f"Walk-in SMS failed: {e}")
+
+                # Email
+                if email:
+                    try:
+                        html = f"""<!DOCTYPE html>
+<html><head><meta charset="utf-8"></head>
+<body style="margin:0;padding:0;background:#050505;font-family:'Helvetica Neue',Arial,sans-serif;color:#fff;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#050505;padding:40px 20px;">
+    <tr><td align="center">
+      <table width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;">
+        <tr><td style="padding-bottom:24px;">
+          <p style="font-family:'Courier New',monospace;font-size:22px;font-weight:900;letter-spacing:-0.05em;margin:0;text-transform:uppercase;">
+            HEADZ<span style="color:#f59e0b;font-style:italic;">UP</span>
+          </p>
+        </td></tr>
+        <tr><td style="padding-bottom:16px;">
+          <div style="width:52px;height:52px;background:rgba(245,158,11,0.12);border:1px solid rgba(245,158,11,0.3);display:inline-flex;align-items:center;justify-content:center;">
+            <span style="font-size:24px;">✂️</span>
+          </div>
+        </td></tr>
+        <tr><td style="padding-bottom:8px;">
+          <h1 style="font-family:'Courier New',monospace;font-size:26px;font-weight:900;text-transform:uppercase;margin:0;line-height:1.05;">
+            Welcome to<br><span style="color:#f59e0b;font-style:italic;">The Family_</span>
+          </h1>
+        </td></tr>
+        <tr><td style="padding-bottom:28px;">
+          <p style="color:#71717a;font-size:13px;margin:0;line-height:1.8;">
+            Hey <strong style="color:white;">{client_name}</strong>! You just walked into the right place.
+            You're officially part of the <strong style="color:#f59e0b;">HEADZ UP</strong> family now.
+          </p>
+        </td></tr>
+        <tr><td style="background:#0a0a0a;border:1px solid rgba(255,255,255,0.08);padding:22px;margin-bottom:24px;">
+          <table width="100%" cellpadding="0" cellspacing="0">
+            <tr>
+              <td style="padding-bottom:14px;">
+                <p style="font-family:'Courier New',monospace;font-size:9px;letter-spacing:0.3em;color:#52525b;text-transform:uppercase;margin:0 0 4px;">Your Appointment</p>
+                <p style="font-size:18px;color:#f59e0b;margin:0;font-weight:900;font-family:'Courier New',monospace;">{date_str} · {time_str}</p>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding-bottom:14px;border-top:1px solid rgba(255,255,255,0.06);padding-top:14px;">
+                <p style="font-family:'Courier New',monospace;font-size:9px;letter-spacing:0.3em;color:#52525b;text-transform:uppercase;margin:0 0 4px;">Service</p>
+                <p style="font-size:15px;color:white;margin:0;font-weight:700;">{service.name}</p>
+              </td>
+            </tr>
+            <tr>
+              <td style="border-top:1px solid rgba(255,255,255,0.06);padding-top:14px;">
+                <p style="font-family:'Courier New',monospace;font-size:9px;letter-spacing:0.3em;color:#52525b;text-transform:uppercase;margin:0 0 4px;">Your Barber</p>
+                <p style="font-size:15px;color:white;margin:0;font-weight:700;">{target_barber.name}</p>
+              </td>
+            </tr>
+          </table>
+        </td></tr>
+        <tr><td style="padding:24px 0 0;">
+          <p style="font-size:13px;color:#71717a;margin:0;line-height:1.8;">
+            We'll take care of you every time. Book your next appointment online at any time.
+          </p>
+        </td></tr>
+        <tr><td style="padding-top:20px;">
+          <a href="{FRONTEND_URL}/book" style="display:inline-block;padding:13px 26px;background:#f59e0b;color:black;font-family:'Courier New',monospace;font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:0.15em;text-decoration:none;">Book Your Next Cut &rarr;</a>
+        </td></tr>
+        <tr><td style="border-top:1px solid rgba(255,255,255,0.06);padding-top:20px;margin-top:24px;">
+          <p style="font-size:11px;color:#3f3f46;margin:0;">HEADZ UP Barbershop · 2509 W 4th St, Hattiesburg, MS 39401</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body></html>"""
+                        plain = (
+                            f"Hey {client_name}! Welcome to HEADZ UP Barbershop. "
+                            f"You're officially part of the family! "
+                            f"Your {service.name} with {target_barber.name} is on {date_str} at {time_str}. "
+                            f"Book your next cut: {FRONTEND_URL}/book"
+                        )
+                        _sendgrid_send(
+                            email,
+                            f"Welcome to HEADZ UP ✂️ You're Part of the Family Now",
+                            plain, html
+                        )
+                    except Exception as e:
+                        logger.error(f"Walk-in email failed: {e}")
+            except Exception as e:
+                logger.error(f"Walk-in welcome thread failed: {e}")
+
+        threading.Thread(target=_send_welcome, daemon=True).start()
+
         return Response({
             "message": "Walk-in booked.",
-            "id": appt.id,
-            "client": client_name,
+            "id":      appt.id,
+            "client":  client_name,
             "service": service.name,
-            "date": str(appt.date),
-            "time": str(appt.time),
+            "date":    str(appt.date),
+            "time":    str(appt.time),
         }, status=201)
 
 

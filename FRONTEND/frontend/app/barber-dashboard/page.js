@@ -1875,11 +1875,20 @@ export default function BarberDashboard() {
 
   /* walk-in */
   const [services, setServices] = useState([]);
+  const [allBarbers, setAllBarbers] = useState([]);
   const [wiSvc, setWiSvc] = useState("");
   const [wiName, setWiName] = useState("");
   const [wiPhone, setWiPhone] = useState("");
   const [wiNotes, setWiNotes] = useState("");
   const [wiLoading, setWiLoading] = useState(false);
+  const [wiEmail, setWiEmail] = useState("");
+  const [wiBarber, setWiBarber] = useState(""); // barber id for walk-in
+  const [wiDate, setWiDate] = useState(today);
+  const [wiTime, setWiTime] = useState("");
+  const [wiSlots, setWiSlots] = useState([]);
+  const [wiBooked, setWiBooked] = useState([]);
+  const [wiSlotsLoad, setWiSlotsLoad] = useState(false);
+  const [wiSuccess, setWiSuccess] = useState(null); // {name, service, time}
 
   /* waitlist */
   const [waitlist, setWaitlist] = useState([]);
@@ -1914,6 +1923,8 @@ export default function BarberDashboard() {
   // Photo upload
   const [photoPreview, setPhotoPreview] = useState(null);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  // Reschedules
+  // Reschedules state is declared later in this file — avoid duplicate declaration here.
   // Reschedules
   const [reschedules, setReschedules] = useState([]);
   const [reschedLoading, setReschedLoading] = useState(false);
@@ -1958,10 +1969,11 @@ export default function BarberDashboard() {
   useEffect(() => {
     const load = async () => {
       try {
-        const [barberRes, schedRes, svcRes] = await Promise.all([
+        const [barberRes, schedRes, svcRes, barbersRes] = await Promise.all([
           API.get("barber/me/"),
           API.get(`barber/schedule/?date=${todayISO()}`),
           API.get("services/"),
+          API.get("barbers/"),
         ]);
         setBarber(barberRes.data);
         setSchedule(
@@ -1971,6 +1983,11 @@ export default function BarberDashboard() {
         );
         setServices(
           Array.isArray(svcRes.data) ? svcRes.data : svcRes.data.results || [],
+        );
+        setAllBarbers(
+          Array.isArray(barbersRes.data)
+            ? barbersRes.data
+            : barbersRes.data.results || [],
         );
       } catch {
         router.replace("/barber-login");
@@ -2177,31 +2194,74 @@ export default function BarberDashboard() {
     }
   };
 
+  // Fetch available slots for walk-in when barber+date changes
+  useEffect(() => {
+    if (!wiBarber || !wiDate) return;
+    setWiSlotsLoad(true);
+    setWiSlots([]);
+    setWiBooked([]);
+    setWiTime("");
+    API.get(`available-slots/?barber=${wiBarber}&date=${wiDate}`)
+      .then((r) => {
+        setWiSlots(r.data.available_slots || []);
+        setWiBooked(r.data.booked_slots || []);
+      })
+      .catch(() => {})
+      .finally(() => setWiSlotsLoad(false));
+  }, [wiBarber, wiDate]);
+
   const handleWalkIn = async () => {
-    if (!wiName.trim() || !wiSvc) {
-      showToast("Name and service required.", "error");
+    if (!wiName.trim() || !wiSvc || !wiTime) {
+      showToast("Name, service and time required.", "error");
+      return;
+    }
+    const targetBarber = wiBarber || barber?.id;
+    if (!targetBarber) {
+      showToast("Select a barber.", "error");
       return;
     }
     setWiLoading(true);
     try {
-      const now = new Date();
-      const currentTime = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}:00`;
+      let time24 = wiTime;
+      if (wiTime.includes("AM") || wiTime.includes("PM")) {
+        const [t, mod] = wiTime.split(" ");
+        let [h, m] = t.split(":");
+        if (h === "12") h = "00";
+        if (mod === "PM") h = String(parseInt(h) + 12);
+        time24 = `${h.padStart(2, "0")}:${m}:00`;
+      }
       const payload = {
         client_name: wiName.trim(),
         service_id: wiSvc,
-        date: today,
-        time: currentTime,
+        barber_id: targetBarber,
+        date: wiDate,
+        time: time24,
         notes: wiNotes,
         phone: wiPhone,
+        email: wiEmail,
         is_walk_in: true,
       };
       await API.post("barber/walk-in/", payload);
-      showToast("Walk-in added!");
+      const svcName =
+        services.find((s) => String(s.id) === String(wiSvc))?.name || "service";
+      setWiSuccess({
+        name: wiName.trim(),
+        service: svcName,
+        time: wiTime,
+        date: wiDate,
+      });
       setWiName("");
       setWiPhone("");
       setWiNotes("");
       setWiSvc("");
+      setWiEmail("");
+      setWiTime("");
+      setWiSlots([]);
+      setWiBooked([]);
       loadSchedule(selectedDate);
+      showToast(
+        `✓ ${wiName} added${wiPhone || wiEmail ? " — welcome message sent!" : ""}`,
+      );
     } catch (e) {
       showToast(e.response?.data?.error || "Could not add walk-in.", "error");
     } finally {
@@ -4802,71 +4862,141 @@ export default function BarberDashboard() {
 
         {/* ══ WALK-IN TAB ══ */}
         {activeTab === "walkin" && (
-          <div className="bd-enter" style={{ maxWidth: 560 }}>
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 14,
-                marginBottom: 24,
-              }}
-            >
-              <div
-                style={{
-                  width: 32,
-                  height: 1,
-                  background: `rgba(245,158,11,0.5)`,
-                }}
-              />
+          <div className="bd-enter" style={{ maxWidth: 600 }}>
+            {/* Header */}
+            <div style={{ marginBottom: 28 }}>
               <p
                 style={{
                   ...mono,
                   fontSize: 8,
-                  color: T.amber,
+                  color: "rgba(245,158,11,0.5)",
                   letterSpacing: "0.5em",
                   textTransform: "uppercase",
+                  marginBottom: 6,
                 }}
               >
-                Walk-In Booking
+                HEADZ UP · FRONT DESK
+              </p>
+              <h2
+                style={{
+                  ...sf,
+                  fontSize: 22,
+                  fontWeight: 900,
+                  textTransform: "uppercase",
+                  letterSpacing: "-0.03em",
+                  margin: 0,
+                }}
+              >
+                Walk-In
+                <br />
+                <span style={{ color: T.amber, fontStyle: "italic" }}>
+                  Check-In_
+                </span>
+              </h2>
+              <p
+                style={{
+                  ...mono,
+                  fontSize: 12,
+                  color: T.muted,
+                  marginTop: 10,
+                  lineHeight: 1.7,
+                }}
+              >
+                Someone just walked in? Fill this out and they're in the system
+                instantly. If they give a phone or email, they'll get a welcome
+                text or email automatically.
               </p>
             </div>
-            <p
-              style={{
-                ...mono,
-                fontSize: 13,
-                color: T.muted,
-                lineHeight: 1.7,
-                marginBottom: 28,
-              }}
-            >
-              Add a walk-in client instantly. They'll be added to today's
-              schedule.
-            </p>
-            <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
-              {[
-                {
-                  label: "Client Name *",
-                  type: "text",
-                  val: wiName,
-                  set: setWiName,
-                  placeholder: "John Smith",
-                },
-                {
-                  label: "Phone",
-                  type: "tel",
-                  val: wiPhone,
-                  set: setWiPhone,
-                  placeholder: "601-555-0100",
-                },
-                {
-                  label: "Notes",
-                  type: "text",
-                  val: wiNotes,
-                  set: setWiNotes,
-                  placeholder: "Style request, preferences...",
-                },
-              ].map(({ label, type, val, set, placeholder }) => (
-                <div key={label}>
+
+            {/* Success card */}
+            {wiSuccess && (
+              <div
+                style={{
+                  marginBottom: 24,
+                  padding: "20px",
+                  background: "rgba(34,197,94,0.06)",
+                  border: "1px solid rgba(34,197,94,0.2)",
+                  clipPath:
+                    "polygon(0 0,calc(100% - 10px) 0,100% 10px,100% 100%,10px 100%,0 calc(100% - 10px))",
+                }}
+              >
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 10,
+                    marginBottom: 8,
+                  }}
+                >
+                  <div
+                    style={{
+                      width: 28,
+                      height: 28,
+                      background: "rgba(34,197,94,0.15)",
+                      border: "1px solid rgba(34,197,94,0.3)",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
+                    <span style={{ fontSize: 14 }}>✓</span>
+                  </div>
+                  <p
+                    style={{
+                      ...sf,
+                      fontSize: 10,
+                      fontWeight: 700,
+                      textTransform: "uppercase",
+                      color: "#4ade80",
+                    }}
+                  >
+                    Walk-In Added!
+                  </p>
+                </div>
+                <p
+                  style={{
+                    ...mono,
+                    fontSize: 12,
+                    color: "#a1a1aa",
+                    lineHeight: 1.7,
+                  }}
+                >
+                  <strong style={{ color: "white" }}>{wiSuccess.name}</strong>{" "}
+                  is booked for{" "}
+                  <strong style={{ color: T.amber }}>
+                    {wiSuccess.service}
+                  </strong>{" "}
+                  at{" "}
+                  <strong style={{ color: T.amber }}>{wiSuccess.time}</strong>
+                </p>
+                <button
+                  onClick={() => setWiSuccess(null)}
+                  style={{
+                    marginTop: 12,
+                    ...mono,
+                    fontSize: 10,
+                    color: T.muted,
+                    background: "transparent",
+                    border: `1px solid ${T.border}`,
+                    padding: "6px 14px",
+                    cursor: "pointer",
+                  }}
+                >
+                  + Add Another
+                </button>
+              </div>
+            )}
+
+            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+              {/* Row 1: Barber selector (all barbers, not just logged-in one) */}
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "1fr 1fr",
+                  gap: 12,
+                }}
+              >
+                <div>
                   <label
                     style={{
                       ...sf,
@@ -4878,28 +5008,80 @@ export default function BarberDashboard() {
                       marginBottom: 8,
                     }}
                   >
-                    {label}
+                    Barber *
                   </label>
-                  <input
-                    type={type}
-                    value={val}
-                    onChange={(e) => set(e.target.value)}
-                    placeholder={placeholder}
+                  <select
+                    value={wiBarber}
+                    onChange={(e) => {
+                      setWiBarber(e.target.value);
+                      setWiTime("");
+                    }}
                     style={{
                       width: "100%",
                       background: T.bg,
                       border: `1px solid ${T.border}`,
                       padding: "13px 14px",
-                      color: "white",
-                      fontSize: 16,
+                      color: wiBarber ? "white" : T.muted,
                       ...mono,
+                      fontSize: 13,
                       outline: "none",
+                      cursor: "pointer",
+                      colorScheme: "dark",
                     }}
                     onFocus={(e) => (e.target.style.borderColor = T.amber)}
                     onBlur={(e) => (e.target.style.borderColor = T.border)}
-                  />
+                  >
+                    <option value="">Select barber...</option>
+                    {allBarbers.map((b) => (
+                      <option key={b.id} value={b.id}>
+                        {b.name}
+                      </option>
+                    ))}
+                  </select>
                 </div>
-              ))}
+                <div>
+                  <label
+                    style={{
+                      ...sf,
+                      fontSize: 6,
+                      letterSpacing: "0.4em",
+                      color: T.muted,
+                      textTransform: "uppercase",
+                      display: "block",
+                      marginBottom: 8,
+                    }}
+                  >
+                    Service *
+                  </label>
+                  <select
+                    value={wiSvc}
+                    onChange={(e) => setWiSvc(e.target.value)}
+                    style={{
+                      width: "100%",
+                      background: T.bg,
+                      border: `1px solid ${T.border}`,
+                      padding: "13px 14px",
+                      color: wiSvc ? "white" : T.muted,
+                      ...mono,
+                      fontSize: 13,
+                      outline: "none",
+                      cursor: "pointer",
+                      colorScheme: "dark",
+                    }}
+                    onFocus={(e) => (e.target.style.borderColor = T.amber)}
+                    onBlur={(e) => (e.target.style.borderColor = T.border)}
+                  >
+                    <option value="">Select service...</option>
+                    {services.map((s) => (
+                      <option key={s.id} value={s.id}>
+                        {s.name} — ${s.price}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {/* Date */}
               <div>
                 <label
                   style={{
@@ -4912,36 +5094,378 @@ export default function BarberDashboard() {
                     marginBottom: 8,
                   }}
                 >
-                  Service *
+                  Date *
                 </label>
-                <select
-                  value={wiSvc}
-                  onChange={(e) => setWiSvc(e.target.value)}
+                <input
+                  type="date"
+                  value={wiDate}
+                  min={today}
+                  onChange={(e) => {
+                    setWiDate(e.target.value);
+                    setWiTime("");
+                  }}
                   style={{
                     width: "100%",
                     background: T.bg,
                     border: `1px solid ${T.border}`,
                     padding: "13px 14px",
-                    color: wiSvc ? "white" : T.muted,
-                    fontSize: 16,
+                    color: "white",
                     ...mono,
+                    fontSize: 13,
                     outline: "none",
-                    cursor: "pointer",
+                    colorScheme: "dark",
                   }}
                   onFocus={(e) => (e.target.style.borderColor = T.amber)}
                   onBlur={(e) => (e.target.style.borderColor = T.border)}
-                >
-                  <option value="">Select a service...</option>
-                  {services.map((s) => (
-                    <option key={s.id} value={s.id}>
-                      {s.name} — ${s.price}
-                    </option>
-                  ))}
-                </select>
+                />
               </div>
+
+              {/* Time slots — live from barber calendar */}
+              {wiBarber && wiDate && (
+                <div>
+                  <label
+                    style={{
+                      ...sf,
+                      fontSize: 6,
+                      letterSpacing: "0.4em",
+                      color: T.muted,
+                      textTransform: "uppercase",
+                      display: "block",
+                      marginBottom: 8,
+                    }}
+                  >
+                    Time Slot *{" "}
+                    {wiSlotsLoad && (
+                      <span
+                        style={{
+                          ...mono,
+                          fontSize: 8,
+                          color: "#52525b",
+                          letterSpacing: "0.2em",
+                        }}
+                      >
+                        — checking...
+                      </span>
+                    )}
+                  </label>
+                  {wiSlotsLoad ? (
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 8,
+                        padding: "14px",
+                        background: T.surface,
+                        border: `1px solid ${T.border}`,
+                      }}
+                    >
+                      <div
+                        style={{
+                          width: 14,
+                          height: 14,
+                          border: "2px solid rgba(245,158,11,0.2)",
+                          borderTopColor: T.amber,
+                          borderRadius: "50%",
+                          animation: "spin 0.8s linear infinite",
+                        }}
+                      />
+                      <span style={{ ...mono, fontSize: 11, color: T.muted }}>
+                        Loading availability...
+                      </span>
+                    </div>
+                  ) : wiSlots.length === 0 ? (
+                    <div
+                      style={{
+                        padding: "14px",
+                        background: T.surface,
+                        border: `1px solid ${T.border}`,
+                        textAlign: "center",
+                      }}
+                    >
+                      <p style={{ ...mono, fontSize: 11, color: T.dim }}>
+                        No available slots for this day.
+                      </p>
+                    </div>
+                  ) : (
+                    <div
+                      style={{
+                        display: "grid",
+                        gridTemplateColumns: "repeat(5,1fr)",
+                        gap: 5,
+                      }}
+                    >
+                      {wiSlots.map((s) => {
+                        const hr = parseInt(s.split(":")[0]);
+                        const min = s.split(":")[1];
+                        const ampm = hr >= 12 ? "PM" : "AM";
+                        const display = `${hr % 12 || 12}:${min} ${ampm}`;
+                        const isBooked = wiBooked.includes(s);
+                        const isSel = wiTime === display;
+                        return (
+                          <button
+                            key={s}
+                            onClick={() => !isBooked && setWiTime(display)}
+                            disabled={isBooked}
+                            style={{
+                              padding: "9px 4px",
+                              position: "relative",
+                              overflow: "hidden",
+                              ...sf,
+                              fontSize: 5,
+                              letterSpacing: "0.05em",
+                              textTransform: "uppercase",
+                              border: `1px solid ${isSel ? "#f59e0b" : isBooked ? "rgba(239,68,68,0.12)" : "rgba(245,158,11,0.2)"}`,
+                              background: isSel
+                                ? "rgba(245,158,11,0.15)"
+                                : isBooked
+                                  ? "rgba(239,68,68,0.03)"
+                                  : "rgba(245,158,11,0.04)",
+                              color: isSel
+                                ? T.amber
+                                : isBooked
+                                  ? "#2a2a2a"
+                                  : "#a1a1aa",
+                              cursor: isBooked ? "not-allowed" : "pointer",
+                              transition: "all 0.15s",
+                            }}
+                          >
+                            {isBooked && (
+                              <svg
+                                style={{
+                                  position: "absolute",
+                                  inset: 0,
+                                  width: "100%",
+                                  height: "100%",
+                                  pointerEvents: "none",
+                                }}
+                                viewBox="0 0 80 32"
+                                preserveAspectRatio="none"
+                              >
+                                <line
+                                  x1="4"
+                                  y1="28"
+                                  x2="76"
+                                  y2="4"
+                                  stroke="rgba(239,68,68,0.6)"
+                                  strokeWidth="1.5"
+                                  style={{
+                                    filter:
+                                      "drop-shadow(0 0 3px rgba(239,68,68,0.8))",
+                                  }}
+                                />
+                              </svg>
+                            )}
+                            <span style={{ position: "relative", zIndex: 1 }}>
+                              {display}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Client info */}
+              <div
+                style={{ borderTop: `1px solid ${T.border}`, paddingTop: 16 }}
+              >
+                <p
+                  style={{
+                    ...sf,
+                    fontSize: 6,
+                    letterSpacing: "0.4em",
+                    color: T.muted,
+                    textTransform: "uppercase",
+                    marginBottom: 14,
+                  }}
+                >
+                  Client Info
+                </p>
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "1fr 1fr",
+                    gap: 12,
+                    marginBottom: 12,
+                  }}
+                >
+                  <div>
+                    <label
+                      style={{
+                        ...sf,
+                        fontSize: 6,
+                        letterSpacing: "0.4em",
+                        color: T.muted,
+                        textTransform: "uppercase",
+                        display: "block",
+                        marginBottom: 8,
+                      }}
+                    >
+                      Name *
+                    </label>
+                    <input
+                      value={wiName}
+                      onChange={(e) => setWiName(e.target.value)}
+                      placeholder="John Smith"
+                      style={{
+                        width: "100%",
+                        background: T.bg,
+                        border: `1px solid ${T.border}`,
+                        padding: "13px 14px",
+                        color: "white",
+                        ...mono,
+                        fontSize: 13,
+                        outline: "none",
+                      }}
+                      onFocus={(e) => (e.target.style.borderColor = T.amber)}
+                      onBlur={(e) => (e.target.style.borderColor = T.border)}
+                    />
+                  </div>
+                  <div>
+                    <label
+                      style={{
+                        ...sf,
+                        fontSize: 6,
+                        letterSpacing: "0.4em",
+                        color: T.muted,
+                        textTransform: "uppercase",
+                        display: "block",
+                        marginBottom: 8,
+                      }}
+                    >
+                      Phone{" "}
+                      <span style={{ color: T.dim }}>(for welcome text)</span>
+                    </label>
+                    <input
+                      type="tel"
+                      value={wiPhone}
+                      onChange={(e) => setWiPhone(e.target.value)}
+                      placeholder="601-555-0100"
+                      style={{
+                        width: "100%",
+                        background: T.bg,
+                        border: `1px solid ${T.border}`,
+                        padding: "13px 14px",
+                        color: "white",
+                        ...mono,
+                        fontSize: 13,
+                        outline: "none",
+                      }}
+                      onFocus={(e) => (e.target.style.borderColor = T.amber)}
+                      onBlur={(e) => (e.target.style.borderColor = T.border)}
+                    />
+                  </div>
+                </div>
+                <div style={{ marginBottom: 12 }}>
+                  <label
+                    style={{
+                      ...sf,
+                      fontSize: 6,
+                      letterSpacing: "0.4em",
+                      color: T.muted,
+                      textTransform: "uppercase",
+                      display: "block",
+                      marginBottom: 8,
+                    }}
+                  >
+                    Email{" "}
+                    <span style={{ color: T.dim }}>(for welcome email)</span>
+                  </label>
+                  <input
+                    type="email"
+                    value={wiEmail}
+                    onChange={(e) => setWiEmail(e.target.value)}
+                    placeholder="client@email.com"
+                    style={{
+                      width: "100%",
+                      background: T.bg,
+                      border: `1px solid ${T.border}`,
+                      padding: "13px 14px",
+                      color: "white",
+                      ...mono,
+                      fontSize: 13,
+                      outline: "none",
+                    }}
+                    onFocus={(e) => (e.target.style.borderColor = T.amber)}
+                    onBlur={(e) => (e.target.style.borderColor = T.border)}
+                  />
+                </div>
+                <div>
+                  <label
+                    style={{
+                      ...sf,
+                      fontSize: 6,
+                      letterSpacing: "0.4em",
+                      color: T.muted,
+                      textTransform: "uppercase",
+                      display: "block",
+                      marginBottom: 8,
+                    }}
+                  >
+                    Notes
+                  </label>
+                  <input
+                    value={wiNotes}
+                    onChange={(e) => setWiNotes(e.target.value)}
+                    placeholder="Style request, preferences..."
+                    style={{
+                      width: "100%",
+                      background: T.bg,
+                      border: `1px solid ${T.border}`,
+                      padding: "13px 14px",
+                      color: "white",
+                      ...mono,
+                      fontSize: 13,
+                      outline: "none",
+                    }}
+                    onFocus={(e) => (e.target.style.borderColor = T.amber)}
+                    onBlur={(e) => (e.target.style.borderColor = T.border)}
+                  />
+                </div>
+              </div>
+
+              {/* Welcome message preview */}
+              {(wiPhone || wiEmail) && wiName && (
+                <div
+                  style={{
+                    padding: "12px 14px",
+                    background: "rgba(245,158,11,0.04)",
+                    border: "1px solid rgba(245,158,11,0.15)",
+                  }}
+                >
+                  <p
+                    style={{
+                      ...mono,
+                      fontSize: 8,
+                      color: "rgba(245,158,11,0.5)",
+                      letterSpacing: "0.4em",
+                      textTransform: "uppercase",
+                      marginBottom: 6,
+                    }}
+                  >
+                    Preview — Welcome Message
+                  </p>
+                  <p
+                    style={{
+                      ...mono,
+                      fontSize: 11,
+                      color: "#a1a1aa",
+                      lineHeight: 1.7,
+                      fontStyle: "italic",
+                    }}
+                  >
+                    "Hey {wiName}! Welcome to HEADZ UP Barbershop 🔥 You're
+                    officially part of the family. We'll take care of you today
+                    — see you in the chair!"
+                  </p>
+                </div>
+              )}
+
+              {/* Submit */}
               <button
                 onClick={handleWalkIn}
-                disabled={wiLoading || !wiName.trim() || !wiSvc}
+                disabled={wiLoading || !wiName.trim() || !wiSvc || !wiTime}
                 style={{
                   padding: "16px",
                   ...sf,
@@ -4950,19 +5474,49 @@ export default function BarberDashboard() {
                   letterSpacing: "0.25em",
                   textTransform: "uppercase",
                   background:
-                    wiLoading || !wiName.trim() || !wiSvc ? T.deep : T.amber,
+                    wiLoading || !wiName.trim() || !wiSvc || !wiTime
+                      ? T.deep
+                      : T.amber,
                   color:
-                    wiLoading || !wiName.trim() || !wiSvc ? T.dim : "black",
+                    wiLoading || !wiName.trim() || !wiSvc || !wiTime
+                      ? T.dim
+                      : "black",
                   border: "none",
                   cursor:
-                    wiLoading || !wiName.trim() || !wiSvc
+                    wiLoading || !wiName.trim() || !wiSvc || !wiTime
                       ? "not-allowed"
                       : "pointer",
                   transition: "all 0.2s",
                   marginTop: 4,
+                  clipPath:
+                    "polygon(0 0,calc(100% - 8px) 0,100% 8px,100% 100%,8px 100%,0 calc(100% - 8px))",
                 }}
               >
-                {wiLoading ? "Adding Walk-In..." : "Add Walk-In →"}
+                {wiLoading ? (
+                  <span
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: 10,
+                    }}
+                  >
+                    <span
+                      style={{
+                        width: 14,
+                        height: 14,
+                        border: "2px solid #3f3f46",
+                        borderTopColor: "#a1a1aa",
+                        borderRadius: "50%",
+                        display: "inline-block",
+                        animation: "spin 0.7s linear infinite",
+                      }}
+                    />
+                    Adding Walk-In...
+                  </span>
+                ) : (
+                  `Check In ${wiName || "Client"} →`
+                )}
               </button>
             </div>
           </div>
@@ -7517,25 +8071,27 @@ export default function BarberDashboard() {
             <div
               style={{
                 marginBottom: 28,
-                padding: "20px",
                 background: T.surface,
-                border: `1px solid ${T.border}`,
+                border: `1px solid rgba(245,158,11,0.25)`,
                 clipPath:
                   "polygon(0 0,calc(100% - 10px) 0,100% 10px,100% 100%,10px 100%,0 calc(100% - 10px))",
               }}
             >
+              {/* Header */}
               <div
                 style={{
+                  background: "#000",
+                  padding: "14px 20px",
+                  borderBottom: `1px solid ${T.border}`,
                   display: "flex",
                   alignItems: "center",
-                  gap: 14,
-                  marginBottom: 16,
+                  gap: 10,
                 }}
               >
                 <div
                   style={{
                     width: 3,
-                    height: 28,
+                    height: 22,
                     background: T.amber,
                     flexShrink: 0,
                   }}
@@ -7548,7 +8104,7 @@ export default function BarberDashboard() {
                       color: "rgba(245,158,11,0.5)",
                       letterSpacing: "0.5em",
                       textTransform: "uppercase",
-                      marginBottom: 2,
+                      marginBottom: 1,
                     }}
                   >
                     Profile
@@ -7556,190 +8112,283 @@ export default function BarberDashboard() {
                   <p
                     style={{
                       ...sf,
-                      fontSize: 13,
+                      fontSize: 11,
                       fontWeight: 900,
                       textTransform: "uppercase",
+                      margin: 0,
                     }}
                   >
                     Your Photo
                   </p>
                 </div>
               </div>
+
               <div
                 style={{
+                  padding: "24px 20px",
                   display: "flex",
-                  alignItems: "center",
-                  gap: 20,
+                  gap: 24,
+                  alignItems: "flex-start",
                   flexWrap: "wrap",
                 }}
               >
-                {/* Current photo or placeholder */}
-                <div
-                  style={{
-                    width: 80,
-                    height: 80,
-                    flexShrink: 0,
-                    overflow: "hidden",
-                    background: "#111",
-                    border: `2px solid ${T.amberBorder}`,
-                    clipPath:
-                      "polygon(0 0,calc(100% - 8px) 0,100% 8px,100% 100%,8px 100%,0 calc(100% - 8px))",
-                  }}
-                >
-                  {photoPreview || barber?.photo_url ? (
-                    <img
-                      src={photoPreview || barber.photo_url}
-                      alt="profile"
-                      style={{
-                        width: "100%",
-                        height: "100%",
-                        objectFit: "cover",
-                      }}
-                    />
-                  ) : (
-                    <div
-                      style={{
-                        width: "100%",
-                        height: "100%",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                      }}
-                    >
-                      <span
+                {/* Photo display — big and prominent */}
+                <div style={{ position: "relative", flexShrink: 0 }}>
+                  <div
+                    style={{
+                      width: 110,
+                      height: 110,
+                      overflow: "hidden",
+                      background: "#0d0d0d",
+                      border: `2px solid ${uploadingPhoto ? "rgba(245,158,11,0.8)" : photoPreview || barber?.photo_url ? "rgba(245,158,11,0.4)" : "rgba(255,255,255,0.1)"}`,
+                      clipPath:
+                        "polygon(0 0,calc(100% - 10px) 0,100% 10px,100% 100%,10px 100%,0 calc(100% - 10px))",
+                      transition: "border-color 0.3s",
+                      boxShadow:
+                        photoPreview || barber?.photo_url
+                          ? "0 0 24px rgba(245,158,11,0.2)"
+                          : "none",
+                    }}
+                  >
+                    {uploadingPhoto ? (
+                      <div
                         style={{
-                          ...sf,
-                          fontSize: 26,
-                          fontWeight: 900,
-                          color: T.amber,
+                          width: "100%",
+                          height: "100%",
+                          display: "flex",
+                          flexDirection: "column",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          gap: 8,
                         }}
                       >
-                        {barber?.name?.charAt(0)?.toUpperCase() || "B"}
-                      </span>
-                    </div>
+                        <div
+                          style={{
+                            width: 22,
+                            height: 22,
+                            border: "2px solid rgba(245,158,11,0.2)",
+                            borderTopColor: "#f59e0b",
+                            borderRadius: "50%",
+                            animation: "spin 0.8s linear infinite",
+                          }}
+                        />
+                        <p
+                          style={{
+                            ...mono,
+                            fontSize: 8,
+                            color: "rgba(245,158,11,0.6)",
+                            letterSpacing: "0.3em",
+                          }}
+                        >
+                          SAVING
+                        </p>
+                      </div>
+                    ) : photoPreview || barber?.photo_url ? (
+                      <img
+                        src={photoPreview || barber.photo_url}
+                        alt={barber?.name || "photo"}
+                        style={{
+                          width: "100%",
+                          height: "100%",
+                          objectFit: "cover",
+                          objectPosition: "center top",
+                          display: "block",
+                        }}
+                      />
+                    ) : (
+                      <div
+                        style={{
+                          width: "100%",
+                          height: "100%",
+                          display: "flex",
+                          flexDirection: "column",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          gap: 4,
+                        }}
+                      >
+                        <span style={{ fontSize: 32 }}>📷</span>
+                        <p
+                          style={{
+                            ...mono,
+                            fontSize: 7,
+                            color: "#3f3f46",
+                            letterSpacing: "0.2em",
+                            textAlign: "center",
+                          }}
+                        >
+                          NO PHOTO
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                  {/* Live indicator dot when photo exists */}
+                  {(photoPreview || barber?.photo_url) && !uploadingPhoto && (
+                    <div
+                      style={{
+                        position: "absolute",
+                        bottom: 4,
+                        right: 4,
+                        width: 12,
+                        height: 12,
+                        borderRadius: "50%",
+                        background: "#4ade80",
+                        border: "2px solid #000",
+                        boxShadow: "0 0 6px rgba(74,222,128,0.8)",
+                      }}
+                    />
                   )}
                 </div>
-                <div style={{ flex: 1 }}>
+
+                {/* Right side — description + BIG upload button */}
+                <div style={{ flex: 1, minWidth: 200 }}>
                   <p
                     style={{
                       ...mono,
                       fontSize: 11,
                       color: "#a1a1aa",
-                      marginBottom: 10,
-                      lineHeight: 1.6,
+                      lineHeight: 1.7,
+                      marginBottom: 16,
                     }}
                   >
-                    This photo shows on the home page barber selector. Use a
-                    clear photo of your face against a clean background.
+                    Clients see this photo when choosing who cuts their hair.
+                    Upload a clear face shot — it shows up instantly.
                   </p>
-                  <label style={{ display: "inline-block", cursor: "pointer" }}>
+
+                  {/* THE BUTTON — clicking it opens file picker, auto-saves on select */}
+                  <label
+                    style={{
+                      display: "block",
+                      cursor: uploadingPhoto ? "not-allowed" : "pointer",
+                    }}
+                  >
                     <input
                       type="file"
                       accept="image/*"
                       style={{ display: "none" }}
+                      disabled={uploadingPhoto}
                       onChange={async (e) => {
                         const file = e.target.files?.[0];
                         if (!file) return;
                         if (file.size > 5 * 1024 * 1024) {
-                          showToast("Image must be under 5MB", "error");
+                          showToast(
+                            "Image must be under 5MB — try a smaller photo.",
+                            "error",
+                          );
                           return;
                         }
-                        // Preview immediately
+                        // Step 1: show preview immediately
                         const reader = new FileReader();
-                        reader.onload = (ev) =>
-                          setPhotoPreview(ev.target.result);
+                        reader.onload = async (ev) => {
+                          const b64 = ev.target.result;
+                          setPhotoPreview(b64); // instant preview
+                          setUploadingPhoto(true); // show spinner in photo box
+
+                          // Step 2: auto-save to server — no second button needed
+                          try {
+                            await API.patch("barber/me/update/", {
+                              photo: b64,
+                            });
+                            setBarber((prev) => ({ ...prev, photo_url: b64 }));
+                            setPhotoPreview(null); // clear preview — barber.photo_url takes over
+                            showToast("✓ Photo live! Clients can now see you.");
+                          } catch (err) {
+                            setPhotoPreview(null);
+                            showToast(
+                              err.response?.data?.error ||
+                                "Upload failed — try a smaller image.",
+                              "error",
+                            );
+                          } finally {
+                            setUploadingPhoto(false);
+                            // Reset input so same file can be re-selected
+                            e.target.value = "";
+                          }
+                        };
                         reader.readAsDataURL(file);
                       }}
                     />
-                    <span
+                    {/* Visual button */}
+                    <div
                       style={{
-                        display: "inline-flex",
+                        display: "flex",
                         alignItems: "center",
-                        gap: 6,
-                        padding: "9px 18px",
-                        background: T.amberDim,
-                        border: `1px solid ${T.amberBorder}`,
-                        color: T.amber,
-                        ...sf,
-                        fontSize: 7,
-                        fontWeight: 700,
-                        letterSpacing: "0.2em",
-                        textTransform: "uppercase",
-                        transition: "all 0.2s",
-                      }}
-                      onMouseEnter={(e) =>
-                        (e.currentTarget.style.background =
-                          "rgba(245,158,11,0.2)")
-                      }
-                      onMouseLeave={(e) =>
-                        (e.currentTarget.style.background = T.amberDim)
-                      }
-                    >
-                      📷 Choose Photo
-                    </span>
-                  </label>
-                  {photoPreview && (
-                    <button
-                      onClick={async () => {
-                        setUploadingPhoto(true);
-                        try {
-                          await API.patch("barber/me/update/", {
-                            photo: photoPreview,
-                          });
-                          setBarber((b) => ({ ...b, photo_url: photoPreview }));
-                          setPhotoPreview(null);
-                          showToast(
-                            "✓ Photo updated! It will appear on the home page.",
-                          );
-                        } catch (e) {
-                          showToast(
-                            e.response?.data?.error ||
-                              "Upload failed. Try a smaller image.",
-                            "error",
-                          );
-                        } finally {
-                          setUploadingPhoto(false);
-                        }
-                      }}
-                      disabled={uploadingPhoto}
-                      style={{
-                        marginLeft: 10,
-                        padding: "9px 18px",
-                        background: uploadingPhoto ? "#111" : "#f59e0b",
-                        color: uploadingPhoto ? "#52525b" : "black",
-                        ...sf,
-                        fontSize: 7,
-                        fontWeight: 700,
-                        letterSpacing: "0.2em",
-                        textTransform: "uppercase",
-                        border: "none",
+                        justifyContent: "center",
+                        gap: 10,
+                        padding: "16px 20px",
+                        background: uploadingPhoto
+                          ? "#0a0a0a"
+                          : "rgba(245,158,11,0.1)",
+                        border: `2px solid ${uploadingPhoto ? "rgba(245,158,11,0.2)" : "rgba(245,158,11,0.6)"}`,
                         cursor: uploadingPhoto ? "not-allowed" : "pointer",
                         transition: "all 0.2s",
                         clipPath:
-                          "polygon(0 0,calc(100% - 6px) 0,100% 6px,100% 100%,6px 100%,0 calc(100% - 6px))",
+                          "polygon(0 0,calc(100% - 8px) 0,100% 8px,100% 100%,8px 100%,0 calc(100% - 8px))",
+                      }}
+                      onMouseEnter={(e) => {
+                        if (!uploadingPhoto) {
+                          e.currentTarget.style.background =
+                            "rgba(245,158,11,0.18)";
+                          e.currentTarget.style.borderColor = "#f59e0b";
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        if (!uploadingPhoto) {
+                          e.currentTarget.style.background =
+                            "rgba(245,158,11,0.1)";
+                          e.currentTarget.style.borderColor =
+                            "rgba(245,158,11,0.6)";
+                        }
                       }}
                     >
-                      {uploadingPhoto ? "Uploading..." : "Save Photo →"}
-                    </button>
-                  )}
-                  {photoPreview && (
-                    <button
-                      onClick={() => setPhotoPreview(null)}
+                      <span style={{ fontSize: 20 }}>
+                        {uploadingPhoto ? "⏳" : "📸"}
+                      </span>
+                      <div>
+                        <p
+                          style={{
+                            ...sf,
+                            fontSize: 9,
+                            fontWeight: 700,
+                            letterSpacing: "0.15em",
+                            textTransform: "uppercase",
+                            color: uploadingPhoto ? "#52525b" : "#f59e0b",
+                            margin: 0,
+                          }}
+                        >
+                          {uploadingPhoto
+                            ? "Uploading..."
+                            : "Upload a Photo of Yourself"}
+                        </p>
+                        <p
+                          style={{
+                            ...mono,
+                            fontSize: 9,
+                            color: "#52525b",
+                            margin: "3px 0 0",
+                            letterSpacing: "0.05em",
+                          }}
+                        >
+                          {uploadingPhoto
+                            ? "Saving to your profile..."
+                            : "Tap to choose from your camera roll"}
+                        </p>
+                      </div>
+                    </div>
+                  </label>
+
+                  {/* Show "change photo" hint if one already exists */}
+                  {barber?.photo_url && !uploadingPhoto && (
+                    <p
                       style={{
-                        marginLeft: 8,
-                        padding: "9px 14px",
-                        background: "transparent",
-                        border: `1px solid ${T.border}`,
-                        color: T.muted,
-                        ...sf,
-                        fontSize: 7,
-                        letterSpacing: "0.1em",
-                        textTransform: "uppercase",
-                        cursor: "pointer",
+                        ...mono,
+                        fontSize: 9,
+                        color: "#3f3f46",
+                        marginTop: 8,
                       }}
                     >
-                      Cancel
-                    </button>
+                      ✓ Photo active · tap above to change it
+                    </p>
                   )}
                 </div>
               </div>
