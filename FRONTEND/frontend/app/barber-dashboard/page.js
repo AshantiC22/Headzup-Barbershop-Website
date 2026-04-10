@@ -1,5 +1,8 @@
 "use client";
 
+// Disable static prerendering — dashboard requires auth + live data
+export const dynamic = "force-dynamic";
+
 const validPhoto = (url) => {
   if (!url) return null;
   if (url.startsWith("data:")) return url;
@@ -7,7 +10,6 @@ const validPhoto = (url) => {
   return null;
 };
 // HEADZ UP — Barber Dashboard v4
-
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import API from "@/lib/api";

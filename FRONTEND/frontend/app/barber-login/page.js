@@ -1,4 +1,5 @@
 "use client";
+export const dynamic = "force-dynamic";
 // barber-login v5 — full_name fix, safe error handling
 
 import { useState, useEffect, useRef } from "react";
