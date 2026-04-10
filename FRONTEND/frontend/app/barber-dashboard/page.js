@@ -1888,7 +1888,7 @@ export default function BarberDashboard() {
   const [wiLoading, setWiLoading] = useState(false);
   const [wiEmail, setWiEmail] = useState("");
   const [wiBarber, setWiBarber] = useState(""); // barber id for walk-in
-  const [wiDate, setWiDate] = useState(today);
+  const [wiDate, setWiDate] = useState(todayISO());
   const [wiTime, setWiTime] = useState("");
   const [wiSlots, setWiSlots] = useState([]);
   const [wiBooked, setWiBooked] = useState([]);
