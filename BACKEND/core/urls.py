@@ -64,6 +64,7 @@ from core.views import (
     BarberReviewsView,
     AdminStatsView,
     ClientWaitlistView,
+    BarberServicePriceView,
     VapidPublicKeyView,
 )
 
@@ -130,6 +131,8 @@ urlpatterns = [
     path("barber/reviews/",               BarberReviewsView.as_view(),          name="barber_reviews"),
     # Walk-in + waitlist + reminders
     path("barber/walk-in/",               WalkInBookingView.as_view(),          name="barber_walk_in"),
+    path("barber/service-prices/",        BarberServicePriceView.as_view(),     name="barber_service_prices"),
+    path("barber/service-prices/<int:service_id>/", BarberServicePriceView.as_view(), name="barber_service_price_delete"),
     path("barber/waitlist/",              WaitlistView.as_view(),               name="barber_waitlist"),
     path("barber/waitlist/<int:pk>/",     WaitlistView.as_view(),               name="barber_waitlist_item"),
     path("barber/send-reminders/",        SendRemindersView.as_view(),          name="send_reminders"),

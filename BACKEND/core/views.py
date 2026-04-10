@@ -6,7 +6,7 @@ from django.conf import settings
 from django.db import IntegrityError
 from django.shortcuts import redirect
 from rest_framework import viewsets
-from .models import Appointment, Barber, BarberAvailability, BarberTimeOff, Service, UserProfile, PushSubscription, Review, WaitlistEntry, BarberClient, RescheduleRequest, NewsletterPost
+from .models import Appointment, Barber, BarberAvailability, BarberTimeOff, Service, UserProfile, PushSubscription, Review, WaitlistEntry, BarberClient, RescheduleRequest, NewsletterPost, BarberServicePrice
 from .serializers import AppointmentSerializer, BarberSerializer, ServiceSerializer, UserProfileSerializer, RegisterSerializer
 from rest_framework.permissions import IsAuthenticated, AllowAny, IsAdminUser
 from rest_framework.response import Response
@@ -2814,6 +2814,12 @@ class AvailableSlotsView(APIView):
                 prev = booked_dt - timedelta(minutes=30 * i)
                 blocked.add(prev.time())
 
+        # Barber's custom price for this service (if any)
+        service_price = None
+        if service:
+            custom = BarberServicePrice.objects.filter(barber=barber, service=service).first()
+            service_price = float(custom.price) if custom else float(service.price)
+
         return Response({
             "booked_slots":     [str(s) for s in booked_times],
             "available_slots":  [str(s) for s in all_slots if s not in blocked],
@@ -2821,6 +2827,7 @@ class AvailableSlotsView(APIView):
             "work_end":         str(work_end),
             "duration_minutes": duration,
             "time_off":         False,
+            "service_price":    service_price,
         })
 
 
@@ -2925,6 +2932,91 @@ class BarberMeView(APIView):
             "online_revenue": f"{online_rev:.2f}",
             "pay_in_shop":    shop_count,
         })
+
+
+class BarberServicePriceView(APIView):
+    """
+    GET  barber/service-prices/    — returns all services with barber's custom price (or default)
+    POST barber/service-prices/    — set/update a custom price for one service
+    DELETE barber/service-prices/<service_id>/  — reset to default price
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        barber = get_barber_for_user(request.user)
+        if not barber:
+            return Response({"error": "Not a barber account"}, status=403)
+
+        services     = Service.objects.all().order_by("name")
+        custom_map   = {
+            cp.service_id: cp.price
+            for cp in BarberServicePrice.objects.filter(barber=barber)
+        }
+
+        data = [{
+            "id":               s.id,
+            "name":             s.name,
+            "duration_minutes": s.duration_minutes,
+            "default_price":    float(s.price),
+            "custom_price":     float(custom_map[s.id]) if s.id in custom_map else None,
+            "effective_price":  float(custom_map[s.id]) if s.id in custom_map else float(s.price),
+            "is_custom":        s.id in custom_map,
+        } for s in services]
+
+        return Response(data)
+
+    def post(self, request):
+        barber = get_barber_for_user(request.user)
+        if not barber:
+            return Response({"error": "Not a barber account"}, status=403)
+
+        service_id = request.data.get("service_id")
+        new_price  = request.data.get("price")
+
+        if not service_id or new_price is None:
+            return Response({"error": "service_id and price are required."}, status=400)
+
+        try:
+            new_price = float(new_price)
+            if new_price < 0:
+                raise ValueError
+        except (ValueError, TypeError):
+            return Response({"error": "Price must be a positive number."}, status=400)
+
+        try:
+            service = Service.objects.get(pk=service_id)
+        except Service.DoesNotExist:
+            return Response({"error": "Service not found."}, status=404)
+
+        obj, created = BarberServicePrice.objects.update_or_create(
+            barber=barber, service=service,
+            defaults={"price": new_price}
+        )
+
+        return Response({
+            "message":         f"Price for {service.name} updated to ${new_price:.2f}",
+            "service_id":      service.id,
+            "service_name":    service.name,
+            "custom_price":    float(obj.price),
+            "default_price":   float(service.price),
+        })
+
+    def delete(self, request, service_id):
+        barber = get_barber_for_user(request.user)
+        if not barber:
+            return Response({"error": "Not a barber account"}, status=403)
+
+        deleted, _ = BarberServicePrice.objects.filter(
+            barber=barber, service_id=service_id
+        ).delete()
+
+        if deleted:
+            service = Service.objects.get(pk=service_id)
+            return Response({
+                "message":       f"Price reset to default (${service.price})",
+                "default_price": float(service.price),
+            })
+        return Response({"error": "No custom price found."}, status=404)
 
 
 class BarberScheduleOwnView(APIView):

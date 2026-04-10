@@ -1876,6 +1876,9 @@ export default function BarberDashboard() {
   /* walk-in */
   const [services, setServices] = useState([]);
   const [allBarbers, setAllBarbers] = useState([]);
+  const [pricingList, setPricingList] = useState([]); // [{id,name,default_price,custom_price,effective_price,is_custom}]
+  const [pricingEdits, setPricingEdits] = useState({}); // {serviceId: "newValue"} editing state
+  const [pricingSaving, setPricingSaving] = useState({}); // {serviceId: true/false}
   const [wiSvc, setWiSvc] = useState("");
   const [wiName, setWiName] = useState("");
   const [wiPhone, setWiPhone] = useState("");
@@ -1924,7 +1927,7 @@ export default function BarberDashboard() {
   const [photoPreview, setPhotoPreview] = useState(null);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   // Reschedules
-  // Reschedules state is declared later in this file — avoid duplicate declaration here.
+  // Reschedules state moved further down to avoid redeclaration
   // Reschedules
   const [reschedules, setReschedules] = useState([]);
   const [reschedLoading, setReschedLoading] = useState(false);
@@ -2088,6 +2091,15 @@ export default function BarberDashboard() {
   useEffect(() => {
     if (activeTab === "reports") loadReports(reportPeriod);
   }, [activeTab, reportPeriod, loadReports]);
+  useEffect(() => {
+    if (activeTab !== "pricing") return;
+    API.get("barber/service-prices/")
+      .then((r) => {
+        setPricingList(r.data);
+        setPricingEdits({});
+      })
+      .catch(() => {});
+  }, [activeTab]);
 
   const loadNewsletter = useCallback(async () => {
     setNlLoading(true);
@@ -2462,6 +2474,7 @@ export default function BarberDashboard() {
     { key: "clients", label: "Clients", icon: "👤" },
     { key: "reports", label: "Reports", icon: "📊" },
     { key: "newsletter", label: "Newsletter", icon: "📣" },
+    { key: "pricing", label: "Pricing", icon: "💲" },
     { key: "availability", label: "My Hours", icon: "⏰" },
     { key: "timeoff", label: "Time Off", icon: "🏖" },
   ];
@@ -8059,6 +8072,444 @@ export default function BarberDashboard() {
                     </div>
                   </div>
                 ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ══ PRICING TAB ══ */}
+        {activeTab === "pricing" && (
+          <div className="bd-enter" style={{ maxWidth: 580 }}>
+            {/* Header */}
+            <div style={{ marginBottom: 28 }}>
+              <p
+                style={{
+                  ...mono,
+                  fontSize: 8,
+                  color: "rgba(245,158,11,0.5)",
+                  letterSpacing: "0.5em",
+                  textTransform: "uppercase",
+                  marginBottom: 6,
+                }}
+              >
+                HEADZ UP · YOUR RATES
+              </p>
+              <h2
+                style={{
+                  ...sf,
+                  fontSize: 22,
+                  fontWeight: 900,
+                  textTransform: "uppercase",
+                  letterSpacing: "-0.03em",
+                  margin: 0,
+                }}
+              >
+                Service
+                <br />
+                <span style={{ color: T.amber, fontStyle: "italic" }}>
+                  Pricing_
+                </span>
+              </h2>
+              <p
+                style={{
+                  ...mono,
+                  fontSize: 12,
+                  color: T.muted,
+                  marginTop: 10,
+                  lineHeight: 1.7,
+                }}
+              >
+                Set your own prices for each service. Your custom price
+                overrides the shop default. Clients will see your rate when
+                booking with you.
+              </p>
+            </div>
+
+            {pricingList.length === 0 ? (
+              <div style={{ padding: "24px", textAlign: "center" }}>
+                <div
+                  style={{
+                    width: 18,
+                    height: 18,
+                    border: "2px solid rgba(245,158,11,0.2)",
+                    borderTopColor: T.amber,
+                    borderRadius: "50%",
+                    animation: "spin 0.8s linear infinite",
+                    margin: "0 auto 12px",
+                  }}
+                />
+                <p style={{ ...mono, fontSize: 11, color: T.dim }}>
+                  Loading services...
+                </p>
+              </div>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                {pricingList.map((svc) => {
+                  const editing = pricingEdits[svc.id] !== undefined;
+                  const editVal = editing ? pricingEdits[svc.id] : "";
+                  const saving = pricingSaving[svc.id];
+                  const hasCustom = svc.is_custom;
+
+                  const savePrice = async () => {
+                    const val = parseFloat(editVal);
+                    if (isNaN(val) || val < 0) {
+                      showToast("Enter a valid price.", "error");
+                      return;
+                    }
+                    setPricingSaving((p) => ({ ...p, [svc.id]: true }));
+                    try {
+                      await API.post("barber/service-prices/", {
+                        service_id: svc.id,
+                        price: val,
+                      });
+                      setPricingList((p) =>
+                        p.map((s) =>
+                          s.id === svc.id
+                            ? {
+                                ...s,
+                                custom_price: val,
+                                effective_price: val,
+                                is_custom: true,
+                              }
+                            : s,
+                        ),
+                      );
+                      setPricingEdits((p) => {
+                        const n = { ...p };
+                        delete n[svc.id];
+                        return n;
+                      });
+                      showToast(`✓ ${svc.name} updated to $${val.toFixed(2)}`);
+                    } catch (e) {
+                      showToast(
+                        e.response?.data?.error || "Could not update price.",
+                        "error",
+                      );
+                    } finally {
+                      setPricingSaving((p) => ({ ...p, [svc.id]: false }));
+                    }
+                  };
+
+                  const resetPrice = async () => {
+                    setPricingSaving((p) => ({ ...p, [svc.id]: true }));
+                    try {
+                      await API.delete(`barber/service-prices/${svc.id}/`);
+                      setPricingList((p) =>
+                        p.map((s) =>
+                          s.id === svc.id
+                            ? {
+                                ...s,
+                                custom_price: null,
+                                effective_price: s.default_price,
+                                is_custom: false,
+                              }
+                            : s,
+                        ),
+                      );
+                      setPricingEdits((p) => {
+                        const n = { ...p };
+                        delete n[svc.id];
+                        return n;
+                      });
+                      showToast(
+                        `${svc.name} reset to shop default ($${svc.default_price.toFixed(2)})`,
+                      );
+                    } catch (e) {
+                      showToast("Could not reset.", "error");
+                    } finally {
+                      setPricingSaving((p) => ({ ...p, [svc.id]: false }));
+                    }
+                  };
+
+                  return (
+                    <div
+                      key={svc.id}
+                      style={{
+                        background: T.surface,
+                        border: `1px solid ${hasCustom ? "rgba(245,158,11,0.2)" : T.border}`,
+                        clipPath:
+                          "polygon(0 0,calc(100% - 8px) 0,100% 8px,100% 100%,8px 100%,0 calc(100% - 8px))",
+                        padding: "16px 18px",
+                        transition: "border-color 0.2s",
+                      }}
+                    >
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "flex-start",
+                          justifyContent: "space-between",
+                          gap: 12,
+                          flexWrap: "wrap",
+                        }}
+                      >
+                        {/* Left: service info */}
+                        <div style={{ flex: 1, minWidth: 160 }}>
+                          <div
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: 8,
+                              marginBottom: 4,
+                            }}
+                          >
+                            <p
+                              style={{
+                                ...sf,
+                                fontSize: 10,
+                                fontWeight: 700,
+                                textTransform: "uppercase",
+                                margin: 0,
+                              }}
+                            >
+                              {svc.name}
+                            </p>
+                            {hasCustom && (
+                              <span
+                                style={{
+                                  ...mono,
+                                  fontSize: 7,
+                                  color: T.amber,
+                                  padding: "2px 7px",
+                                  background: "rgba(245,158,11,0.08)",
+                                  border: "1px solid rgba(245,158,11,0.2)",
+                                }}
+                              >
+                                CUSTOM
+                              </span>
+                            )}
+                          </div>
+                          <p
+                            style={{
+                              ...mono,
+                              fontSize: 10,
+                              color: T.dim,
+                              margin: 0,
+                            }}
+                          >
+                            {svc.duration_minutes} min
+                          </p>
+                          {hasCustom && (
+                            <p
+                              style={{
+                                ...mono,
+                                fontSize: 9,
+                                color: "#52525b",
+                                margin: "4px 0 0",
+                              }}
+                            >
+                              Shop default:{" "}
+                              <span style={{ color: T.muted }}>
+                                ${svc.default_price.toFixed(2)}
+                              </span>
+                            </p>
+                          )}
+                        </div>
+
+                        {/* Right: price display + edit */}
+                        <div
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 8,
+                            flexShrink: 0,
+                          }}
+                        >
+                          {editing ? (
+                            <>
+                              <div
+                                style={{
+                                  display: "flex",
+                                  alignItems: "center",
+                                  background: "#050505",
+                                  border: `1px solid ${T.amber}`,
+                                  overflow: "hidden",
+                                }}
+                              >
+                                <span
+                                  style={{
+                                    ...mono,
+                                    fontSize: 14,
+                                    color: T.amber,
+                                    padding: "0 8px 0 12px",
+                                    lineHeight: 1,
+                                  }}
+                                >
+                                  $
+                                </span>
+                                <input
+                                  type="number"
+                                  min="0"
+                                  step="0.50"
+                                  value={editVal}
+                                  onChange={(e) =>
+                                    setPricingEdits((p) => ({
+                                      ...p,
+                                      [svc.id]: e.target.value,
+                                    }))
+                                  }
+                                  onKeyDown={(e) => {
+                                    if (e.key === "Enter") savePrice();
+                                    if (e.key === "Escape")
+                                      setPricingEdits((p) => {
+                                        const n = { ...p };
+                                        delete n[svc.id];
+                                        return n;
+                                      });
+                                  }}
+                                  autoFocus
+                                  style={{
+                                    width: 80,
+                                    padding: "10px 10px 10px 0",
+                                    background: "transparent",
+                                    border: "none",
+                                    color: "white",
+                                    ...mono,
+                                    fontSize: 14,
+                                    outline: "none",
+                                  }}
+                                />
+                              </div>
+                              <button
+                                onClick={savePrice}
+                                disabled={saving}
+                                style={{
+                                  padding: "10px 14px",
+                                  background: saving ? "#111" : T.amber,
+                                  color: saving ? T.dim : "black",
+                                  ...sf,
+                                  fontSize: 7,
+                                  fontWeight: 700,
+                                  letterSpacing: "0.15em",
+                                  textTransform: "uppercase",
+                                  border: "none",
+                                  cursor: saving ? "not-allowed" : "pointer",
+                                  transition: "all 0.2s",
+                                }}
+                              >
+                                {saving ? "..." : "Save"}
+                              </button>
+                              <button
+                                onClick={() =>
+                                  setPricingEdits((p) => {
+                                    const n = { ...p };
+                                    delete n[svc.id];
+                                    return n;
+                                  })
+                                }
+                                style={{
+                                  padding: "10px 12px",
+                                  background: "transparent",
+                                  border: `1px solid ${T.border}`,
+                                  color: T.muted,
+                                  ...mono,
+                                  fontSize: 11,
+                                  cursor: "pointer",
+                                }}
+                              >
+                                ✕
+                              </button>
+                            </>
+                          ) : (
+                            <>
+                              <p
+                                style={{
+                                  ...sf,
+                                  fontSize: 18,
+                                  fontWeight: 900,
+                                  color: hasCustom ? T.amber : "white",
+                                  margin: 0,
+                                  letterSpacing: "-0.02em",
+                                }}
+                              >
+                                ${svc.effective_price.toFixed(2)}
+                              </p>
+                              <button
+                                onClick={() =>
+                                  setPricingEdits((p) => ({
+                                    ...p,
+                                    [svc.id]: String(svc.effective_price),
+                                  }))
+                                }
+                                style={{
+                                  padding: "8px 14px",
+                                  background: "transparent",
+                                  border: `1px solid ${T.border}`,
+                                  color: T.muted,
+                                  ...mono,
+                                  fontSize: 10,
+                                  cursor: "pointer",
+                                  transition: "all 0.2s",
+                                }}
+                                onMouseEnter={(e) => {
+                                  e.currentTarget.style.borderColor = T.amber;
+                                  e.currentTarget.style.color = T.amber;
+                                }}
+                                onMouseLeave={(e) => {
+                                  e.currentTarget.style.borderColor = T.border;
+                                  e.currentTarget.style.color = T.muted;
+                                }}
+                              >
+                                Edit
+                              </button>
+                              {hasCustom && (
+                                <button
+                                  onClick={resetPrice}
+                                  disabled={saving}
+                                  style={{
+                                    padding: "8px 10px",
+                                    background: "transparent",
+                                    border: "1px solid rgba(248,113,113,0.2)",
+                                    color: "#f87171",
+                                    ...mono,
+                                    fontSize: 10,
+                                    cursor: "pointer",
+                                    transition: "all 0.2s",
+                                  }}
+                                  onMouseEnter={(e) => {
+                                    e.currentTarget.style.background =
+                                      "rgba(248,113,113,0.06)";
+                                  }}
+                                  onMouseLeave={(e) => {
+                                    e.currentTarget.style.background =
+                                      "transparent";
+                                  }}
+                                >
+                                  Reset
+                                </button>
+                              )}
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+
+                {/* Footer note */}
+                <div
+                  style={{
+                    marginTop: 8,
+                    padding: "12px 14px",
+                    background: "rgba(245,158,11,0.04)",
+                    border: "1px solid rgba(245,158,11,0.1)",
+                  }}
+                >
+                  <p
+                    style={{
+                      ...mono,
+                      fontSize: 10,
+                      color: "rgba(245,158,11,0.5)",
+                      lineHeight: 1.7,
+                      margin: 0,
+                    }}
+                  >
+                    💲 Custom prices only apply to bookings with you. Other
+                    barbers keep their own rates. Press{" "}
+                    <strong style={{ color: T.amber }}>Edit</strong> to change a
+                    price, <strong style={{ color: "#f87171" }}>Reset</strong>{" "}
+                    to go back to the shop default.
+                  </p>
+                </div>
               </div>
             )}
           </div>

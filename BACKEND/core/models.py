@@ -39,6 +39,19 @@ class Service(models.Model):
         return self.name
 
 
+class BarberServicePrice(models.Model):
+    """Lets each barber override the default price for a service."""
+    barber  = models.ForeignKey("Barber", on_delete=models.CASCADE, related_name="custom_prices")
+    service = models.ForeignKey(Service,  on_delete=models.CASCADE, related_name="barber_prices")
+    price   = models.DecimalField(max_digits=6, decimal_places=2)
+
+    class Meta:
+        unique_together = ("barber", "service")
+
+    def __str__(self):
+        return f"{self.barber.name} — {self.service.name}: ${self.price}"
+
+
 DAYS_OF_WEEK = [
     (0, "Monday"), (1, "Tuesday"), (2, "Wednesday"),
     (3, "Thursday"), (4, "Friday"), (5, "Saturday"), (6, "Sunday"),
