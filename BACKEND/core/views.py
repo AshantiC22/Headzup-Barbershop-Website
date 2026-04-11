@@ -1542,6 +1542,7 @@ class BarberRegisterView(APIView):
         email     = request.data.get("email", "").strip()
         password  = request.data.get("password", "")
         full_name = request.data.get("full_name", "").strip()
+        phone     = request.data.get("phone", "").strip()
 
         # Validate fields
         errors = {}
@@ -1557,6 +1558,9 @@ class BarberRegisterView(APIView):
             errors["password"] = "Password must be at least 6 characters."
         if not full_name:
             errors["full_name"] = "Full name is required."
+        # Phone is optional but must be valid E.164 if provided
+        if phone and not phone.startswith("+"):
+            errors["phone"] = "Phone must start with + (e.g. +16015551234)"
         if errors:
             return Response(errors, status=status.HTTP_400_BAD_REQUEST)
 
@@ -1573,12 +1577,28 @@ class BarberRegisterView(APIView):
             user.is_staff = True
             user.save()
 
+            # Save phone to UserProfile
+            profile = user.profile
+            if phone:
+                profile.phone = phone
+                profile.save(update_fields=["phone"])
+
             # Create linked Barber profile
             Barber.objects.create(
                 name=full_name,
                 user=user,
                 bio="",
             )
+
+            # Send welcome SMS to the new barber
+            if phone:
+                first = full_name.split()[0]
+                _twilio_send(phone,
+                    f"✂️ Welcome to HEADZ UP, {first}!\n"
+                    f"You're officially part of the team. 🔥\n"
+                    f"Log in to your dashboard to set your hours and start taking bookings:\n"
+                    f"{FRONTEND_URL}/barber-dashboard"
+                )
 
             # Return tokens directly — avoids second round-trip race condition
             refresh = RefreshToken.for_user(user)
@@ -2816,9 +2836,9 @@ class AvailableSlotsView(APIView):
 
         # Barber's custom price for this service (if any)
         service_price = None
-        if Service:
-            custom = BarberServicePrice.objects.filter(barber=Barber, service=Service).first()
-            service_price = float(custom.price) if custom else float(Service.price)
+        if service:
+            custom = BarberServicePrice.objects.filter(barber=barber, service=service).first()
+            service_price = float(custom.price) if custom else float(service.price)
 
         return Response({
             "booked_slots":     [str(s) for s in booked_times],
