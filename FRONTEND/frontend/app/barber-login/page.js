@@ -314,7 +314,7 @@ export default function BarberLoginPage() {
         username:    regUser.trim(),
         email:       regEmail.trim(),
         password:    regPass,
-        phone:       regPhone.trim(),
+        phone:       regPhone.trim() ? `+1${regPhone.trim()}` : "",
         invite_code: regInvite.trim(),
       });
       registerData = res.data;
@@ -499,25 +499,32 @@ export default function BarberLoginPage() {
                   <label style={{ fontFamily: "'Syncopate',sans-serif", fontSize: 6, letterSpacing: "0.4em", textTransform: "uppercase", color: fieldErrors.regPhone ? "#f87171" : "#a1a1aa" }}>
                     Phone Number <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 9, color: "#52525b", letterSpacing: "0.1em", textTransform: "none" }}>(for booking notifications)</span>
                   </label>
-                  <input
-                    type="tel"
-                    value={regPhone}
-                    onChange={e => setRegPhone(e.target.value)}
-                    placeholder="+16015551234"
-                    autoComplete="tel"
-                    style={{
-                      width: "100%", background: "#080808",
-                      border: `1px solid ${fieldErrors.regPhone ? "rgba(248,113,113,0.6)" : regPhone ? "rgba(245,158,11,0.4)" : "rgba(255,255,255,0.1)"}`,
-                      padding: "15px 16px", color: "white", fontSize: 15,
-                      fontFamily: "'DM Mono',monospace", outline: "none", borderRadius: 0,
-                      WebkitAppearance: "none", transition: "border-color 0.2s",
-                    }}
-                    onFocus={e => e.target.style.borderColor = "rgba(245,158,11,0.6)"}
-                    onBlur={e => e.target.style.borderColor = fieldErrors.regPhone ? "rgba(248,113,113,0.6)" : regPhone ? "rgba(245,158,11,0.4)" : "rgba(255,255,255,0.1)"}
-                  />
+                  <div style={{ display: "flex", alignItems: "center", border: `1px solid ${fieldErrors.regPhone ? "rgba(248,113,113,0.6)" : regPhone ? "rgba(245,158,11,0.4)" : "rgba(255,255,255,0.1)"}`, background: "#080808", transition: "border-color 0.2s" }}>
+                    <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 15, color: "#f59e0b", padding: "15px 0 15px 16px", userSelect: "none", flexShrink: 0 }}>+1</span>
+                    <input
+                      type="tel"
+                      value={regPhone}
+                      onChange={e => {
+                        // Only allow digits, max 10
+                        const digits = e.target.value.replace(/\D/g, "").slice(0, 10);
+                        setRegPhone(digits);
+                      }}
+                      placeholder="6015551234"
+                      autoComplete="tel-national"
+                      maxLength={10}
+                      style={{
+                        flex: 1, background: "transparent", border: "none",
+                        padding: "15px 16px 15px 8px", color: "white", fontSize: 15,
+                        fontFamily: "'DM Mono',monospace", outline: "none",
+                        WebkitAppearance: "none",
+                      }}
+                      onFocus={e => e.currentTarget.parentElement.style.borderColor = "rgba(245,158,11,0.6)"}
+                      onBlur={e => e.currentTarget.parentElement.style.borderColor = fieldErrors.regPhone ? "rgba(248,113,113,0.6)" : regPhone ? "rgba(245,158,11,0.4)" : "rgba(255,255,255,0.1)"}
+                    />
+                  </div>
                   {fieldErrors.regPhone
                     ? <p style={{ fontFamily: "'DM Mono',monospace", fontSize: 10, color: "#f87171" }}>⚠ {fieldErrors.regPhone}</p>
-                    : <p style={{ fontFamily: "'DM Mono',monospace", fontSize: 10, color: "#27272a" }}>E.164 format: +1 then your 10-digit number</p>
+                    : <p style={{ fontFamily: "'DM Mono',monospace", fontSize: 10, color: "#27272a" }}>10-digit number — we add the +1</p>
                   }
                 </div>
 
