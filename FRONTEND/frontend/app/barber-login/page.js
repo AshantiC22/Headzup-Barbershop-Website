@@ -326,9 +326,10 @@ export default function BarberLoginPage() {
       else if (d.username)                             setFieldErrors(p => ({ ...p, regUser:   msg(d.username)    }));
       else if (d.email)                                setFieldErrors(p => ({ ...p, regEmail:  msg(d.email)       }));
       else if (d.password)                             setFieldErrors(p => ({ ...p, regPass:   msg(d.password)    }));
+      else if (d.phone)                                setFieldErrors(p => ({ ...p, regPhone:  msg(d.phone)       }));
       else if (d.message && typeof d.message === "string") setError(d.message);
       else if (d.detail && typeof d.detail === "string")   setError(d.detail);
-      else setError("Registration failed. Check your details and invite code.");
+      else setError(`Registration failed: ${JSON.stringify(d)}`);
       setLoading(false);
       return;
     }

@@ -1578,7 +1578,7 @@ class BarberRegisterView(APIView):
             user.save()
 
             # Save phone to UserProfile
-            profile = user.profile
+            profile, _ = UserProfile.objects.get_or_create(user=user)
             if phone:
                 profile.phone = phone
                 profile.save(update_fields=["phone"])
