@@ -1190,6 +1190,85 @@ def _twilio_send(to_phone, body):
         logger.error(f"Twilio SMS failed to {to_phone}: {e}")
 
 
+class TestSMSView(APIView):
+    """
+    Admin-only endpoint to test Twilio SMS directly.
+    POST /api/test-sms/ with {"to": "+16015551234"}
+    Returns the raw Twilio response so we can debug.
+    """
+    permission_classes = [IsAdminUser]
+
+    def post(self, request):
+        import urllib.request, urllib.parse, base64
+
+        to_phone    = request.data.get("to", "").strip()
+        account_sid = getattr(settings, "TWILIO_ACCOUNT_SID", "")
+        auth_token  = getattr(settings, "TWILIO_AUTH_TOKEN",  "")
+        from_number = getattr(settings, "TWILIO_FROM_NUMBER", "")
+
+        # Report config status
+        config = {
+            "TWILIO_ACCOUNT_SID":  account_sid[:8] + "..." if account_sid else "NOT SET",
+            "TWILIO_AUTH_TOKEN":   "SET" if auth_token else "NOT SET",
+            "TWILIO_FROM_NUMBER":  from_number or "NOT SET",
+            "to_phone":            to_phone,
+        }
+
+        if not account_sid or not auth_token or not from_number:
+            return Response({"error": "Twilio not configured", "config": config}, status=400)
+
+        if not to_phone or not to_phone.startswith("+"):
+            return Response({"error": "to must be E.164 e.g. +16015551234", "config": config}, status=400)
+
+        url  = f"https://api.twilio.com/2010-04-01/Accounts/{account_sid}/Messages.json"
+        data = urllib.parse.urlencode({
+            "To":   to_phone,
+            "From": from_number,
+            "Body": "✂️ HEADZ UP test SMS — Twilio is working!",
+        }).encode("utf-8")
+        creds = base64.b64encode(f"{account_sid}:{auth_token}".encode()).decode()
+
+        try:
+            req = urllib.request.Request(
+                url, data=data,
+                headers={
+                    "Authorization": f"Basic {creds}",
+                    "Content-Type":  "application/x-www-form-urlencoded",
+                },
+                method="POST",
+            )
+            with urllib.request.urlopen(req, timeout=15) as resp:
+                import json
+                body = json.loads(resp.read().decode())
+                return Response({
+                    "success": True,
+                    "twilio_status": resp.status,
+                    "message_sid": body.get("sid"),
+                    "status": body.get("status"),
+                    "config": config,
+                })
+        except urllib.error.HTTPError as e:
+            import json
+            error_body = e.read().decode()
+            try:
+                error_json = json.loads(error_body)
+            except Exception:
+                error_json = error_body
+            return Response({
+                "success": False,
+                "http_status": e.code,
+                "twilio_error": error_json,
+                "config": config,
+            }, status=400)
+        except Exception as e:
+            return Response({
+                "success": False,
+                "error": str(e),
+                "config": config,
+            }, status=500)
+
+
+
 def _get_client_phone(user):
     """Get client phone from UserProfile. Returns None if not set."""
     try:
@@ -2836,9 +2915,9 @@ class AvailableSlotsView(APIView):
 
         # Barber's custom price for this service (if any)
         service_price = None
-        if Service:
-            custom = BarberServicePrice.objects.filter(barber=Barber, service=Service).first()
-            service_price = float(custom.price) if custom else float(Service.price)
+        if service:
+            custom = BarberServicePrice.objects.filter(barber=barber, service=service).first()
+            service_price = float(custom.price) if custom else float(service.price)
 
         return Response({
             "booked_slots":     [str(s) for s in booked_times],

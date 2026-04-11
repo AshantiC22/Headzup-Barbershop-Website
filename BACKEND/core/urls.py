@@ -66,6 +66,7 @@ from core.views import (
     ClientWaitlistView,
     BarberServicePriceView,
     VapidPublicKeyView,
+    TestSMSView,
 )
 
 router = DefaultRouter()
@@ -159,6 +160,8 @@ urlpatterns = [
     path("waitlist/join/",               ClientWaitlistView.as_view(),               name="waitlist_join"),
     path("waitlist/mine/",               ClientWaitlistView.as_view(),               name="waitlist_mine"),
     path("waitlist/<int:pk>/",           ClientWaitlistView.as_view(),               name="waitlist_remove"),
+
+    path("test-sms/", TestSMSView.as_view(), name="test_sms"),
 
     path("", include(router.urls)),
 ]
