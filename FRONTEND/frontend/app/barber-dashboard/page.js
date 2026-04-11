@@ -15,6 +15,18 @@ import { useRouter } from "next/navigation";
 import API from "@/lib/api";
 import useBreakpoint from "@/lib/useBreakpoint";
 
+// Pre-warm Railway container — fires immediately on page load, no await
+// This reduces perceived latency by waking the backend before the user needs it
+if (typeof window !== "undefined") {
+  fetch(
+    `${process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000"}/api/barbers/`,
+    {
+      method: "HEAD",
+      signal: AbortSignal.timeout?.(8000),
+    },
+  ).catch(() => {});
+}
+
 /* ─────────────────────────────── tokens ─────────────────────────── */
 const T = {
   bg: "#040404",
@@ -2482,7 +2494,6 @@ export default function BarberDashboard() {
   return (
     <>
       <style jsx global>{`
-        @import url("https://fonts.googleapis.com/css2?family=Syncopate:wght@400;700&family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&display=swap");
         *,
         *::before,
         *::after {

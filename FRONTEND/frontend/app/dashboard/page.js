@@ -976,7 +976,7 @@ function DashboardContent() {
   const handleLogout = () => {
     localStorage.removeItem("access");
     localStorage.removeItem("refresh");
-    router.push("/login");
+    router.replace("/login");
   };
 
   const handleCancel = async (appt) => {
@@ -1043,7 +1043,6 @@ Cancel anyway?`
   return (
     <>
       <style jsx global>{`
-        @import url("https://fonts.googleapis.com/css2?family=Syncopate:wght@400;700&family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&display=swap");
         *,
         *::before,
         *::after {

@@ -5,6 +5,17 @@ import { Suspense, useEffect, useState, useCallback, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import API from "@/lib/api";
 
+// Pre-warm Railway backend on page load
+if (typeof window !== "undefined") {
+  fetch(
+    `${process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000"}/api/barbers/`,
+    {
+      method: "HEAD",
+      signal: AbortSignal.timeout?.(8000),
+    },
+  ).catch(() => {});
+}
+
 const sf = { fontFamily: "'Syncopate', sans-serif" };
 const mono = { fontFamily: "'DM Mono', monospace" };
 
@@ -446,7 +457,6 @@ function LoginContent() {
   return (
     <>
       <style jsx global>{`
-        @import url("https://fonts.googleapis.com/css2?family=Syncopate:wght@400;700&family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&display=swap");
         *,
         *::before,
         *::after {

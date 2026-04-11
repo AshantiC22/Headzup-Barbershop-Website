@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-// @ts-ignore: allow side-effect import of global CSS without explicit module declarations
+// @ts-ignore - CSS side-effect import: add a `*.css` declaration file if you prefer a typed fix
 import "./globals.css";
 import PWAProvider from "@/lib/PWAProvider";
 
@@ -117,6 +117,15 @@ export default function RootLayout({
           rel="preconnect"
           href="https://fonts.gstatic.com"
           crossOrigin="anonymous"
+        />
+        {/* Preconnect to Railway API so first request is instant */}
+        <link
+          rel="preconnect"
+          href="https://headzup-barbershop-website-production.up.railway.app"
+        />
+        <link
+          rel="dns-prefetch"
+          href="https://headzup-barbershop-website-production.up.railway.app"
         />
         <link
           href="https://fonts.googleapis.com/css2?family=Syncopate:wght@400;700&family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300;1,400;1,500&display=swap"

@@ -13,6 +13,17 @@ import { useRouter } from "next/navigation";
 import * as THREE from "three";
 import { gsap } from "gsap";
 import API from "@/lib/api";
+
+// Pre-warm Railway backend on page load
+if (typeof window !== "undefined") {
+  fetch(
+    `${process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000"}/api/barbers/`,
+    {
+      method: "HEAD",
+      signal: AbortSignal.timeout?.(8000),
+    },
+  ).catch(() => {});
+}
 import AuthGuard from "@/lib/AuthGuard";
 import useBreakpoint from "@/lib/useBreakpoint";
 
@@ -1041,7 +1052,6 @@ function BookContent() {
   return (
     <>
       <style jsx global>{`
-        @import url("https://fonts.googleapis.com/css2?family=Syncopate:wght@400;700&family=DM+Mono:wght@400;500&display=swap");
         *,
         *::before,
         *::after {
