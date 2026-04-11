@@ -125,7 +125,6 @@ function WaitlistContent() {
   return (
     <div style={{ minHeight: "100vh", background: "#040404", color: "white" }}>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Syncopate:wght@400;700&family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&display=swap');
         *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
         body{background:#040404;}
         @keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
