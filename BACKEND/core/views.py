@@ -2816,9 +2816,9 @@ class AvailableSlotsView(APIView):
 
         # Barber's custom price for this service (if any)
         service_price = None
-        if service:
-            custom = BarberServicePrice.objects.filter(barber=barber, service=service).first()
-            service_price = float(custom.price) if custom else float(service.price)
+        if Service:
+            custom = BarberServicePrice.objects.filter(barber=Barber, service=Service).first()
+            service_price = float(custom.price) if custom else float(Service.price)
 
         return Response({
             "booked_slots":     [str(s) for s in booked_times],
