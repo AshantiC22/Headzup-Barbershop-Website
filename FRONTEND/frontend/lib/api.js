@@ -7,7 +7,7 @@ const BASE_URL = process.env.NEXT_PUBLIC_API_URL
 
 const API = axios.create({
   baseURL: BASE_URL,
-  timeout: 12000, // 12s — enough for Railway cold start, not forever
+  timeout: 12000,          // 12s — enough for Railway cold start, not forever
   headers: { "Content-Type": "application/json" },
 });
 
@@ -22,16 +22,9 @@ API.interceptors.request.use((config) => {
 
 // ── Public endpoints — skip refresh logic ────────────────────────────────────
 const PUBLIC_URLS = [
-  "token/",
-  "token/refresh/",
-  "register/",
-  "barber/register/",
-  "check-username/",
-  "password-reset/",
-  "password-reset/confirm/",
-  "barbers/",
-  "services/",
-  "available-slots/",
+  "token/", "token/refresh/", "register/", "barber/register/",
+  "check-username/", "password-reset/", "password-reset/confirm/",
+  "barbers/", "services/", "available-slots/",
 ];
 const isPublic = (url = "") => PUBLIC_URLS.some((p) => url.includes(p));
 
@@ -56,11 +49,7 @@ API.interceptors.response.use(
       }
 
       try {
-        const res = await axios.post(
-          `${BASE_URL}token/refresh/`,
-          { refresh },
-          { timeout: 8000 },
-        );
+        const res = await axios.post(`${BASE_URL}token/refresh/`, { refresh }, { timeout: 8000 });
         const newAccess = res.data.access;
         localStorage.setItem("access", newAccess);
         if (res.data.refresh) localStorage.setItem("refresh", res.data.refresh);
@@ -75,7 +64,7 @@ API.interceptors.response.use(
     }
 
     return Promise.reject(error);
-  },
+  }
 );
 
 export default API;
