@@ -2,12 +2,28 @@ from django.contrib import admin
 from django.utils.html import format_html
 from django.utils.safestring import mark_safe
 from django.db.models import Count, Sum
+from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
+from django.contrib.auth.models import User
 from .models import (
     UserProfile, Barber, Service, Appointment,
     BarberAvailability, BarberTimeOff,
     PushSubscription, Review, WaitlistEntry,
     BarberClient, RescheduleRequest, NewsletterPost,
 )
+
+# ── Inline UserProfile on the User page ──────────────────────────────────────
+class UserProfileInline(admin.StackedInline):
+    model   = UserProfile
+    can_delete = False
+    verbose_name_plural = "Profile (Phone, Strikes, Deposit)"
+    fields  = ("phone", "strike_count", "deposit_fee", "terms_accepted")
+    extra   = 0
+
+class UserAdmin(BaseUserAdmin):
+    inlines = (UserProfileInline,)
+
+admin.site.unregister(User)
+admin.site.register(User, UserAdmin)
 
 # ── Branding ──────────────────────────────────────────────────────────────────
 admin.site.site_header  = "✂ HEADZ UP  |  Shop Command Center"
@@ -465,9 +481,16 @@ class AppointmentAdmin(HeadzUpAdminMixin, admin.ModelAdmin):
 
 @admin.register(UserProfile)
 class UserProfileAdmin(HeadzUpAdminMixin, admin.ModelAdmin):
-    list_display  = ("username", "email", "strikes_colored", "deposit_amount", "terms", "created_at")
+    list_display  = ("username", "email", "phone_display", "strikes_colored", "deposit_amount", "terms", "created_at")
     search_fields = ("user__username", "user__email", "name")
     list_per_page = 30
+    fields        = ("user", "phone", "strike_count", "deposit_fee", "terms_accepted")
+
+    @admin.display(description="Phone")
+    def phone_display(self, obj):
+        return format_html(
+            '<span style="color:#4ade80;">{}</span>', obj.phone
+        ) if obj.phone else format_html('<span style="color:#3f3f46;">—</span>')
 
     @admin.display(description="Username")
     def username(self, obj):
