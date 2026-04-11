@@ -164,6 +164,11 @@ VAPID_CLAIM_EMAIL = os.environ.get("VAPID_CLAIM_EMAIL", "")
 # ── Barber invite code (required to create a barber account) ─────────────────
 BARBER_INVITE_CODE = os.environ.get("BARBER_INVITE_CODE", "HEADZUP2026")
 
+# Twilio SMS
+TWILIO_ACCOUNT_SID  = os.environ.get("TWILIO_ACCOUNT_SID", "")
+TWILIO_AUTH_TOKEN   = os.environ.get("TWILIO_AUTH_TOKEN",  "")
+TWILIO_FROM_NUMBER  = os.environ.get("TWILIO_FROM_NUMBER", "")
+
 # ── JWT token lifetimes ───────────────────────────────────────────────────────
 from datetime import timedelta
 SIMPLE_JWT = {
