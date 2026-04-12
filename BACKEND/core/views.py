@@ -1716,6 +1716,28 @@ class ServiceViewSet(viewsets.ModelViewSet):
     serializer_class = ServiceSerializer
     permission_classes = [IsAuthenticated]
 
+    def list(self, request, *args, **kwargs):
+        """
+        GET /api/services/?barber=<id>
+        Returns services with prices overridden by the barber's custom prices if set.
+        """
+        barber_id = request.query_params.get("barber")
+        services  = Service.objects.all()
+        data      = []
+        price_map = {}
+        if barber_id:
+            for cp in BarberServicePrice.objects.filter(barber_id=barber_id).select_related("service"):
+                price_map[cp.service_id] = float(cp.price)
+        for svc in services:
+            price = price_map.get(svc.id, float(svc.price))
+            data.append({
+                "id":               svc.id,
+                "name":             svc.name,
+                "price":            f"{price:.2f}",
+                "duration_minutes": svc.duration_minutes,
+            })
+        return Response(data)
+
 
 class AppointmentViewSet(viewsets.ModelViewSet):
     serializer_class = AppointmentSerializer
@@ -2929,9 +2951,13 @@ class AvailableSlotsView(APIView):
 
         # Barber's custom price for this service (if any)
         service_price = None
-        if service:
-            custom = BarberServicePrice.objects.filter(barber=barber, service=service).first()
-            service_price = float(custom.price) if custom else float(service.price)
+        if service_id:
+            try:
+                _svc = Service.objects.get(pk=service_id)
+                custom = BarberServicePrice.objects.filter(barber_id=barber_id, service=_svc).first()
+                service_price = float(custom.price) if custom else float(_svc.price)
+            except Service.DoesNotExist:
+                pass
 
         return Response({
             "booked_slots":     [str(s) for s in booked_times],

@@ -233,7 +233,7 @@ function BookingCalendar({ selectedDate, onSelect, workingDays = [], timeOffDate
 }
 
 
-function TimeSlotGrid({ slots, bookedSlots, selectedTime, onSelect, loading, timeOff, message }) {
+function TimeSlotGrid({ slots, bookedSlots, selectedTime, onSelect, loading, timeOff, message, onRetry }) {
   const sf   = { fontFamily: "'Syncopate', sans-serif" };
   const mono = { fontFamily: "'DM Mono', monospace" };
 
@@ -256,13 +256,24 @@ function TimeSlotGrid({ slots, bookedSlots, selectedTime, onSelect, loading, tim
   }
 
   if (!slots || slots.length === 0) {
+    const isRetry = message && message.includes("retry");
     return (
-      <div style={{ padding: "20px", background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)", textAlign: "center" }}>
-        <p style={{ ...sf, fontSize: 8, color: "#52525b", letterSpacing: "0.2em", textTransform: "uppercase", marginBottom: 6 }}>Fully Booked</p>
-        <p style={{ ...mono, fontSize: 12, color: "#3f3f46", marginBottom:14 }}>No available slots for this day. Try another date.</p>
-        <a href="/waitlist" style={{ display:"inline-block", padding:"10px 20px", background:"rgba(245,158,11,0.08)", border:"1px solid rgba(245,158,11,0.25)", color:"#f59e0b", ...sf, fontSize:7, fontWeight:700, letterSpacing:"0.15em", textTransform:"uppercase", textDecoration:"none" }}>
-          Join Waitlist →
-        </a>
+      <div style={{ padding: "20px", background: isRetry ? "rgba(245,158,11,0.04)" : "rgba(255,255,255,0.02)", border: `1px solid ${isRetry ? "rgba(245,158,11,0.2)" : "rgba(255,255,255,0.06)"}`, textAlign: "center" }}>
+        <p style={{ ...sf, fontSize: 8, color: isRetry ? "#f59e0b" : "#52525b", letterSpacing: "0.2em", textTransform: "uppercase", marginBottom: 6 }}>
+          {isRetry ? "Connection Error" : "Fully Booked"}
+        </p>
+        <p style={{ ...mono, fontSize: 12, color: "#3f3f46", marginBottom: 14 }}>
+          {isRetry ? "Could not load time slots." : "No available slots for this day. Try another date."}
+        </p>
+        {isRetry && onRetry ? (
+          <button onClick={onRetry} style={{ display:"inline-block", padding:"10px 20px", background:"rgba(245,158,11,0.08)", border:"1px solid rgba(245,158,11,0.25)", color:"#f59e0b", fontFamily:"'Syncopate',sans-serif", fontSize:7, fontWeight:700, letterSpacing:"0.15em", textTransform:"uppercase", cursor:"pointer" }}>
+            ↺ Retry
+          </button>
+        ) : (
+          <a href="/waitlist" style={{ display:"inline-block", padding:"10px 20px", background:"rgba(245,158,11,0.08)", border:"1px solid rgba(245,158,11,0.25)", color:"#f59e0b", fontFamily:"'Syncopate',sans-serif", fontSize:7, fontWeight:700, letterSpacing:"0.15em", textTransform:"uppercase", textDecoration:"none" }}>
+            Join Waitlist →
+          </a>
+        )}
       </div>
     );
   }
@@ -487,9 +498,12 @@ function BookContent() {
         setAvailableSlots(data.available_slots || []);
         setBookedSlots(data.booked_slots || []);
       }
-    } catch {
-      setTimeOff(true);
-      setTimeOffMessage("Could not load availability. Try again.");
+    } catch(err) {
+      // Don't set timeOff=true on network errors — show a retry message instead
+      setAvailableSlots([]);
+      setBookedSlots([]);
+      setTimeOff(false);
+      setTimeOffMessage("Could not load slots — tap to retry.");
     } finally {
       setLoadingSlots(false);
     }
@@ -744,6 +758,10 @@ function BookContent() {
                         const sched = barberSchedules[b.id] || { all_days: [], time_off_dates: [] };
                         setWorkingDays(sched.all_days);
                         setTimeOffDates(sched.time_off_dates);
+                        // Re-fetch services with this barber's custom prices
+                        API.get(`services/?barber=${b.id}`)
+                          .then(r => setServices(Array.isArray(r.data) ? r.data : r.data.results || []))
+                          .catch(() => {});
                         setStep(3);
                       }}
                       style={{ width: "100%", display: "flex", alignItems: "center", gap: 20, padding: "20px 16px", background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.07)", cursor: "pointer", transition: "all 0.25s", textAlign: "left", marginBottom: 10 }}
@@ -829,6 +847,7 @@ function BookContent() {
                         loading={loadingSlots}
                         timeOff={timeOff}
                         message={timeOffMessage}
+                        onRetry={fetchSlots}
                       />
                     </div>
                   )}
