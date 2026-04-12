@@ -1594,10 +1594,21 @@ class RegisterView(APIView):
             try:
                 user = serializer.save()
                 # Always create a UserProfile on registration
-                UserProfile.objects.get_or_create(
+                phone = request.data.get("phone", "").strip()
+                # Normalize phone to E.164
+                if phone and not phone.startswith("+"):
+                    digits = "".join(c for c in phone if c.isdigit())
+                    if len(digits) == 10:
+                        phone = f"+1{digits}"
+                    elif len(digits) == 11 and digits.startswith("1"):
+                        phone = f"+{digits}"
+                profile, _ = UserProfile.objects.get_or_create(
                     user=user,
                     defaults={"name": user.username}
                 )
+                if phone:
+                    profile.phone = phone
+                    profile.save(update_fields=["phone"])
                 # Send welcome email + SMS
                 send_welcome_email(user)
                 sms_welcome(user)
@@ -2922,9 +2933,9 @@ class AvailableSlotsView(APIView):
 
         # Barber's custom price for this service (if any)
         service_price = None
-        if Service:
-            custom = BarberServicePrice.objects.filter(barber=Barber, service=Service).first()
-            service_price = float(custom.price) if custom else float(Service.price)
+        if service:
+            custom = BarberServicePrice.objects.filter(barber=barber, service=service).first()
+            service_price = float(custom.price) if custom else float(service.price)
 
         return Response({
             "booked_slots":     [str(s) for s in booked_times],
