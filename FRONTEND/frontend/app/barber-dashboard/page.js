@@ -631,6 +631,86 @@ function MonthCal({year, month, selectedDate, apptDates, onSelect, onPrev, onNex
 }
 
 /* ═══════════════════════════════ MAIN ══════════════════════════════ */
+/* ── Confirmation Modal ── */
+function ConfirmModal({ modal, onConfirm, onCancel }) {
+  useEffect(() => {
+    if (!modal) return;
+    const h = (e) => { if (e.key === "Escape") onCancel(); };
+    document.addEventListener("keydown", h);
+    return () => document.removeEventListener("keydown", h);
+  }, [modal, onCancel]);
+
+  if (!modal) return null;
+
+  const isDestructive = modal.type === "danger" || modal.type === "strike";
+  const isWarning     = modal.type === "warning";
+  const acc = isDestructive ? "#ef4444" : isWarning ? "#f59e0b" : "#22c55e";
+  const icons = { danger:"✕", strike:"⚠", warning:"⚠", confirm:"✓", approve:"✓", decline:"✕", payment:"$", remove:"✕", block:"⊘" };
+  const icon  = icons[modal.type] || "!";
+
+  return (
+    <div onClick={onCancel}
+      style={{ position:"fixed", inset:0, zIndex:9000, background:"rgba(0,0,0,0.88)", backdropFilter:"blur(8px)", display:"flex", alignItems:"center", justifyContent:"center", padding:20, animation:"cmFadeIn 0.18s ease" }}>
+      <style>{`
+        @keyframes cmFadeIn  { from{opacity:0} to{opacity:1} }
+        @keyframes cmSlideUp { from{opacity:0;transform:translateY(20px) scale(0.97)} to{opacity:1;transform:none} }
+      `}</style>
+      <div onClick={e=>e.stopPropagation()}
+        style={{ background:"#0a0a0a", border:`1px solid ${acc}33`, maxWidth:400, width:"100%", position:"relative", animation:"cmSlideUp 0.22s cubic-bezier(0.16,1,0.3,1)", clipPath:"polygon(0 0,calc(100% - 16px) 0,100% 16px,100% 100%,16px 100%,0 calc(100% - 16px))" }}>
+        <div style={{ height:3, background:`linear-gradient(to right,${acc},${acc}44,transparent)` }}/>
+        <div style={{ padding:"20px 24px 16px", display:"flex", alignItems:"center", gap:14, borderBottom:"1px solid rgba(255,255,255,0.06)" }}>
+          <div style={{ width:38, height:38, background:`${acc}18`, border:`1px solid ${acc}44`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, clipPath:"polygon(0 0,calc(100% - 6px) 0,100% 6px,100% 100%,6px 100%,0 calc(100% - 6px))" }}>
+            <span style={{ fontSize:16, color:acc, fontWeight:900 }}>{icon}</span>
+          </div>
+          <p style={{ fontFamily:"'Syncopate',sans-serif", fontSize:10, fontWeight:900, textTransform:"uppercase", letterSpacing:"0.1em", color:"white", margin:0, flex:1 }}>{modal.title}</p>
+          <div style={{ position:"absolute", top:14, right:14, width:12, height:12, borderTop:`1.5px solid ${acc}55`, borderRight:`1.5px solid ${acc}55` }}/>
+        </div>
+        <div style={{ padding:"18px 24px 16px" }}>
+          <p style={{ fontFamily:"'DM Mono',monospace", fontSize:12, color:"#a1a1aa", lineHeight:1.75, margin:0 }}>{modal.message}</p>
+          {modal.badge && (
+            <div style={{ marginTop:14, display:"inline-flex", alignItems:"center", gap:8, background:`${acc}10`, border:`1px solid ${acc}30`, padding:"7px 14px", clipPath:"polygon(0 0,calc(100% - 6px) 0,100% 6px,100% 100%,6px 100%,0 calc(100% - 6px))" }}>
+              <span style={{ fontFamily:"'DM Mono',monospace", fontSize:10, color:acc, letterSpacing:"0.2em", textTransform:"uppercase" }}>{modal.badge}</span>
+            </div>
+          )}
+        </div>
+        <div style={{ padding:"4px 24px 24px", display:"flex", gap:10 }}>
+          <button onClick={onCancel}
+            style={{ flex:1, padding:"13px 16px", background:"transparent", border:"1px solid rgba(255,255,255,0.1)", color:"#71717a", fontFamily:"'DM Mono',monospace", fontSize:10, letterSpacing:"0.15em", textTransform:"uppercase", cursor:"pointer", transition:"all 0.18s" }}
+            onMouseEnter={e=>{e.currentTarget.style.borderColor="rgba(255,255,255,0.3)";e.currentTarget.style.color="white";}}
+            onMouseLeave={e=>{e.currentTarget.style.borderColor="rgba(255,255,255,0.1)";e.currentTarget.style.color="#71717a";}}>
+            {modal.cancelLabel || "Go Back"}
+          </button>
+          <button onClick={onConfirm}
+            style={{ flex:1, padding:"13px 16px", background:`${acc}15`, border:`1px solid ${acc}55`, color:acc, fontFamily:"'Syncopate',sans-serif", fontSize:8, fontWeight:900, letterSpacing:"0.15em", textTransform:"uppercase", cursor:"pointer", transition:"all 0.18s", clipPath:"polygon(0 0,calc(100% - 6px) 0,100% 6px,100% 100%,6px 100%,0 calc(100% - 6px))" }}
+            onMouseEnter={e=>{e.currentTarget.style.background=`${acc}30`;e.currentTarget.style.borderColor=acc;}}
+            onMouseLeave={e=>{e.currentTarget.style.background=`${acc}15`;e.currentTarget.style.borderColor=`${acc}55`;}}>
+            {modal.confirmLabel || "Confirm"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ── useConfirm hook — drop-in replace for window.confirm() ── */
+function useConfirm() {
+  const [modal,   setModal]   = useState(null);
+  const [modalCb, setModalCb] = useState(null);
+
+  const confirm = (opts) => new Promise((resolve, reject) => {
+    setModal(typeof opts === "string" ? { type:"confirm", title:"Confirm", message:opts } : opts);
+    setModalCb(() => ({ resolve, reject }));
+  });
+
+  const onConfirm = () => { setModal(null); if(modalCb) modalCb.resolve(true); };
+  const onCancel  = () => { setModal(null); if(modalCb) modalCb.reject("cancelled"); };
+
+  const ModalEl = modal ? <ConfirmModal modal={modal} onConfirm={onConfirm} onCancel={onCancel}/> : null;
+
+  return { confirm, ModalEl };
+}
+
+
 export default function BarberDashboard(){
   const router = useRouter();
   const {isMobile} = useBreakpoint();
@@ -640,6 +720,7 @@ export default function BarberDashboard(){
   const [loading,      setLoading]      = useState(true);
   const [activeTab,    setActiveTab]    = useState("schedule");
   const [toast,        setToast]        = useState(null);
+  const { confirm: showConfirm, ModalEl } = useConfirm();
   const [reschedModal, setReschedModal] = useState(null);
   const [time,         setTime]         = useState("");
 
@@ -873,7 +954,7 @@ export default function BarberDashboard(){
 
   const issueStrike=async(id,reason)=>{
     const label = reason==="no_show" ? "no-show" : "late cancellation";
-    if(!confirm(`Issue a strike to this client for ${label}? Their deposit fee will increase by $1.50 on their next booking.`))return;
+    try { await showConfirm({ type:"strike", title:"Issue Strike", message:`Issue a ${label} strike to this client? Their deposit fee will increase by $1.50 on their next booking.`, badge:"Deposit fee increases", confirmLabel:"Issue Strike", cancelLabel:"Cancel" }); } catch { return; }
     try{
       const r=await API.post(`barber/appointments/${id}/strike/`,{reason});
       setSchedule(p=>p.map(a=>a.id===id?{...a,status:reason==="no_show"?"no_show":"cancelled"}:a));
@@ -890,7 +971,7 @@ export default function BarberDashboard(){
   const handleCancel=async(id)=>{
     const appt = schedule.find(a=>a.id===id);
     const clientName = appt?.client_name || appt?.user_name || "this client";
-    if(!confirm(`Cancel appointment for ${clientName}?\n\nThey will receive a cancellation email immediately.`))return;
+    try { await showConfirm({ type:"danger", title:"Cancel Appointment", message:`Cancel this appointment for ${clientName}? They will receive a cancellation email immediately.`, confirmLabel:"Yes, Cancel", cancelLabel:"Keep It" }); } catch { return; }
     try{
       // Use DELETE endpoint — fires send_cancellation_email(cancelled_by="barber") to client
       await API.delete(`barber/appointments/${id}/`);
@@ -984,6 +1065,7 @@ export default function BarberDashboard(){
   /* ── LOADING ── */
   if(loading) return(
     <div style={{background:T.bg,minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",flexDirection:"column",gap:24,position:"relative",overflow:"hidden"}}>
+      {ModalEl}
       <style>{`body{background:${T.bg};margin:0;font-family:'DM Mono',monospace;} @keyframes spin{to{transform:rotate(360deg)}} @keyframes fadeIn{to{opacity:1}} @keyframes scandown{from{top:-1px}to{top:100%}}`}</style>
       <div style={{position:"absolute",inset:0,backgroundImage:"linear-gradient(rgba(255,255,255,0.014) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,0.014) 1px,transparent 1px)",backgroundSize:"64px 64px",pointerEvents:"none"}}/>
       <div style={{position:"absolute",top:"-20%",left:"50%",transform:"translateX(-50%)",width:600,height:400,background:"radial-gradient(ellipse,rgba(245,158,11,0.08) 0%,transparent 65%)",pointerEvents:"none"}}/>
@@ -1292,7 +1374,7 @@ export default function BarberDashboard(){
                         {isPending&&(
                           <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
                             <button onClick={async()=>{
-                              if(!confirm(`Approve reschedule for ${rr.client_name}?\n\nNew time: ${rr.requested_date} at ${rr.requested_time}\n\nThe client will receive a confirmation email.`))return;
+                              try { await showConfirm({ type:"approve", title:"Approve Reschedule", message:`Approve ${rr.client_name}'s reschedule to ${rr.requested_date} at ${rr.requested_time}? The client will be notified.`, confirmLabel:"Approve", cancelLabel:"Cancel" }); } catch { return; }
                               try{
                                 await API.post(`barber/reschedules/${rr.id}/`,{action:"accept"});
                                 setReschedules(p=>p.map(r=>r.id===rr.id?{...r,status:"accepted"}:r));
@@ -1307,7 +1389,7 @@ export default function BarberDashboard(){
                               ✓ Approve Reschedule
                             </button>
                             <button onClick={async()=>{
-                              if(!confirm(`Decline ${rr.client_name}'s reschedule request?\n\nTheir original appointment on ${rr.original_date} at ${rr.original_time} will remain active.\n\nThe client will be notified.`))return;
+                              try { await showConfirm({ type:"decline", title:"Decline Reschedule", message:`Decline ${rr.client_name}'s reschedule request? Their original appointment on ${rr.original_date} at ${rr.original_time} will remain active.`, confirmLabel:"Decline", cancelLabel:"Go Back" }); } catch { return; }
                               try{
                                 await API.post(`barber/reschedules/${rr.id}/`,{action:"reject"});
                                 setReschedules(p=>p.map(r=>r.id===rr.id?{...r,status:"rejected"}:r));
@@ -1366,7 +1448,7 @@ export default function BarberDashboard(){
                       <div style={{display:"flex",alignItems:"center",gap:10}}>
                         <span style={{...sf,fontSize:12,fontWeight:900,color:T.amber}}>${a.service_price||"—"}</span>
                         <button onClick={async()=>{
-                          if(!confirm(`Did you receive payment from ${a.client_name||"client"} for $${a.service_price||""}?`))return;
+                          try { await showConfirm({ type:"payment", title:"Confirm Payment", message:`Did you receive $${a.service_price||""} from ${a.client_name||"client"}?`, badge:"This marks the appointment complete", confirmLabel:"Yes, Paid", cancelLabel:"Not Yet" }); } catch { return; }
                           try{
                             await API.patch(`barber/appointments/${a.id}/`,{status:"completed"});
                             setSchedule(p=>p.map(x=>x.id===a.id?{...x,status:"completed"}:x));
@@ -1607,7 +1689,7 @@ export default function BarberDashboard(){
                         {isPending&&(
                           <div style={{display:"flex",gap:10,flexWrap:"wrap",paddingTop:16,borderTop:`1px solid rgba(255,255,255,0.06)`}}>
                             <button onClick={async()=>{
-                              if(!confirm(`Approve reschedule for ${rr.client_name}?\n\nNew time: ${rr.requested_date} at ${rr.requested_time}\n\nTheir appointment will be updated and they'll get a confirmation email.`))return;
+                              try { await showConfirm({ type:"approve", title:"Approve Reschedule", message:`Approve ${rr.client_name}'s reschedule to ${rr.requested_date} at ${rr.requested_time}?`, confirmLabel:"Approve", cancelLabel:"Cancel" }); } catch { return; }
                               try{
                                 await API.post(`barber/reschedules/${rr.id}/`,{action:"accept"});
                                 setReschedules(p=>p.map(x=>x.id===rr.id?{...x,status:"accepted"}:x));
@@ -1623,7 +1705,7 @@ export default function BarberDashboard(){
                               ✓ Approve Reschedule
                             </button>
                             <button onClick={async()=>{
-                              if(!confirm(`Decline reschedule request from ${rr.client_name}?\n\nTheir original appointment (${rr.original_date} at ${rr.original_time}) will remain.\nThey'll get an email letting them know.`))return;
+                              try { await showConfirm({ type:"decline", title:"Decline Reschedule", message:`Decline ${rr.client_name}'s request? Original appointment (${rr.original_date} at ${rr.original_time}) stays active.`, confirmLabel:"Decline", cancelLabel:"Go Back" }); } catch { return; }
                               try{
                                 await API.post(`barber/reschedules/${rr.id}/`,{action:"reject"});
                                 setReschedules(p=>p.map(x=>x.id===rr.id?{...x,status:"rejected"}:x));
@@ -1901,7 +1983,7 @@ export default function BarberDashboard(){
                           {w.notified?"✓ Notified":"Notify →"}
                         </button>
                         <button onClick={async()=>{
-                          if(!confirm(`Remove ${w.client_name} from waitlist?`)) return;
+                          try { await showConfirm({ type:"danger", title:"Remove from Waitlist", message:`Remove ${w.client_name} from the waitlist?`, confirmLabel:"Remove", cancelLabel:"Cancel" }); } catch { return; }
                           try{ await API.delete(`barber/waitlist/${w.id}/`); setWaitlist(p=>p.filter(x=>x.id!==w.id)); showToast("Removed from waitlist."); }
                           catch{ showToast("Error removing.","error"); }
                         }} style={{padding:"9px 14px",background:"transparent",border:`1px solid ${T.redBorder}`,color:T.red,...sf,fontSize:7,letterSpacing:"0.12em",textTransform:"uppercase",cursor:"pointer",transition:"all 0.2s"}}
@@ -1996,7 +2078,7 @@ export default function BarberDashboard(){
                           setBlockList(p=>p.filter(x=>x!==username));
                           showToast("Client unblocked.");
                         } else {
-                          if(!confirm(`Block ${clientDetail.name}? They won't be able to book with you.`)) return;
+                          try { await showConfirm({ type:"danger", title:"Block Client", message:`Block ${clientDetail.name}? They will no longer be able to book appointments with you.`, badge:"This cannot be undone easily", confirmLabel:"Block Client", cancelLabel:"Cancel" }); } catch { return; }
                           setBlockList(p=>[...p,username]);
                           showToast(`🚫 ${clientDetail.name} blocked.`,"error");
                         }
@@ -2488,7 +2570,7 @@ export default function BarberDashboard(){
                             Edit
                           </button>
                           <button onClick={async()=>{
-                            if(!confirm("Delete this post?"))return;
+                            try { await showConfirm({ type:"danger", title:"Delete Post", message:"Delete this post? This cannot be undone.", confirmLabel:"Delete", cancelLabel:"Cancel" }); } catch { return; }
                             try{await API.delete(`newsletter/manage/${post.id}/`);setNlPosts(p=>p.filter(x=>x.id!==post.id));showToast("Post deleted.");}
                             catch{showToast("Error.","error");}
                           }} style={{padding:"6px 14px",...sf,fontSize:6,letterSpacing:"0.1em",textTransform:"uppercase",background:"transparent",border:`1px solid ${T.redBorder}`,color:T.red,cursor:"pointer",transition:"all 0.2s"}}

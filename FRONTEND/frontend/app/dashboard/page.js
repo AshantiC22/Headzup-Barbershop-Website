@@ -381,6 +381,69 @@ function RescheduleModal({ appt, onClose, onDone }) {
   );
 }
 
+/* ── Confirmation Modal — replaces browser confirm() ── */
+function ConfirmModal({ modal, onConfirm, onCancel }) {
+  useEffect(() => {
+    if (!modal) return;
+    const handler = (e) => { if (e.key === "Escape") onCancel(); };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  }, [modal, onCancel]);
+
+  if (!modal) return null;
+
+  const isDestructive = modal.type === "danger" || modal.type === "strike";
+  const isWarning     = modal.type === "warning";
+  const accentColor   = isDestructive ? "#ef4444" : isWarning ? "#f59e0b" : "#22c55e";
+  const iconMap = { danger:"✕", strike:"⚠", warning:"⚠", confirm:"✓", approve:"✓", decline:"✕", payment:"$" };
+  const icon = iconMap[modal.type] || "!";
+
+  return (
+    <div onClick={onCancel}
+      style={{ position:"fixed", inset:0, zIndex:9000, background:"rgba(0,0,0,0.88)", backdropFilter:"blur(8px)", display:"flex", alignItems:"center", justifyContent:"center", padding:20, animation:"cmFadeIn 0.18s ease" }}>
+      <style>{`
+        @keyframes cmFadeIn  { from{opacity:0} to{opacity:1} }
+        @keyframes cmSlideUp { from{opacity:0;transform:translateY(20px) scale(0.97)} to{opacity:1;transform:none} }
+      `}</style>
+      <div onClick={e=>e.stopPropagation()}
+        style={{ background:"#0a0a0a", border:`1px solid ${accentColor}33`, maxWidth:400, width:"100%", position:"relative", animation:"cmSlideUp 0.22s cubic-bezier(0.16,1,0.3,1)", clipPath:"polygon(0 0,calc(100% - 16px) 0,100% 16px,100% 100%,16px 100%,0 calc(100% - 16px))" }}>
+        <div style={{ height:3, background:`linear-gradient(to right,${accentColor},${accentColor}44,transparent)` }}/>
+        <div style={{ padding:"20px 24px 16px", display:"flex", alignItems:"center", gap:14, borderBottom:"1px solid rgba(255,255,255,0.06)" }}>
+          <div style={{ width:38, height:38, background:`${accentColor}18`, border:`1px solid ${accentColor}44`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, clipPath:"polygon(0 0,calc(100% - 6px) 0,100% 6px,100% 100%,6px 100%,0 calc(100% - 6px))" }}>
+            <span style={{ fontSize:16, color:accentColor, fontWeight:900 }}>{icon}</span>
+          </div>
+          <p style={{ fontFamily:"'Syncopate',sans-serif", fontSize:10, fontWeight:900, textTransform:"uppercase", letterSpacing:"0.1em", color:"white", margin:0, flex:1 }}>{modal.title}</p>
+          <div style={{ position:"absolute", top:14, right:14, width:12, height:12, borderTop:`1.5px solid ${accentColor}55`, borderRight:`1.5px solid ${accentColor}55` }}/>
+        </div>
+        <div style={{ padding:"18px 24px 16px" }}>
+          <p style={{ fontFamily:"'DM Mono',monospace", fontSize:12, color:"#a1a1aa", lineHeight:1.75, margin:0 }}>{modal.message}</p>
+          {modal.badge && (
+            <div style={{ marginTop:14, display:"inline-flex", alignItems:"center", gap:8, background:`${accentColor}10`, border:`1px solid ${accentColor}30`, padding:"7px 14px", clipPath:"polygon(0 0,calc(100% - 6px) 0,100% 6px,100% 100%,6px 100%,0 calc(100% - 6px))" }}>
+              <span style={{ fontSize:11 }}>⚠</span>
+              <span style={{ fontFamily:"'DM Mono',monospace", fontSize:10, color:accentColor, letterSpacing:"0.2em", textTransform:"uppercase" }}>{modal.badge}</span>
+            </div>
+          )}
+        </div>
+        <div style={{ padding:"4px 24px 24px", display:"flex", gap:10 }}>
+          <button onClick={onCancel}
+            style={{ flex:1, padding:"13px 16px", background:"transparent", border:"1px solid rgba(255,255,255,0.1)", color:"#71717a", fontFamily:"'DM Mono',monospace", fontSize:10, letterSpacing:"0.15em", textTransform:"uppercase", cursor:"pointer", transition:"all 0.18s" }}
+            onMouseEnter={e=>{e.currentTarget.style.borderColor="rgba(255,255,255,0.25)";e.currentTarget.style.color="white";}}
+            onMouseLeave={e=>{e.currentTarget.style.borderColor="rgba(255,255,255,0.1)";e.currentTarget.style.color="#71717a";}}>
+            {modal.cancelLabel || "Go Back"}
+          </button>
+          <button onClick={onConfirm}
+            style={{ flex:1, padding:"13px 16px", background:`${accentColor}15`, border:`1px solid ${accentColor}55`, color:accentColor, fontFamily:"'Syncopate',sans-serif", fontSize:8, fontWeight:900, letterSpacing:"0.15em", textTransform:"uppercase", cursor:"pointer", transition:"all 0.18s", clipPath:"polygon(0 0,calc(100% - 6px) 0,100% 6px,100% 100%,6px 100%,0 calc(100% - 6px))" }}
+            onMouseEnter={e=>{e.currentTarget.style.background=`${accentColor}30`;e.currentTarget.style.borderColor=accentColor;}}
+            onMouseLeave={e=>{e.currentTarget.style.background=`${accentColor}15`;e.currentTarget.style.borderColor=`${accentColor}55`;}}>
+            {modal.confirmLabel || "Confirm"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
 /* ── Main dashboard ── */
 function DashboardContent() {
   const router       = useRouter();
@@ -393,6 +456,8 @@ function DashboardContent() {
   const [activeTab,    setActiveTab]    = useState("upcoming");
   const [toast,        setToast]        = useState(null);
   const [cancelling,   setCancelling]   = useState(null);
+  const [modal,        setModal]        = useState(null);
+  const [modalCb,      setModalCb]      = useState(null);
   const [reschedAppt,  setReschedAppt]  = useState(null);
   const [time,         setTime]         = useState("");
   const [strikeInfo,   setStrikeInfo]   = useState(null);
@@ -442,21 +507,25 @@ function DashboardContent() {
   const handleLogout=()=>{ localStorage.removeItem("access"); localStorage.removeItem("refresh"); router.replace("/login"); };
 
   const handleCancel=async(appt)=>{
-    // Check if within 2 hours — warn the client
     const apptDT = new Date(`${appt.date}T${appt.time}`);
     const now2   = new Date();
     const diffHrs= (apptDT - now2) / (1000 * 60 * 60);
     const isLate = diffHrs >= 0 && diffHrs < 2;
 
-    const msg = isLate
-      ? `⚠ You are cancelling within 2 hours of your appointment. This will result in a STRIKE on your account and your deposit fee will increase by $1.50 on your next booking.
-
-Your deposit is non-refundable.
-
-Cancel anyway?`
-      : `Cancel ${appt.service_name||"appointment"} on ${fmtDate(appt.date)}? Your deposit is non-refundable.`;
-
-    if(!confirm(msg)) return;
+    await new Promise((resolve, reject) => {
+      setModal({
+        type:         isLate ? "strike" : "danger",
+        title:        isLate ? "Late Cancellation" : "Cancel Appointment",
+        message:      isLate
+          ? `You are cancelling within 2 hours of your appointment. This will result in a STRIKE and your deposit will increase by $1.50 on your next booking.`
+          : `Cancel your ${appt.service_name||"appointment"} on ${fmtDate(appt.date)}?`,
+        badge:        isLate ? "Strike will be issued" : "Deposit is non-refundable",
+        confirmLabel: isLate ? "Yes, Cancel" : "Cancel Appt",
+        cancelLabel:  "Keep It",
+      });
+      setModalCb(() => ({ resolve, reject }));
+    }).catch(() => { throw new Error("cancelled"); });
+    setModal(null);
     setCancelling(appt.id);
     try{
       await API.patch(`appointments/${appt.id}/`, { status:"cancelled" });
@@ -510,6 +579,13 @@ Cancel anyway?`
       </div>
 
       {/* Reschedule modal */}
+      {modal && (
+        <ConfirmModal
+          modal={modal}
+          onConfirm={() => { if(modalCb) modalCb.resolve(); }}
+          onCancel={() => { setModal(null); if(modalCb) modalCb.reject("cancelled"); }}
+        />
+      )}
       {reschedAppt && (
         <RescheduleModal
           appt={reschedAppt}
