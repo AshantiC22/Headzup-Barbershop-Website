@@ -253,7 +253,7 @@ def send_booking_confirmation(appointment):
             import logging
             logging.getLogger(__name__).error(f"Email send failed: {e}")
 
-    threading.Thread(target=_send, daemon=True).start()
+    _send()  # synchronous
 
 
 def _html_email_wrapper(logo, icon_html, headline, subhead, body_rows, cta_url, cta_label, footer="HEADZ UP Barbershop · 2509 W 4th St, Hattiesburg, MS 39401"):
@@ -549,7 +549,7 @@ def send_reschedule_request_email(reschedule_request):
         except Exception as e:
             logger.error(f"send_reschedule_request_email _send failed: {e}", exc_info=True)
 
-    threading.Thread(target=_send, daemon=True).start()
+    _send()  # synchronous
 
 
 def send_reschedule_response_email(reschedule_request, accepted):
@@ -715,7 +715,7 @@ def send_reschedule_response_email(reschedule_request, accepted):
             import logging
             logging.getLogger(__name__).error(f"Reschedule response email failed: {e}")
 
-    threading.Thread(target=_send, daemon=True).start()
+    _send()  # synchronous
 
 
 def send_cancellation_email(appointment, cancelled_by="client"):
@@ -958,7 +958,7 @@ def send_welcome_email(user):
         except Exception as e:
             logger.error(f"send_welcome_email failed: {e}", exc_info=True)
 
-    threading.Thread(target=_send, daemon=True).start()
+    _send()  # synchronous
 
 
 def send_deposit_paid_email(appointment):
@@ -1054,7 +1054,7 @@ def send_deposit_paid_email(appointment):
         except Exception as e:
             logger.error(f"send_deposit_paid_email failed: {e}", exc_info=True)
 
-    threading.Thread(target=_send, daemon=True).start()
+    _send()  # synchronous
 
 
 def send_review_request_email(appointment):
@@ -1141,7 +1141,7 @@ def send_review_request_email(appointment):
         except Exception as e:
             logger.error(f"send_review_request_email failed: {e}", exc_info=True)
 
-    threading.Thread(target=_send, daemon=True).start()
+    _send()  # synchronous
 
 
 def _twilio_send(to_phone, body):
@@ -1327,7 +1327,7 @@ def sms_booking_confirmation(appointment):
                 f"Service: {service_name}\n"
                 f"{appt_date} at {appt_time}"
             )
-    threading.Thread(target=_send, daemon=True).start()
+    _send()  # synchronous
 
 
 def sms_reschedule_request(reschedule_request):
@@ -1362,7 +1362,7 @@ def sms_reschedule_request(reschedule_request):
                 f"Check your email or dashboard to approve/decline:\n"
                 f"{FRONTEND_URL}/barber-dashboard"
             )
-    threading.Thread(target=_send, daemon=True).start()
+    _send()  # synchronous
 
 
 def sms_reschedule_response(reschedule_request, accepted):
@@ -1394,7 +1394,7 @@ def sms_reschedule_response(reschedule_request, accepted):
                     f"Your original appointment stands:\n"
                     f"{old_date} at {old_time}"
                 )
-    threading.Thread(target=_send, daemon=True).start()
+    _send()  # synchronous
 
 
 def sms_cancellation(appointment, cancelled_by="client"):
@@ -1442,7 +1442,7 @@ def sms_strike(user, profile, reason):
                 f"Your next deposit: ${deposit:.2f}\n"
                 f"View account: {FRONTEND_URL}/dashboard"
             )
-    threading.Thread(target=_send, daemon=True).start()
+    _send()  # synchronous
 
 
 def sms_welcome(user):
@@ -1477,7 +1477,7 @@ def sms_review_request(appointment):
                 f"Leave a quick review:\n"
                 f"{FRONTEND_URL}/dashboard"
             )
-    threading.Thread(target=_send, daemon=True).start()
+    _send()  # synchronous
 
 
 def sms_deposit_paid(appointment):
@@ -1500,7 +1500,7 @@ def sms_deposit_paid(appointment):
                 f"{client_name} paid ${deposit_amt}\n"
                 f"{service_name} — {appt_date} at {appt_time}"
             )
-    threading.Thread(target=_send, daemon=True).start()
+    _send()  # synchronous
 
 
 # ── Push notification helper ─────────────────────────────────────────────────
@@ -1680,7 +1680,7 @@ class BarberRegisterView(APIView):
                 bio="",
             )
 
-            # Send welcome SMS to the new barber — synchronous so it doesn't get killed
+            # Send welcome SMS to the new barber — synchronous
             if phone:
                 first = full_name.split()[0]
                 _twilio_send(phone,
@@ -1689,6 +1689,30 @@ class BarberRegisterView(APIView):
                     f"Log in to your dashboard to set your hours and start taking bookings:\n"
                     f"{FRONTEND_URL}/barber-dashboard"
                 )
+
+            # Send welcome email to the new barber
+            if email:
+                try:
+                    first = full_name.split()[0]
+                    _sendgrid_send(
+                        email,
+                        f"Welcome to HEADZ UP ✂️ — You're on the Team",
+                        f"Hey {first}! Welcome to HEADZ UP Barbershop. Log into your dashboard to set your schedule and start taking bookings: {FRONTEND_URL}/barber-dashboard",
+                        f"""<!DOCTYPE html><html><head><meta charset="utf-8"></head>
+<body style="margin:0;padding:0;background:#050505;font-family:'Helvetica Neue',Arial,sans-serif;color:#fff;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#050505;padding:40px 20px;">
+    <tr><td align="center"><table width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;">
+      <tr><td style="padding-bottom:24px;"><p style="font-family:'Courier New',monospace;font-size:22px;font-weight:900;letter-spacing:-0.05em;margin:0;text-transform:uppercase;">HEADZ<span style="color:#f59e0b;font-style:italic;">UP</span></p></td></tr>
+      <tr><td style="padding-bottom:8px;"><h1 style="font-family:'Courier New',monospace;font-size:26px;font-weight:900;text-transform:uppercase;margin:0;">Welcome to<br><span style="color:#f59e0b;font-style:italic;">The Team_</span></h1></td></tr>
+      <tr><td style="padding-bottom:24px;"><p style="color:#71717a;font-size:13px;margin:0;line-height:1.8;">Hey <strong style="color:white;">{first}</strong>! You're officially part of the <strong style="color:#f59e0b;">HEADZ UP</strong> team. Set your schedule and start taking bookings right away.</p></td></tr>
+      <tr><td style="padding-bottom:28px;"><a href="{FRONTEND_URL}/barber-dashboard" style="display:inline-block;padding:14px 28px;background:#f59e0b;color:black;font-family:'Courier New',monospace;font-size:10px;font-weight:900;text-transform:uppercase;text-decoration:none;">Go to Dashboard &rarr;</a></td></tr>
+      <tr><td style="border-top:1px solid rgba(255,255,255,0.06);padding-top:20px;"><p style="font-size:11px;color:#3f3f46;margin:0;">HEADZ UP Barbershop · 2509 W 4th St, Hattiesburg, MS 39401</p></td></tr>
+    </table></td></tr>
+  </table>
+</body></html>"""
+                    )
+                except Exception:
+                    pass
 
             # Return tokens directly — avoids second round-trip race condition
             refresh = RefreshToken.for_user(user)
@@ -1783,13 +1807,55 @@ class AppointmentViewSet(viewsets.ModelViewSet):
             raise serializers.ValidationError("That time slot is already booked. Please choose another.")
         try:
             serializer.save()
-            # If client just cancelled — notify barber by email + SMS
+            # If client just cancelled — notify barber + confirm to client
             if new_status == "cancelled" and not was_cancelled_before:
                 appt_full = Appointment.objects.select_related(
                     "user", "barber", "barber__user", "service"
                 ).get(pk=instance.pk)
+                # Notify barber
                 send_cancellation_email(appt_full, cancelled_by="client")
                 sms_cancellation(appt_full, cancelled_by="client")
+                # Confirm cancellation to client
+                try:
+                    client_email = appt_full.user.email
+                    client_name  = appt_full.user.first_name or appt_full.user.username
+                    svc_name     = appt_full.service.name if appt_full.service else "appointment"
+                    barber_name  = appt_full.barber.name if appt_full.barber else "your barber"
+                    appt_date    = appt_full.date.strftime("%A, %B %d, %Y")
+                    appt_time    = appt_full.time.strftime("%I:%M %p").lstrip("0")
+                    if client_email:
+                        _sendgrid_send(
+                            client_email,
+                            f"Appointment Cancelled — HEADZ UP",
+                            f"Hey {client_name}, your {svc_name} on {appt_date} at {appt_time} with {barber_name} has been cancelled. Book again anytime: {FRONTEND_URL}/book",
+                            f"""<!DOCTYPE html><html><head><meta charset="utf-8"></head>
+<body style="margin:0;padding:0;background:#050505;font-family:'Helvetica Neue',Arial,sans-serif;color:#fff;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#050505;padding:40px 20px;">
+    <tr><td align="center"><table width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;">
+      <tr><td style="padding-bottom:24px;"><p style="font-family:'Courier New',monospace;font-size:22px;font-weight:900;letter-spacing:-0.05em;margin:0;text-transform:uppercase;">HEADZ<span style="color:#f59e0b;font-style:italic;">UP</span></p></td></tr>
+      <tr><td style="padding-bottom:8px;"><h1 style="font-family:'Courier New',monospace;font-size:26px;font-weight:900;text-transform:uppercase;margin:0;">Appointment<br><span style="color:#f87171;font-style:italic;">Cancelled_</span></h1></td></tr>
+      <tr><td style="padding-bottom:24px;"><p style="color:#71717a;font-size:13px;margin:0;line-height:1.8;">Hey <strong style="color:white;">{client_name}</strong>, your appointment has been cancelled as requested.</p></td></tr>
+      <tr><td style="background:#0a0a0a;border:1px solid rgba(255,255,255,0.08);padding:22px;margin-bottom:24px;">
+        <table width="100%" cellpadding="0" cellspacing="0">
+          <tr><td style="padding-bottom:12px;"><p style="font-family:'Courier New',monospace;font-size:9px;letter-spacing:0.3em;color:#52525b;text-transform:uppercase;margin:0 0 4px;">Service</p><p style="font-size:15px;color:white;margin:0;font-weight:700;">{svc_name}</p></td></tr>
+          <tr><td style="padding-bottom:12px;border-top:1px solid rgba(255,255,255,0.06);padding-top:12px;"><p style="font-family:'Courier New',monospace;font-size:9px;letter-spacing:0.3em;color:#52525b;text-transform:uppercase;margin:0 0 4px;">Was Scheduled</p><p style="font-size:15px;color:#f87171;margin:0;font-weight:700;">{appt_date} at {appt_time}</p></td></tr>
+          <tr><td style="border-top:1px solid rgba(255,255,255,0.06);padding-top:12px;"><p style="font-family:'Courier New',monospace;font-size:9px;letter-spacing:0.3em;color:#52525b;text-transform:uppercase;margin:0 0 4px;">Barber</p><p style="font-size:15px;color:white;margin:0;font-weight:700;">{barber_name}</p></td></tr>
+        </table>
+      </td></tr>
+      <tr><td style="padding-top:20px;"><a href="{FRONTEND_URL}/book" style="display:inline-block;padding:13px 26px;background:#f59e0b;color:black;font-family:'Courier New',monospace;font-size:10px;font-weight:900;text-transform:uppercase;text-decoration:none;">Book Again &rarr;</a></td></tr>
+      <tr><td style="border-top:1px solid rgba(255,255,255,0.06);padding-top:20px;margin-top:24px;"><p style="font-size:11px;color:#3f3f46;margin:0;">HEADZ UP Barbershop · 2509 W 4th St, Hattiesburg, MS 39401</p></td></tr>
+    </table></td></tr>
+  </table>
+</body></html>"""
+                        )
+                    # Also text the client confirmation
+                    client_phone = _get_client_phone(appt_full.user)
+                    if client_phone:
+                        _twilio_send(client_phone,
+                            f"✅ HEADZ UP: Your {svc_name} on {appt_full.date.strftime('%a %b %d')} at {appt_time} has been cancelled. Book again: {FRONTEND_URL}/book"
+                        )
+                except Exception:
+                    pass
         except IntegrityError:
             raise serializers.ValidationError("That time slot is already booked. Please choose another.")
 
