@@ -142,8 +142,7 @@ function PersonaSelect({ barbers, book, isMobile }) {
                 </div>
             }
           </div>
-        ) : (
-        <div style={{ display:"grid", gridTemplateColumns:"360px 1fr", gap:0, alignItems:"stretch" }}>
+        ) : (<div style={{ display:"grid", gridTemplateColumns:"360px 1fr", gap:0, alignItems:"stretch" }}>
 
           {/* LEFT ROSTER */}
           <div style={{ borderRight:`1px solid ${A}22`, paddingRight:32, paddingTop:20, paddingBottom:20 }}>
@@ -407,7 +406,7 @@ function PersonaSelect({ barbers, book, isMobile }) {
             </div>
           </div>
           </div>
-        </div>
+        </div></div>
         )}
       </div>
     </section>
