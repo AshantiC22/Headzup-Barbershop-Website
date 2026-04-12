@@ -417,9 +417,8 @@ export default function LoadingScreen({ onComplete }) {
           </div>
         </div>
 
-        {/* WORDMARK */}
+        {/* LOGO */}
         <div style={{position:"relative",marginBottom:6}}>
-          {/* CSS heat shimmer layer */}
           <div className="ls-shimmer" style={{
             position:"absolute",
             bottom:-8, left:"-5%", right:"-5%",
@@ -429,31 +428,20 @@ export default function LoadingScreen({ onComplete }) {
             zIndex:-1,
             pointerEvents:"none",
           }}/>
-
-          <div className="ls-main-title" style={{
-            width:"clamp(220px,60vw,420px)",
-            userSelect:"none",
-            filter: glitch ? "drop-shadow(2px 0 0 #ef4444) drop-shadow(-2px 0 0 #f59e0b)" : "none",
-            transition:"filter 0.1s",
-          }}>
-            <svg width="100%" viewBox="0 0 1200 350" xmlns="http://www.w3.org/2000/svg">
-              <defs>
-                <linearGradient id="gold-ls" x1="0%" y1="0%" x2="100%" y2="100%">
-                  <stop offset="0%" stopColor="#f8e7b5"/>
-                  <stop offset="40%" stopColor="#d4af37"/>
-                  <stop offset="100%" stopColor="#8c6b2a"/>
-                </linearGradient>
-              </defs>
-              <text x="40" y="210" fontSize="140" fontFamily="Brush Script MT, cursive" fill="white" stroke="url(#gold-ls)" strokeWidth="6">Headz</text>
-              <text x="820" y="210" fontSize="140" fontFamily="Brush Script MT, cursive" fill="white" stroke="url(#gold-ls)" strokeWidth="6">Up</text>
-              <polygon points="600,40 780,280 420,280" fill="none" stroke="red" strokeWidth="14"/>
-              <polygon points="600,60 760,270 440,270" fill="none" stroke="rgba(255,255,255,0.4)" strokeWidth="6"/>
-              <path d="M540 60 L570 10 L600 60 L630 10 L660 60 L660 75 L540 75 Z" fill="url(#gold-ls)"/>
-              <path d="M560 150 Q580 110 630 120 Q660 140 650 180 Q640 210 600 215 Q570 210 560 180 Z" fill="#c89b6d"/>
-              <path d="M580 190 Q600 240 640 190 Q630 230 600 240 Q580 230 580 190 Z" fill="#4a2f1d"/>
-              <text x="500" y="320" fontSize="28" fontFamily="Arial Black, sans-serif" fill="rgba(245,158,11,0.8)">BEAUTY &amp; BARBER SHOP</text>
-            </svg>
-          </div>
+          <img
+            src="/logo1.jpg"
+            alt="Headz Up Barbershop"
+            style={{
+              width:"clamp(180px,50vw,340px)",
+              height:"auto",
+              objectFit:"contain",
+              userSelect:"none",
+              filter: glitch
+                ? "drop-shadow(2px 0 0 #ef4444) drop-shadow(-2px 0 0 #f59e0b) brightness(1.1)"
+                : "brightness(1.05)",
+              transition:"filter 0.1s",
+            }}
+          />
         </div>
 
         {/* Tagline */}
