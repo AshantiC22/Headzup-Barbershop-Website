@@ -1813,13 +1813,20 @@ export default function BarberDashboard(){
                           <span style={{...sf,fontSize:13,fontWeight:900,color:w.notified?T.muted:T.amber}}>{i+1}</span>
                         </div>
                         <div>
-                          <p style={{...sf,fontSize:11,fontWeight:700,textTransform:"uppercase",marginBottom:4,color:w.notified?"#71717a":"white"}}>{w.client_name}</p>
+                          <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:4}}>
+                            <p style={{...sf,fontSize:11,fontWeight:700,textTransform:"uppercase",color:w.notified?"#71717a":"white",margin:0}}>{w.client_name}</p>
+                            {(w.notes||"").includes("[WALK-IN]")&&(
+                              <span style={{...mono,fontSize:7,color:"black",background:T.amber,padding:"2px 7px",letterSpacing:"0.2em",textTransform:"uppercase"}}>WALK-IN</span>
+                            )}
+                          </div>
                           <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
                             {(w.service_name||w.service)&&<span style={{...mono,fontSize:10,color:T.amber}}>✂️ {w.service_name||w.service}</span>}
                             {(w.phone||w.client_phone)&&<span style={{...mono,fontSize:10,color:"#a1a1aa"}}>📱 {w.phone||w.client_phone}</span>}
+                            {(w.email||w.client_email)&&<span style={{...mono,fontSize:10,color:"#a1a1aa"}}>✉️ {w.email||w.client_email}</span>}
                             {w.date&&<span style={{...mono,fontSize:10,color:"#a1a1aa"}}>📅 {fmtShort(w.date)}</span>}
                           </div>
-                          {w.notes&&<p style={{...mono,fontSize:10,color:"#71717a",marginTop:4,fontStyle:"italic"}}>"{w.notes}"</p>}
+                          {w.notes&&!w.notes.includes("[WALK-IN]")&&<p style={{...mono,fontSize:10,color:"#71717a",marginTop:4,fontStyle:"italic"}}>"{w.notes}"</p>}
+                          {w.notified&&<p style={{...mono,fontSize:9,color:T.green,marginTop:4}}>✓ Welcome message sent</p>}
                         </div>
                       </div>
                       <div style={{display:"flex",gap:8}}>

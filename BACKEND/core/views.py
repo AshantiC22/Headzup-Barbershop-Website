@@ -3327,45 +3327,42 @@ class WalkInBookingView(APIView):
         except Exception:
             return Response({"error": "That slot is already booked."}, status=400)
 
-        # ── Send welcome message to client ────────────────────────────────
-        import threading, logging
+        # ── Send welcome SMS + email to walk-in client (synchronous) ──────────
+        import logging
         logger = logging.getLogger(__name__)
 
-        def _send_welcome():
+        try:
+            from datetime import date as date_type
             try:
-                from datetime import date as date_type
+                appt_date = date_type.fromisoformat(str(date_val))
+                date_str  = appt_date.strftime("%A, %B %d")
+            except Exception:
+                date_str = str(date_val)
+
+            try:
+                h, m, *_ = str(time_val).split(":")
+                h = int(h); ampm = "PM" if h >= 12 else "AM"
+                time_str = f"{h % 12 or 12}:{m} {ampm}"
+            except Exception:
+                time_str = str(time_val)
+
+            welcome_msg = (
+                f"Hey {client_name}! Welcome to HEADZ UP Barbershop ✂️🔥 "
+                f"You're booked for {service.name} on {date_str} at {time_str} "
+                f"with {target_barber.name}. We'll take care of you. See you in the chair!"
+            )
+
+            if phone:
                 try:
-                    appt_date = date_type.fromisoformat(str(date_val))
-                    date_str  = appt_date.strftime("%A, %B %d")
-                except Exception:
-                    date_str = str(date_val)
+                    raw = phone.strip().replace("-","").replace("(","").replace(")","").replace(" ","")
+                    e164 = f"+1{raw}" if not raw.startswith("+") else raw
+                    _twilio_send(e164, welcome_msg)
+                except Exception as e:
+                    logger.error(f"Walk-in SMS failed: {e}")
 
-                # Format time nicely
+            if email:
                 try:
-                    h, m, *_ = str(time_val).split(":")
-                    h = int(h); ampm = "PM" if h >= 12 else "AM"
-                    time_str = f"{h % 12 or 12}:{m} {ampm}"
-                except Exception:
-                    time_str = str(time_val)
-
-                welcome_msg = (
-                    f"Hey {client_name}! Welcome to HEADZ UP Barbershop ✂️🔥 "
-                    f"You're officially part of the family. "
-                    f"You're booked for {service.name} on {date_str} at {time_str} "
-                    f"with {target_barber.name}. See you in the chair!"
-                )
-
-                # SMS
-                if phone:
-                    try:
-                        _twilio_send(phone, welcome_msg)
-                    except Exception as e:
-                        logger.error(f"Walk-in SMS failed: {e}")
-
-                # Email
-                if email:
-                    try:
-                        html = f"""<!DOCTYPE html>
+                    html = f"""<!DOCTYPE html>
 <html><head><meta charset="utf-8"></head>
 <body style="margin:0;padding:0;background:#050505;font-family:'Helvetica Neue',Arial,sans-serif;color:#fff;">
   <table width="100%" cellpadding="0" cellspacing="0" style="background:#050505;padding:40px 20px;">
@@ -3383,40 +3380,34 @@ class WalkInBookingView(APIView):
         </td></tr>
         <tr><td style="padding-bottom:8px;">
           <h1 style="font-family:'Courier New',monospace;font-size:26px;font-weight:900;text-transform:uppercase;margin:0;line-height:1.05;">
-            Welcome to<br><span style="color:#f59e0b;font-style:italic;">The Family_</span>
+            You're Booked<br><span style="color:#f59e0b;font-style:italic;">Welcome In_</span>
           </h1>
         </td></tr>
         <tr><td style="padding-bottom:28px;">
           <p style="color:#71717a;font-size:13px;margin:0;line-height:1.8;">
             Hey <strong style="color:white;">{client_name}</strong>! You just walked into the right place.
-            You're officially part of the <strong style="color:#f59e0b;">HEADZ UP</strong> family now.
+            You're officially part of the <strong style="color:#f59e0b;">HEADZ UP</strong> family.
           </p>
         </td></tr>
-        <tr><td style="background:#0a0a0a;border:1px solid rgba(255,255,255,0.08);padding:22px;margin-bottom:24px;">
+        <tr><td style="background:#0a0a0a;border:1px solid rgba(255,255,255,0.08);padding:22px;">
           <table width="100%" cellpadding="0" cellspacing="0">
-            <tr>
-              <td style="padding-bottom:14px;">
-                <p style="font-family:'Courier New',monospace;font-size:9px;letter-spacing:0.3em;color:#52525b;text-transform:uppercase;margin:0 0 4px;">Your Appointment</p>
-                <p style="font-size:18px;color:#f59e0b;margin:0;font-weight:900;font-family:'Courier New',monospace;">{date_str} · {time_str}</p>
-              </td>
-            </tr>
-            <tr>
-              <td style="padding-bottom:14px;border-top:1px solid rgba(255,255,255,0.06);padding-top:14px;">
-                <p style="font-family:'Courier New',monospace;font-size:9px;letter-spacing:0.3em;color:#52525b;text-transform:uppercase;margin:0 0 4px;">Service</p>
-                <p style="font-size:15px;color:white;margin:0;font-weight:700;">{service.name}</p>
-              </td>
-            </tr>
-            <tr>
-              <td style="border-top:1px solid rgba(255,255,255,0.06);padding-top:14px;">
-                <p style="font-family:'Courier New',monospace;font-size:9px;letter-spacing:0.3em;color:#52525b;text-transform:uppercase;margin:0 0 4px;">Your Barber</p>
-                <p style="font-size:15px;color:white;margin:0;font-weight:700;">{target_barber.name}</p>
-              </td>
-            </tr>
+            <tr><td style="padding-bottom:14px;">
+              <p style="font-family:'Courier New',monospace;font-size:9px;letter-spacing:0.3em;color:#52525b;text-transform:uppercase;margin:0 0 4px;">Your Appointment</p>
+              <p style="font-size:18px;color:#f59e0b;margin:0;font-weight:900;font-family:'Courier New',monospace;">{date_str} · {time_str}</p>
+            </td></tr>
+            <tr><td style="padding-bottom:14px;border-top:1px solid rgba(255,255,255,0.06);padding-top:14px;">
+              <p style="font-family:'Courier New',monospace;font-size:9px;letter-spacing:0.3em;color:#52525b;text-transform:uppercase;margin:0 0 4px;">Service</p>
+              <p style="font-size:15px;color:white;margin:0;font-weight:700;">{service.name}</p>
+            </td></tr>
+            <tr><td style="border-top:1px solid rgba(255,255,255,0.06);padding-top:14px;">
+              <p style="font-family:'Courier New',monospace;font-size:9px;letter-spacing:0.3em;color:#52525b;text-transform:uppercase;margin:0 0 4px;">Your Barber</p>
+              <p style="font-size:15px;color:white;margin:0;font-weight:700;">{target_barber.name}</p>
+            </td></tr>
           </table>
         </td></tr>
         <tr><td style="padding:24px 0 0;">
           <p style="font-size:13px;color:#71717a;margin:0;line-height:1.8;">
-            We'll take care of you every time. Book your next appointment online at any time.
+            We'll take care of you every time. Book your next appointment online anytime.
           </p>
         </td></tr>
         <tr><td style="padding-top:20px;">
@@ -3429,23 +3420,36 @@ class WalkInBookingView(APIView):
     </td></tr>
   </table>
 </body></html>"""
-                        plain = (
-                            f"Hey {client_name}! Welcome to HEADZ UP Barbershop. "
-                            f"You're officially part of the family! "
-                            f"Your {service.name} with {target_barber.name} is on {date_str} at {time_str}. "
-                            f"Book your next cut: {FRONTEND_URL}/book"
-                        )
-                        _sendgrid_send(
-                            email,
-                            f"Welcome to HEADZ UP ✂️ You're Part of the Family Now",
-                            plain, html
-                        )
-                    except Exception as e:
-                        logger.error(f"Walk-in email failed: {e}")
-            except Exception as e:
-                logger.error(f"Walk-in welcome thread failed: {e}")
+                    plain = (
+                        f"Hey {client_name}! Welcome to HEADZ UP Barbershop. "
+                        f"You're booked for {service.name} with {target_barber.name} "
+                        f"on {date_str} at {time_str}. "
+                        f"Book your next cut: {FRONTEND_URL}/book"
+                    )
+                    _sendgrid_send(
+                        email,
+                        f"You're Booked at HEADZ UP ✂️ — {date_str} at {time_str}",
+                        plain, html
+                    )
+                except Exception as e:
+                    logger.error(f"Walk-in email failed: {e}")
+        except Exception as e:
+            logger.error(f"Walk-in welcome failed: {e}")
 
-        threading.Thread(target=_send_welcome, daemon=True).start()
+        # ── Add to waitlist so barber sees them in Waitlist tab ───────────────
+        try:
+            WaitlistEntry.objects.create(
+                barber=target_barber,
+                service=service,
+                client_name=client_name,
+                client_phone=phone,
+                client_email=email,
+                date=date_val,
+                notes=f"[WALK-IN] {notes}".strip(" []") if notes else "[WALK-IN]",
+                notified=True,  # Already contacted via SMS/email
+            )
+        except Exception as e:
+            logger.error(f"Walk-in waitlist entry failed: {e}")
 
         return Response({
             "message": "Walk-in booked.",
