@@ -2929,9 +2929,9 @@ class AvailableSlotsView(APIView):
 
         # Barber's custom price for this service (if any)
         service_price = None
-        if Service:
-            custom = BarberServicePrice.objects.filter(barber=Barber, service=Service).first()
-            service_price = float(custom.price) if custom else float(Service.price)
+        if service:
+            custom = BarberServicePrice.objects.filter(barber=barber, service=service).first()
+            service_price = float(custom.price) if custom else float(service.price)
 
         return Response({
             "booked_slots":     [str(s) for s in booked_times],
@@ -4277,78 +4277,111 @@ class BarberReportsView(APIView):
         confirmed    = qs_period.filter(status="confirmed").count()
         walk_ins     = qs_period.filter(is_walk_in=True).count()
 
-        online_appts = qs_period.filter(payment_method="online", status="completed")
-        shop_appts   = qs_period.filter(payment_method="shop",   status="confirmed") | \
-                       qs_period.filter(payment_method="shop",   status="completed")
+        from django.db.models import Sum as _Sum
+        online_appts   = qs_period.filter(payment_method="online", status="completed")
+        shop_appts     = qs_period.filter(payment_method="shop", status__in=["confirmed","completed"])
 
-        online_revenue = sum(
-            float(a.service.price) for a in online_appts if a.service
-        )
-        shop_revenue = sum(
-            float(a.service.price) for a in shop_appts if a.service
-        )
-        total_revenue = online_revenue + shop_revenue
+        online_revenue = float(online_appts.filter(service__isnull=False)
+                               .aggregate(t=_Sum("service__price"))["t"] or 0)
+        shop_revenue   = float(shop_appts.filter(service__isnull=False)
+                               .aggregate(t=_Sum("service__price"))["t"] or 0)
+        total_revenue  = online_revenue + shop_revenue
 
         # Completion rate
         completion_rate = round((completed / total * 100) if total > 0 else 0, 1)
         no_show_rate    = round((no_shows  / total * 100) if total > 0 else 0, 1)
 
-        # ── Service breakdown ──
+        # ── Service breakdown — single aggregated query ──
+        from django.db.models import Count as _Count2, Sum as _Sum2
+        svc_rows = (
+            qs_period.filter(service__isnull=False)
+            .values("service__id","service__name","service__price")
+            .annotate(
+                bookings=_Count2("id"),
+                completed=_Count2("id", filter=Q(status="completed")),
+            )
+            .order_by("-bookings")
+        )
         service_stats = []
-        services = Service.objects.all()
-        for svc in services:
-            svc_qs = qs_period.filter(service=svc)
-            svc_count = svc_qs.count()
-            if svc_count == 0:
+        for row in svc_rows:
+            if row["bookings"] == 0:
                 continue
-            svc_completed = svc_qs.filter(status="completed").count()
-            svc_revenue   = svc_completed * float(svc.price)
+            svc_rev = row["completed"] * float(row["service__price"] or 0)
             service_stats.append({
-                "name":      svc.name,
-                "price":     str(svc.price),
-                "bookings":  svc_count,
-                "completed": svc_completed,
-                "revenue":   f"{svc_revenue:.2f}",
+                "name":      row["service__name"],
+                "price":     str(row["service__price"]),
+                "bookings":  row["bookings"],
+                "completed": row["completed"],
+                "revenue":   f"{svc_rev:.2f}",
             })
-        service_stats.sort(key=lambda x: -x["bookings"])
 
-        # ── Daily revenue for chart (last 30 days always, regardless of period) ──
+        # ── Daily revenue for chart (last 30 days) — bulk query, no per-day loops ──
+        from collections import defaultdict
         chart_start = today - timedelta(days=29)
-        daily_data  = []
+
+        chart_appts = list(qs.filter(date__gte=chart_start).filter(
+            Q(payment_method="online", status="completed") |
+            Q(payment_method="shop",   status__in=["confirmed", "completed"])
+        ).select_related("service"))
+
+        daily_rev  = defaultdict(float)
+        daily_comp = defaultdict(int)
+        for a in chart_appts:
+            if a.service:
+                daily_rev[a.date] += float(a.service.price)
+            if a.status == "completed":
+                daily_comp[a.date] += 1
+
+        bookings_by_day = {
+            row["date"]: row["cnt"]
+            for row in qs.filter(date__gte=chart_start)
+                          .values("date").annotate(cnt=Count("id"))
+        }
+
+        daily_data = []
         for i in range(30):
             day = chart_start + timedelta(days=i)
-            day_qs = qs.filter(date=day)
-            day_online  = day_qs.filter(payment_method="online", status="completed")
-            day_shop    = day_qs.filter(payment_method="shop").filter(
-                status__in=["confirmed", "completed"]
-            )
-            day_revenue = sum(float(a.service.price) for a in day_online if a.service) + \
-                          sum(float(a.service.price) for a in day_shop   if a.service)
             daily_data.append({
-                "date":       str(day),
-                "label":      day.strftime("%b %d"),
-                "revenue":    round(day_revenue, 2),
-                "bookings":   day_qs.count(),
-                "completed":  day_qs.filter(status="completed").count(),
+                "date":      str(day),
+                "label":     day.strftime("%b %d"),
+                "revenue":   round(daily_rev.get(day, 0.0), 2),
+                "bookings":  bookings_by_day.get(day, 0),
+                "completed": daily_comp.get(day, 0),
             })
 
-        # ── Weekly breakdown (last 8 weeks) ──
+        # ── Weekly breakdown (last 8 weeks) — bulk query ──
+        week0_start = today - timedelta(weeks=7, days=today.weekday())
+        week_appts = list(qs.filter(date__gte=week0_start).filter(
+            Q(payment_method="online", status="completed") |
+            Q(payment_method="shop",   status__in=["confirmed", "completed"])
+        ).select_related("service"))
+
+        week_rev_map  = defaultdict(float)
+        week_comp_map = defaultdict(int)
+        for a in week_appts:
+            delta = (a.date - week0_start).days
+            idx   = delta // 7
+            if 0 <= idx < 8:
+                if a.service:
+                    week_rev_map[idx] += float(a.service.price)
+                if a.status == "completed":
+                    week_comp_map[idx] += 1
+
+        week_book_map = defaultdict(int)
+        for a in qs.filter(date__gte=week0_start):
+            delta = (a.date - week0_start).days
+            idx   = delta // 7
+            if 0 <= idx < 8:
+                week_book_map[idx] += 1
+
         weekly_data = []
-        for i in range(7, -1, -1):
-            week_start = today - timedelta(weeks=i, days=today.weekday())
-            week_end   = week_start + timedelta(days=6)
-            week_qs    = qs.filter(date__gte=week_start, date__lte=week_end)
-            week_online = week_qs.filter(payment_method="online", status="completed")
-            week_shop   = week_qs.filter(payment_method="shop").filter(
-                status__in=["confirmed", "completed"]
-            )
-            week_rev = sum(float(a.service.price) for a in week_online if a.service) + \
-                       sum(float(a.service.price) for a in week_shop   if a.service)
+        for i in range(8):
+            wk_start = today - timedelta(weeks=(7 - i), days=today.weekday())
             weekly_data.append({
-                "week":      f"Wk {week_start.strftime('%b %d')}",
-                "revenue":   round(week_rev, 2),
-                "bookings":  week_qs.count(),
-                "completed": week_qs.filter(status="completed").count(),
+                "week":      f"Wk {wk_start.strftime('%b %d')}",
+                "revenue":   round(week_rev_map.get(i, 0.0), 2),
+                "bookings":  week_book_map.get(i, 0),
+                "completed": week_comp_map.get(i, 0),
             })
 
         # ── Busiest days of the week ──

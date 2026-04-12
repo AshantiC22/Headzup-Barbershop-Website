@@ -676,6 +676,7 @@ export default function BarberDashboard(){
   /* reports */
   const [reports,      setReports]     = useState(null);
   const [reportPeriod, setReportPeriod]= useState("month");
+  const [reportsLoad,  setReportsLoad]  = useState(false);
 
   /* pay-in-shop payment tracker */
   const [shopPayments,    setShopPayments]    = useState({}); // appt.id -> "pending"|"received"
@@ -786,7 +787,10 @@ export default function BarberDashboard(){
 
   /* load reports */
   const loadReports=useCallback(async(period)=>{
-    try{const r=await API.get(`barber/reports/?period=${period}`);setReports(r.data);}catch{}
+    setReportsLoad(true); setReports(null);
+    try{const r=await API.get(`barber/reports/?period=${period}`);setReports(r.data);}
+    catch{}
+    finally{setReportsLoad(false);}
   },[]);
   useEffect(()=>{if(activeTab==="reports")loadReports(reportPeriod);},[activeTab,reportPeriod,loadReports]);
   useEffect(()=>{
@@ -1626,7 +1630,7 @@ export default function BarberDashboard(){
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
                 <div>
                   <label style={{...sf,fontSize:6,letterSpacing:"0.4em",color:T.muted,textTransform:"uppercase",display:"block",marginBottom:8}}>Barber *</label>
-                  <select value={wiBarber} onChange={e=>{setWiBarber(e.target.value);setWiTime("");}}
+                  <select value={wiBarber} onChange={e=>{setWiBarber(e.target.value);setWiTime("");setWiSlots([]);setWiBooked([]);}}
                     style={{width:"100%",background:T.bg,border:`1px solid ${T.border}`,padding:"13px 14px",color:wiBarber?"white":T.muted,...mono,fontSize:13,outline:"none",cursor:"pointer",colorScheme:"dark"}}
                     onFocus={e=>e.target.style.borderColor=T.amber}
                     onBlur={e=>e.target.style.borderColor=T.border}>
@@ -1659,7 +1663,11 @@ export default function BarberDashboard(){
               {wiBarber&&wiDate&&(
                 <div>
                   <label style={{...sf,fontSize:6,letterSpacing:"0.4em",color:T.muted,textTransform:"uppercase",display:"block",marginBottom:8}}>
-                    Time Slot * {wiSlotsLoad&&<span style={{...mono,fontSize:8,color:"#52525b",letterSpacing:"0.2em"}}>— checking...</span>}
+                    Time Slot *{" "}
+                    {wiSlotsLoad
+                      ? <span style={{...mono,fontSize:8,color:"#52525b",letterSpacing:"0.2em"}}>— checking...</span>
+                      : <span style={{...mono,fontSize:8,color:"rgba(245,158,11,0.35)",letterSpacing:"0.15em"}}>— same schedule clients see</span>
+                    }
                   </label>
                   {wiSlotsLoad ? (
                     <div style={{display:"flex",alignItems:"center",gap:8,padding:"14px",background:T.surface,border:`1px solid ${T.border}`}}>
@@ -1749,11 +1757,11 @@ export default function BarberDashboard(){
               )}
 
               {/* Submit */}
-              <button onClick={handleWalkIn} disabled={wiLoading||!wiName.trim()||!wiSvc||!wiTime}
+              <button onClick={handleWalkIn} disabled={wiLoading||!wiName.trim()||!wiSvc||!wiTime||!wiBarber}
                 style={{padding:"16px",...sf,fontSize:9,fontWeight:700,letterSpacing:"0.25em",textTransform:"uppercase",
-                  background:wiLoading||!wiName.trim()||!wiSvc||!wiTime?T.deep:T.amber,
-                  color:wiLoading||!wiName.trim()||!wiSvc||!wiTime?T.dim:"black",
-                  border:"none",cursor:wiLoading||!wiName.trim()||!wiSvc||!wiTime?"not-allowed":"pointer",
+                  background:wiLoading||!wiName.trim()||!wiSvc||!wiTime||!wiBarber?T.deep:T.amber,
+                  color:wiLoading||!wiName.trim()||!wiSvc||!wiTime||!wiBarber?T.dim:"black",
+                  border:"none",cursor:wiLoading||!wiName.trim()||!wiSvc||!wiTime||!wiBarber?"not-allowed":"pointer",
                   transition:"all 0.2s",marginTop:4,
                   clipPath:"polygon(0 0,calc(100% - 8px) 0,100% 8px,100% 100%,8px 100%,0 calc(100% - 8px))"
                 }}>
@@ -2036,10 +2044,23 @@ export default function BarberDashboard(){
               </div>
             </div>
 
-            {!reports?(
-              <div style={{padding:"64px 0",textAlign:"center"}}>
-                <div style={{width:20,height:20,border:`2px solid rgba(245,158,11,0.2)`,borderTopColor:T.amber,borderRadius:"50%",animation:"spin 0.8s linear infinite",margin:"0 auto 12px"}}/>
-                <p style={{...mono,fontSize:11,color:T.muted}}>Loading analytics...</p>
+            {(!reports||reportsLoad)?(
+              <div>
+                {/* Skeleton cards */}
+                <div style={{display:"grid",gridTemplateColumns:isMobile?"repeat(2,1fr)":"repeat(4,1fr)",gap:8,marginBottom:12}}>
+                  {[...Array(4)].map((_,i)=>(
+                    <div key={i} style={{padding:"20px 16px",background:T.surface,border:`1px solid ${T.border}`,clipPath:"polygon(0 0,calc(100% - 8px) 0,100% 8px,100% 100%,8px 100%,0 calc(100% - 8px))"}}>
+                      <div style={{width:"40%",height:10,background:"rgba(255,255,255,0.04)",borderRadius:4,marginBottom:10,animation:"pulse 1.5s ease infinite"}}/>
+                      <div style={{width:"60%",height:28,background:"rgba(255,255,255,0.06)",borderRadius:4,animation:"pulse 1.5s ease infinite"}}/>
+                    </div>
+                  ))}
+                </div>
+                <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:8,marginBottom:8}}>
+                  {[...Array(4)].map((_,i)=>(
+                    <div key={i} style={{padding:"16px",background:T.surface,border:`1px solid ${T.border}`,height:80,animation:"pulse 1.5s ease infinite"}}/>
+                  ))}
+                </div>
+                <style>{`@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}`}</style>
               </div>
             ):(
               <>
