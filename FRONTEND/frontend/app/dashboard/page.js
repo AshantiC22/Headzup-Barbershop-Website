@@ -146,11 +146,43 @@ function RescheduleModal({ appt, onClose, onDone }) {
         <div style={{padding:"18px 22px",overflowY:"auto",flex:1}}>
           {err && <p style={{...mono,fontSize:11,color:"#f87171",marginBottom:14}}>⚠ {err}</p>}
 
-          {/* Info */}
-          <div style={{padding:"10px 14px",background:"rgba(245,158,11,0.06)",border:"1px solid rgba(245,158,11,0.2)",marginBottom:20}}>
-            <p style={{...mono,fontSize:10,color:"#f59e0b",lineHeight:1.6}}>
+          {/* Info + barber schedule */}
+          <div style={{padding:"12px 14px",background:"rgba(245,158,11,0.06)",border:"1px solid rgba(245,158,11,0.2)",marginBottom:20}}>
+            <p style={{...mono,fontSize:10,color:"#f59e0b",lineHeight:1.6,marginBottom:allDays.filter(d=>d.is_working).length>0?10:0}}>
               Pick a date and time below. Only days {appt.barber_name || "your barber"} works are selectable. Your request needs their approval.
             </p>
+            {/* Barber working hours per day */}
+            {allDays.filter(d=>d.is_working).length>0&&(
+              <div style={{borderTop:"1px solid rgba(245,158,11,0.15)",paddingTop:10}}>
+                <p style={{...sf,fontSize:6,letterSpacing:"0.3em",color:"rgba(245,158,11,0.5)",textTransform:"uppercase",marginBottom:8}}>
+                  {appt.barber_name}'s Schedule
+                </p>
+                <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
+                  {allDays.filter(d=>d.is_working).map(d=>{
+                    const dayName = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"][d.day_of_week];
+                    const fmtT = t => {
+                      if(!t) return "";
+                      const [h,m] = t.split(":");
+                      const hr = parseInt(h);
+                      return `${hr%12||12}:${m}${hr>=12?"PM":"AM"}`;
+                    };
+                    return(
+                      <div key={d.day_of_week} style={{
+                        padding:"4px 10px",
+                        background:"rgba(245,158,11,0.08)",
+                        border:"1px solid rgba(245,158,11,0.2)",
+                        display:"flex",flexDirection:"column",alignItems:"center",gap:2,
+                      }}>
+                        <span style={{...sf,fontSize:6,color:"#f59e0b",letterSpacing:"0.2em",textTransform:"uppercase"}}>{dayName}</span>
+                        {d.start_time&&d.end_time&&(
+                          <span style={{...mono,fontSize:8,color:"#a1a1aa"}}>{fmtT(d.start_time)}–{fmtT(d.end_time)}</span>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* ── CALENDAR ─────────────────────────────────────────── */}
@@ -723,72 +755,75 @@ Cancel anyway?`
                       const canCancel     = appt.status==="confirmed" && activeTab==="upcoming";
                       return(
                         <div key={appt.id} className="appt-row"
-                          style={{display:"flex",alignItems:"center",gap:isMobile?10:16,padding:isMobile?"16px 12px":"18px 20px",background:"rgba(255,255,255,0.02)",border:"1px solid rgba(255,255,255,0.07)"}}>
-                          {/* Left accent strip */}
-                          <div style={{width:2,alignSelf:"stretch",background:s.color,flexShrink:0,opacity:0.8,minHeight:40}}/>
-
-                          {/* Date block */}
-                          <div style={{width:isMobile?44:52,flexShrink:0,textAlign:"center"}}>
-                            <p style={{...sf,fontSize:isMobile?16:22,fontWeight:900,color:appt.status==="confirmed"?"#f59e0b":"#a1a1aa",lineHeight:1}}>
-                              {new Date(appt.date+"T00:00:00").getDate()}
-                            </p>
-                            <p style={{...sf,fontSize:6,color:"#a1a1aa",textTransform:"uppercase",letterSpacing:"0.1em"}}>
-                              {new Date(appt.date+"T00:00:00").toLocaleDateString("en-US",{month:"short"})}
-                            </p>
+                          style={{background:"rgba(255,255,255,0.02)",border:"1px solid rgba(255,255,255,0.07)",overflow:"hidden",
+                            borderLeft:`3px solid ${s.color}`}}>
+                          {/* Top row: date + info + status */}
+                          <div style={{display:"flex",alignItems:"center",gap:isMobile?10:16,padding:isMobile?"14px 12px":"16px 20px"}}>
+                            {/* Date block */}
+                            <div style={{width:isMobile?44:52,flexShrink:0,textAlign:"center"}}>
+                              <p style={{...sf,fontSize:isMobile?16:22,fontWeight:900,color:appt.status==="confirmed"?"#f59e0b":"#a1a1aa",lineHeight:1}}>
+                                {new Date(appt.date+"T00:00:00").getDate()}
+                              </p>
+                              <p style={{...sf,fontSize:6,color:"#a1a1aa",textTransform:"uppercase",letterSpacing:"0.1em"}}>
+                                {new Date(appt.date+"T00:00:00").toLocaleDateString("en-US",{month:"short"})}
+                              </p>
+                            </div>
+                            <div style={{width:1,height:32,background:"rgba(255,255,255,0.07)",flexShrink:0}}/>
+                            {/* Info */}
+                            <div style={{flex:1,minWidth:0}}>
+                              <p style={{...sf,fontSize:isMobile?11:12,fontWeight:700,textTransform:"uppercase",marginBottom:4,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
+                                {appt.service_name||"Appointment"}
+                              </p>
+                              <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:3}}>
+                                <span style={{...mono,fontSize:10,color:"#a1a1aa"}}>{fmtDate(appt.date)}</span>
+                                {appt.time&&<span style={{...mono,fontSize:10,color:"#f59e0b"}}>{fmtTime(appt.time)}</span>}
+                              </div>
+                              <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
+                                {appt.barber_name&&<span style={{...mono,fontSize:9,color:"#a1a1aa"}}>✂️ {appt.barber_name}</span>}
+                                <span style={{...mono,fontSize:9,color:"#a1a1aa"}}>📍 2509 W 4th St</span>
+                              </div>
+                            </div>
+                            {/* Status badge */}
+                            <span style={{...sf,fontSize:5,letterSpacing:"0.1em",textTransform:"uppercase",padding:"4px 10px",background:s.bg,color:s.color,border:`1px solid ${s.border}`,flexShrink:0}}>
+                              {s.label}
+                            </span>
                           </div>
 
-                          <div style={{width:1,height:32,background:"rgba(255,255,255,0.07)",flexShrink:0}}/>
-
-                          {/* Info */}
-                          <div style={{flex:1,minWidth:0}}>
-                            <p style={{...sf,fontSize:isMobile?11:12,fontWeight:700,textTransform:"uppercase",marginBottom:4,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
-                              {appt.service_name||"Appointment"}
-                            </p>
-                            <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:3}}>
-                              <span style={{...mono,fontSize:10,color:"#a1a1aa"}}>{fmtDate(appt.date)}</span>
-                              {appt.time&&<span style={{...mono,fontSize:10,color:"#f59e0b"}}>{fmtTime(appt.time)}</span>}
+                          {/* Action buttons row — full width, clearly visible */}
+                          {(canReschedule||canCancel)&&(
+                            <div style={{display:"flex",borderTop:"1px solid rgba(255,255,255,0.05)"}}>
+                              {canReschedule&&(
+                                <button onClick={()=>setReschedAppt(appt)}
+                                  style={{flex:1,padding:"12px 16px",background:"rgba(245,158,11,0.04)",
+                                    border:"none",borderRight:canCancel?"1px solid rgba(255,255,255,0.05)":"none",
+                                    color:"#f59e0b",cursor:"pointer",display:"flex",alignItems:"center",
+                                    justifyContent:"center",gap:8,transition:"all 0.2s",
+                                    fontFamily:"'DM Mono',monospace",fontSize:10,letterSpacing:"0.15em",
+                                  }}
+                                  onMouseEnter={e=>e.currentTarget.style.background="rgba(245,158,11,0.1)"}
+                                  onMouseLeave={e=>e.currentTarget.style.background="rgba(245,158,11,0.04)"}>
+                                  <span style={{fontSize:13}}>↻</span> Reschedule
+                                </button>
+                              )}
+                              {canCancel&&(
+                                <button onClick={()=>handleCancel(appt)} disabled={cancelling===appt.id}
+                                  style={{flex:1,padding:"12px 16px",
+                                    background:cancelling===appt.id?"rgba(248,113,113,0.06)":"rgba(248,113,113,0.04)",
+                                    border:"none",color:"#f87171",
+                                    cursor:cancelling===appt.id?"not-allowed":"pointer",
+                                    display:"flex",alignItems:"center",justifyContent:"center",gap:8,
+                                    transition:"all 0.2s",fontFamily:"'DM Mono',monospace",
+                                    fontSize:10,letterSpacing:"0.15em",
+                                  }}
+                                  onMouseEnter={e=>{if(cancelling!==appt.id)e.currentTarget.style.background="rgba(248,113,113,0.12)";}}
+                                  onMouseLeave={e=>{e.currentTarget.style.background=cancelling===appt.id?"rgba(248,113,113,0.06)":"rgba(248,113,113,0.04)";}}>
+                                  {cancelling===appt.id
+                                    ? <><span style={{width:10,height:10,border:"1.5px solid #3f3f46",borderTopColor:"#f87171",borderRadius:"50%",display:"inline-block",animation:"spin 0.7s linear infinite"}}/> Cancelling...</>
+                                    : <><span style={{fontSize:13}}>✕</span> Cancel Appointment</>
+                                  }
+                                </button>
+                              )}
                             </div>
-                            <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
-                              {appt.barber_name&&<span style={{...mono,fontSize:9,color:"#a1a1aa"}}>✂️ {appt.barber_name}</span>}
-                              <span style={{...mono,fontSize:9,color:"#a1a1aa"}}>📍 2509 W 4th St, Hattiesburg</span>
-                            </div>
-                          </div>
-
-                          {/* Status badge */}
-                          <span style={{...sf,fontSize:5,letterSpacing:"0.1em",textTransform:"uppercase",padding:"4px 10px",background:s.bg,color:s.color,border:`1px solid ${s.border}`,flexShrink:0}}>
-                            {s.label}
-                          </span>
-
-                          {/* Actions */}
-                          {canReschedule&&(
-                            <button onClick={()=>setReschedAppt(appt)}
-                              style={{padding:isMobile?"6px 10px":"7px 14px",background:"transparent",
-                                border:"1px solid rgba(245,158,11,0.25)",color:"#f59e0b",
-                                cursor:"pointer",display:"flex",alignItems:"center",gap:5,
-                                fontSize:10,transition:"all 0.2s",flexShrink:0,
-                                fontFamily:"'DM Mono',monospace",letterSpacing:"0.1em",
-                              }}
-                              onMouseEnter={e=>{e.currentTarget.style.background="rgba(245,158,11,0.08)";e.currentTarget.style.borderColor="#f59e0b";}}
-                              onMouseLeave={e=>{e.currentTarget.style.background="transparent";e.currentTarget.style.borderColor="rgba(245,158,11,0.25)";}}>
-                              ↻{!isMobile&&" Reschedule"}
-                            </button>
-                          )}
-                          {canCancel&&(
-                            <button onClick={()=>handleCancel(appt)} disabled={cancelling===appt.id}
-                              style={{padding:isMobile?"6px 10px":"7px 14px",background:"transparent",
-                                border:"1px solid rgba(248,113,113,0.25)",color:"#f87171",
-                                cursor:cancelling===appt.id?"not-allowed":"pointer",
-                                display:"flex",alignItems:"center",gap:5,
-                                fontSize:10,transition:"all 0.2s",flexShrink:0,
-                                fontFamily:"'DM Mono',monospace",letterSpacing:"0.1em",
-                              }}
-                              onMouseEnter={e=>{if(cancelling!==appt.id){e.currentTarget.style.background="rgba(248,113,113,0.1)";e.currentTarget.style.borderColor="#f87171";}}}
-                              onMouseLeave={e=>{e.currentTarget.style.background="transparent";e.currentTarget.style.borderColor="rgba(248,113,113,0.25)";}}>
-                              {cancelling===appt.id
-                                ? <><span style={{width:10,height:10,border:"1.5px solid #3f3f46",borderTopColor:"#f87171",borderRadius:"50%",display:"inline-block",animation:"spin 0.7s linear infinite"}}/>{!isMobile&&" Cancelling"}</>
-                                : <>{!isMobile?"✕ Cancel":"✕"}</>
-                              }
-                            </button>
                           )}
                         </div>
                       );
