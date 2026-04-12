@@ -143,7 +143,6 @@ function PersonaSelect({ barbers, book, isMobile }) {
             }
           </div>
         ) : (
-        /* ── DESKTOP — FIGHTER SELECT ── */
         <div style={{ display:"grid", gridTemplateColumns:"360px 1fr", gap:0, alignItems:"stretch" }}>
 
           {/* LEFT ROSTER */}
