@@ -673,7 +673,8 @@ export default function BarberDashboard(){
 
   /* waitlist */
   const [waitlist,     setWaitlist]    = useState([]);
-  const [waitlistSeen, setWaitlistSeen] = useState(false);
+  const [seenWaitlistCount, setSeenWaitlistCount] = useState(0);
+  const [prevWaitlistCount, setPrevWaitlistCount] = useState(0);
 
   /* clients */
   const [clients,      setClients]     = useState([]);
@@ -794,12 +795,18 @@ export default function BarberDashboard(){
   useEffect(()=>{if(activeTab==="timeoff")loadTimeOff();},[activeTab,loadTimeOff]);
 
   /* load waitlist */
-  const loadWaitlist=useCallback(async()=>{
-    try{const r=await API.get("barber/waitlist/");setWaitlist(r.data);}catch{}
+  const loadWaitlist=useCallback(async(isInitial=false)=>{
+    try{
+      const r=await API.get("barber/waitlist/");
+      const data=r.data||[];
+      setWaitlist(data);
+      // On initial load, mark all as seen so we don't badge for old entries
+      if(isInitial) setSeenWaitlistCount(data.length);
+    }catch{}
   },[]);
   useEffect(()=>{if(activeTab==="waitlist")loadWaitlist();},[activeTab,loadWaitlist]);
   // Also load on mount for badge count
-  useEffect(()=>{loadWaitlist();},[]);
+  useEffect(()=>{loadWaitlist(true);},[]);
 
   /* load clients */
   const loadClients=useCallback(async()=>{
@@ -922,8 +929,7 @@ export default function BarberDashboard(){
       setWiName("");setWiPhone("");setWiNotes("");setWiSvc("");
       setWiEmail("");setWiTime("");setWiSlots([]);setWiBooked([]);
       loadSchedule(selectedDate);
-      loadWaitlist();  // refresh waitlist so new walk-in appears
-      setWaitlistSeen(false);  // show badge again for new entry
+      loadWaitlist();  // refresh waitlist so new walk-in appears — badge auto-shows since count increases
       showToast(`✓ ${wiName} added${(wiPhone||wiEmail)?" — welcome message sent!":""}`);
     }catch(e){showToast(e.response?.data?.error||"Could not add walk-in.","error");}
     finally{setWiLoading(false);}
@@ -1086,10 +1092,10 @@ export default function BarberDashboard(){
         <div style={{maxWidth:1280,margin:"0 auto",borderTop:`1px solid ${T.border}`,display:"flex",overflowX:"auto",WebkitOverflowScrolling:"touch"}}>
           {TABS.map(({key,label,icon})=>{
             const pendingReschedules = key==="reschedules" ? reschedules.filter(r=>r.status==="pending").length : 0;
-            const pendingWaitlist    = key==="waitlist"    ? (waitlistSeen ? 0 : waitlist.filter(w=>!w.notified).length) : 0;
+            const pendingWaitlist    = key==="waitlist"    ? Math.max(0, waitlist.length - seenWaitlistCount) : 0;
             const badgeCount = pendingReschedules || pendingWaitlist;
             return(
-              <button key={key} onClick={()=>{setActiveTab(key);if(key==="waitlist")setWaitlistSeen(true);}}
+              <button key={key} onClick={()=>{setActiveTab(key);if(key==="waitlist")setSeenWaitlistCount(waitlist.length);}}
                 style={{
                   padding:isMobile?"8px 10px":"11px 22px",
                   ...sf,

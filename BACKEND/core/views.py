@@ -8,7 +8,7 @@ from django.shortcuts import redirect
 from rest_framework import viewsets
 from .models import Appointment, Barber, BarberAvailability, BarberTimeOff, Service, UserProfile, PushSubscription, Review, WaitlistEntry, BarberClient, RescheduleRequest, NewsletterPost, BarberServicePrice
 from .serializers import AppointmentSerializer, BarberSerializer, ServiceSerializer, UserProfileSerializer, RegisterSerializer
-from rest_framework.permissions import IsAuthenticated, AllowAny, IsAdminUser, IsAuthenticatedOrReadOnly
+from rest_framework.permissions import IsAuthenticated, AllowAny, IsAdminUser
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.views import APIView
@@ -3446,7 +3446,7 @@ class WalkInBookingView(APIView):
                 client_email=email,
                 date=date_val,
                 notes=f"[WALK-IN] {notes}".strip(" []") if notes else "[WALK-IN]",
-                notified=True,  # Already contacted via SMS/email
+                notified=False,  # Barber still needs to see this in Waitlist tab
             )
         except Exception as e:
             logger.error(f"Walk-in waitlist entry failed: {e}")
