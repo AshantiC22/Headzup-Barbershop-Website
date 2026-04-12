@@ -44,7 +44,7 @@ function PersonaSelect({ barbers, book, isMobile }) {
   };
 
   return (
-    <section id="barber" style={{ position: "relative", overflow: "hidden", background: "#000", borderTop: `3px solid ${A}`, borderBottom: `3px solid ${A}` }}>
+    <section id="barber" style={{ position:"relative", overflow:"hidden", background:"#000", borderTop:`3px solid ${A}`, borderBottom:`3px solid ${A}` }}>
       <style>{`
         .ps-flash { animation: p5-flash 0.7s ease; }
         .ps-name  { animation: p5-namein 0.45s cubic-bezier(0.16,1,0.3,1) both; }
@@ -61,302 +61,354 @@ function PersonaSelect({ barbers, book, isMobile }) {
         @keyframes p5-glow   { 0%,100%{box-shadow:0 0 0 0 rgba(34,197,94,0.5)} 50%{box-shadow:0 0 0 10px rgba(34,197,94,0)} }
       `}</style>
 
-      <div style={{ position: "absolute", inset: 0, zIndex: 0 }}>
-        {validPhoto(active.photo_url || active.photo) ? (
-          <img
-            key={`bg-${active.id}`}
-            src={validPhoto(active.photo_url || active.photo)}
-            alt=""
-            style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "center top", filter: "brightness(0.08) saturate(0.2)", transition: "opacity 1s" }}
-          />
-        ) : null}
-        <div style={{ position: "absolute", inset: 0, background: "linear-gradient(135deg,rgba(0,0,0,0.98) 0%,rgba(0,0,0,0.82) 50%,rgba(0,0,0,0.96) 100%)" }} />
-        <div style={{ position: "absolute", inset: 0, overflow: "hidden", pointerEvents: "none" }}>
-          <div style={{ position: "absolute", top: 0, right: "30%", width: 2, height: "140%", background: `linear-gradient(to bottom,transparent,${R}22,transparent)`, transform: "rotate(15deg)", transformOrigin: "top center" }} />
-          <div style={{ position: "absolute", top: 0, right: "55%", width: 1, height: "140%", background: `linear-gradient(to bottom,transparent,rgba(245,158,11,0.1),transparent)`, transform: "rotate(15deg)", transformOrigin: "top center" }} />
+      {/* Full-bleed bg */}
+      <div style={{ position:"absolute", inset:0, zIndex:0 }}>
+        {validPhoto(active.photo_url||active.photo)
+          ? <img key={`bg-${active.id}`} src={validPhoto(active.photo_url||active.photo)} alt="" style={{ width:"100%", height:"100%", objectFit:"cover", objectPosition:"center top", filter:"brightness(0.08) saturate(0.2)", transition:"opacity 1s" }}/>
+          : null
+        }
+        <div style={{ position:"absolute", inset:0, background:"linear-gradient(135deg,rgba(0,0,0,0.98) 0%,rgba(0,0,0,0.82) 50%,rgba(0,0,0,0.96) 100%)" }}/>
+        {/* Diagonal red accent lines — DMC style */}
+        <div style={{ position:"absolute", inset:0, overflow:"hidden", pointerEvents:"none" }}>
+          <div style={{ position:"absolute", top:0, right:"30%", width:2, height:"140%", background:`linear-gradient(to bottom,transparent,${R}22,transparent)`, transform:"rotate(15deg)", transformOrigin:"top center" }}/>
+          <div style={{ position:"absolute", top:0, right:"55%", width:1, height:"140%", background:`linear-gradient(to bottom,transparent,rgba(245,158,11,0.1),transparent)`, transform:"rotate(15deg)", transformOrigin:"top center" }}/>
         </div>
-        <div className="ps-scan" style={{ position: "absolute", top: 0, bottom: 0, width: "35%", background: `linear-gradient(to right,transparent,rgba(245,158,11,0.025),transparent)`, pointerEvents: "none" }} />
-        <div style={{ position: "absolute", inset: 0, backgroundImage: `linear-gradient(${A}08 1px,transparent 1px),linear-gradient(90deg,${A}08 1px,transparent 1px)`, backgroundSize: "48px 48px", pointerEvents: "none" }} />
-        <div style={{ position: "absolute", inset: 0, backgroundImage: "repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.1) 2px,rgba(0,0,0,0.1) 3px)", pointerEvents: "none" }} />
+        {/* Scan beam */}
+        <div className="ps-scan" style={{ position:"absolute", top:0, bottom:0, width:"35%", background:`linear-gradient(to right,transparent,rgba(245,158,11,0.025),transparent)`, pointerEvents:"none" }}/>
+        {/* Grid */}
+        <div style={{ position:"absolute", inset:0, backgroundImage:`linear-gradient(${A}08 1px,transparent 1px),linear-gradient(90deg,${A}08 1px,transparent 1px)`, backgroundSize:"48px 48px", pointerEvents:"none" }}/>
+        {/* CRT */}
+        <div style={{ position:"absolute", inset:0, backgroundImage:"repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.1) 2px,rgba(0,0,0,0.1) 3px)", pointerEvents:"none" }}/>
       </div>
 
-      <div style={{ position: "relative", zIndex: 2, maxWidth: 1320, margin: "0 auto", padding: isMobile ? "44px 20px 52px" : "0 44px", minHeight: isMobile ? "auto" : "100vh", display: "flex", flexDirection: "column", justifyContent: "center" }}>
+      <div style={{ position:"relative", zIndex:2, maxWidth:1320, margin:"0 auto", padding:isMobile?"44px 20px 52px":"0 44px", minHeight:isMobile?"auto":"100vh", display:"flex", flexDirection:"column", justifyContent:"center" }}>
 
-        <div style={{ display: "flex", alignItems: "center", gap: 0, marginBottom: isMobile ? 28 : 44, overflow: "hidden" }}>
-          <div style={{ background: A, padding: "6px 16px 6px 12px", clipPath: "polygon(0 0,100% 0,calc(100% - 10px) 100%,0 100%)", marginRight: 10 }}>
-            <span style={{ ...D, fontSize: 8, fontWeight: 900, color: "#000", letterSpacing: "0.4em", textTransform: "uppercase" }}>SELECT</span>
+        {/* P5-style header stamp */}
+        <div style={{ display:"flex", alignItems:"center", gap:0, marginBottom:isMobile?28:44, overflow:"hidden" }}>
+          <div style={{ background:A, padding:"6px 16px 6px 12px", clipPath:"polygon(0 0,100% 0,calc(100% - 10px) 100%,0 100%)", marginRight:10 }}>
+            <span style={{ ...D, fontSize:8, fontWeight:900, color:"#000", letterSpacing:"0.4em", textTransform:"uppercase" }}>SELECT</span>
           </div>
-          <div style={{ background: "rgba(255,255,255,0.06)", padding: "6px 16px 6px 14px", clipPath: "polygon(8px 0,100% 0,calc(100% - 10px) 100%,0 100%)", marginRight: 10 }}>
-            <span style={{ ...D, fontSize: 8, fontWeight: 900, color: "white", letterSpacing: "0.4em", textTransform: "uppercase" }}>YOUR</span>
+          <div style={{ background:"rgba(255,255,255,0.06)", padding:"6px 16px 6px 14px", clipPath:"polygon(8px 0,100% 0,calc(100% - 10px) 100%,0 100%)", marginRight:10 }}>
+            <span style={{ ...D, fontSize:8, fontWeight:900, color:"white", letterSpacing:"0.4em", textTransform:"uppercase" }}>YOUR</span>
           </div>
-          <div style={{ background: R, padding: "6px 16px 6px 14px", clipPath: "polygon(8px 0,100% 0,calc(100% - 10px) 100%,0 100%)" }}>
-            <span style={{ ...D, fontSize: 8, fontWeight: 900, color: "white", letterSpacing: "0.4em", textTransform: "uppercase" }}>BARBER</span>
+          <div style={{ background:R, padding:"6px 16px 6px 14px", clipPath:"polygon(8px 0,100% 0,calc(100% - 10px) 100%,0 100%)" }}>
+            <span style={{ ...D, fontSize:8, fontWeight:900, color:"white", letterSpacing:"0.4em", textTransform:"uppercase" }}>BARBER</span>
           </div>
-          <div style={{ flex: 1, height: 2, background: `linear-gradient(to right,${R}88,transparent)`, marginLeft: 16 }} />
-          <span style={{ ...M, fontSize: 8, color: `${A}66`, letterSpacing: "0.3em" }}>{String(sel + 1).padStart(2, "0")}/{String(list.length).padStart(2, "0")}</span>
+          <div style={{ flex:1, height:2, background:`linear-gradient(to right,${R}88,transparent)`, marginLeft:16 }}/>
+          <span style={{ ...M, fontSize:8, color:`${A}66`, letterSpacing:"0.3em" }}>{String(sel+1).padStart(2,"0")}/{String(list.length).padStart(2,"0")}</span>
         </div>
 
+        {/* ── MOBILE ── */}
         {isMobile ? (
           <div>
-            <div style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 10, marginBottom: 22 }}>
-              {list.map((b, i) => (
-                <button key={b.id} onClick={() => { setSel(i); setLocked(false); }}
-                  style={{
-                    flexShrink: 0, width: 92, height: 118, border: `2px solid ${i === sel ? A : "rgba(255,255,255,0.07)"}`,
-                    background: "#0a0a0a", overflow: "hidden", padding: 0, position: "relative", cursor: "pointer",
-                    minHeight: "auto", minWidth: "auto", filter: i === sel ? "none" : "brightness(0.3)", transition: "all 0.3s",
-                    clipPath: i === sel ? "polygon(0 0,calc(100% - 8px) 0,100% 8px,100% 100%,8px 100%,0 calc(100% - 8px))" : "none"
-                  }}>
-                  {validPhoto(b.photo_url || b.photo) ? (
-                    <img src={validPhoto(b.photo_url || b.photo)} alt={b.name} style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "center top" }} />
-                  ) : (
-                    <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", background: "#111" }}>
-                      <span style={{ ...D, fontSize: 28, color: A, fontWeight: 900 }}>{(b.name || "?").charAt(0)}</span>
-                    </div>
-                  )}
-                  {i === sel && <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 3, background: A }} />}
-                  <div style={{ position: "absolute", top: 5, right: 5, width: 7, height: 7, background: "#22c55e", borderRadius: "50%", border: `1.5px solid #000` }} />
+            <div style={{ display:"flex", gap:8, overflowX:"auto", paddingBottom:10, marginBottom:22 }}>
+              {list.map((b,i)=>(
+                <button key={b.id} onClick={()=>{setSel(i);setLocked(false);}}
+                  style={{ flexShrink:0, width:92, height:118, border:`2px solid ${i===sel?A:"rgba(255,255,255,0.07)"}`, background:"#0a0a0a", overflow:"hidden", padding:0, position:"relative", cursor:"pointer", minHeight:"auto", minWidth:"auto", filter:i===sel?"none":"brightness(0.3)", transition:"all 0.3s", clipPath:i===sel?"polygon(0 0,calc(100% - 8px) 0,100% 8px,100% 100%,8px 100%,0 calc(100% - 8px))":"none" }}>
+                  {validPhoto(b.photo_url||b.photo)
+                    ? <img src={validPhoto(b.photo_url||b.photo)} alt={b.name} style={{ width:"100%", height:"100%", objectFit:"cover", objectPosition:"center top" }}/>
+                    : <div style={{ width:"100%", height:"100%", display:"flex", alignItems:"center", justifyContent:"center", background:"#111" }}>
+                        <span style={{ ...D, fontSize:28, color:A, fontWeight:900 }}>{(b.name||"?").charAt(0)}</span>
+                      </div>
+                  }
+                  {i===sel && <div style={{ position:"absolute", bottom:0, left:0, right:0, height:3, background:A }}/>}
+                  <div style={{ position:"absolute", top:5, right:5, width:7, height:7, background:"#22c55e", borderRadius:"50%", border:`1.5px solid #000` }}/>
                 </button>
               ))}
             </div>
-
-            <div className={flash ? "ps-flash" : ""}>
-              <div style={{ display: "inline-flex", background: locked ? "#22c55e" : A, padding: "4px 12px 4px 10px", clipPath: "polygon(0 0,calc(100% - 6px) 0,100% 6px,100% 100%,6px 100%,0 calc(100% - 6px))", marginBottom: 12 }}>
-                <span style={{ ...M, fontSize: 8, color: "#000", letterSpacing: "0.4em", textTransform: "uppercase" }}>{locked ? "✓ LOCKED IN" : "BARBER PROFILE"}</span>
+            <div className={flash?"ps-flash":""}>
+              <div style={{ display:"inline-flex", background:locked?"#22c55e":A, padding:"4px 12px 4px 10px", clipPath:"polygon(0 0,calc(100% - 6px) 0,100% 6px,100% 100%,6px 100%,0 calc(100% - 6px))", marginBottom:12 }}>
+                <span style={{ ...M, fontSize:8, color:"#000", letterSpacing:"0.4em", textTransform:"uppercase" }}>{locked?"✓ LOCKED IN":"BARBER PROFILE"}</span>
               </div>
-
-              <h2 key={`m-${active.id}`} className="ps-name" style={{ ...D, fontSize: "clamp(2rem,8vw,2.8rem)", fontWeight: 900, letterSpacing: "-0.04em", lineHeight: 1.05, marginBottom: 10, color: locked ? A : "white", textTransform: "uppercase" }}>
-                {active.name}
-              </h2>
-
-              {active.bio && <p style={{ ...M, fontSize: 12, color: "#a1a1aa", lineHeight: 1.7, marginBottom: 16 }}>{active.bio}</p>}
-
-              <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 20 }}>
-                {STATS.map(s => (
-                  <div key={s.k} style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                    <span style={{ ...M, fontSize: 7, color: "#a1a1aa", letterSpacing: "0.3em", textTransform: "uppercase", width: 64, flexShrink: 0 }}>{s.k}</span>
-                    <div style={{ flex: 1, height: 3, background: "rgba(255,255,255,0.05)", position: "relative", overflow: "hidden" }}>
-                      <div className="ps-bar" key={`ms-${active.id}-${s.k}`} style={{ position: "absolute", inset: "0 auto 0 0", background: `linear-gradient(to right,${A},#fbbf24)`, "--w": `${s.v}%`, width: `${s.v}%` }} />
+              <h2 key={`m-${active.id}`} className="ps-name" style={{ ...D, fontSize:"clamp(2rem,8vw,2.8rem)", fontWeight:900, letterSpacing:"-0.04em", lineHeight:1.05, marginBottom:10, color:locked?A:"white", textTransform:"uppercase" }}>{active.name}</h2>
+              {active.bio && <p style={{ ...M, fontSize:12, color:"#a1a1aa", lineHeight:1.7, marginBottom:16 }}>{active.bio}</p>}
+              <div style={{ display:"flex", flexDirection:"column", gap:8, marginBottom:20 }}>
+                {STATS.map(s=>(
+                  <div key={s.k} style={{ display:"flex", alignItems:"center", gap:10 }}>
+                    <span style={{ ...M, fontSize:7, color:"#a1a1aa", letterSpacing:"0.3em", textTransform:"uppercase", width:64, flexShrink:0 }}>{s.k}</span>
+                    <div style={{ flex:1, height:3, background:"rgba(255,255,255,0.05)", position:"relative", overflow:"hidden" }}>
+                      <div className="ps-bar" key={`ms-${active.id}-${s.k}`} style={{ position:"absolute", inset:"0 auto 0 0", background:`linear-gradient(to right,${A},#fbbf24)`, "--w":`${s.v}%`, width:`${s.v}%` }}/>
                     </div>
-                    <span style={{ ...M, fontSize: 9, color: A, minWidth: 24, textAlign: "right" }}>{s.v}</span>
+                    <span style={{ ...M, fontSize:9, color:A, minWidth:24, textAlign:"right" }}>{s.v}</span>
                   </div>
                 ))}
               </div>
-
-              {!locked ? (
-                <button onClick={lock} style={{ width: "100%", padding: "16px", background: A, color: "black", ...D, fontSize: 8, fontWeight: 700, letterSpacing: "0.22em", textTransform: "uppercase", border: "none", cursor: "pointer", clipPath: "polygon(0 0,calc(100% - 8px) 0,100% 8px,100% 100%,8px 100%,0 calc(100% - 8px))" }}>
-                  Book {active.name} →
-                </button>
-              ) : (
-                <div style={{ display: "flex", gap: 8 }}>
-                  <button onClick={lock} style={{ flex: 1, padding: "16px", background: "#22c55e", color: "black", ...D, fontSize: 8, fontWeight: 700, letterSpacing: "0.2em", textTransform: "uppercase", border: "none", cursor: "pointer", clipPath: "polygon(0 0,calc(100% - 8px) 0,100% 8px,100% 100%,8px 100%,0 calc(100% - 8px))" }}>
-                    ✓ CONFIRM
-                  </button>
-                  <button onClick={() => setLocked(false)} style={{ padding: "16px 18px", background: "transparent", color: "#a1a1aa", border: `1px solid rgba(255,255,255,0.1)`, cursor: "pointer", ...M, fontSize: 10, minHeight: "auto" }}>
-                    ✕
-                  </button>
-                </div>
-              )}
             </div>
+            {!locked
+              ? <button onClick={lock} style={{ width:"100%", padding:"16px", background:A, color:"black", ...D, fontSize:8, fontWeight:700, letterSpacing:"0.22em", textTransform:"uppercase", border:"none", cursor:"pointer", clipPath:"polygon(0 0,calc(100% - 8px) 0,100% 8px,100% 100%,8px 100%,0 calc(100% - 8px))" }}>Book {active.name} →</button>
+              : <div style={{ display:"flex", gap:8 }}>
+                  <button onClick={lock} style={{ flex:1, padding:"16px", background:"#22c55e", color:"black", ...D, fontSize:8, fontWeight:700, letterSpacing:"0.2em", textTransform:"uppercase", border:"none", cursor:"pointer", clipPath:"polygon(0 0,calc(100% - 8px) 0,100% 8px,100% 100%,8px 100%,0 calc(100% - 8px))" }}>✓ CONFIRM</button>
+                  <button onClick={()=>setLocked(false)} style={{ padding:"16px 18px", background:"transparent", color:"#a1a1aa", border:`1px solid rgba(255,255,255,0.1)`, cursor:"pointer", ...M, fontSize:10, minHeight:"auto" }}>✕</button>
+                </div>
+            }
           </div>
         ) : (
-          <div style={{ display: "grid", gridTemplateColumns: "360px 1fr", gap: 0, alignItems: "stretch" }}>
-            <div style={{ borderRight: `1px solid ${A}22`, paddingRight: 32, paddingTop: 20, paddingBottom: 20 }}>
-              {list.map((b, i) => (
-                <div key={b.id} onClick={() => { setSel(i); setLocked(false); }} className="ps-row"
-                  style={{ display: "flex", alignItems: "stretch", background: i === sel ? `${A}08` : "transparent", border: `1px solid ${i === sel ? `${A}44` : "rgba(255,255,255,0.05)"}`, marginBottom: 6, position: "relative", overflow: "hidden" }}>
-                  {i === sel && <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: 3, background: A }} />}
-                  {i === sel && <div style={{ position: "absolute", right: 0, top: 0, bottom: 0, width: 2, background: `linear-gradient(to bottom,transparent,${R},transparent)` }} />}
-                  <div style={{ width: 82, height: 100, flexShrink: 0, overflow: "hidden", background: "#0a0a0a", marginLeft: i === sel ? 3 : 0 }}>
-                    {validPhoto(b.photo_url || b.photo) ? (
-                      <img src={validPhoto(b.photo_url || b.photo)} alt={b.name} style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "center top", filter: i === sel ? "none" : "brightness(0.35) saturate(0.4)", transition: "filter 0.3s" }} />
-                    ) : (
-                      <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                        <span style={{ ...D, fontSize: 30, color: A, fontWeight: 900 }}>{(b.name || "?").charAt(0)}</span>
+        /* ── DESKTOP — FIGHTER SELECT ── */
+        <div style={{ display:"grid", gridTemplateColumns:"360px 1fr", gap:0, alignItems:"stretch" }}>
+
+          {/* LEFT ROSTER */}
+          <div style={{ borderRight:`1px solid ${A}22`, paddingRight:32, paddingTop:20, paddingBottom:20 }}>
+            {list.map((b,i)=>(
+              <div key={b.id} onClick={()=>{setSel(i);setLocked(false);}} className="ps-row"
+                style={{ display:"flex", alignItems:"stretch", background:i===sel?`${A}08`:"transparent", border:`1px solid ${i===sel?`${A}44`:"rgba(255,255,255,0.05)"}`, marginBottom:6, position:"relative", overflow:"hidden" }}>
+                {/* Active bar */}
+                {i===sel && <div style={{ position:"absolute", left:0, top:0, bottom:0, width:3, background:A }}/>}
+                {/* Red accent slash on hover */}
+                {i===sel && <div style={{ position:"absolute", right:0, top:0, bottom:0, width:2, background:`linear-gradient(to bottom,transparent,${R},transparent)` }}/>}
+                {/* Photo */}
+                <div style={{ width:82, height:100, flexShrink:0, overflow:"hidden", background:"#0a0a0a", marginLeft:i===sel?3:0 }}>
+                  {validPhoto(b.photo_url||b.photo)
+                    ? <img src={validPhoto(b.photo_url||b.photo)} alt={b.name} style={{ width:"100%", height:"100%", objectFit:"cover", objectPosition:"center top", filter:i===sel?"none":"brightness(0.35) saturate(0.4)", transition:"filter 0.3s" }}/>
+                    : <div style={{ width:"100%", height:"100%", display:"flex", alignItems:"center", justifyContent:"center" }}>
+                        <span style={{ ...D, fontSize:30, color:A, fontWeight:900 }}>{(b.name||"?").charAt(0)}</span>
                       </div>
-                    )}
-                  </div>
-                  <div style={{ flex: 1, padding: "16px 14px", display: "flex", flexDirection: "column", justifyContent: "center" }}>
-                    <p style={{ ...M, fontSize: 7, color: i === sel ? `${A}cc` : "rgba(245,158,11,0.2)", letterSpacing: "0.4em", textTransform: "uppercase", marginBottom: 5, transition: "color 0.25s" }}>BARBER #{String(i + 1).padStart(2, "0")}</p>
-                    <p style={{ ...D, fontSize: 13, fontWeight: 900, textTransform: "uppercase", color: i === sel ? "white" : "#a1a1aa", letterSpacing: "-0.02em", transition: "color 0.25s" }}>{b.name}</p>
-                  </div>
-                  {i === sel && (
-                    <div style={{ display: "flex", alignItems: "center", paddingRight: 14 }}>
-                      <div style={{ background: locked ? "#22c55e" : A, padding: "3px 8px", clipPath: "polygon(0 0,calc(100% - 4px) 0,100% 4px,100% 100%,4px 100%,0 calc(100% - 4px))" }}>
-                        <span style={{ ...M, fontSize: 7, color: "#000", letterSpacing: "0.2em", textTransform: "uppercase" }}>{locked ? "LOCKED" : "ACTIVE"}</span>
-                      </div>
-                    </div>
-                  )}
+                  }
                 </div>
-              ))}
-              <div style={{ marginTop: 16, padding: "14px", borderLeft: `3px solid ${A}44`, background: `${A}04` }}>
-                <p style={{ ...M, fontSize: 9, color: "#a1a1aa", lineHeight: 1.8 }}>
-                  {locked ? `✓ ${active.name} locked in` : "Select a barber to see their profile"}
-                </p>
+                {/* Info */}
+                <div style={{ flex:1, padding:"16px 14px", display:"flex", flexDirection:"column", justifyContent:"center" }}>
+                  <p style={{ ...M, fontSize:7, color:i===sel?`${A}cc`:"rgba(245,158,11,0.2)", letterSpacing:"0.4em", textTransform:"uppercase", marginBottom:5, transition:"color 0.25s" }}>BARBER #{String(i+1).padStart(2,"0")}</p>
+                  <p style={{ ...D, fontSize:13, fontWeight:900, textTransform:"uppercase", color:i===sel?"white":"#a1a1aa", letterSpacing:"-0.02em", transition:"color 0.25s" }}>{b.name}</p>
+                </div>
+                {i===sel && (
+                  <div style={{ display:"flex", alignItems:"center", paddingRight:14 }}>
+                    <div style={{ background:locked?"#22c55e":A, padding:"3px 8px", clipPath:"polygon(0 0,calc(100% - 4px) 0,100% 4px,100% 100%,4px 100%,0 calc(100% - 4px))" }}>
+                      <span style={{ ...M, fontSize:7, color:"#000", letterSpacing:"0.2em", textTransform:"uppercase" }}>{locked?"LOCKED":"ACTIVE"}</span>
+                    </div>
+                  </div>
+                )}
               </div>
+            ))}
+            {/* Info box */}
+            <div style={{ marginTop:16, padding:"14px", borderLeft:`3px solid ${A}44`, background:`${A}04` }}>
+              <p style={{ ...M, fontSize:9, color:"#a1a1aa", lineHeight:1.8 }}>
+                {locked ? `✓ ${active.name} locked in` : "Select a barber to see their profile"}
+              </p>
+            </div>
+          </div>
+
+          {/* RIGHT — BIG DISPLAY */}
+          <div className={flash?"ps-flash":""} style={{ paddingLeft:44, paddingTop:20, paddingBottom:20, display:"flex", flexDirection:"column" }}>
+            {/* P5-style name stamp */}
+            <div style={{ display:"flex", alignItems:"center", gap:0, marginBottom:20 }}>
+              <div style={{ background:R, padding:"5px 14px 5px 10px", clipPath:"polygon(0 0,100% 0,calc(100% - 8px) 100%,0 100%)", marginRight:0 }}>
+                <span style={{ ...M, fontSize:7, color:"white", letterSpacing:"0.4em", textTransform:"uppercase" }}>HEADZ UP</span>
+              </div>
+              <div style={{ background:`${A}`, padding:"5px 18px 5px 14px", clipPath:"polygon(8px 0,100% 0,calc(100% - 8px) 100%,0 100%)" }}>
+                <span style={{ ...M, fontSize:7, color:"black", letterSpacing:"0.4em", textTransform:"uppercase" }}>BARBER</span>
+              </div>
+              <div style={{ flex:1, height:2, background:`linear-gradient(to right,${A}55,transparent)`, marginLeft:12 }}/>
             </div>
 
-            <div className={flash ? "ps-flash" : ""} style={{ paddingLeft: 44, paddingTop: 20, paddingBottom: 20, display: "flex", flexDirection: "column" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 0, marginBottom: 20 }}>
-                <div style={{ background: R, padding: "5px 14px 5px 10px", clipPath: "polygon(0 0,100% 0,calc(100% - 8px) 100%,0 100%)", marginRight: 0 }}>
-                  <span style={{ ...M, fontSize: 7, color: "white", letterSpacing: "0.4em", textTransform: "uppercase" }}>HEADZ UP</span>
-                </div>
-                <div style={{ background: `${A}`, padding: "5px 18px 5px 14px", clipPath: "polygon(8px 0,100% 0,calc(100% - 8px) 100%,0 100%)" }}>
-                  <span style={{ ...M, fontSize: 7, color: "black", letterSpacing: "0.4em", textTransform: "uppercase" }}>BARBER</span>
-                </div>
-                <div style={{ flex: 1, height: 2, background: `linear-gradient(to right,${A}55,transparent)`, marginLeft: 12 }} />
-              </div>
+            {/* ── CARD: photo + stats stacked ── */}
+            <div style={{ display:"flex", gap:20, flex:1, alignItems:"flex-start" }}>
 
-              <div style={{ display: "flex", gap: 20, flex: 1, alignItems: "flex-start" }}>
-                <div style={{
-                  position: "relative",
-                  width: 300,
-                  flexShrink: 0,
-                  clipPath: "polygon(0 0,calc(100% - 20px) 0,100% 20px,100% 100%,20px 100%,0 calc(100% - 20px))",
-                  background: "#080808",
-                  boxShadow: `0 0 0 1px ${A}22, 0 32px 80px rgba(0,0,0,0.8)`,
-                }}>
-                  <div style={{ height: 380, overflow: "hidden", position: "relative" }}>
-                    {validPhoto(active.photo_url || active.photo) ? (
-                      <>
-                        <img
-                          key={`hero-${active.id}`}
-                          src={validPhoto(active.photo_url || active.photo)}
+              {/* Photo card */}
+              <div style={{ position:"relative", width:300, flexShrink:0,
+                clipPath:"polygon(0 0,calc(100% - 20px) 0,100% 20px,100% 100%,20px 100%,0 calc(100% - 20px))",
+                background:"#080808",
+                boxShadow:`0 0 0 1px ${A}22, 0 32px 80px rgba(0,0,0,0.8)`,
+              }}>
+                {/* Photo — tall, zoomed out, full body */}
+                <div style={{ height:380, overflow:"hidden", position:"relative" }}>
+                  {validPhoto(active.photo_url||active.photo)
+                    ? <>
+                        <img key={`hero-${active.id}`}
+                          src={validPhoto(active.photo_url||active.photo)}
                           alt={active.name}
-                          style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "center 15%", display: "block", transition: "transform 0.8s cubic-bezier(0.4,0,0.2,1)" }}
-                        />
-                        <div style={{ position: "absolute", inset: 0, background: "radial-gradient(ellipse at center,transparent 40%,rgba(0,0,0,0.55) 100%)", pointerEvents: "none" }} />
+                          style={{ width:"100%", height:"100%", objectFit:"cover",
+                            objectPosition:"center 15%",   // slight zoom toward top — shows face + upper body
+                            display:"block",
+                            transition:"transform 0.8s cubic-bezier(0.4,0,0.2,1)",
+                          }}/>
+                        {/* Subtle vignette */}
+                        <div style={{ position:"absolute", inset:0,
+                          background:"radial-gradient(ellipse at center,transparent 40%,rgba(0,0,0,0.55) 100%)",
+                          pointerEvents:"none"
+                        }}/>
                       </>
-                    ) : (
-                      <div style={{ width: "100%", height: "100%", background: "linear-gradient(160deg,#0d0d0d,#1a1a1a)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                        <span style={{ ...D, fontSize: 120, color: `${A}08`, fontWeight: 900, userSelect: "none" }}>{(active.name || "?").charAt(0)}</span>
+                    : <div style={{ width:"100%", height:"100%", background:"linear-gradient(160deg,#0d0d0d,#1a1a1a)", display:"flex", alignItems:"center", justifyContent:"center" }}>
+                        <span style={{ ...D, fontSize:120, color:`${A}08`, fontWeight:900, userSelect:"none" }}>{(active.name||"?").charAt(0)}</span>
                       </div>
-                    )}
+                  }
 
-                    <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 120, background: "linear-gradient(to top,#080808 0%,rgba(8,8,8,0.7) 60%,transparent 100%)" }} />
+                  {/* Bottom gradient — fades into stats */}
+                  <div style={{ position:"absolute", bottom:0, left:0, right:0, height:120,
+                    background:"linear-gradient(to top,#080808 0%,rgba(8,8,8,0.7) 60%,transparent 100%)"
+                  }}/>
 
-                    {[{ top: 8, left: 8 }, { top: 8, right: 8 }, { bottom: 8, left: 8 }, { bottom: 8, right: 8 }].map((c, j) => (
-                      <div key={j} style={{ position: "absolute", width: 18, height: 18, ...(c.top !== undefined ? { top: c.top } : {}), ...(c.bottom !== undefined ? { bottom: c.bottom } : {}), ...(c.left !== undefined ? { left: c.left } : {}), ...(c.right !== undefined ? { right: c.right } : {}), pointerEvents: "none" }} />
-                    ))}
+                  {/* HUD corners */}
+                  {[
+                    {top:8,left:8,borderTop:`1.5px solid ${A}99`,borderLeft:`1.5px solid ${A}99`},
+                    {top:8,right:8,borderTop:`1.5px solid ${A}99`,borderRight:`1.5px solid ${A}99`},
+                    {bottom:8,left:8,borderBottom:`1.5px solid ${A}99`,borderLeft:`1.5px solid ${A}99`},
+                    {bottom:8,right:8,borderBottom:`1.5px solid ${A}99`,borderRight:`1.5px solid ${A}99`},
+                  ].map((c,j)=>(
+                    <div key={j} style={{ position:"absolute", width:18, height:18, ...c, pointerEvents:"none" }}/>
+                  ))}
 
-                    <div style={{ position: "absolute", top: 12, left: 12, display: "flex", alignItems: "center", gap: 6 }}>
-                      <div style={{ width: 7, height: 7, background: "#22c55e", borderRadius: "50%", animation: "p5-glow 2s infinite", boxShadow: "0 0 8px #22c55e" }} />
-                      <span style={{ ...M, fontSize: 7, color: "#4ade80", letterSpacing: "0.3em", textTransform: "uppercase" }}>AVAILABLE</span>
-                    </div>
-
-                    <div style={{ position: "absolute", top: 10, right: 10, background: `${R}dd`, padding: "3px 9px", clipPath: "polygon(6px 0,100% 0,100% 100%,0 100%)" }}>
-                      <span style={{ ...M, fontSize: 6, color: "white", letterSpacing: "0.3em", textTransform: "uppercase" }}>HEADZ UP</span>
-                    </div>
-
-                    <div style={{ position: "absolute", bottom: 12, left: 14, right: 14 }}>
-                      <p key={`name-${active.id}`} className="ps-name" style={{ ...D, fontSize: 22, fontWeight: 900, textTransform: "uppercase", letterSpacing: "-0.04em", color: "white", lineHeight: 1, textShadow: "0 2px 20px rgba(0,0,0,0.9)" }}>
-                        {active.name}
-                      </p>
-                      {active.bio && (
-                        <p style={{ ...M, fontSize: 9, color: "rgba(255,255,255,0.45)", marginTop: 4, lineHeight: 1.5, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 1, WebkitBoxOrient: "vertical", textShadow: "0 1px 8px rgba(0,0,0,1)" }}>
-                          {active.bio}
-                        </p>
-                      )}
-                    </div>
+                  {/* Status dot */}
+                  <div style={{ position:"absolute", top:12, left:12, display:"flex", alignItems:"center", gap:6 }}>
+                    <div style={{ width:7, height:7, background:"#22c55e", borderRadius:"50%", animation:"p5-glow 2s infinite", boxShadow:"0 0 8px #22c55e" }}/>
+                    <span style={{ ...M, fontSize:7, color:"#4ade80", letterSpacing:"0.3em", textTransform:"uppercase" }}>AVAILABLE</span>
                   </div>
 
-                  <div style={{ padding: "16px 16px 18px", background: "#080808", borderTop: `1px solid rgba(245,158,11,0.12)` }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-                      <span style={{ ...M, fontSize: 7, color: "rgba(245,158,11,0.4)", letterSpacing: "0.5em", textTransform: "uppercase" }}>SKILL RATINGS</span>
-                      <div style={{ display: "flex", gap: 3 }}>
-                        {[...Array(5)].map((_, i) => (
-                          <div key={i} style={{ width: 4, height: 4, background: A, opacity: 0.6 + (i * 0.08), clipPath: "polygon(50% 0%,100% 50%,50% 100%,0% 50%)" }} />
-                        ))}
-                      </div>
-                    </div>
+                  {/* HEADZ UP badge */}
+                  <div style={{ position:"absolute", top:10, right:10, background:`${R}dd`, padding:"3px 9px", clipPath:"polygon(6px 0,100% 0,100% 100%,0 100%)" }}>
+                    <span style={{ ...M, fontSize:6, color:"white", letterSpacing:"0.3em", textTransform:"uppercase" }}>HEADZ UP</span>
+                  </div>
 
-                    <div style={{ display: "flex", flexDirection: "column", gap: 9 }}>
-                      {STATS.map((s, si) => {
-                        const colors = [
-                          { bar: "#f59e0b", glow: "rgba(245,158,11,0.6)", val: "#f59e0b" },
-                          { bar: "#fbbf24", glow: "rgba(251,191,36,0.6)", val: "#fbbf24" },
-                          { bar: "#ef4444", glow: "rgba(239,68,68,0.6)", val: "#f87171" },
-                          { bar: "#f59e0b", glow: "rgba(245,158,11,0.6)", val: "#f59e0b" },
-                          { bar: "#22c55e", glow: "rgba(34,197,94,0.6)", val: "#4ade80" },
-                        ];
-                        const col = colors[si] || colors[0];
-                        return (
-                          <div key={s.k}>
-                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 4 }}>
-                              <span style={{ ...M, fontSize: 7, color: "#3f3f46", letterSpacing: "0.25em", textTransform: "uppercase" }}>{s.k}</span>
-                              <span style={{ ...M, fontSize: 9, color: col.val, fontWeight: 700 }}>{s.v}</span>
-                            </div>
-                            <div style={{ height: 3, background: "rgba(255,255,255,0.04)", position: "relative", overflow: "hidden", clipPath: "polygon(0 0,100% 0,100% 100%,0 100%)" }}>
-                              <div className="ps-bar" key={`sb-${active.id}-${s.k}`} style={{ position: "absolute", inset: "0 auto 0 0", background: `linear-gradient(to right,${col.bar},${col.val})`, boxShadow: `0 0 8px ${col.glow}`, "--w": `${s.v}%`, width: `${s.v}%` }} />
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-
-                    <div style={{ marginTop: 14, paddingTop: 12, borderTop: "1px solid rgba(255,255,255,0.05)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                      <div style={{ display: "flex", gap: 2 }}>{[...Array(5)].map((_, i) => <span key={i} style={{ color: A, fontSize: 10 }}>★</span>)}</div>
-                      <span style={{ ...M, fontSize: 9, color: "#52525b" }}>5.0 · Hattiesburg</span>
-                    </div>
+                  {/* Name overlaid on photo bottom */}
+                  <div style={{ position:"absolute", bottom:12, left:14, right:14 }}>
+                    <p key={`name-${active.id}`} className="ps-name"
+                      style={{ ...D, fontSize:22, fontWeight:900, textTransform:"uppercase",
+                        letterSpacing:"-0.04em", color:"white", lineHeight:1,
+                        textShadow:"0 2px 20px rgba(0,0,0,0.9)",
+                      }}>
+                      {active.name}
+                    </p>
+                    {active.bio && (
+                      <p style={{ ...M, fontSize:9, color:"rgba(255,255,255,0.45)", marginTop:4,
+                        lineHeight:1.5, overflow:"hidden", display:"-webkit-box",
+                        WebkitLineClamp:1, WebkitBoxOrient:"vertical",
+                        textShadow:"0 1px 8px rgba(0,0,0,1)"
+                      }}>{active.bio}</p>
+                    )}
                   </div>
                 </div>
 
-                <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 16 }}>
-                  <div>
-                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
-                      <div style={{ width: 3, height: 14, background: A }} />
-                      <span style={{ ...M, fontSize: 7, color: `${A}66`, letterSpacing: "0.5em", textTransform: "uppercase" }}>PROFILE_DATA</span>
-                    </div>
-                    {[["SHOP", "HEADZ UP"], ["CITY", "Hattiesburg, MS"], ["STYLE", "Precision Cuts"], ["RATING", "★★★★★"], ["STATUS", "● ONLINE"]].map(([l, v]) => (
-                      <div key={l} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", paddingBottom: 8, marginBottom: 8, borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
-                        <span style={{ ...M, fontSize: 7, color: "#52525b", letterSpacing: "0.25em", textTransform: "uppercase" }}>{l}</span>
-                        <span style={{ ...M, fontSize: 10, color: v.startsWith("●") ? "#4ade80" : v.startsWith("★") ? A : "#a1a1aa" }}>{v}</span>
-                      </div>
-                    ))}
-                  </div>
-
-                  <div>
-                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
-                      <div style={{ width: 3, height: 14, background: R }} />
-                      <span style={{ ...M, fontSize: 7, color: `${R}88`, letterSpacing: "0.5em", textTransform: "uppercase" }}>SPECIALTIES</span>
-                    </div>
-                    <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                      {["Fades", "Lineups", "Beards", "Kids", "Locs", "Designs"].map(tag => (
-                        <span key={tag} style={{ ...M, fontSize: 8, color: A, padding: "3px 10px", background: `${A}10`, border: `1px solid ${A}25`, clipPath: "polygon(0 0,calc(100% - 4px) 0,100% 4px,100% 100%,4px 100%,0 calc(100% - 4px))" }}>{tag}</span>
+                {/* ── STAT BARS underneath photo ── */}
+                <div style={{ padding:"16px 16px 18px", background:"#080808",
+                  borderTop:`1px solid rgba(245,158,11,0.12)`
+                }}>
+                  {/* Stat header */}
+                  <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:12 }}>
+                    <span style={{ ...M, fontSize:7, color:"rgba(245,158,11,0.4)", letterSpacing:"0.5em", textTransform:"uppercase" }}>SKILL RATINGS</span>
+                    <div style={{ display:"flex", gap:3 }}>
+                      {[...Array(5)].map((_,i)=>(
+                        <div key={i} style={{ width:4, height:4, background:A, opacity:0.6+(i*0.08),
+                          clipPath:"polygon(50% 0%,100% 50%,50% 100%,0% 50%)"
+                        }}/>
                       ))}
                     </div>
                   </div>
 
-                  <div style={{ padding: "12px 14px", background: "rgba(245,158,11,0.05)", border: `1px solid ${A}20`, clipPath: "polygon(0 0,calc(100% - 8px) 0,100% 8px,100% 100%,8px 100%,0 calc(100% - 8px))" }}>
-                    <p style={{ ...M, fontSize: 9, color: `${A}88`, letterSpacing: "0.3em", textTransform: "uppercase", marginBottom: 4 }}>DEPOSIT</p>
-                    <p style={{ ...D, fontSize: 20, color: A, fontWeight: 900 }}>$10 <span style={{ ...M, fontSize: 9, color: "#52525b" }}>to secure your spot</span></p>
+                  <div style={{ display:"flex", flexDirection:"column", gap:9 }}>
+                    {STATS.map((s,si)=>{
+                      const colors = [
+                        {bar:"#f59e0b",glow:"rgba(245,158,11,0.6)",val:"#f59e0b"},
+                        {bar:"#fbbf24",glow:"rgba(251,191,36,0.6)",val:"#fbbf24"},
+                        {bar:"#ef4444",glow:"rgba(239,68,68,0.6)",val:"#f87171"},
+                        {bar:"#f59e0b",glow:"rgba(245,158,11,0.6)",val:"#f59e0b"},
+                        {bar:"#22c55e",glow:"rgba(34,197,94,0.6)",val:"#4ade80"},
+                      ];
+                      const col = colors[si] || colors[0];
+                      return (
+                        <div key={s.k}>
+                          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"baseline", marginBottom:4 }}>
+                            <span style={{ ...M, fontSize:7, color:"#3f3f46", letterSpacing:"0.25em", textTransform:"uppercase" }}>{s.k}</span>
+                            <span style={{ ...M, fontSize:9, color:col.val, fontWeight:700 }}>{s.v}</span>
+                          </div>
+                          <div style={{ height:3, background:"rgba(255,255,255,0.04)", position:"relative", overflow:"hidden",
+                            clipPath:"polygon(0 0,100% 0,100% 100%,0 100%)"
+                          }}>
+                            <div className="ps-bar" key={`sb-${active.id}-${s.k}`}
+                              style={{ position:"absolute", inset:"0 auto 0 0",
+                                background:`linear-gradient(to right,${col.bar},${col.val})`,
+                                boxShadow:`0 0 8px ${col.glow}`,
+                                "--w":`${s.v}%`, width:`${s.v}%`
+                              }}/>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
 
-                  <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: "auto" }}>
-                    {!locked ? (
-                      <>
-                        <button onClick={lock} style={{ width: "100%", padding: "16px 20px", background: A, color: "black", ...D, fontSize: 9, fontWeight: 700, letterSpacing: "0.2em", textTransform: "uppercase", border: "none", cursor: "pointer", clipPath: "polygon(0 0,calc(100% - 10px) 0,100% 10px,100% 100%,10px 100%,0 calc(100% - 10px))", transition: "background 0.2s" }}>
+                  {/* Rating badge */}
+                  <div style={{ marginTop:14, paddingTop:12, borderTop:"1px solid rgba(255,255,255,0.05)",
+                    display:"flex", justifyContent:"space-between", alignItems:"center"
+                  }}>
+                    <div style={{ display:"flex", gap:2 }}>
+                      {[...Array(5)].map((_,i)=>(
+                        <span key={i} style={{ color:A, fontSize:10 }}>★</span>
+                      ))}
+                    </div>
+                    <span style={{ ...M, fontSize:9, color:"#52525b" }}>5.0 · Hattiesburg</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Right side: profile data + actions */}
+              <div style={{ flex:1, display:"flex", flexDirection:"column", gap:16 }}>
+
+                {/* Profile data */}
+                <div>
+                  <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:12 }}>
+                    <div style={{ width:3, height:14, background:A }}/>
+                    <span style={{ ...M, fontSize:7, color:`${A}66`, letterSpacing:"0.5em", textTransform:"uppercase" }}>PROFILE_DATA</span>
+                  </div>
+                  {[["SHOP","HEADZ UP"],["CITY","Hattiesburg, MS"],["STYLE","Precision Cuts"],["RATING","★★★★★"],["STATUS","● ONLINE"]].map(([l,v])=>(
+                    <div key={l} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", paddingBottom:8, marginBottom:8, borderBottom:"1px solid rgba(255,255,255,0.04)" }}>
+                      <span style={{ ...M, fontSize:7, color:"#52525b", letterSpacing:"0.25em", textTransform:"uppercase" }}>{l}</span>
+                      <span style={{ ...M, fontSize:10, color:v.startsWith("●")?"#4ade80":v.startsWith("★")?A:"#a1a1aa" }}>{v}</span>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Specialties */}
+                <div>
+                  <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:10 }}>
+                    <div style={{ width:3, height:14, background:R }}/>
+                    <span style={{ ...M, fontSize:7, color:`${R}88`, letterSpacing:"0.5em", textTransform:"uppercase" }}>SPECIALTIES</span>
+                  </div>
+                  <div style={{ display:"flex", gap:6, flexWrap:"wrap" }}>
+                    {["Fades","Lineups","Beards","Kids","Locs","Designs"].map(tag=>(
+                      <span key={tag} style={{ ...M, fontSize:8, color:A, padding:"3px 10px", background:`${A}10`, border:`1px solid ${A}25`,
+                        clipPath:"polygon(0 0,calc(100% - 4px) 0,100% 4px,100% 100%,4px 100%,0 calc(100% - 4px))"
+                      }}>{tag}</span>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Booking fee callout */}
+                <div style={{ padding:"12px 14px", background:"rgba(245,158,11,0.05)", border:`1px solid ${A}20`,
+                  clipPath:"polygon(0 0,calc(100% - 8px) 0,100% 8px,100% 100%,8px 100%,0 calc(100% - 8px))"
+                }}>
+                  <p style={{ ...M, fontSize:9, color:`${A}88`, letterSpacing:"0.3em", textTransform:"uppercase", marginBottom:4 }}>DEPOSIT</p>
+                  <p style={{ ...D, fontSize:20, color:A, fontWeight:900 }}>$10 <span style={{ ...M, fontSize:9, color:"#52525b" }}>to secure your spot</span></p>
+                </div>
+
+                {/* CTA buttons */}
+                <div style={{ display:"flex", flexDirection:"column", gap:8, marginTop:"auto" }}>
+                  {!locked
+                    ? <>
+                        <button onClick={lock} style={{ width:"100%", padding:"16px 20px", background:A, color:"black", ...D, fontSize:9, fontWeight:700, letterSpacing:"0.2em", textTransform:"uppercase", border:"none", cursor:"pointer",
+                          clipPath:"polygon(0 0,calc(100% - 10px) 0,100% 10px,100% 100%,10px 100%,0 calc(100% - 10px))", transition:"background 0.2s"
+                        }}
+                          onMouseEnter={e=>e.currentTarget.style.background="white"}
+                          onMouseLeave={e=>e.currentTarget.style.background=A}>
                           BOOK {active.name.split(" ")[0].toUpperCase()} →
                         </button>
-                        <a href="/book" onClick={book} style={{ width: "100%", padding: "13px 20px", background: "transparent", color: "#52525b", ...D, fontSize: 8, letterSpacing: "0.2em", textTransform: "uppercase", border: `1px solid rgba(255,255,255,0.08)`, cursor: "pointer", textDecoration: "none", display: "block", textAlign: "center", transition: "all 0.2s" }}>
+                        <a href="/book" onClick={book} style={{ width:"100%", padding:"13px 20px", background:"transparent", color:"#52525b", ...D, fontSize:8, letterSpacing:"0.2em", textTransform:"uppercase", border:`1px solid rgba(255,255,255,0.08)`, cursor:"pointer", textDecoration:"none", display:"block", textAlign:"center", transition:"all 0.2s" }}
+                          onMouseEnter={e=>{e.currentTarget.style.borderColor=`${A}44`;e.currentTarget.style.color=A;}}
+                          onMouseLeave={e=>{e.currentTarget.style.borderColor="rgba(255,255,255,0.08)";e.currentTarget.style.color="#52525b";}}>
                           VIEW ALL BARBERS
                         </a>
                       </>
-                    ) : (
-                      <>
-                        <button onClick={lock} style={{ width: "100%", padding: "16px 20px", background: "#22c55e", color: "black", ...D, fontSize: 9, fontWeight: 700, letterSpacing: "0.2em", textTransform: "uppercase", border: "none", cursor: "pointer", clipPath: "polygon(0 0,calc(100% - 10px) 0,100% 10px,100% 100%,10px 100%,0 calc(100% - 10px))" }}>
-                          ✓ LOCKED IN — BOOK NOW
-                        </button>
-                        <button onClick={() => setLocked(false)} style={{ width: "100%", padding: "13px 20px", background: "transparent", color: "#52525b", border: `1px solid rgba(255,255,255,0.08)`, cursor: "pointer", ...D, fontSize: 8, letterSpacing: "0.15em", textTransform: "uppercase", transition: "all 0.2s" }}>
-                          ← CHANGE BARBER
-                        </button>
+                    : <>
+                        <button onClick={lock} style={{ width:"100%", padding:"16px 20px", background:"#22c55e", color:"black", ...D, fontSize:9, fontWeight:700, letterSpacing:"0.2em", textTransform:"uppercase", border:"none", cursor:"pointer",
+                          clipPath:"polygon(0 0,calc(100% - 10px) 0,100% 10px,100% 100%,10px 100%,0 calc(100% - 10px))"
+                        }}>✓ LOCKED IN — BOOK NOW</button>
+                        <button onClick={()=>setLocked(false)} style={{ width:"100%", padding:"13px 20px", background:"transparent", color:"#52525b", border:`1px solid rgba(255,255,255,0.08)`, cursor:"pointer", ...D, fontSize:8, letterSpacing:"0.15em", textTransform:"uppercase", transition:"all 0.2s" }}
+                          onMouseEnter={e=>{e.currentTarget.style.color="white";e.currentTarget.style.borderColor="rgba(255,255,255,0.3)";}}
+                          onMouseLeave={e=>{e.currentTarget.style.color="#52525b";e.currentTarget.style.borderColor="rgba(255,255,255,0.08)";}}>← CHANGE BARBER</button>
                       </>
-                    )}
-                  </div>
+                  }
                 </div>
               </div>
             </div>
           </div>
+          </div>
+        </div>
         )}
       </div>
     </section>
@@ -629,7 +681,26 @@ export default function HomePage() {
               {!isMobile && <><div style={{ flex:1,height:1,background:`linear-gradient(to right,rgba(34,197,94,0.3),transparent)`,maxWidth:180,marginLeft:16 }}/><span style={{ ...M,fontSize:9,color:"#a1a1aa",letterSpacing:"0.2em" }}>2509 W 4th St · Hattiesburg MS</span></>}
             </div>
 
-            {/* Headline — Persona 5 style stagger */}
+            {/* SVG Logo */}
+            <div style={{ marginBottom:isMobile?24:32,opacity:heroIn?1:0,transform:heroIn?"none":"translateY(20px)",transition:"all 1s cubic-bezier(0.16,1,0.3,1) 0.08s" }}>
+              <svg width={isMobile?"260":"420"} viewBox="0 0 1200 350" xmlns="http://www.w3.org/2000/svg">
+                <defs>
+                  <linearGradient id="gold-hero" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stopColor="#f8e7b5"/>
+                    <stop offset="40%" stopColor="#d4af37"/>
+                    <stop offset="100%" stopColor="#8c6b2a"/>
+                  </linearGradient>
+                </defs>
+                <text x="40" y="210" fontSize="140" fontFamily="Brush Script MT, cursive" fill="white" stroke="url(#gold-hero)" strokeWidth="6">Headz</text>
+                <text x="820" y="210" fontSize="140" fontFamily="Brush Script MT, cursive" fill="white" stroke="url(#gold-hero)" strokeWidth="6">Up</text>
+                <polygon points="600,40 780,280 420,280" fill="none" stroke="#ef4444" strokeWidth="14"/>
+                <polygon points="600,60 760,270 440,270" fill="none" stroke="rgba(255,255,255,0.25)" strokeWidth="6"/>
+                <path d="M540 60 L570 10 L600 60 L630 10 L660 60 L660 75 L540 75 Z" fill="url(#gold-hero)"/>
+                <path d="M560 150 Q580 110 630 120 Q660 140 650 180 Q640 210 600 215 Q570 210 560 180 Z" fill="#c89b6d"/>
+                <path d="M580 190 Q600 240 640 190 Q630 230 600 240 Q580 230 580 190 Z" fill="#4a2f1d"/>
+                <text x="500" y="320" fontSize="28" fontFamily="Arial Black, sans-serif" fill="rgba(212,175,55,0.7)">BEAUTY &amp; BARBER SHOP</text>
+              </svg>
+            </div>
             <div style={{ marginBottom:isMobile?22:30 }}>
               {[{t:"Where",d:"0.16s",am:false},{t:"Every",d:"0.24s",am:false},{t:"Cut",d:"0.32s",am:false},{t:"Tells",d:"0.40s",am:false},{t:"A Story.",d:"0.50s",am:true,it:true}].map(({t,d,am,it})=>(
                 <h1 key={t} style={{ ...D,fontSize:"clamp(2.5rem,7.5vw,7rem)",fontWeight:900,textTransform:"uppercase",lineHeight:isMobile?1.08:0.9,letterSpacing:"-0.04em",color:am?A:"white",fontStyle:it?"italic":"normal",opacity:heroIn?1:0,transform:heroIn?"none":"translateY(30px)",transition:`opacity 1s cubic-bezier(0.16,1,0.3,1) ${d},transform 1s cubic-bezier(0.16,1,0.3,1) ${d}`,margin:0 }}>{t}</h1>
