@@ -282,137 +282,149 @@ function PSDesktop({ list, sel, setSel, active, locked, setLocked, flash, lock, 
 
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   GALLERY — Cinematic fullscreen slideshow
+   GALLERY — Stacked film strip with parallax hover
 ═══════════════════════════════════════════════════════════════════════════ */
 const GALLERY = [
-  { url:"/pictures/IMG_20260331_115011 (2).jpg", label:"Precision Fade",   sub:"Signature cut",  num:"01" },
-  { url:"/pictures/IMG_20260331_115011 (3).jpg", label:"Clean Lineup",     sub:"Sharp edges",    num:"02" },
-  { url:"/pictures/IMG_20260331_115011 (4).jpg", label:"Beard Trim",       sub:"Sculpted look",  num:"03" },
-  { url:"/pictures/IMG_20260331_115011 (5).jpg", label:"Kids Cutz",        sub:"Ages 1–12",      num:"04" },
-  { url:"/pictures/IMG_20260331_115011 (6).jpg", label:"Full Experience",  sub:"Cut & shave",    num:"05" },
-  { url:"/pictures/IMG_20260331_115011 (7).jpg", label:"The Chair",        sub:"Your throne",    num:"06" },
+  { url:"/pictures/IMG_20260331_115011 (2).jpg", label:"Precision Fade",  sub:"Signature cut",  num:"01" },
+  { url:"/pictures/IMG_20260331_115011 (3).jpg", label:"Clean Lineup",    sub:"Sharp edges",    num:"02" },
+  { url:"/pictures/IMG_20260331_115011 (4).jpg", label:"Beard Trim",      sub:"Sculpted look",  num:"03" },
+  { url:"/pictures/IMG_20260331_115011 (5).jpg", label:"Kids Cutz",       sub:"Ages 1-12",      num:"04" },
+  { url:"/pictures/IMG_20260331_115011 (6).jpg", label:"Full Experience", sub:"Cut and shave",  num:"05" },
+  { url:"/pictures/IMG_20260331_115011 (7).jpg", label:"The Chair",       sub:"Your throne",    num:"06" },
 ];
 
 function GalleryCarousel({ isMobile }) {
-  const [active,  setActive]  = useState(0);
-  const [prev,    setPrev]    = useState(null);
-  const [trans,   setTrans]   = useState(false);
-  const timerRef = useRef(null);
-  const N = GALLERY.length;
+  const [hov, setHov] = useState(null);
+  const [mousePos, setMousePos] = useState({ x:0, y:0 });
 
-  const goTo = useCallback((next) => {
-    if(trans) return;
-    setPrev(active);
-    setTrans(true);
-    setActive(next);
-    setTimeout(() => { setPrev(null); setTrans(false); }, 700);
-  }, [active, trans]);
-
-  const goNext = useCallback(() => goTo((active+1)%N),    [active, goTo, N]);
-  const goPrev = useCallback(() => goTo((active-1+N)%N),  [active, goTo, N]);
-
-  useEffect(() => {
-    timerRef.current = setInterval(goNext, 4500);
-    return () => clearInterval(timerRef.current);
-  }, [goNext]);
-
-  const pause  = () => clearInterval(timerRef.current);
-  const resume = () => { timerRef.current = setInterval(goNext, 4500); };
+  const onMove = (e, i) => {
+    const r = e.currentTarget.getBoundingClientRect();
+    setMousePos({
+      x: ((e.clientX - r.left) / r.width  - 0.5) * 18,
+      y: ((e.clientY - r.top)  / r.height - 0.5) * 12,
+    });
+    setHov(i);
+  };
 
   return (
-    <section
-      style={{ position:"relative", overflow:"hidden", background:"#000",
-        height:isMobile?"72vw":"min(78vh,660px)",
-        borderTop:"1px solid rgba(245,158,11,0.2)",
-        borderBottom:"1px solid rgba(245,158,11,0.2)",
-      }}
-      onMouseEnter={pause} onMouseLeave={resume}
-    >
+    <section style={{ background:"#000", borderTop:"1px solid rgba(245,158,11,0.2)", borderBottom:"1px solid rgba(245,158,11,0.2)", padding:isMobile?"36px 0 40px":"56px 0 64px", overflow:"hidden", position:"relative" }}>
       <style>{`
-        @keyframes gIn  { from{opacity:0;transform:scale(1.05)} to{opacity:1;transform:scale(1)} }
-        @keyframes gOut { from{opacity:1;transform:scale(1)} to{opacity:0;transform:scale(0.97)} }
-        @keyframes gLbl { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:none} }
-        @keyframes gNum { from{opacity:0;transform:translateX(-10px)} to{opacity:1;transform:none} }
-        @keyframes gScan{ 0%{top:-2px} 100%{top:100%} }
-        .g-in  { animation: gIn  0.75s cubic-bezier(0.16,1,0.3,1) both; }
-        .g-out { animation: gOut 0.75s cubic-bezier(0.16,1,0.3,1) both; position:absolute;inset:0;z-index:1; }
-        .g-lbl { animation: gLbl 0.6s cubic-bezier(0.16,1,0.3,1) 0.25s both; }
-        .g-num { animation: gNum 0.5s cubic-bezier(0.16,1,0.3,1) 0.1s both; }
+        @keyframes gfadeup { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:none} }
+        .gcell { cursor:pointer; }
+        .gcell img { transition: transform 0.55s cubic-bezier(0.16,1,0.3,1), filter 0.4s; }
+        .gcell:hover img { filter: brightness(0.85) contrast(1.08) saturate(1.1) !important; }
+        .gcell .goverlay { transition: opacity 0.35s; }
+        .gcell:hover .goverlay { opacity:1 !important; }
+        .gcell .glabel { transition: transform 0.4s cubic-bezier(0.16,1,0.3,1), opacity 0.35s; }
+        .gcell:hover .glabel { transform:none !important; opacity:1 !important; }
       `}</style>
 
-      {/* Exiting slide */}
-      {prev!==null && (
-        <div className="g-out">
-          <img src={GALLERY[prev].url} alt="" style={{ width:"100%",height:"100%",objectFit:"cover",objectPosition:"center top" }}/>
-          <div style={{ position:"absolute",inset:0,background:"linear-gradient(to top,rgba(0,0,0,0.95) 0%,rgba(0,0,0,0.3) 55%,transparent 100%)" }}/>
+      {/* Section header */}
+      <div style={{ display:"flex", alignItems:"center", gap:0, marginBottom:isMobile?28:44, padding:`0 ${isMobile?"20px":"clamp(20px,5vw,44px)"}` }}>
+        <div style={{ background:"#ef4444", padding:"5px 14px 5px 10px", clipPath:"polygon(0 0,100% 0,calc(100% - 8px) 100%,0 100%)" }}>
+          <span style={{ fontFamily:"'Syncopate',sans-serif", fontSize:7, fontWeight:900, color:"white", letterSpacing:"0.4em", textTransform:"uppercase" }}>THE</span>
         </div>
-      )}
-
-      {/* Active slide */}
-      <div className="g-in" style={{ position:"absolute",inset:0,zIndex:2 }}>
-        <img
-          src={GALLERY[active].url}
-          alt={GALLERY[active].label}
-          style={{ width:"100%",height:"100%",objectFit:"cover",objectPosition:"center top",display:"block" }}
-        />
-        <div style={{ position:"absolute",inset:0,background:"linear-gradient(to top,rgba(0,0,0,0.96) 0%,rgba(0,0,0,0.35) 45%,rgba(0,0,0,0.08) 100%)" }}/>
-        <div style={{ position:"absolute",left:0,right:0,height:1,background:"rgba(245,158,11,0.1)",animation:"gScan 3.5s linear infinite",zIndex:1,pointerEvents:"none" }}/>
-        <div style={{ position:"absolute",inset:0,backgroundImage:"repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.06) 2px,rgba(0,0,0,0.06) 3px)",pointerEvents:"none",zIndex:1 }}/>
+        <div style={{ background:"#f59e0b", padding:"5px 16px 5px 12px", clipPath:"polygon(8px 0,100% 0,calc(100% - 8px) 100%,0 100%)" }}>
+          <span style={{ fontFamily:"'Syncopate',sans-serif", fontSize:7, fontWeight:900, color:"black", letterSpacing:"0.4em", textTransform:"uppercase" }}>WORK</span>
+        </div>
+        <div style={{ flex:1, height:2, background:"linear-gradient(to right,rgba(245,158,11,0.4),transparent)", marginLeft:12 }}/>
+        <span style={{ fontFamily:"'DM Mono',monospace", fontSize:9, color:"rgba(255,255,255,0.2)", letterSpacing:"0.3em", paddingRight:isMobile?"20px":"clamp(20px,5vw,44px)" }}>{GALLERY.length} CUTS</span>
       </div>
 
-      {/* Header stamp */}
-      <div style={{ position:"absolute",top:isMobile?14:24,left:isMobile?14:28,zIndex:10,display:"flex",alignItems:"center",gap:0 }}>
-        <div style={{ background:"#ef4444",padding:"5px 14px 5px 10px",clipPath:"polygon(0 0,100% 0,calc(100% - 8px) 100%,0 100%)" }}>
-          <span style={{ fontFamily:"'Syncopate',sans-serif",fontSize:7,fontWeight:900,color:"white",letterSpacing:"0.4em",textTransform:"uppercase" }}>THE</span>
-        </div>
-        <div style={{ background:"#f59e0b",padding:"5px 16px 5px 12px",clipPath:"polygon(8px 0,100% 0,calc(100% - 8px) 100%,0 100%)" }}>
-          <span style={{ fontFamily:"'Syncopate',sans-serif",fontSize:7,fontWeight:900,color:"black",letterSpacing:"0.4em",textTransform:"uppercase" }}>WORK</span>
-        </div>
-      </div>
-
-      {/* Counter */}
-      <div key={"n"+active} className="g-num" style={{ position:"absolute",top:isMobile?14:24,right:isMobile?14:28,zIndex:10,display:"flex",alignItems:"baseline",gap:5 }}>
-        <span style={{ fontFamily:"'Syncopate',sans-serif",fontSize:isMobile?22:30,fontWeight:900,color:"#f59e0b",lineHeight:1 }}>{GALLERY[active].num}</span>
-        <span style={{ fontFamily:"'DM Mono',monospace",fontSize:10,color:"rgba(255,255,255,0.25)" }}>/{String(N).padStart(2,"0")}</span>
-      </div>
-
-      {/* Bottom: label + controls */}
-      <div style={{ position:"absolute",bottom:0,left:0,right:0,zIndex:10,padding:isMobile?"16px 16px 20px":"24px 36px 32px",display:"flex",justifyContent:"space-between",alignItems:"flex-end",gap:16 }}>
-        <div key={"l"+active} className="g-lbl" style={{ flex:1,minWidth:0 }}>
-          <p style={{ fontFamily:"'DM Mono',monospace",fontSize:isMobile?8:9,color:"#f59e0b",letterSpacing:"0.4em",textTransform:"uppercase",marginBottom:5 }}>
-            {GALLERY[active].sub}
-          </p>
-          <h3 style={{ fontFamily:"'Syncopate',sans-serif",fontSize:isMobile?"clamp(1.1rem,5vw,1.6rem)":"clamp(1.4rem,2.8vw,2.2rem)",fontWeight:900,textTransform:"uppercase",letterSpacing:"-0.03em",color:"white",lineHeight:1,margin:0 }}>
-            {GALLERY[active].label}
-          </h3>
-        </div>
-        <div style={{ display:"flex",flexDirection:"column",alignItems:"flex-end",gap:12,flexShrink:0 }}>
-          <div style={{ display:"flex",gap:6 }}>
-            {[[goPrev,"←"],[goNext,"→"]].map(([fn,icon])=>(
-              <button key={icon} onClick={fn}
-                style={{ width:isMobile?36:42,height:isMobile?36:42,background:"rgba(0,0,0,0.55)",border:"1px solid rgba(245,158,11,0.3)",color:"#f59e0b",cursor:"pointer",fontSize:15,display:"flex",alignItems:"center",justifyContent:"center",backdropFilter:"blur(10px)",transition:"all 0.18s" }}
-                onMouseEnter={e=>{e.currentTarget.style.background="rgba(245,158,11,0.15)";e.currentTarget.style.borderColor="#f59e0b";}}
-                onMouseLeave={e=>{e.currentTarget.style.background="rgba(0,0,0,0.55)";e.currentTarget.style.borderColor="rgba(245,158,11,0.3)";}}>
-                {icon}
-              </button>
-            ))}
-          </div>
-          <div style={{ display:"flex",gap:5,alignItems:"center" }}>
-            {GALLERY.map((_,i)=>(
-              <button key={i} onClick={()=>goTo(i)}
-                style={{ width:i===active?20:4,height:3,background:i===active?"#f59e0b":"rgba(255,255,255,0.2)",border:"none",cursor:"pointer",padding:0,transition:"all 0.35s cubic-bezier(0.16,1,0.3,1)",minHeight:"auto",minWidth:"auto",clipPath:i===active?"polygon(0 0,calc(100% - 3px) 0,100% 3px,100% 100%,3px 100%,0 calc(100% - 3px))":"none" }}/>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {!isMobile && <>
-        <div onClick={goPrev} style={{ position:"absolute",left:0,top:0,bottom:0,width:"12%",cursor:"w-resize",zIndex:5 }}/>
-        <div onClick={goNext} style={{ position:"absolute",right:0,top:0,bottom:0,width:"12%",cursor:"e-resize",zIndex:5 }}/>
-      </>}
+      {isMobile ? (
+        <GalleryMobile/>
+      ) : (<GalleryDesktop hov={hov} setHov={setHov} mousePos={mousePos} onMove={onMove}/>)}
     </section>
   );
 }
+
+function GalleryMobile() {
+  const [active, setActive] = useState(0);
+
+  return (
+    <div>
+      {/* Big featured photo */}
+      <div style={{ position:"relative", height:"60vw", overflow:"hidden", marginBottom:12 }}>
+        {GALLERY.map((g,i) => (
+          <div key={i} style={{ position:"absolute", inset:0, opacity:i===active?1:0, transition:"opacity 0.5s cubic-bezier(0.16,1,0.3,1)", pointerEvents:i===active?"auto":"none" }}>
+            <img src={g.url} alt={g.label} style={{ width:"100%", height:"100%", objectFit:"cover", objectPosition:"center top" }}/>
+            <div style={{ position:"absolute", inset:0, background:"linear-gradient(to top,rgba(0,0,0,0.92) 0%,transparent 50%)" }}/>
+            <div style={{ position:"absolute", bottom:0, left:0, right:0, padding:"16px 20px 20px" }}>
+              <div style={{ display:"flex", alignItems:"baseline", gap:8, marginBottom:4 }}>
+                <span style={{ fontFamily:"'Syncopate',sans-serif", fontSize:22, fontWeight:900, color:"#f59e0b", lineHeight:1 }}>{g.num}</span>
+                <span style={{ fontFamily:"'DM Mono',monospace", fontSize:8, color:"rgba(255,255,255,0.2)" }}>/ 06</span>
+              </div>
+              <p style={{ fontFamily:"'DM Mono',monospace", fontSize:8, color:"#f59e0b", letterSpacing:"0.35em", textTransform:"uppercase", marginBottom:4 }}>{g.sub}</p>
+              <h3 style={{ fontFamily:"'Syncopate',sans-serif", fontSize:"clamp(1rem,4vw,1.4rem)", fontWeight:900, color:"white", textTransform:"uppercase", letterSpacing:"-0.02em", margin:0 }}>{g.label}</h3>
+            </div>
+            <div style={{ position:"absolute", inset:0, backgroundImage:"repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.05) 2px,rgba(0,0,0,0.05) 3px)", pointerEvents:"none" }}/>
+          </div>
+        ))}
+      </div>
+      {/* Thumbnail strip */}
+      <div style={{ display:"flex", gap:3, padding:"0 20px", overflowX:"auto" }}>
+        {GALLERY.map((g,i) => (
+          <button key={i} onClick={() => setActive(i)}
+            style={{ flexShrink:0, width:58, height:72, overflow:"hidden", padding:0, border:`2px solid ${i===active?"#f59e0b":"transparent"}`, position:"relative", cursor:"pointer", minHeight:"auto", minWidth:"auto", transition:"border-color 0.2s" }}>
+            <img src={g.url} alt={g.label} style={{ width:"100%", height:"100%", objectFit:"cover", objectPosition:"center top", filter:i===active?"none":"brightness(0.3)", transition:"filter 0.25s" }}/>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function GalleryDesktop({ hov, setHov, mousePos, onMove }) {
+  return (
+    <div style={{ display:"grid", gridTemplateColumns:"repeat(6,1fr)", gap:3, padding:"0 clamp(20px,5vw,44px)" }}>
+      {GALLERY.map((g,i) => {
+        const isHov = hov === i;
+        const tiltX = isHov ? mousePos.y : 0;
+        const tiltY = isHov ? -mousePos.x : 0;
+        return (
+          <div key={i} className="gcell"
+            style={{ position:"relative", paddingTop:"140%", overflow:"hidden",
+              clipPath:isHov?"polygon(0 0,calc(100% - 12px) 0,100% 12px,100% 100%,12px 100%,0 calc(100% - 12px))":"none",
+              boxShadow:isHov?"0 24px 80px rgba(0,0,0,0.9), 0 0 0 1px rgba(245,158,11,0.5)":"none",
+              transform:isHov?"scale(1.06)":"scale(1)",
+              zIndex:isHov?10:1,
+              transition:"transform 0.45s cubic-bezier(0.16,1,0.3,1), box-shadow 0.35s, z-index 0s, clip-path 0.35s",
+            }}
+            onMouseEnter={() => setHov(i)}
+            onMouseLeave={() => setHov(null)}
+            onMouseMove={e => onMove(e, i)}>
+            <img src={g.url} alt={g.label}
+              style={{ position:"absolute", inset:0, width:"100%", height:"100%", objectFit:"cover", objectPosition:"center top",
+                transform:`perspective(600px) rotateX(${tiltX}deg) rotateY(${tiltY}deg) scale(${isHov?1.08:1})`,
+                filter:isHov?"brightness(0.9) contrast(1.1) saturate(1.15)":"brightness(0.45) saturate(0.3) contrast(0.9)",
+              }}/>
+            {/* Always-on dark gradient */}
+            <div style={{ position:"absolute", inset:0, background:"linear-gradient(to top,rgba(0,0,0,0.9) 0%,rgba(0,0,0,0.2) 55%,transparent 100%)", pointerEvents:"none" }}/>
+            {/* Hover color overlay */}
+            <div className="goverlay" style={{ position:"absolute", inset:0, background:"linear-gradient(to top,rgba(245,158,11,0.15) 0%,transparent 60%)", opacity:0, pointerEvents:"none" }}/>
+            {/* CRT lines */}
+            <div style={{ position:"absolute", inset:0, backgroundImage:"repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.07) 2px,rgba(0,0,0,0.07) 3px)", pointerEvents:"none", zIndex:1 }}/>
+            {/* Number — always visible */}
+            <div style={{ position:"absolute", top:10, left:10, zIndex:2 }}>
+              <span style={{ fontFamily:"'Syncopate',sans-serif", fontSize:isHov?18:13, fontWeight:900, color:isHov?"#f59e0b":"rgba(255,255,255,0.2)", lineHeight:1, transition:"font-size 0.3s, color 0.3s" }}>{g.num}</span>
+            </div>
+            {/* Label — slides up on hover */}
+            <div className="glabel" style={{ position:"absolute", bottom:0, left:0, right:0, padding:"12px 10px 14px", zIndex:2,
+              transform:"translateY(8px)", opacity:0 }}>
+              <p style={{ fontFamily:"'DM Mono',monospace", fontSize:8, color:"#f59e0b", letterSpacing:"0.35em", textTransform:"uppercase", marginBottom:3 }}>{g.sub}</p>
+              <p style={{ fontFamily:"'Syncopate',sans-serif", fontSize:9, fontWeight:900, color:"white", textTransform:"uppercase", letterSpacing:"-0.01em", margin:0 }}>{g.label}</p>
+            </div>
+            {/* Active border accent */}
+            {isHov && (
+              <div style={{ position:"absolute", inset:0, border:"1px solid rgba(245,158,11,0.4)", pointerEvents:"none", zIndex:3 }}/>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 
 /* ═══════════════════════════════════════════════════════════════════════════
    STATIC DATA
