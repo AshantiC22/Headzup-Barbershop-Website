@@ -673,8 +673,7 @@ export default function BarberDashboard(){
 
   /* waitlist */
   const [waitlist,     setWaitlist]    = useState([]);
-  const [seenWaitlistCount, setSeenWaitlistCount] = useState(0);
-  const [prevWaitlistCount, setPrevWaitlistCount] = useState(0);
+  const [unreadWaitlist, setUnreadWaitlist] = useState(0);
 
   /* clients */
   const [clients,      setClients]     = useState([]);
@@ -798,15 +797,24 @@ export default function BarberDashboard(){
   const loadWaitlist=useCallback(async(isInitial=false)=>{
     try{
       const r=await API.get("barber/waitlist/");
-      const data=r.data||[];
-      setWaitlist(data);
-      // On initial load, mark all as seen so we don't badge for old entries
-      if(isInitial) setSeenWaitlistCount(data.length);
+      const data=Array.isArray(r.data)?r.data:[];
+      setWaitlist(prev=>{
+        // If new entries arrived since last load, increment unread
+        if(!isInitial && data.length > prev.length){
+          setUnreadWaitlist(u => u + (data.length - prev.length));
+        }
+        return data;
+      });
     }catch{}
   },[]);
   useEffect(()=>{if(activeTab==="waitlist")loadWaitlist();},[activeTab,loadWaitlist]);
   // Also load on mount for badge count
   useEffect(()=>{loadWaitlist(true);},[]);
+  // Poll waitlist every 30s so badge appears when new walk-ins arrive
+  useEffect(()=>{
+    const id = setInterval(()=>{ if(activeTab!=="waitlist") loadWaitlist(); }, 30000);
+    return ()=>clearInterval(id);
+  },[activeTab, loadWaitlist]);
 
   /* load clients */
   const loadClients=useCallback(async()=>{
@@ -929,7 +937,7 @@ export default function BarberDashboard(){
       setWiName("");setWiPhone("");setWiNotes("");setWiSvc("");
       setWiEmail("");setWiTime("");setWiSlots([]);setWiBooked([]);
       loadSchedule(selectedDate);
-      loadWaitlist();  // refresh waitlist so new walk-in appears — badge auto-shows since count increases
+      loadWaitlist();  // increments unreadWaitlist automatically since length increases
       showToast(`✓ ${wiName} added${(wiPhone||wiEmail)?" — welcome message sent!":""}`);
     }catch(e){showToast(e.response?.data?.error||"Could not add walk-in.","error");}
     finally{setWiLoading(false);}
@@ -1092,10 +1100,10 @@ export default function BarberDashboard(){
         <div style={{maxWidth:1280,margin:"0 auto",borderTop:`1px solid ${T.border}`,display:"flex",overflowX:"auto",WebkitOverflowScrolling:"touch"}}>
           {TABS.map(({key,label,icon})=>{
             const pendingReschedules = key==="reschedules" ? reschedules.filter(r=>r.status==="pending").length : 0;
-            const pendingWaitlist    = key==="waitlist"    ? Math.max(0, waitlist.length - seenWaitlistCount) : 0;
+            const pendingWaitlist    = key==="waitlist"    ? unreadWaitlist : 0;
             const badgeCount = pendingReschedules || pendingWaitlist;
             return(
-              <button key={key} onClick={()=>{setActiveTab(key);if(key==="waitlist")setSeenWaitlistCount(waitlist.length);}}
+              <button key={key} onClick={()=>{setActiveTab(key);if(key==="waitlist")setUnreadWaitlist(0);}}
                 style={{
                   padding:isMobile?"8px 10px":"11px 22px",
                   ...sf,
