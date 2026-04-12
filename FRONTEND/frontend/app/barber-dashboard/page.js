@@ -578,6 +578,22 @@ function MonthCal({year, month, selectedDate, apptDates, onSelect, onPrev, onNex
                 onMouseEnter={e=>{if(!isSel){e.currentTarget.style.background=T.amberDim;e.currentTarget.style.borderColor=T.amberBorder;}}}
                 onMouseLeave={e=>{if(!isSel){e.currentTarget.style.background=isToday?T.amberDim:"transparent";e.currentTarget.style.borderColor=isToday?T.amberBorder:"transparent";}}}>
 
+                {/* Notification badge — top right corner, like a text message count */}
+                {hasAppt && (
+                  <div style={{
+                    position:"absolute", top:-5, right:-5,
+                    minWidth:16, height:16, borderRadius:8,
+                    background: count >= 10 ? "#ef4444" : count >= 5 ? "#f59e0b" : "#22c55e",
+                    color:"black", display:"flex", alignItems:"center", justifyContent:"center",
+                    padding:"0 4px",
+                    boxShadow:`0 0 6px ${count>=10?"rgba(239,68,68,0.8)":count>=5?"rgba(245,158,11,0.8)":"rgba(34,197,94,0.8)"}`,
+                    zIndex:2, border:"1.5px solid #000",
+                    animation: !isPast&&!isSel ? "badgePulse 2.5s ease-in-out infinite" : "none",
+                  }}>
+                    <span style={{fontFamily:"'DM Mono',monospace", fontSize:7, fontWeight:900, lineHeight:1}}>{count > 99 ? "99+" : count}</span>
+                  </div>
+                )}
+
                 {/* Day number */}
                 <span style={{
                   ...sf, fontSize:10, fontWeight: isSel||isToday ? 900 : 400,
@@ -589,14 +605,6 @@ function MonthCal({year, month, selectedDate, apptDates, onSelect, onPrev, onNex
                   lineHeight:1,
                 }}>{d}</span>
 
-                {/* Appointment dot(s) */}
-                {hasAppt && (
-                  <div style={{display:"flex",gap:1,alignItems:"center",justifyContent:"center"}}>
-                    {count >= 1 && <div style={{width:4,height:4,borderRadius:"50%",background:isSel?"rgba(0,0,0,0.5)":T.amber,flexShrink:0}}/>}
-                    {count >= 3 && <div style={{width:4,height:4,borderRadius:"50%",background:isSel?"rgba(0,0,0,0.4)":"#f59e0b",flexShrink:0,opacity:0.7}}/>}
-                    {count >= 5 && <div style={{width:4,height:4,borderRadius:"50%",background:isSel?"rgba(0,0,0,0.3)":"#ef4444",flexShrink:0,opacity:0.7}}/>}
-                  </div>
-                )}
               </button>
             );
           })}
@@ -778,6 +786,8 @@ export default function BarberDashboard(){
     try{const r=await API.get("barber/waitlist/");setWaitlist(r.data);}catch{}
   },[]);
   useEffect(()=>{if(activeTab==="waitlist")loadWaitlist();},[activeTab,loadWaitlist]);
+  // Also load on mount for badge count
+  useEffect(()=>{loadWaitlist();},[]);
 
   /* load clients */
   const loadClients=useCallback(async()=>{
@@ -813,6 +823,8 @@ export default function BarberDashboard(){
     finally{setReschedLoading(false);}
   },[]);
   useEffect(()=>{if(activeTab==="reschedules")loadReschedules();},[activeTab,loadReschedules]);
+  // Also load on mount for badge count
+  useEffect(()=>{loadReschedules();},[]);
 
   // Load pending reschedule count on mount so notification badge shows immediately
   useEffect(()=>{
@@ -979,6 +991,7 @@ export default function BarberDashboard(){
         @keyframes scandown {from{top:-1px}to{top:100%}}
         @keyframes pulse    {0%,100%{opacity:0.4}50%{opacity:1}}
         @keyframes glow     {0%,100%{box-shadow:0 0 0 0 rgba(34,197,94,0.5)}50%{box-shadow:0 0 0 8px rgba(34,197,94,0)}}
+        @keyframes badgePulse {0%,100%{transform:scale(1)}50%{transform:scale(1.18)}}
         .bd-enter{animation:fadeUp 0.5s cubic-bezier(0.16,1,0.3,1) both;}
         input[type="date"]{color-scheme:dark;}
         input[type="time"]{color-scheme:dark;}
@@ -1054,7 +1067,9 @@ export default function BarberDashboard(){
         {/* Tab strip */}
         <div style={{maxWidth:1280,margin:"0 auto",borderTop:`1px solid ${T.border}`,display:"flex",overflowX:"auto",WebkitOverflowScrolling:"touch"}}>
           {TABS.map(({key,label,icon})=>{
-            const pendingCount = key==="reschedules" ? reschedules.filter(r=>r.status==="pending").length : 0;
+            const pendingReschedules = key==="reschedules" ? reschedules.filter(r=>r.status==="pending").length : 0;
+            const pendingWaitlist    = key==="waitlist"    ? waitlist.filter(w=>!w.notified).length            : 0;
+            const badgeCount = pendingReschedules || pendingWaitlist;
             return(
               <button key={key} onClick={()=>setActiveTab(key)}
                 style={{
@@ -1075,9 +1090,19 @@ export default function BarberDashboard(){
                 }}>
                 <span style={{fontSize:isMobile?18:12,position:"relative"}}>
                   {icon}
-                  {pendingCount>0&&(
-                    <span style={{position:"absolute",top:-4,right:-6,width:14,height:14,background:"#ef4444",borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center"}}>
-                      <span style={{...mono,fontSize:7,color:"white",fontWeight:900,lineHeight:1}}>{pendingCount}</span>
+                  {badgeCount>0&&(
+                    <span style={{
+                      position:"absolute",top:-6,right:-8,
+                      minWidth:16,height:16,borderRadius:8,
+                      background: key==="waitlist" ? "#f59e0b" : "#ef4444",
+                      display:"flex",alignItems:"center",justifyContent:"center",
+                      padding:"0 4px",
+                      boxShadow: key==="waitlist" ? "0 0 6px rgba(245,158,11,0.9)" : "0 0 6px rgba(239,68,68,0.9)",
+                      border:"1.5px solid #000",
+                      animation:"badgePulse 2s ease-in-out infinite",
+                      zIndex:2,
+                    }}>
+                      <span style={{...mono,fontSize:7,color:"black",fontWeight:900,lineHeight:1}}>{badgeCount > 99 ? "99+" : badgeCount}</span>
                     </span>
                   )}
                 </span>
