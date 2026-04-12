@@ -404,12 +404,12 @@ export default function BarberLoginPage() {
         {/* Main card */}
         <div style={{ width: "100%", maxWidth: 480, margin: "0 auto", background: "rgba(4,4,4,0.85)", border: "1px solid rgba(255,255,255,0.08)", backdropFilter: "blur(20px)", overflow: "hidden" }}>
 
-          {/* Card header — amber band */}
-          <div style={{ background: "#f59e0b", padding: "24px 20px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          {/* Card header — RED band for barber portal */}
+          <div style={{ background: "linear-gradient(135deg,#ef4444,#dc2626)", padding: "24px 20px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <div>
-              <p style={{ ...mono, fontSize: 8, color: "rgba(0,0,0,0.5)", letterSpacing: "0.4em", textTransform: "uppercase", marginBottom: 4 }}>Barber Portal</p>
-              <h1 style={{ ...sf, fontSize: 22, fontWeight: 900, textTransform: "uppercase", letterSpacing: "-0.04em", color: "black", lineHeight: 1 }}>
-                HEADZ<span style={{ fontStyle: "italic" }}>UP</span>
+              <p style={{ ...mono, fontSize: 8, color: "rgba(255,255,255,0.6)", letterSpacing: "0.4em", textTransform: "uppercase", marginBottom: 4 }}>✂️ Barber Portal</p>
+              <h1 style={{ ...sf, fontSize: 22, fontWeight: 900, textTransform: "uppercase", letterSpacing: "-0.04em", color: "white", lineHeight: 1 }}>
+                HEADZ<span style={{ fontStyle: "italic", color: "#fbbf24" }}>UP</span>
               </h1>
             </div>
             <Scissors />
@@ -747,13 +747,13 @@ export default function BarberLoginPage() {
 
           {/* Card footer */}
           <div style={{ padding: "14px 20px 20px", borderTop: "1px solid rgba(255,255,255,0.05)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <p style={{ ...mono, fontSize: 9, color: "#1a1a1a", letterSpacing: "0.3em", textTransform: "uppercase" }}>
-              Barbers only
+            <p style={{ ...mono, fontSize: 9, color: "#52525b", letterSpacing: "0.3em", textTransform: "uppercase" }}>
+              ✂️ Barbers only
             </p>
-            <a href="/login" style={{ ...mono, fontSize: 9, color: "#27272a", textDecoration: "none", transition: "color 0.2s" }}
-              onMouseEnter={e => e.currentTarget.style.color = "#52525b"}
-              onMouseLeave={e => e.currentTarget.style.color = "#27272a"}>
-              Client login →
+            <a href="/login" style={{ ...mono, fontSize: 10, color: "#f59e0b", textDecoration: "none", transition: "color 0.2s" }}
+              onMouseEnter={e => e.currentTarget.style.color = "white"}
+              onMouseLeave={e => e.currentTarget.style.color = "#f59e0b"}>
+              Not a barber? Client login →
             </a>
           </div>
         </div>

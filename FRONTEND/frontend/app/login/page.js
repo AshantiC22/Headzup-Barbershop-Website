@@ -351,6 +351,9 @@ function LoginContent() {
             <p style={{ ...sf, fontSize: "clamp(6rem,14vw,12rem)", fontWeight: 900, lineHeight: 1, letterSpacing: "-0.06em", WebkitTextStroke: "1px rgba(255,255,255,0.06)", color: "transparent", userSelect: "none", marginBottom: -20 }}>
               HZ
             </p>
+            <div style={{ display: "inline-flex", background: "#f59e0b", padding: "4px 12px", marginBottom: 12, clipPath: "polygon(0 0,calc(100% - 6px) 0,100% 6px,100% 100%,6px 100%,0 calc(100% - 6px))" }}>
+              <span style={{ ...sf, fontSize: 7, fontWeight: 900, color: "black", letterSpacing: "0.4em", textTransform: "uppercase" }}>Client Portal</span>
+            </div>
             <h2 style={{ ...sf, fontSize: "clamp(1.8rem,3vw,2.8rem)", fontWeight: 900, textTransform: "uppercase", lineHeight: 0.9, letterSpacing: "-0.04em" }}>
               Your Chair<br />
               <span style={{ color: "#f59e0b", fontStyle: "italic" }}>Awaits_</span>
@@ -360,11 +363,18 @@ function LoginContent() {
             </p>
           </div>
 
-          {/* Bottom — location + hours */}
+          {/* Bottom — location + hours + barber link */}
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
             <div style={{ height: 1, background: "rgba(255,255,255,0.07)", marginBottom: 4 }} />
-            <p style={{ ...mono, fontSize: 10, color: "#3f3f46", letterSpacing: "0.3em", textTransform: "uppercase" }}>4 Hub Dr · Hattiesburg MS</p>
+            <p style={{ ...mono, fontSize: 10, color: "#3f3f46", letterSpacing: "0.3em", textTransform: "uppercase" }}>2509 W 4th St · Hattiesburg MS</p>
             <p style={{ ...mono, fontSize: 10, color: "#3f3f46", letterSpacing: "0.3em", textTransform: "uppercase" }}>Mon–Fri 9AM–6PM · Sat 9AM–4PM</p>
+            <div style={{ height: 1, background: "rgba(255,255,255,0.07)", marginTop: 4 }} />
+            <p style={{ ...mono, fontSize: 10, color: "#3f3f46" }}>
+              Are you a barber?{" "}
+              <a href="/barber-login" style={{ color: "#f59e0b", textDecoration: "none", letterSpacing: "0.05em" }}>
+                Barber Portal →
+              </a>
+            </p>
           </div>
 
           {/* Corner accent */}
@@ -376,11 +386,20 @@ function LoginContent() {
           <div style={{ maxWidth: 420, width: "100%", margin: "0 auto" }}>
 
             {/* Mobile logo */}
-            <a href="/" style={{ ...sf, fontWeight: 700, fontSize: 18, letterSpacing: "-0.06em", textDecoration: "none", color: "white", display: "block", marginBottom: 40 }}
-              className="mobile-logo">
+            <div style={{ display: "block", marginBottom: 40 }} className="mobile-logo">
               <style>{`.mobile-logo{display:none} @media(max-width:768px){.mobile-logo{display:block!important}}`}</style>
-              HEADZ<span style={{ color: "#f59e0b", fontStyle: "italic" }}>UP</span>
-            </a>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <a href="/" style={{ ...sf, fontWeight: 700, fontSize: 18, letterSpacing: "-0.06em", textDecoration: "none", color: "white" }}>
+                  HEADZ<span style={{ color: "#f59e0b", fontStyle: "italic" }}>UP</span>
+                </a>
+                <a href="/barber-login" style={{ ...mono, fontSize: 10, color: "#f59e0b", textDecoration: "none", border: "1px solid rgba(245,158,11,0.3)", padding: "6px 12px" }}>
+                  Barber Portal →
+                </a>
+              </div>
+              <div style={{ marginTop: 8, display: "inline-flex", background: "rgba(245,158,11,0.1)", border: "1px solid rgba(245,158,11,0.2)", padding: "3px 10px" }}>
+                <span style={{ ...sf, fontSize: 6, color: "#f59e0b", letterSpacing: "0.4em", textTransform: "uppercase" }}>Client Portal</span>
+              </div>
+            </div>
 
             {/* Mode tabs */}
             {mode !== "forgot" && (
