@@ -168,6 +168,9 @@ BARBER_INVITE_CODE = os.environ.get("BARBER_INVITE_CODE", "HEADZUP2026")
 TWILIO_ACCOUNT_SID  = os.environ.get("TWILIO_ACCOUNT_SID", "")
 TWILIO_AUTH_TOKEN   = os.environ.get("TWILIO_AUTH_TOKEN",  "")
 TWILIO_FROM_NUMBER  = os.environ.get("TWILIO_FROM_NUMBER", "")
+# Demo mode — while on Twilio trial, all SMS redirect to this verified number.
+# Remove this var from Railway when you upgrade to a paid Twilio account.
+TWILIO_DEMO_NUMBER  = os.environ.get("TWILIO_DEMO_NUMBER", "")
 
 # ── JWT token lifetimes ───────────────────────────────────────────────────────
 from datetime import timedelta
