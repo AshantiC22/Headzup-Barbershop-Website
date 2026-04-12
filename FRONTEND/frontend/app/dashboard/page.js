@@ -60,11 +60,13 @@ function RescheduleModal({ appt, onClose, onDone }) {
     API.get(`available-slots/?barber=${appt.barber_id||appt.barber}&date=${newDate}&service=${appt.service_id||appt.service||""}`)
       .then(r => {
         if (r.data.time_off) { setTimeOff(true); return; }
-        setSlots(r.data.available_slots || []);
-        setBookedSlots(r.data.booked_slots || []);
+        const avail  = r.data.available_slots || [];
+        const booked = r.data.booked_slots    || [];
+        const allSlots = [...new Set([...avail, ...booked])].sort();
+        setSlots(allSlots);
+        setBookedSlots(booked);
       })
       .catch(() => {
-        // Network error — don't show "not available", show empty with retry message
         setSlots([]);
         setBookedSlots([]);
       })
@@ -234,6 +236,17 @@ function RescheduleModal({ appt, onClose, onDone }) {
                     const selected  = iso === newDate;
                     const showSlash = !isPast && (isUnavail || isTimeOff);
 
+                    // Completely black out non-working days (not just slash)
+                    if(!isPast && isUnavail && !isTimeOff) {
+                      return (
+                        <div key={iso} style={{aspectRatio:"1",background:"rgba(0,0,0,0.6)",display:"flex",alignItems:"center",justifyContent:"center",position:"relative",overflow:"hidden"}}>
+                          <span style={{...mono,fontSize:10,color:"#1a1a1a",userSelect:"none"}}>{day}</span>
+                          <svg style={{position:"absolute",inset:0,width:"100%",height:"100%",pointerEvents:"none"}} viewBox="0 0 40 40" preserveAspectRatio="none">
+                            <line x1="4" y1="36" x2="36" y2="4" stroke="rgba(239,68,68,0.25)" strokeWidth="1" strokeLinecap="round"/>
+                          </svg>
+                        </div>
+                      );
+                    }
                     return (
                       <button key={iso} onClick={()=>!disabled&&setNewDate(iso)} disabled={disabled}
                         style={{
@@ -241,13 +254,13 @@ function RescheduleModal({ appt, onClose, onDone }) {
                           position:"relative",overflow:"hidden",
                           ...mono,fontSize:10,fontWeight:selected?700:400,
                           background: selected?"#f59e0b":isToday?"rgba(245,158,11,0.1)":"transparent",
-                          color:      selected?"black":isPast?"#252525":disabled?"#2d2d2d":isToday?"#f59e0b":"#d4d4d4",
+                          color:      selected?"black":isPast?"#1e1e1e":isTimeOff?"#2a2a2a":isToday?"#f59e0b":"#d4d4d4",
                           border:     selected?"1px solid #f59e0b":isToday?"1px solid rgba(245,158,11,0.3)":"1px solid transparent",
                           cursor:     disabled?"not-allowed":"pointer",transition:"all 0.15s",borderRadius:0,
                         }}
                         onMouseEnter={e=>{if(!disabled&&!selected){e.currentTarget.style.background="rgba(245,158,11,0.15)";e.currentTarget.style.color="#f59e0b";e.currentTarget.style.borderColor="rgba(245,158,11,0.3)";}}}
                         onMouseLeave={e=>{if(!disabled&&!selected){e.currentTarget.style.background=isToday?"rgba(245,158,11,0.1)":"transparent";e.currentTarget.style.color=isToday?"#f59e0b":"#d4d4d4";e.currentTarget.style.borderColor=isToday?"rgba(245,158,11,0.3)":"transparent";}}}>
-                        {showSlash&&(
+                        {isTimeOff&&(
                           <svg style={{position:"absolute",inset:0,width:"100%",height:"100%",pointerEvents:"none"}} viewBox="0 0 40 40" preserveAspectRatio="none">
                             <line x1="4" y1="36" x2="36" y2="4" stroke="rgba(239,68,68,0.55)" strokeWidth="1.5" strokeLinecap="round"
                               style={{filter:"drop-shadow(0 0 3px rgba(239,68,68,0.6))"}}/>
@@ -295,7 +308,13 @@ function RescheduleModal({ appt, onClose, onDone }) {
                   <button onClick={()=>{
                     setSlotsLoading(true); setSlots([]); setBookedSlots([]); setTimeOff(false);
                     API.get(`available-slots/?barber=${appt.barber_id||appt.barber}&date=${newDate}&service=${appt.service_id||appt.service||""}`)
-                      .then(r=>{ if(r.data.time_off){setTimeOff(true);return;} setSlots(r.data.available_slots||[]); setBookedSlots(r.data.booked_slots||[]); })
+                      .then(r=>{
+                        if(r.data.time_off){setTimeOff(true);return;}
+                        const avail=r.data.available_slots||[];
+                        const booked=r.data.booked_slots||[];
+                        setSlots([...new Set([...avail,...booked])].sort());
+                        setBookedSlots(booked);
+                      })
                       .catch(()=>{})
                       .finally(()=>setSlotsLoading(false));
                   }} style={{marginTop:10,padding:"6px 14px",background:"rgba(245,158,11,0.06)",border:"1px solid rgba(245,158,11,0.2)",color:"#f59e0b",...mono,fontSize:9,cursor:"pointer",letterSpacing:"0.1em"}}>
@@ -311,23 +330,27 @@ function RescheduleModal({ appt, onClose, onDone }) {
                     return(
                       <button key={s} onClick={()=>!isBooked&&setNewTime(display)} disabled={isBooked}
                         style={{
-                          padding:"8px 4px",position:"relative",overflow:"hidden",
+                          padding:"10px 4px",position:"relative",overflow:"hidden",
                           ...sf,fontSize:5,letterSpacing:"0.05em",textTransform:"uppercase",
-                          border:`1px solid ${isSelected?"#f59e0b":isBooked?"rgba(239,68,68,0.12)":"rgba(245,158,11,0.2)"}`,
-                          background:isSelected?"rgba(245,158,11,0.15)":isBooked?"rgba(239,68,68,0.03)":"rgba(245,158,11,0.04)",
-                          color:isSelected?"#f59e0b":isBooked?"#2a2a2a":"#a1a1aa",
+                          border:`1px solid ${isSelected?"#f59e0b":isBooked?"rgba(239,68,68,0.3)":"rgba(245,158,11,0.2)"}`,
+                          background:isSelected?"rgba(245,158,11,0.15)":isBooked?"rgba(239,68,68,0.08)":"rgba(245,158,11,0.04)",
+                          color:isSelected?"#f59e0b":isBooked?"rgba(239,68,68,0.5)":"#a1a1aa",
                           cursor:isBooked?"not-allowed":"pointer",transition:"all 0.15s",
                         }}
                         onMouseEnter={e=>{if(!isBooked&&!isSelected){e.currentTarget.style.borderColor="#f59e0b";e.currentTarget.style.color="#f59e0b";e.currentTarget.style.background="rgba(245,158,11,0.12)";}}}
                         onMouseLeave={e=>{if(!isBooked&&!isSelected){e.currentTarget.style.borderColor="rgba(245,158,11,0.2)";e.currentTarget.style.color="#a1a1aa";e.currentTarget.style.background="rgba(245,158,11,0.04)";}}}
                       >
+                        {/* Red diagonal slash for booked slots */}
                         {isBooked&&(
-                          <svg style={{position:"absolute",inset:0,width:"100%",height:"100%",pointerEvents:"none"}} viewBox="0 0 80 32" preserveAspectRatio="none">
-                            <line x1="4" y1="28" x2="76" y2="4" stroke="rgba(239,68,68,0.5)" strokeWidth="1.2"
-                              style={{filter:"drop-shadow(0 0 3px rgba(239,68,68,0.6))"}}/>
+                          <svg style={{position:"absolute",inset:0,width:"100%",height:"100%",pointerEvents:"none"}} viewBox="0 0 80 36" preserveAspectRatio="none">
+                            <line x1="4" y1="32" x2="76" y2="4" stroke="rgba(239,68,68,0.7)" strokeWidth="1.5"
+                              style={{filter:"drop-shadow(0 0 3px rgba(239,68,68,0.8))"}}/>
                           </svg>
                         )}
-                        <span style={{position:"relative",zIndex:1}}>{display}</span>
+                        <span style={{position:"relative",zIndex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:2}}>
+                          <span>{display}</span>
+                          {isBooked&&<span style={{...mono,fontSize:5,color:"rgba(239,68,68,0.6)",letterSpacing:"0.1em"}}>TAKEN</span>}
+                        </span>
                       </button>
                     );
                   })}
