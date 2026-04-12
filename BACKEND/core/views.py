@@ -875,7 +875,7 @@ def send_cancellation_email(appointment, cancelled_by="client"):
         except Exception as e:
             logger.error(f"send_cancellation_email failed: {e}", exc_info=True)
 
-    threading.Thread(target=_send, daemon=True).start()
+    _send()  # synchronous so Railway doesn't kill it
 
 
 def send_welcome_email(user):
@@ -1398,8 +1398,7 @@ def sms_reschedule_response(reschedule_request, accepted):
 
 
 def sms_cancellation(appointment, cancelled_by="client"):
-    """Notify the other party when an appointment is cancelled."""
-    import threading
+    """Notify the other party when an appointment is cancelled — synchronous."""
     try:
         client_phone = _get_client_phone(appointment.user)
         barber_phone = _get_barber_phone(appointment.barber)
@@ -1411,20 +1410,18 @@ def sms_cancellation(appointment, cancelled_by="client"):
     except Exception:
         return
 
-    def _send():
-        if cancelled_by == "client" and barber_phone:
-            _twilio_send(barber_phone,
-                f"📅 HEADZ UP: {client_name} cancelled.\n"
-                f"Service: {service_name}\n"
-                f"{appt_date} at {appt_time} — slot is now open."
-            )
-        elif cancelled_by == "barber" and client_phone:
-            _twilio_send(client_phone,
-                f"📅 HEADZ UP: Your appointment with {barber_name} was cancelled.\n"
-                f"Was: {appt_date} at {appt_time}\n"
-                f"Please rebook: {FRONTEND_URL}/book"
-            )
-    threading.Thread(target=_send, daemon=True).start()
+    if cancelled_by == "client" and barber_phone:
+        _twilio_send(barber_phone,
+            f"📅 HEADZ UP: {client_name} cancelled.\n"
+            f"Service: {service_name}\n"
+            f"{appt_date} at {appt_time} — slot is now open."
+        )
+    elif cancelled_by == "barber" and client_phone:
+        _twilio_send(client_phone,
+            f"📅 HEADZ UP: Your appointment with {barber_name} was cancelled.\n"
+            f"Was: {appt_date} at {appt_time}\n"
+            f"Please rebook: {FRONTEND_URL}/book"
+        )
 
 
 def sms_strike(user, profile, reason):
@@ -1775,16 +1772,24 @@ class AppointmentViewSet(viewsets.ModelViewSet):
             raise serializers.ValidationError("That time slot is already booked. Please choose another.")
 
     def perform_update(self, serializer):
-        instance  = self.get_object()
-        barber_id = serializer.validated_data.get("barber", instance.barber).id
-        date      = serializer.validated_data.get("date", instance.date)
-        time      = serializer.validated_data.get("time", instance.time)
-        conflict  = Appointment.objects.filter(barber_id=barber_id, date=date, time=time).exclude(pk=instance.pk)
+        instance   = self.get_object()
+        barber_id  = serializer.validated_data.get("barber", instance.barber).id
+        date       = serializer.validated_data.get("date", instance.date)
+        time       = serializer.validated_data.get("time", instance.time)
+        new_status = serializer.validated_data.get("status", instance.status)
+        was_cancelled_before = instance.status == "cancelled"
+        conflict   = Appointment.objects.filter(barber_id=barber_id, date=date, time=time).exclude(pk=instance.pk)
         if conflict.exists():
             raise serializers.ValidationError("That time slot is already booked. Please choose another.")
         try:
             serializer.save()
-            # Do NOT resend confirmation email on every update
+            # If client just cancelled — notify barber by email + SMS
+            if new_status == "cancelled" and not was_cancelled_before:
+                appt_full = Appointment.objects.select_related(
+                    "user", "barber", "barber__user", "service"
+                ).get(pk=instance.pk)
+                send_cancellation_email(appt_full, cancelled_by="client")
+                sms_cancellation(appt_full, cancelled_by="client")
         except IntegrityError:
             raise serializers.ValidationError("That time slot is already booked. Please choose another.")
 
