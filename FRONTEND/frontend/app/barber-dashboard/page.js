@@ -673,6 +673,7 @@ export default function BarberDashboard(){
 
   /* waitlist */
   const [waitlist,     setWaitlist]    = useState([]);
+  const [waitlistSeen, setWaitlistSeen] = useState(false);
 
   /* clients */
   const [clients,      setClients]     = useState([]);
@@ -763,7 +764,8 @@ export default function BarberDashboard(){
       const dateStr = `${year}-${String(month+1).padStart(2,"0")}-01`;
       const r = await API.get(`barber/schedule/?date=${dateStr}&month=true`);
       const arr = Array.isArray(r.data) ? r.data : r.data.appointments || r.data.results || [];
-      const dateArr = arr.filter(a=>a.status!=="cancelled").map(a=>a.date);
+      // Only count appointments still pending/confirmed — completed, no_show, cancelled disappear from badge
+      const dateArr = arr.filter(a=>a.status==="confirmed"||a.status==="pending_shop"||a.status==="pending").map(a=>a.date);
       setAllApptDates(prev => {
         // Merge with existing dates from other months
         const existing = prev.filter(d => {
@@ -848,6 +850,8 @@ export default function BarberDashboard(){
     try{
       await API.patch(`barber/appointments/${id}/`,{status});
       setSchedule(p=>p.map(a=>a.id===id?{...a,status}:a));
+      // Refresh calendar badge — completed/no_show/cancelled remove from count
+      loadCalendarDates(calYear, calMonth);
       showToast("Status updated.");
     }catch{showToast("Could not update.","error");}
   };
@@ -863,6 +867,7 @@ export default function BarberDashboard(){
       const msg = strikes === 1
         ? `⚡ Strike 1 issued — this is a warning. Deposit stays $${deposit} but will increase if they strike again.`
         : `⚡ Strike ${strikes} issued — next deposit is now $${deposit} (+$${((parseFloat(deposit)-10)).toFixed(2)} increase)`;
+      loadCalendarDates(calYear, calMonth);  // no_show/cancelled removes badge
       showToast(msg);
     }catch(e){showToast(e.response?.data?.error||"Could not issue strike.","error");}
   };
@@ -875,6 +880,7 @@ export default function BarberDashboard(){
       // Use DELETE endpoint — fires send_cancellation_email(cancelled_by="barber") to client
       await API.delete(`barber/appointments/${id}/`);
       setSchedule(p=>p.filter(a=>a.id!==id));
+      loadCalendarDates(calYear, calMonth);  // remove from calendar badge
       showToast(`✓ Cancelled — ${clientName} has been notified by email.`);
     }catch(e){
       // Fallback: if delete fails try patch
@@ -916,6 +922,8 @@ export default function BarberDashboard(){
       setWiName("");setWiPhone("");setWiNotes("");setWiSvc("");
       setWiEmail("");setWiTime("");setWiSlots([]);setWiBooked([]);
       loadSchedule(selectedDate);
+      loadWaitlist();  // refresh waitlist so new walk-in appears
+      setWaitlistSeen(false);  // show badge again for new entry
       showToast(`✓ ${wiName} added${(wiPhone||wiEmail)?" — welcome message sent!":""}`);
     }catch(e){showToast(e.response?.data?.error||"Could not add walk-in.","error");}
     finally{setWiLoading(false);}
@@ -1078,10 +1086,10 @@ export default function BarberDashboard(){
         <div style={{maxWidth:1280,margin:"0 auto",borderTop:`1px solid ${T.border}`,display:"flex",overflowX:"auto",WebkitOverflowScrolling:"touch"}}>
           {TABS.map(({key,label,icon})=>{
             const pendingReschedules = key==="reschedules" ? reschedules.filter(r=>r.status==="pending").length : 0;
-            const pendingWaitlist    = key==="waitlist"    ? waitlist.filter(w=>!w.notified).length            : 0;
+            const pendingWaitlist    = key==="waitlist"    ? (waitlistSeen ? 0 : waitlist.filter(w=>!w.notified).length) : 0;
             const badgeCount = pendingReschedules || pendingWaitlist;
             return(
-              <button key={key} onClick={()=>setActiveTab(key)}
+              <button key={key} onClick={()=>{setActiveTab(key);if(key==="waitlist")setWaitlistSeen(true);}}
                 style={{
                   padding:isMobile?"8px 10px":"11px 22px",
                   ...sf,
@@ -1274,6 +1282,7 @@ export default function BarberDashboard(){
                               try{
                                 await API.post(`barber/reschedules/${rr.id}/`,{action:"accept"});
                                 setReschedules(p=>p.map(r=>r.id===rr.id?{...r,status:"accepted"}:r));
+                                loadCalendarDates(calYear, calMonth);  // badge moves to new date
                                 showToast(`✓ Reschedule approved — ${rr.client_name} has been notified.`);
                               }catch(e){showToast(e.response?.data?.error||"Could not approve.","error");}
                             }} style={{flex:isMobile?1:"auto",padding:"12px 24px",background:"rgba(34,197,94,0.1)",border:"1px solid rgba(34,197,94,0.35)",color:"#4ade80",...sf,fontSize:7,fontWeight:700,letterSpacing:"0.2em",textTransform:"uppercase",cursor:"pointer",transition:"all 0.2s",
@@ -1347,6 +1356,7 @@ export default function BarberDashboard(){
                           try{
                             await API.patch(`barber/appointments/${a.id}/`,{status:"completed"});
                             setSchedule(p=>p.map(x=>x.id===a.id?{...x,status:"completed"}:x));
+                            loadCalendarDates(calYear, calMonth);  // remove from badge — appointment done
                             showToast(`✓ Payment confirmed — ${a.client_name||"client"} marked complete`);
                           }catch{showToast("Error.","error");}
                         }} style={{padding:"6px 12px",...sf,fontSize:6,letterSpacing:"0.1em",textTransform:"uppercase",background:"rgba(34,197,94,0.1)",border:"1px solid rgba(34,197,94,0.3)",color:"#4ade80",cursor:"pointer",transition:"all 0.2s"}}
@@ -1587,6 +1597,7 @@ export default function BarberDashboard(){
                               try{
                                 await API.post(`barber/reschedules/${rr.id}/`,{action:"accept"});
                                 setReschedules(p=>p.map(x=>x.id===rr.id?{...x,status:"accepted"}:x));
+                                loadCalendarDates(calYear, calMonth);  // badge moves to new date
                                 showToast(`✓ Reschedule approved — ${rr.client_name} has been notified.`);
                               }catch(e){showToast(e.response?.data?.error||"Could not approve.","error");}
                             }}
