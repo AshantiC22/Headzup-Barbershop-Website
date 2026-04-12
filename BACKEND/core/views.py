@@ -1449,23 +1449,19 @@ def sms_strike(user, profile, reason):
 
 
 def sms_welcome(user):
-    """New client gets a welcome SMS."""
-    import threading
+    """New client gets a welcome SMS — fires synchronously on registration."""
     try:
         phone = _get_client_phone(user)
         name  = user.first_name or user.username
     except Exception:
         return
-
-    def _send():
-        if phone:
-            _twilio_send(phone,
-                f"✂️ Welcome to HEADZ UP, {name}!\n"
-                f"Book your first appointment:\n"
-                f"{FRONTEND_URL}/book\n"
-                f"2509 W 4th St, Hattiesburg MS"
-            )
-    threading.Thread(target=_send, daemon=True).start()
+    if phone:
+        _twilio_send(phone,
+            f"✂️ Welcome to HEADZ UP, {name}!\n"
+            f"Book your first appointment:\n"
+            f"{FRONTEND_URL}/book\n"
+            f"2509 W 4th St, Hattiesburg MS"
+        )
 
 
 def sms_review_request(appointment):
@@ -1687,7 +1683,7 @@ class BarberRegisterView(APIView):
                 bio="",
             )
 
-            # Send welcome SMS to the new barber
+            # Send welcome SMS to the new barber — synchronous so it doesn't get killed
             if phone:
                 first = full_name.split()[0]
                 _twilio_send(phone,
