@@ -395,9 +395,9 @@ export default function BarberLoginPage() {
       <div style={{ position: "relative", zIndex: 10, minHeight: "100vh", minHeight: "100dvh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "40px 16px" }}>
 
         {/* Back link */}
-        <a href="/" style={{ position: "absolute", top: 28, left: 28, ...mono, fontSize: 9, color: "#3f3f46", textDecoration: "none", letterSpacing: "0.3em", textTransform: "uppercase", transition: "color 0.2s", display: "flex", alignItems: "center", gap: 6 }}
-          onMouseEnter={e => e.currentTarget.style.color = "#f59e0b"}
-          onMouseLeave={e => e.currentTarget.style.color = "#3f3f46"}>
+        <a href="/" style={{ position: "absolute", top: 20, left: 20, ...mono, fontSize: 10, color: "#a1a1aa", textDecoration: "none", letterSpacing: "0.2em", textTransform: "uppercase", transition: "all 0.2s", display: "flex", alignItems: "center", gap: 6, padding: "8px 14px", border: "1px solid rgba(255,255,255,0.08)", background: "rgba(0,0,0,0.4)", backdropFilter: "blur(10px)" }}
+          onMouseEnter={e => { e.currentTarget.style.color = "#f59e0b"; e.currentTarget.style.borderColor = "rgba(245,158,11,0.4)"; }}
+          onMouseLeave={e => { e.currentTarget.style.color = "#a1a1aa"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.08)"; }}>
           ← Home
         </a>
 

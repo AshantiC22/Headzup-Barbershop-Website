@@ -385,6 +385,15 @@ function LoginContent() {
         <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", padding: "32px 20px", overflowY: "auto", overflowY: "auto" }}>
           <div style={{ maxWidth: 420, width: "100%", margin: "0 auto" }}>
 
+            {/* Home button — top right, always visible */}
+            <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 24 }}>
+              <a href="/" style={{ fontFamily: "'DM Mono',monospace", fontSize: 10, color: "#a1a1aa", textDecoration: "none", letterSpacing: "0.2em", textTransform: "uppercase", transition: "all 0.2s", display: "flex", alignItems: "center", gap: 6, padding: "7px 14px", border: "1px solid rgba(255,255,255,0.08)" }}
+                onMouseEnter={e => { e.currentTarget.style.color = "#f59e0b"; e.currentTarget.style.borderColor = "rgba(245,158,11,0.3)"; }}
+                onMouseLeave={e => { e.currentTarget.style.color = "#a1a1aa"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.08)"; }}>
+                ← Home
+              </a>
+            </div>
+
             {/* Mobile logo */}
             <div style={{ display: "block", marginBottom: 40 }} className="mobile-logo">
               <style>{`.mobile-logo{display:none} @media(max-width:768px){.mobile-logo{display:block!important}}`}</style>
