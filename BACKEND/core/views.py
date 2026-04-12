@@ -41,220 +41,82 @@ BACKEND_URL  = getattr(settings, "BACKEND_URL",  "https://headzup-barbershop-web
 
 # ── Email confirmation helper ────────────────────────────────────────────────
 def send_booking_confirmation(appointment):
-    """
-    Fires confirmation email in a background thread.
-    Sends to BOTH the client AND the barber.
-    NEVER blocks or crashes a booking — email is best-effort only.
-    """
-    import threading
-
+    """Sends booking confirmation to client AND barber immediately."""
     try:
-        user_email    = appointment.user.email
-        username      = appointment.user.username
-        service_name  = appointment.service.name if appointment.service else "Appointment"
-        barber_name   = appointment.barber.name  if appointment.barber  else "Your barber"
-        barber_email  = appointment.barber.user.email if (appointment.barber and appointment.barber.user) else None
-        appt_date     = appointment.date.strftime("%A, %B %d, %Y")
-        appt_time     = appointment.time.strftime("%I:%M %p").lstrip("0")
-        payment_label = "Paid online via Stripe" if appointment.payment_method == "online" else "Pay in shop (cash or card)"
-        client_notes  = appointment.client_notes or ""
+        client_name  = appointment.user.first_name or appointment.user.username
+        client_email = appointment.user.email
+        barber_name  = appointment.barber.name  if appointment.barber  else "Your barber"
+        barber_email = appointment.barber.user.email if (appointment.barber and appointment.barber.user) else None
+        svc_name     = appointment.service.name if appointment.service else "Appointment"
+        appt_date    = appointment.date.strftime("%A, %B %d, %Y")
+        appt_time    = appointment.time.strftime("%I:%M %p").lstrip("0")
+        pay_label    = "Paid online via Stripe" if appointment.payment_method == "online" else "Pay in shop"
+        notes        = appointment.client_notes or ""
     except Exception:
         return
 
-    def _send():
-        try:
-            import urllib.request
-            import json as json_lib
-            import re
-            import logging
-            logger = logging.getLogger(__name__)
-
-            api_key    = getattr(settings, "SENDGRID_API_KEY", "")
-            from_email = getattr(settings, "DEFAULT_FROM_EMAIL", "")
-
-            if not api_key:
-                logger.warning("SENDGRID_API_KEY not set — skipping confirmation email")
-                return
-            if not user_email:
-                logger.warning(f"No email for user {username} — skipping")
-                return
-
-            # Build email content
-            subject = f"Booking Confirmed - {service_name} at HEADZ UP"
-            message = (
-                f"Hey {username},\n\nYour appointment is confirmed.\n\n"
-                f"Service:  {service_name}\nBarber:   {barber_name}\n"
-                f"Date:     {appt_date}\nTime:     {appt_time}\n"
-                f"Payment:  {payment_label}\n\n"
-                f"Please arrive 5 minutes early.\n\nHEADZ UP Barbershop\n2509 W 4th St, Hattiesburg, MS 39401"
-            )
-
-            ticket_rows = ""
-            for label, value in [
-                ("Service", service_name), ("Barber", barber_name),
-                ("Date", appt_date), ("Time", appt_time), ("Payment", payment_label),
-                ("Location", "2509 W 4th St, Hattiesburg, MS 39401"),
-            ]:
-                ticket_rows += f"""<tr><td style="padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.05);">
-                  <p style="font-family:'Courier New',monospace;font-size:9px;letter-spacing:0.3em;color:#52525b;text-transform:uppercase;margin:0 0 4px;">{label}</p>
-                  <p style="font-size:14px;color:white;margin:0;font-weight:700;">{value}</p>
-                </td></tr>"""
-
-            html_message = f"""<!DOCTYPE html>
-<html>
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
-<body style="margin:0;padding:0;background:#050505;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;color:#ffffff;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="background:#050505;padding:40px 20px;">
-    <tr><td align="center">
-      <table width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;">
-        <tr><td style="padding-bottom:32px;">
-          <p style="font-family:'Courier New',monospace;font-size:22px;font-weight:900;letter-spacing:-0.05em;margin:0;text-transform:uppercase;">HEADZ<span style="color:#f59e0b;font-style:italic;">UP</span></p>
-        </td></tr>
-        <tr><td style="padding-bottom:24px;">
-          <div style="width:52px;height:52px;border-radius:50%;background:linear-gradient(135deg,#22c55e,#16a34a);display:inline-block;text-align:center;line-height:52px;">
-            <span style="color:black;font-size:24px;font-weight:900;">&#10003;</span>
-          </div>
-        </td></tr>
-        <tr><td style="padding-bottom:8px;">
-          <h1 style="font-family:'Courier New',monospace;font-size:28px;font-weight:900;text-transform:uppercase;margin:0;">Booking<br><span style="color:#f59e0b;font-style:italic;">Confirmed_</span></h1>
-        </td></tr>
-        <tr><td style="padding-bottom:32px;">
-          <p style="color:#71717a;font-size:13px;margin:0;">Hey {username}, you're all set. See you soon.</p>
-        </td></tr>
-        <tr><td style="background:#0a0a0a;border:1px solid rgba(255,255,255,0.1);padding:28px;">
-          <table width="100%" cellpadding="0" cellspacing="0">{ticket_rows}</table>
-        </td></tr>
-        <tr><td style="padding:16px 0;">
-          <p style="font-size:12px;color:#71717a;margin:0;line-height:1.6;">Please arrive <strong style="color:white;">5 minutes early</strong>. Slots held <strong style="color:white;">15 minutes</strong> past appointment time.</p>
-        </td></tr>
-        <tr><td style="padding:8px 0 32px;">
-          <a href="{FRONTEND_URL}/dashboard" style="display:inline-block;padding:14px 28px;background:#f59e0b;color:black;font-family:'Courier New',monospace;font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:0.2em;text-decoration:none;">View My Dashboard &rarr;</a>
-        </td></tr>
-        <tr><td style="border-top:1px solid rgba(255,255,255,0.06);padding-top:24px;">
-          <p style="font-size:11px;color:#3f3f46;margin:0;line-height:1.7;">HEADZ UP Barbershop &middot; 2509 W 4th St, Hattiesburg, MS 39401<br>Mon-Sat 9AM-6PM &middot; Closed Sundays</p>
-        </td></tr>
-      </table>
-    </td></tr>
-  </table>
-</body>
-</html>"""
-
-            # Send via SendGrid HTTP API
-            match        = re.search(r'<(.+?)>', from_email)
-            sender_email = match.group(1) if match else from_email
-            sender_name  = from_email.split("<")[0].strip() if "<" in from_email else "HEADZ UP"
-
-            payload = {
-                "personalizations": [{"to": [{"email": user_email}]}],
-                "from": {"email": sender_email, "name": sender_name},
-                "reply_to": {"email": sender_email, "name": sender_name},
-                "subject": subject,
-                "content": [
-                    {"type": "text/plain", "value": message},
-                    {"type": "text/html",  "value": html_message},
-                ],
-                "headers": {
-                    "List-Unsubscribe": f"<mailto:{sender_email}?subject=unsubscribe>",
-                    "X-Entity-Ref-ID": f"headzup-booking-{user_email}",
-                },
-                "mail_settings": {
-                    "bypass_spam_management": {"enable": True},
-                },
-            }
-
-            data = json_lib.dumps(payload).encode("utf-8")
-            req  = urllib.request.Request(
-                "https://api.sendgrid.com/v3/mail/send",
-                data=data,
-                headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
-                method="POST",
-            )
-            with urllib.request.urlopen(req, timeout=10) as resp:
-                logger.info(f"Confirmation email sent to {user_email} — SendGrid {resp.status}")
-
-            # Also email the BARBER so they know a new client booked
-            if barber_email:
-                barber_subject = f"📅 New Booking — {username} at {appt_time}"
-                barber_rows = ""
-                notes_row = f"""<tr><td style="padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.05);">
-                  <p style="font-family:'Courier New',monospace;font-size:9px;letter-spacing:0.3em;color:#52525b;text-transform:uppercase;margin:0 0 4px;">Client Notes</p>
-                  <p style="font-size:14px;color:#f59e0b;margin:0;font-style:italic;">"{client_notes}"</p>
-                </td></tr>""" if client_notes else ""
-                for label, value in [
-                    ("Client",   username),
-                    ("Service",  service_name),
-                    ("Date",     appt_date),
-                    ("Time",     appt_time),
-                    ("Payment",  payment_label),
-                    ("Location", "2509 W 4th St, Hattiesburg, MS 39401"),
-                ]:
-                    barber_rows += f"""<tr><td style="padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.05);">
-                      <p style="font-family:'Courier New',monospace;font-size:9px;letter-spacing:0.3em;color:#52525b;text-transform:uppercase;margin:0 0 4px;">{label}</p>
-                      <p style="font-size:14px;color:white;margin:0;font-weight:700;">{value}</p>
-                    </td></tr>"""
-                barber_html = f"""<!DOCTYPE html>
-<html><head><meta charset="utf-8"></head>
+    # ── Email CLIENT ──────────────────────────────────────────────────────────
+    if client_email:
+        client_plain = (
+            f"Hey {client_name}, your booking is confirmed!\n\n"
+            f"Service:  {svc_name}\nBarber:   {barber_name}\n"
+            f"Date:     {appt_date}\nTime:     {appt_time}\n"
+            f"Payment:  {pay_label}\n\n"
+            f"Please arrive 5 min early.\n\nHEADZ UP · 2509 W 4th St, Hattiesburg MS"
+        )
+        client_html = f"""<!DOCTYPE html><html><head><meta charset="utf-8"></head>
 <body style="margin:0;padding:0;background:#050505;font-family:'Helvetica Neue',Arial,sans-serif;color:#fff;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="background:#050505;padding:40px 20px;">
-    <tr><td align="center">
-      <table width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;">
-        <tr><td style="padding-bottom:24px;">
-          <p style="font-family:'Courier New',monospace;font-size:22px;font-weight:900;letter-spacing:-0.05em;margin:0;text-transform:uppercase;">HEADZ<span style="color:#f59e0b;font-style:italic;">UP</span></p>
-        </td></tr>
-        <tr><td style="padding-bottom:16px;">
-          <div style="width:52px;height:52px;border-radius:50%;background:rgba(245,158,11,0.15);border:1px solid rgba(245,158,11,0.3);display:inline-block;text-align:center;line-height:52px;"><span style="color:#f59e0b;font-size:22px;">📅</span></div>
-        </td></tr>
-        <tr><td style="padding-bottom:8px;">
-          <h1 style="font-family:'Courier New',monospace;font-size:26px;font-weight:900;text-transform:uppercase;margin:0;">New<br><span style="color:#f59e0b;font-style:italic;">Booking_</span></h1>
-        </td></tr>
-        <tr><td style="padding-bottom:24px;">
-          <p style="color:#71717a;font-size:13px;margin:0;">Hey {barber_name}, you have a new appointment booked.</p>
-        </td></tr>
-        <tr><td style="background:#0a0a0a;border:1px solid rgba(255,255,255,0.1);padding:28px;">
-          <table width="100%" cellpadding="0" cellspacing="0">{barber_rows}{notes_row}</table>
-        </td></tr>
-        <tr><td style="padding:16px 0 32px;">
-          <a href="{FRONTEND_URL}/barber-dashboard" style="display:inline-block;padding:14px 28px;background:#f59e0b;color:black;font-family:'Courier New',monospace;font-size:10px;font-weight:900;text-transform:uppercase;text-decoration:none;">View Dashboard &rarr;</a>
-        </td></tr>
-        <tr><td style="border-top:1px solid rgba(255,255,255,0.06);padding-top:20px;">
-          <p style="font-size:11px;color:#3f3f46;margin:0;">HEADZ UP Barbershop &middot; 2509 W 4th St, Hattiesburg, MS 39401</p>
-        </td></tr>
-      </table>
-    </td></tr>
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#050505;padding:40px 20px;">
+<tr><td align="center"><table width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;">
+<tr><td style="padding-bottom:24px;"><p style="font-family:'Courier New',monospace;font-size:22px;font-weight:900;letter-spacing:-0.05em;margin:0;text-transform:uppercase;">HEADZ<span style="color:#f59e0b;font-style:italic;">UP</span></p></td></tr>
+<tr><td style="padding-bottom:16px;"><div style="width:48px;height:48px;background:rgba(34,197,94,0.15);border:1px solid rgba(34,197,94,0.3);display:inline-flex;align-items:center;justify-content:center;font-size:22px;">✅</div></td></tr>
+<tr><td style="padding-bottom:8px;"><h1 style="font-family:'Courier New',monospace;font-size:26px;font-weight:900;text-transform:uppercase;margin:0;">Booking<br><span style="color:#f59e0b;font-style:italic;">Confirmed_</span></h1></td></tr>
+<tr><td style="padding-bottom:24px;"><p style="color:#71717a;font-size:13px;margin:0;">Hey <strong style="color:white;">{client_name}</strong>, you're all set. See you soon.</p></td></tr>
+<tr><td style="background:#0a0a0a;border:1px solid rgba(255,255,255,0.08);padding:22px;">
+  <table width="100%" cellpadding="0" cellspacing="0">
+    <tr><td style="padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.05);"><p style="font-family:'Courier New',monospace;font-size:9px;letter-spacing:0.3em;color:#52525b;text-transform:uppercase;margin:0 0 4px;">Service</p><p style="font-size:15px;color:white;margin:0;font-weight:700;">{svc_name}</p></td></tr>
+    <tr><td style="padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.05);"><p style="font-family:'Courier New',monospace;font-size:9px;letter-spacing:0.3em;color:#52525b;text-transform:uppercase;margin:0 0 4px;">Barber</p><p style="font-size:15px;color:white;margin:0;font-weight:700;">{barber_name}</p></td></tr>
+    <tr><td style="padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.05);"><p style="font-family:'Courier New',monospace;font-size:9px;letter-spacing:0.3em;color:#52525b;text-transform:uppercase;margin:0 0 4px;">Date &amp; Time</p><p style="font-size:15px;color:#f59e0b;margin:0;font-weight:700;">{appt_date} at {appt_time}</p></td></tr>
+    <tr><td style="padding:10px 0;"><p style="font-family:'Courier New',monospace;font-size:9px;letter-spacing:0.3em;color:#52525b;text-transform:uppercase;margin:0 0 4px;">Payment</p><p style="font-size:14px;color:white;margin:0;">{pay_label}</p></td></tr>
+    {"<tr><td style='padding:10px 0;border-top:1px solid rgba(255,255,255,0.05);'><p style='font-family:Courier New,monospace;font-size:9px;letter-spacing:0.3em;color:#52525b;text-transform:uppercase;margin:0 0 4px;'>Your Notes</p><p style='font-size:13px;color:#f59e0b;margin:0;font-style:italic;'>"+notes+"</p></td></tr>" if notes else ""}
   </table>
+</td></tr>
+<tr><td style="padding-top:20px;"><a href="{FRONTEND_URL}/dashboard" style="display:inline-block;padding:13px 26px;background:#f59e0b;color:black;font-family:'Courier New',monospace;font-size:10px;font-weight:900;text-transform:uppercase;text-decoration:none;">View My Booking &rarr;</a></td></tr>
+<tr><td style="padding-top:20px;"><p style="font-size:12px;color:#52525b;margin:0;line-height:1.7;">📍 2509 W 4th St, Hattiesburg, MS 39401 · Please arrive 5 min early.</p></td></tr>
+<tr><td style="border-top:1px solid rgba(255,255,255,0.06);padding-top:20px;margin-top:20px;"><p style="font-size:11px;color:#3f3f46;margin:0;">HEADZ UP Barbershop · 2509 W 4th St, Hattiesburg, MS 39401</p></td></tr>
+</table></td></tr></table>
 </body></html>"""
-                barber_plain = f"New booking!\nClient: {username}\nService: {service_name}\nDate: {appt_date}\nTime: {appt_time}\nPayment: {payment_label}"
-                if client_notes:
-                    barber_plain += f"\nNotes: {client_notes}"
-                try:
-                    match2 = re.search(r'<(.+?)>', from_email)
-                    sender2 = match2.group(1) if match2 else from_email
-                    payload2 = {
-                        "personalizations": [{"to": [{"email": barber_email}]}],
-                        "from": {"email": sender2, "name": sender_name},
-                        "subject": barber_subject,
-                        "content": [
-                            {"type": "text/plain", "value": barber_plain},
-                            {"type": "text/html",  "value": barber_html},
-                        ],
-                    }
-                    data2 = json_lib.dumps(payload2).encode("utf-8")
-                    req2  = urllib.request.Request(
-                        "https://api.sendgrid.com/v3/mail/send",
-                        data=data2,
-                        headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
-                        method="POST",
-                    )
-                    with urllib.request.urlopen(req2, timeout=10) as resp2:
-                        logger.info(f"Barber booking notification sent to {barber_email} — {resp2.status}")
-                except Exception as eb:
-                    logger.error(f"Barber email failed: {eb}")
-        except Exception as e:
-            import logging
-            logging.getLogger(__name__).error(f"Email send failed: {e}")
+        _sendgrid_send(client_email, f"✅ Booking Confirmed — {svc_name} at HEADZ UP", client_plain, client_html)
 
-    _send()  # synchronous
-
+    # ── Email BARBER ──────────────────────────────────────────────────────────
+    if barber_email:
+        barber_plain = (
+            f"New booking!\nClient: {client_name}\nService: {svc_name}\n"
+            f"Date: {appt_date} at {appt_time}\nPayment: {pay_label}"
+            + (f"\nNotes: {notes}" if notes else "")
+        )
+        barber_html = f"""<!DOCTYPE html><html><head><meta charset="utf-8"></head>
+<body style="margin:0;padding:0;background:#050505;font-family:'Helvetica Neue',Arial,sans-serif;color:#fff;">
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#050505;padding:40px 20px;">
+<tr><td align="center"><table width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;">
+<tr><td style="padding-bottom:24px;"><p style="font-family:'Courier New',monospace;font-size:22px;font-weight:900;letter-spacing:-0.05em;margin:0;text-transform:uppercase;">HEADZ<span style="color:#f59e0b;font-style:italic;">UP</span></p></td></tr>
+<tr><td style="padding-bottom:16px;"><div style="width:48px;height:48px;background:rgba(245,158,11,0.15);border:1px solid rgba(245,158,11,0.3);display:inline-flex;align-items:center;justify-content:center;font-size:22px;">📅</div></td></tr>
+<tr><td style="padding-bottom:8px;"><h1 style="font-family:'Courier New',monospace;font-size:26px;font-weight:900;text-transform:uppercase;margin:0;">New<br><span style="color:#f59e0b;font-style:italic;">Booking_</span></h1></td></tr>
+<tr><td style="padding-bottom:24px;"><p style="color:#71717a;font-size:13px;margin:0;">Hey <strong style="color:white;">{barber_name}</strong>, you have a new appointment.</p></td></tr>
+<tr><td style="background:#0a0a0a;border:1px solid rgba(255,255,255,0.08);padding:22px;">
+  <table width="100%" cellpadding="0" cellspacing="0">
+    <tr><td style="padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.05);"><p style="font-family:'Courier New',monospace;font-size:9px;letter-spacing:0.3em;color:#52525b;text-transform:uppercase;margin:0 0 4px;">Client</p><p style="font-size:15px;color:white;margin:0;font-weight:700;">{client_name}</p></td></tr>
+    <tr><td style="padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.05);"><p style="font-family:'Courier New',monospace;font-size:9px;letter-spacing:0.3em;color:#52525b;text-transform:uppercase;margin:0 0 4px;">Service</p><p style="font-size:15px;color:white;margin:0;font-weight:700;">{svc_name}</p></td></tr>
+    <tr><td style="padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.05);"><p style="font-family:'Courier New',monospace;font-size:9px;letter-spacing:0.3em;color:#52525b;text-transform:uppercase;margin:0 0 4px;">Date &amp; Time</p><p style="font-size:15px;color:#f59e0b;margin:0;font-weight:700;">{appt_date} at {appt_time}</p></td></tr>
+    <tr><td style="padding:10px 0;"><p style="font-family:'Courier New',monospace;font-size:9px;letter-spacing:0.3em;color:#52525b;text-transform:uppercase;margin:0 0 4px;">Payment</p><p style="font-size:14px;color:white;margin:0;">{pay_label}</p></td></tr>
+    {"<tr><td style='padding:10px 0;border-top:1px solid rgba(255,255,255,0.05);'><p style='font-family:Courier New,monospace;font-size:9px;letter-spacing:0.3em;color:#52525b;text-transform:uppercase;margin:0 0 4px;'>Client Notes</p><p style='font-size:13px;color:#f59e0b;margin:0;font-style:italic;'>"+notes+"</p></td></tr>" if notes else ""}
+  </table>
+</td></tr>
+<tr><td style="padding-top:20px;"><a href="{FRONTEND_URL}/barber-dashboard" style="display:inline-block;padding:13px 26px;background:#f59e0b;color:black;font-family:'Courier New',monospace;font-size:10px;font-weight:900;text-transform:uppercase;text-decoration:none;">View Dashboard &rarr;</a></td></tr>
+<tr><td style="border-top:1px solid rgba(255,255,255,0.06);padding-top:20px;margin-top:20px;"><p style="font-size:11px;color:#3f3f46;margin:0;">HEADZ UP Barbershop · 2509 W 4th St, Hattiesburg, MS 39401</p></td></tr>
+</table></td></tr></table>
+</body></html>"""
+        _sendgrid_send(barber_email, f"📅 New Booking — {client_name} at {appt_time}", barber_plain, barber_html)
 
 def _html_email_wrapper(logo, icon_html, headline, subhead, body_rows, cta_url, cta_label, footer="HEADZ UP Barbershop · 2509 W 4th St, Hattiesburg, MS 39401"):
     """Shared HTML email shell."""
