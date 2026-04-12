@@ -1854,8 +1854,9 @@ class AppointmentViewSet(viewsets.ModelViewSet):
                         _twilio_send(client_phone,
                             f"✅ HEADZ UP: Your {svc_name} on {appt_full.date.strftime('%a %b %d')} at {appt_time} has been cancelled. Book again: {FRONTEND_URL}/book"
                         )
-                except Exception:
-                    pass
+                except Exception as client_notify_err:
+                    import logging
+                    logging.getLogger(__name__).error(f"Client cancel notification failed: {client_notify_err}")
         except IntegrityError:
             raise serializers.ValidationError("That time slot is already booked. Please choose another.")
 
@@ -4127,7 +4128,7 @@ class ClientWaitlistView(APIView):
                     _sendgrid_send(barber_email, f"⏳ New Waitlist Entry — {client_nm}", plain, html)
             except Exception as e:
                 logger.error(f"Waitlist notify failed: {e}")
-        threading.Thread(target=_notify, daemon=True).start()
+        _notify()  # synchronous
 
         return Response({
             "message": f"You're on the waitlist for {barber.name} on {entry.date.strftime('%A, %B %d')}. We'll email you if a slot opens up.",
@@ -4822,9 +4823,10 @@ class BarberRescheduleRequestView(APIView):
                     "View My Appointments"
                 )
                 _sendgrid_send(client_email, subject, plain, html)
-            except Exception:
-                pass
-        threading.Thread(target=_notify, daemon=True).start()
+            except Exception as notify_err:
+                import logging
+                logging.getLogger(__name__).error(f"Notify failed: {notify_err}")
+        _notify()  # synchronous
 
         return Response({
             "message":  "Appointment rescheduled and client notified.",
