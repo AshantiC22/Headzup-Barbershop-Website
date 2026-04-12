@@ -776,8 +776,9 @@ Cancel anyway?`
                   <div style={{display:"flex",flexDirection:"column",gap:6}}>
                     {shown.map(appt=>{
                       const s=STATUS[appt.status]||STATUS.confirmed;
-                      const canReschedule = appt.status==="confirmed" && activeTab==="upcoming";
-                      const canCancel     = appt.status==="confirmed" && activeTab==="upcoming";
+                      const isActive      = (appt.status==="confirmed" || appt.status==="pending_shop") && activeTab==="upcoming";
+                      const canReschedule = isActive;
+                      const canCancel     = isActive;
                       return(
                         <div key={appt.id} className="appt-row"
                           style={{background:"rgba(255,255,255,0.02)",border:"1px solid rgba(255,255,255,0.07)",overflow:"hidden",
@@ -832,19 +833,20 @@ Cancel anyway?`
                               )}
                               {canCancel&&(
                                 <button onClick={()=>handleCancel(appt)} disabled={cancelling===appt.id}
-                                  style={{flex:1,padding:"12px 16px",
-                                    background:cancelling===appt.id?"rgba(248,113,113,0.06)":"rgba(248,113,113,0.04)",
-                                    border:"none",color:"#f87171",
+                                  style={{flex:1,padding:"13px 16px",
+                                    background:cancelling===appt.id?"rgba(239,68,68,0.15)":"rgba(239,68,68,0.1)",
+                                    border:"none",borderTop:"2px solid rgba(239,68,68,0.4)",
+                                    color:"#f87171",fontWeight:700,
                                     cursor:cancelling===appt.id?"not-allowed":"pointer",
                                     display:"flex",alignItems:"center",justifyContent:"center",gap:8,
                                     transition:"all 0.2s",fontFamily:"'DM Mono',monospace",
-                                    fontSize:10,letterSpacing:"0.15em",
+                                    fontSize:11,letterSpacing:"0.12em",textTransform:"uppercase",
                                   }}
-                                  onMouseEnter={e=>{if(cancelling!==appt.id)e.currentTarget.style.background="rgba(248,113,113,0.12)";}}
-                                  onMouseLeave={e=>{e.currentTarget.style.background=cancelling===appt.id?"rgba(248,113,113,0.06)":"rgba(248,113,113,0.04)";}}>
+                                  onMouseEnter={e=>{if(cancelling!==appt.id){e.currentTarget.style.background="rgba(239,68,68,0.2)";e.currentTarget.style.color="white";}}}
+                                  onMouseLeave={e=>{e.currentTarget.style.background=cancelling===appt.id?"rgba(239,68,68,0.15)":"rgba(239,68,68,0.1)";e.currentTarget.style.color="#f87171";}}>
                                   {cancelling===appt.id
-                                    ? <><span style={{width:10,height:10,border:"1.5px solid #3f3f46",borderTopColor:"#f87171",borderRadius:"50%",display:"inline-block",animation:"spin 0.7s linear infinite"}}/> Cancelling...</>
-                                    : <><span style={{fontSize:13}}>✕</span> Cancel Appointment</>
+                                    ? <><span style={{width:11,height:11,border:"2px solid rgba(239,68,68,0.3)",borderTopColor:"#f87171",borderRadius:"50%",display:"inline-block",animation:"spin 0.7s linear infinite"}}/> Cancelling...</>
+                                    : <><span style={{fontSize:14,fontWeight:900}}>✕</span> Cancel Appointment</>
                                   }
                                 </button>
                               )}
