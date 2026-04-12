@@ -143,270 +143,271 @@ function PersonaSelect({ barbers, book, isMobile }) {
             }
           </div>
         ) : (
-          <div style={{ display:"grid", gridTemplateColumns:"360px 1fr", gap:0, alignItems:"stretch" }}>
+        <div style={{ display:"grid", gridTemplateColumns:"360px 1fr", gap:0, alignItems:"stretch" }}>
 
-            {/* LEFT ROSTER */}
-            <div style={{ borderRight:`1px solid ${A}22`, paddingRight:32, paddingTop:20, paddingBottom:20 }}>
-              {list.map((b,i)=>(
-                <div key={b.id} onClick={()=>{setSel(i);setLocked(false);}} className="ps-row"
-                  style={{ display:"flex", alignItems:"stretch", background:i===sel?`${A}08`:"transparent", border:`1px solid ${i===sel?`${A}44`:"rgba(255,255,255,0.05)"}`, marginBottom:6, position:"relative", overflow:"hidden" }}>
-                  {/* Active bar */}
-                  {i===sel && <div style={{ position:"absolute", left:0, top:0, bottom:0, width:3, background:A }}/>}
-                  {/* Red accent slash on hover */}
-                  {i===sel && <div style={{ position:"absolute", right:0, top:0, bottom:0, width:2, background:`linear-gradient(to bottom,transparent,${R},transparent)` }}/>}
-                  {/* Photo */}
-                  <div style={{ width:82, height:100, flexShrink:0, overflow:"hidden", background:"#0a0a0a", marginLeft:i===sel?3:0 }}>
-                    {validPhoto(b.photo_url||b.photo)
-                      ? <img src={validPhoto(b.photo_url||b.photo)} alt={b.name} style={{ width:"100%", height:"100%", objectFit:"cover", objectPosition:"center top", filter:i===sel?"none":"brightness(0.35) saturate(0.4)", transition:"filter 0.3s" }}/>
-                      : <div style={{ width:"100%", height:"100%", display:"flex", alignItems:"center", justifyContent:"center" }}>
-                          <span style={{ ...D, fontSize:30, color:A, fontWeight:900 }}>{(b.name||"?").charAt(0)}</span>
-                        </div>
-                    }
-                  </div>
-                  {/* Info */}
-                  <div style={{ flex:1, padding:"16px 14px", display:"flex", flexDirection:"column", justifyContent:"center" }}>
-                    <p style={{ ...M, fontSize:7, color:i===sel?`${A}cc`:"rgba(245,158,11,0.2)", letterSpacing:"0.4em", textTransform:"uppercase", marginBottom:5, transition:"color 0.25s" }}>BARBER #{String(i+1).padStart(2,"0")}</p>
-                    <p style={{ ...D, fontSize:13, fontWeight:900, textTransform:"uppercase", color:i===sel?"white":"#a1a1aa", letterSpacing:"-0.02em", transition:"color 0.25s" }}>{b.name}</p>
-                  </div>
-                  {i===sel && (
-                    <div style={{ display:"flex", alignItems:"center", paddingRight:14 }}>
-                      <div style={{ background:locked?"#22c55e":A, padding:"3px 8px", clipPath:"polygon(0 0,calc(100% - 4px) 0,100% 4px,100% 100%,4px 100%,0 calc(100% - 4px))" }}>
-                        <span style={{ ...M, fontSize:7, color:"#000", letterSpacing:"0.2em", textTransform:"uppercase" }}>{locked?"LOCKED":"ACTIVE"}</span>
+          {/* LEFT ROSTER */}
+          <div style={{ borderRight:`1px solid ${A}22`, paddingRight:32, paddingTop:20, paddingBottom:20 }}>
+            {list.map((b,i)=>(
+              <div key={b.id} onClick={()=>{setSel(i);setLocked(false);}} className="ps-row"
+                style={{ display:"flex", alignItems:"stretch", background:i===sel?`${A}08`:"transparent", border:`1px solid ${i===sel?`${A}44`:"rgba(255,255,255,0.05)"}`, marginBottom:6, position:"relative", overflow:"hidden" }}>
+                {/* Active bar */}
+                {i===sel && <div style={{ position:"absolute", left:0, top:0, bottom:0, width:3, background:A }}/>}
+                {/* Red accent slash on hover */}
+                {i===sel && <div style={{ position:"absolute", right:0, top:0, bottom:0, width:2, background:`linear-gradient(to bottom,transparent,${R},transparent)` }}/>}
+                {/* Photo */}
+                <div style={{ width:82, height:100, flexShrink:0, overflow:"hidden", background:"#0a0a0a", marginLeft:i===sel?3:0 }}>
+                  {validPhoto(b.photo_url||b.photo)
+                    ? <img src={validPhoto(b.photo_url||b.photo)} alt={b.name} style={{ width:"100%", height:"100%", objectFit:"cover", objectPosition:"center top", filter:i===sel?"none":"brightness(0.35) saturate(0.4)", transition:"filter 0.3s" }}/>
+                    : <div style={{ width:"100%", height:"100%", display:"flex", alignItems:"center", justifyContent:"center" }}>
+                        <span style={{ ...D, fontSize:30, color:A, fontWeight:900 }}>{(b.name||"?").charAt(0)}</span>
                       </div>
-                    </div>
-                  )}
+                  }
                 </div>
-              ))}
-              {/* Info box */}
-              <div style={{ marginTop:16, padding:"14px", borderLeft:`3px solid ${A}44`, background:`${A}04` }}>
-                <p style={{ ...M, fontSize:9, color:"#a1a1aa", lineHeight:1.8 }}>
-                  {locked ? `✓ ${active.name} locked in` : "Select a barber to see their profile"}
-                </p>
+                {/* Info */}
+                <div style={{ flex:1, padding:"16px 14px", display:"flex", flexDirection:"column", justifyContent:"center" }}>
+                  <p style={{ ...M, fontSize:7, color:i===sel?`${A}cc`:"rgba(245,158,11,0.2)", letterSpacing:"0.4em", textTransform:"uppercase", marginBottom:5, transition:"color 0.25s" }}>BARBER #{String(i+1).padStart(2,"0")}</p>
+                  <p style={{ ...D, fontSize:13, fontWeight:900, textTransform:"uppercase", color:i===sel?"white":"#a1a1aa", letterSpacing:"-0.02em", transition:"color 0.25s" }}>{b.name}</p>
+                </div>
+                {i===sel && (
+                  <div style={{ display:"flex", alignItems:"center", paddingRight:14 }}>
+                    <div style={{ background:locked?"#22c55e":A, padding:"3px 8px", clipPath:"polygon(0 0,calc(100% - 4px) 0,100% 4px,100% 100%,4px 100%,0 calc(100% - 4px))" }}>
+                      <span style={{ ...M, fontSize:7, color:"#000", letterSpacing:"0.2em", textTransform:"uppercase" }}>{locked?"LOCKED":"ACTIVE"}</span>
+                    </div>
+                  </div>
+                )}
               </div>
+            ))}
+            {/* Info box */}
+            <div style={{ marginTop:16, padding:"14px", borderLeft:`3px solid ${A}44`, background:`${A}04` }}>
+              <p style={{ ...M, fontSize:9, color:"#a1a1aa", lineHeight:1.8 }}>
+                {locked ? `✓ ${active.name} locked in` : "Select a barber to see their profile"}
+              </p>
+            </div>
+          </div>
+
+          {/* RIGHT — BIG DISPLAY */}
+          <div className={flash?"ps-flash":""} style={{ paddingLeft:44, paddingTop:20, paddingBottom:20, display:"flex", flexDirection:"column" }}>
+            {/* P5-style name stamp */}
+            <div style={{ display:"flex", alignItems:"center", gap:0, marginBottom:20 }}>
+              <div style={{ background:R, padding:"5px 14px 5px 10px", clipPath:"polygon(0 0,100% 0,calc(100% - 8px) 100%,0 100%)", marginRight:0 }}>
+                <span style={{ ...M, fontSize:7, color:"white", letterSpacing:"0.4em", textTransform:"uppercase" }}>HEADZ UP</span>
+              </div>
+              <div style={{ background:`${A}`, padding:"5px 18px 5px 14px", clipPath:"polygon(8px 0,100% 0,calc(100% - 8px) 100%,0 100%)" }}>
+                <span style={{ ...M, fontSize:7, color:"black", letterSpacing:"0.4em", textTransform:"uppercase" }}>BARBER</span>
+              </div>
+              <div style={{ flex:1, height:2, background:`linear-gradient(to right,${A}55,transparent)`, marginLeft:12 }}/>
             </div>
 
-            {/* RIGHT — BIG DISPLAY */}
-            <div className={flash?"ps-flash":""} style={{ paddingLeft:44, paddingTop:20, paddingBottom:20, display:"flex", flexDirection:"column" }}>
-              {/* P5-style name stamp */}
-              <div style={{ display:"flex", alignItems:"center", gap:0, marginBottom:20 }}>
-                <div style={{ background:R, padding:"5px 14px 5px 10px", clipPath:"polygon(0 0,100% 0,calc(100% - 8px) 100%,0 100%)", marginRight:0 }}>
-                  <span style={{ ...M, fontSize:7, color:"white", letterSpacing:"0.4em", textTransform:"uppercase" }}>HEADZ UP</span>
-                </div>
-                <div style={{ background:`${A}`, padding:"5px 18px 5px 14px", clipPath:"polygon(8px 0,100% 0,calc(100% - 8px) 100%,0 100%)" }}>
-                  <span style={{ ...M, fontSize:7, color:"black", letterSpacing:"0.4em", textTransform:"uppercase" }}>BARBER</span>
-                </div>
-                <div style={{ flex:1, height:2, background:`linear-gradient(to right,${A}55,transparent)`, marginLeft:12 }}/>
-              </div>
+            {/* ── CARD: photo + stats stacked ── */}
+            <div style={{ display:"flex", gap:20, flex:1, alignItems:"flex-start" }}>
 
-              {/* ── CARD: photo + stats stacked ── */}
-              <div style={{ display:"flex", gap:20, flex:1, alignItems:"flex-start" }}>
+              {/* Photo card */}
+              <div style={{ position:"relative", width:300, flexShrink:0,
+                clipPath:"polygon(0 0,calc(100% - 20px) 0,100% 20px,100% 100%,20px 100%,0 calc(100% - 20px))",
+                background:"#080808",
+                boxShadow:`0 0 0 1px ${A}22, 0 32px 80px rgba(0,0,0,0.8)`,
+              }}>
+                {/* Photo — tall, zoomed out, full body */}
+                <div style={{ height:380, overflow:"hidden", position:"relative" }}>
+                  {validPhoto(active.photo_url||active.photo)
+                    ? <>
+                        <img key={`hero-${active.id}`}
+                          src={validPhoto(active.photo_url||active.photo)}
+                          alt={active.name}
+                          style={{ width:"100%", height:"100%", objectFit:"cover",
+                            objectPosition:"center 15%",   // slight zoom toward top — shows face + upper body
+                            display:"block",
+                            transition:"transform 0.8s cubic-bezier(0.4,0,0.2,1)",
+                          }}/>
+                        {/* Subtle vignette */}
+                        <div style={{ position:"absolute", inset:0,
+                          background:"radial-gradient(ellipse at center,transparent 40%,rgba(0,0,0,0.55) 100%)",
+                          pointerEvents:"none"
+                        }}/>
+                      </>
+                    : <div style={{ width:"100%", height:"100%", background:"linear-gradient(160deg,#0d0d0d,#1a1a1a)", display:"flex", alignItems:"center", justifyContent:"center" }}>
+                        <span style={{ ...D, fontSize:120, color:`${A}08`, fontWeight:900, userSelect:"none" }}>{(active.name||"?").charAt(0)}</span>
+                      </div>
+                  }
 
-                {/* Photo card */}
-                <div style={{ position:"relative", width:300, flexShrink:0,
-                  clipPath:"polygon(0 0,calc(100% - 20px) 0,100% 20px,100% 100%,20px 100%,0 calc(100% - 20px))",
-                  background:"#080808",
-                  boxShadow:`0 0 0 1px ${A}22, 0 32px 80px rgba(0,0,0,0.8)`,
+                  {/* Bottom gradient — fades into stats */}
+                  <div style={{ position:"absolute", bottom:0, left:0, right:0, height:120,
+                    background:"linear-gradient(to top,#080808 0%,rgba(8,8,8,0.7) 60%,transparent 100%)"
+                  }}/>
+
+                  {/* HUD corners */}
+                  {[
+                    {top:8,left:8,borderTop:`1.5px solid ${A}99`,borderLeft:`1.5px solid ${A}99`},
+                    {top:8,right:8,borderTop:`1.5px solid ${A}99`,borderRight:`1.5px solid ${A}99`},
+                    {bottom:8,left:8,borderBottom:`1.5px solid ${A}99`,borderLeft:`1.5px solid ${A}99`},
+                    {bottom:8,right:8,borderBottom:`1.5px solid ${A}99`,borderRight:`1.5px solid ${A}99`},
+                  ].map((c,j)=>(
+                    <div key={j} style={{ position:"absolute", width:18, height:18, ...c, pointerEvents:"none" }}/>
+                  ))}
+
+                  {/* Status dot */}
+                  <div style={{ position:"absolute", top:12, left:12, display:"flex", alignItems:"center", gap:6 }}>
+                    <div style={{ width:7, height:7, background:"#22c55e", borderRadius:"50%", animation:"p5-glow 2s infinite", boxShadow:"0 0 8px #22c55e" }}/>
+                    <span style={{ ...M, fontSize:7, color:"#4ade80", letterSpacing:"0.3em", textTransform:"uppercase" }}>AVAILABLE</span>
+                  </div>
+
+                  {/* HEADZ UP badge */}
+                  <div style={{ position:"absolute", top:10, right:10, background:`${R}dd`, padding:"3px 9px", clipPath:"polygon(6px 0,100% 0,100% 100%,0 100%)" }}>
+                    <span style={{ ...M, fontSize:6, color:"white", letterSpacing:"0.3em", textTransform:"uppercase" }}>HEADZ UP</span>
+                  </div>
+
+                  {/* Name overlaid on photo bottom */}
+                  <div style={{ position:"absolute", bottom:12, left:14, right:14 }}>
+                    <p key={`name-${active.id}`} className="ps-name"
+                      style={{ ...D, fontSize:22, fontWeight:900, textTransform:"uppercase",
+                        letterSpacing:"-0.04em", color:"white", lineHeight:1,
+                        textShadow:"0 2px 20px rgba(0,0,0,0.9)",
+                      }}>
+                      {active.name}
+                    </p>
+                    {active.bio && (
+                      <p style={{ ...M, fontSize:9, color:"rgba(255,255,255,0.45)", marginTop:4,
+                        lineHeight:1.5, overflow:"hidden", display:"-webkit-box",
+                        WebkitLineClamp:1, WebkitBoxOrient:"vertical",
+                        textShadow:"0 1px 8px rgba(0,0,0,1)"
+                      }}>{active.bio}</p>
+                    )}
+                  </div>
+                </div>
+
+                {/* ── STAT BARS underneath photo ── */}
+                <div style={{ padding:"16px 16px 18px", background:"#080808",
+                  borderTop:`1px solid rgba(245,158,11,0.12)`
                 }}>
-                  {/* Photo — tall, zoomed out, full body */}
-                  <div style={{ height:380, overflow:"hidden", position:"relative" }}>
-                    {validPhoto(active.photo_url||active.photo)
-                      ? <>
-                          <img key={`hero-${active.id}`}
-                            src={validPhoto(active.photo_url||active.photo)}
-                            alt={active.name}
-                            style={{ width:"100%", height:"100%", objectFit:"cover",
-                              objectPosition:"center 15%",   // slight zoom toward top — shows face + upper body
-                              display:"block",
-                              transition:"transform 0.8s cubic-bezier(0.4,0,0.2,1)",
-                            }}/>
-                          {/* Subtle vignette */}
-                          <div style={{ position:"absolute", inset:0,
-                            background:"radial-gradient(ellipse at center,transparent 40%,rgba(0,0,0,0.55) 100%)",
-                            pointerEvents:"none"
-                          }}/>
-                        </>
-                      : <div style={{ width:"100%", height:"100%", background:"linear-gradient(160deg,#0d0d0d,#1a1a1a)", display:"flex", alignItems:"center", justifyContent:"center" }}>
-                          <span style={{ ...D, fontSize:120, color:`${A}08`, fontWeight:900, userSelect:"none" }}>{(active.name||"?").charAt(0)}</span>
-                        </div>
-                    }
-
-                    {/* Bottom gradient — fades into stats */}
-                    <div style={{ position:"absolute", bottom:0, left:0, right:0, height:120,
-                      background:"linear-gradient(to top,#080808 0%,rgba(8,8,8,0.7) 60%,transparent 100%)"
-                    }}/>
-
-                    {/* HUD corners */}
-                    {[
-                      {top:8,left:8,borderTop:`1.5px solid ${A}99`,borderLeft:`1.5px solid ${A}99`},
-                      {top:8,right:8,borderTop:`1.5px solid ${A}99`,borderRight:`1.5px solid ${A}99`},
-                      {bottom:8,left:8,borderBottom:`1.5px solid ${A}99`,borderLeft:`1.5px solid ${A}99`},
-                      {bottom:8,right:8,borderBottom:`1.5px solid ${A}99`,borderRight:`1.5px solid ${A}99`},
-                    ].map((c,j)=>(
-                      <div key={j} style={{ position:"absolute", width:18, height:18, ...c, pointerEvents:"none" }}/>
-                    ))}
-
-                    {/* Status dot */}
-                    <div style={{ position:"absolute", top:12, left:12, display:"flex", alignItems:"center", gap:6 }}>
-                      <div style={{ width:7, height:7, background:"#22c55e", borderRadius:"50%", animation:"p5-glow 2s infinite", boxShadow:"0 0 8px #22c55e" }}/>
-                      <span style={{ ...M, fontSize:7, color:"#4ade80", letterSpacing:"0.3em", textTransform:"uppercase" }}>AVAILABLE</span>
-                    </div>
-
-                    {/* HEADZ UP badge */}
-                    <div style={{ position:"absolute", top:10, right:10, background:`${R}dd`, padding:"3px 9px", clipPath:"polygon(6px 0,100% 0,100% 100%,0 100%)" }}>
-                      <span style={{ ...M, fontSize:6, color:"white", letterSpacing:"0.3em", textTransform:"uppercase" }}>HEADZ UP</span>
-                    </div>
-
-                    {/* Name overlaid on photo bottom */}
-                    <div style={{ position:"absolute", bottom:12, left:14, right:14 }}>
-                      <p key={`name-${active.id}`} className="ps-name"
-                        style={{ ...D, fontSize:22, fontWeight:900, textTransform:"uppercase",
-                          letterSpacing:"-0.04em", color:"white", lineHeight:1,
-                          textShadow:"0 2px 20px rgba(0,0,0,0.9)",
-                        }}>
-                        {active.name}
-                      </p>
-                      {active.bio && (
-                        <p style={{ ...M, fontSize:9, color:"rgba(255,255,255,0.45)", marginTop:4,
-                          lineHeight:1.5, overflow:"hidden", display:"-webkit-box",
-                          WebkitLineClamp:1, WebkitBoxOrient:"vertical",
-                          textShadow:"0 1px 8px rgba(0,0,0,1)"
-                        }}>{active.bio}</p>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* ── STAT BARS underneath photo ── */}
-                  <div style={{ padding:"16px 16px 18px", background:"#080808",
-                    borderTop:`1px solid rgba(245,158,11,0.12)`
-                  }}>
-                    {/* Stat header */}
-                    <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:12 }}>
-                      <span style={{ ...M, fontSize:7, color:"rgba(245,158,11,0.4)", letterSpacing:"0.5em", textTransform:"uppercase" }}>SKILL RATINGS</span>
-                      <div style={{ display:"flex", gap:3 }}>
-                        {[...Array(5)].map((_,i)=>(
-                          <div key={i} style={{ width:4, height:4, background:A, opacity:0.6+(i*0.08),
-                            clipPath:"polygon(50% 0%,100% 50%,50% 100%,0% 50%)"
-                          }}/>
-                        ))}
-                      </div>
-                    </div>
-
-                    <div style={{ display:"flex", flexDirection:"column", gap:9 }}>
-                      {STATS.map((s,si)=>{
-                        const colors = [
-                          {bar:"#f59e0b",glow:"rgba(245,158,11,0.6)",val:"#f59e0b"},
-                          {bar:"#fbbf24",glow:"rgba(251,191,36,0.6)",val:"#fbbf24"},
-                          {bar:"#ef4444",glow:"rgba(239,68,68,0.6)",val:"#f87171"},
-                          {bar:"#f59e0b",glow:"rgba(245,158,11,0.6)",val:"#f59e0b"},
-                          {bar:"#22c55e",glow:"rgba(34,197,94,0.6)",val:"#4ade80"},
-                        ];
-                        const col = colors[si] || colors[0];
-                        return (
-                          <div key={s.k}>
-                            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"baseline", marginBottom:4 }}>
-                              <span style={{ ...M, fontSize:7, color:"#3f3f46", letterSpacing:"0.25em", textTransform:"uppercase" }}>{s.k}</span>
-                              <span style={{ ...M, fontSize:9, color:col.val, fontWeight:700 }}>{s.v}</span>
-                            </div>
-                            <div style={{ height:3, background:"rgba(255,255,255,0.04)", position:"relative", overflow:"hidden",
-                              clipPath:"polygon(0 0,100% 0,100% 100%,0 100%)"
-                            }}>
-                              <div className="ps-bar" key={`sb-${active.id}-${s.k}`}
-                                style={{ position:"absolute", inset:"0 auto 0 0",
-                                  background:`linear-gradient(to right,${col.bar},${col.val})`,
-                                  boxShadow:`0 0 8px ${col.glow}`,
-                                  "--w":`${s.v}%`, width:`${s.v}%`
-                                }}/>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-
-                    {/* Rating badge */}
-                    <div style={{ marginTop:14, paddingTop:12, borderTop:"1px solid rgba(255,255,255,0.05)",
-                      display:"flex", justifyContent:"space-between", alignItems:"center"
-                    }}>
-                      <div style={{ display:"flex", gap:2 }}>
-                        {[...Array(5)].map((_,i)=>(
-                          <span key={i} style={{ color:A, fontSize:10 }}>★</span>
-                        ))}
-                      </div>
-                      <span style={{ ...M, fontSize:9, color:"#52525b" }}>5.0 · Hattiesburg</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Right side: profile data + actions */}
-                <div style={{ flex:1, display:"flex", flexDirection:"column", gap:16 }}>
-
-                  {/* Profile data */}
-                  <div>
-                    <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:12 }}>
-                      <div style={{ width:3, height:14, background:A }}/>
-                      <span style={{ ...M, fontSize:7, color:`${A}66`, letterSpacing:"0.5em", textTransform:"uppercase" }}>PROFILE_DATA</span>
-                    </div>
-                    {[["SHOP","HEADZ UP"],["CITY","Hattiesburg, MS"],["STYLE","Precision Cuts"],["RATING","★★★★★"],["STATUS","● ONLINE"]].map(([l,v])=>(
-                      <div key={l} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", paddingBottom:8, marginBottom:8, borderBottom:"1px solid rgba(255,255,255,0.04)" }}>
-                        <span style={{ ...M, fontSize:7, color:"#52525b", letterSpacing:"0.25em", textTransform:"uppercase" }}>{l}</span>
-                        <span style={{ ...M, fontSize:10, color:v.startsWith("●")?"#4ade80":v.startsWith("★")?A:"#a1a1aa" }}>{v}</span>
-                      </div>
-                    ))}
-                  </div>
-
-                  {/* Specialties */}
-                  <div>
-                    <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:10 }}>
-                      <div style={{ width:3, height:14, background:R }}/>
-                      <span style={{ ...M, fontSize:7, color:`${R}88`, letterSpacing:"0.5em", textTransform:"uppercase" }}>SPECIALTIES</span>
-                    </div>
-                    <div style={{ display:"flex", gap:6, flexWrap:"wrap" }}>
-                      {["Fades","Lineups","Beards","Kids","Locs","Designs"].map(tag=>(
-                        <span key={tag} style={{ ...M, fontSize:8, color:A, padding:"3px 10px", background:`${A}10`, border:`1px solid ${A}25`,
-                          clipPath:"polygon(0 0,calc(100% - 4px) 0,100% 4px,100% 100%,4px 100%,0 calc(100% - 4px))"
-                        }}>{tag}</span>
+                  {/* Stat header */}
+                  <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:12 }}>
+                    <span style={{ ...M, fontSize:7, color:"rgba(245,158,11,0.4)", letterSpacing:"0.5em", textTransform:"uppercase" }}>SKILL RATINGS</span>
+                    <div style={{ display:"flex", gap:3 }}>
+                      {[...Array(5)].map((_,i)=>(
+                        <div key={i} style={{ width:4, height:4, background:A, opacity:0.6+(i*0.08),
+                          clipPath:"polygon(50% 0%,100% 50%,50% 100%,0% 50%)"
+                        }}/>
                       ))}
                     </div>
                   </div>
 
-                  {/* Booking fee callout */}
-                  <div style={{ padding:"12px 14px", background:"rgba(245,158,11,0.05)", border:`1px solid ${A}20`,
-                    clipPath:"polygon(0 0,calc(100% - 8px) 0,100% 8px,100% 100%,8px 100%,0 calc(100% - 8px))"
-                  }}>
-                    <p style={{ ...M, fontSize:9, color:`${A}88`, letterSpacing:"0.3em", textTransform:"uppercase", marginBottom:4 }}>DEPOSIT</p>
-                    <p style={{ ...D, fontSize:20, color:A, fontWeight:900 }}>$10 <span style={{ ...M, fontSize:9, color:"#52525b" }}>to secure your spot</span></p>
+                  <div style={{ display:"flex", flexDirection:"column", gap:9 }}>
+                    {STATS.map((s,si)=>{
+                      const colors = [
+                        {bar:"#f59e0b",glow:"rgba(245,158,11,0.6)",val:"#f59e0b"},
+                        {bar:"#fbbf24",glow:"rgba(251,191,36,0.6)",val:"#fbbf24"},
+                        {bar:"#ef4444",glow:"rgba(239,68,68,0.6)",val:"#f87171"},
+                        {bar:"#f59e0b",glow:"rgba(245,158,11,0.6)",val:"#f59e0b"},
+                        {bar:"#22c55e",glow:"rgba(34,197,94,0.6)",val:"#4ade80"},
+                      ];
+                      const col = colors[si] || colors[0];
+                      return (
+                        <div key={s.k}>
+                          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"baseline", marginBottom:4 }}>
+                            <span style={{ ...M, fontSize:7, color:"#3f3f46", letterSpacing:"0.25em", textTransform:"uppercase" }}>{s.k}</span>
+                            <span style={{ ...M, fontSize:9, color:col.val, fontWeight:700 }}>{s.v}</span>
+                          </div>
+                          <div style={{ height:3, background:"rgba(255,255,255,0.04)", position:"relative", overflow:"hidden",
+                            clipPath:"polygon(0 0,100% 0,100% 100%,0 100%)"
+                          }}>
+                            <div className="ps-bar" key={`sb-${active.id}-${s.k}`}
+                              style={{ position:"absolute", inset:"0 auto 0 0",
+                                background:`linear-gradient(to right,${col.bar},${col.val})`,
+                                boxShadow:`0 0 8px ${col.glow}`,
+                                "--w":`${s.v}%`, width:`${s.v}%`
+                              }}/>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
 
-                  {/* CTA buttons */}
-                  <div style={{ display:"flex", flexDirection:"column", gap:8, marginTop:"auto" }}>
-                    {!locked
-                      ? <>
-                          <button onClick={lock} style={{ width:"100%", padding:"16px 20px", background:A, color:"black", ...D, fontSize:9, fontWeight:700, letterSpacing:"0.2em", textTransform:"uppercase", border:"none", cursor:"pointer",
-                            clipPath:"polygon(0 0,calc(100% - 10px) 0,100% 10px,100% 100%,10px 100%,0 calc(100% - 10px))", transition:"background 0.2s"
-                          }}
-                            onMouseEnter={e=>e.currentTarget.style.background="white"}
-                            onMouseLeave={e=>e.currentTarget.style.background=A}>
-                            BOOK {active.name.split(" ")[0].toUpperCase()} →
-                          </button>
-                          <a href="/book" onClick={book} style={{ width:"100%", padding:"13px 20px", background:"transparent", color:"#52525b", ...D, fontSize:8, letterSpacing:"0.2em", textTransform:"uppercase", border:`1px solid rgba(255,255,255,0.08)`, cursor:"pointer", textDecoration:"none", display:"block", textAlign:"center", transition:"all 0.2s" }}
-                            onMouseEnter={e=>{e.currentTarget.style.borderColor=`${A}44`;e.currentTarget.style.color=A;}}
-                            onMouseLeave={e=>{e.currentTarget.style.borderColor="rgba(255,255,255,0.08)";e.currentTarget.style.color="#52525b";}}>
-                            VIEW ALL BARBERS
-                          </a>
-                        </>
-                      : <>
-                          <button onClick={lock} style={{ width:"100%", padding:"16px 20px", background:"#22c55e", color:"black", ...D, fontSize:9, fontWeight:700, letterSpacing:"0.2em", textTransform:"uppercase", border:"none", cursor:"pointer",
-                            clipPath:"polygon(0 0,calc(100% - 10px) 0,100% 10px,100% 100%,10px 100%,0 calc(100% - 10px))"
-                          }}>✓ LOCKED IN — BOOK NOW</button>
-                          <button onClick={()=>setLocked(false)} style={{ width:"100%", padding:"13px 20px", background:"transparent", color:"#52525b", border:`1px solid rgba(255,255,255,0.08)`, cursor:"pointer", ...D, fontSize:8, letterSpacing:"0.15em", textTransform:"uppercase", transition:"all 0.2s" }}
-                            onMouseEnter={e=>{e.currentTarget.style.color="white";e.currentTarget.style.borderColor="rgba(255,255,255,0.3)";}}
-                            onMouseLeave={e=>{e.currentTarget.style.color="#52525b";e.currentTarget.style.borderColor="rgba(255,255,255,0.08)";}}>← CHANGE BARBER</button>
-                        </>
-                    }
+                  {/* Rating badge */}
+                  <div style={{ marginTop:14, paddingTop:12, borderTop:"1px solid rgba(255,255,255,0.05)",
+                    display:"flex", justifyContent:"space-between", alignItems:"center"
+                  }}>
+                    <div style={{ display:"flex", gap:2 }}>
+                      {[...Array(5)].map((_,i)=>(
+                        <span key={i} style={{ color:A, fontSize:10 }}>★</span>
+                      ))}
+                    </div>
+                    <span style={{ ...M, fontSize:9, color:"#52525b" }}>5.0 · Hattiesburg</span>
                   </div>
+                </div>
+              </div>
+
+              {/* Right side: profile data + actions */}
+              <div style={{ flex:1, display:"flex", flexDirection:"column", gap:16 }}>
+
+                {/* Profile data */}
+                <div>
+                  <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:12 }}>
+                    <div style={{ width:3, height:14, background:A }}/>
+                    <span style={{ ...M, fontSize:7, color:`${A}66`, letterSpacing:"0.5em", textTransform:"uppercase" }}>PROFILE_DATA</span>
+                  </div>
+                  {[["SHOP","HEADZ UP"],["CITY","Hattiesburg, MS"],["STYLE","Precision Cuts"],["RATING","★★★★★"],["STATUS","● ONLINE"]].map(([l,v])=>(
+                    <div key={l} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", paddingBottom:8, marginBottom:8, borderBottom:"1px solid rgba(255,255,255,0.04)" }}>
+                      <span style={{ ...M, fontSize:7, color:"#52525b", letterSpacing:"0.25em", textTransform:"uppercase" }}>{l}</span>
+                      <span style={{ ...M, fontSize:10, color:v.startsWith("●")?"#4ade80":v.startsWith("★")?A:"#a1a1aa" }}>{v}</span>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Specialties */}
+                <div>
+                  <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:10 }}>
+                    <div style={{ width:3, height:14, background:R }}/>
+                    <span style={{ ...M, fontSize:7, color:`${R}88`, letterSpacing:"0.5em", textTransform:"uppercase" }}>SPECIALTIES</span>
+                  </div>
+                  <div style={{ display:"flex", gap:6, flexWrap:"wrap" }}>
+                    {["Fades","Lineups","Beards","Kids","Locs","Designs"].map(tag=>(
+                      <span key={tag} style={{ ...M, fontSize:8, color:A, padding:"3px 10px", background:`${A}10`, border:`1px solid ${A}25`,
+                        clipPath:"polygon(0 0,calc(100% - 4px) 0,100% 4px,100% 100%,4px 100%,0 calc(100% - 4px))"
+                      }}>{tag}</span>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Booking fee callout */}
+                <div style={{ padding:"12px 14px", background:"rgba(245,158,11,0.05)", border:`1px solid ${A}20`,
+                  clipPath:"polygon(0 0,calc(100% - 8px) 0,100% 8px,100% 100%,8px 100%,0 calc(100% - 8px))"
+                }}>
+                  <p style={{ ...M, fontSize:9, color:`${A}88`, letterSpacing:"0.3em", textTransform:"uppercase", marginBottom:4 }}>DEPOSIT</p>
+                  <p style={{ ...D, fontSize:20, color:A, fontWeight:900 }}>$10 <span style={{ ...M, fontSize:9, color:"#52525b" }}>to secure your spot</span></p>
+                </div>
+
+                {/* CTA buttons */}
+                <div style={{ display:"flex", flexDirection:"column", gap:8, marginTop:"auto" }}>
+                  {!locked
+                    ? <>
+                        <button onClick={lock} style={{ width:"100%", padding:"16px 20px", background:A, color:"black", ...D, fontSize:9, fontWeight:700, letterSpacing:"0.2em", textTransform:"uppercase", border:"none", cursor:"pointer",
+                          clipPath:"polygon(0 0,calc(100% - 10px) 0,100% 10px,100% 100%,10px 100%,0 calc(100% - 10px))", transition:"background 0.2s"
+                        }}
+                          onMouseEnter={e=>e.currentTarget.style.background="white"}
+                          onMouseLeave={e=>e.currentTarget.style.background=A}>
+                          BOOK {active.name.split(" ")[0].toUpperCase()} →
+                        </button>
+                        <a href="/book" onClick={book} style={{ width:"100%", padding:"13px 20px", background:"transparent", color:"#52525b", ...D, fontSize:8, letterSpacing:"0.2em", textTransform:"uppercase", border:`1px solid rgba(255,255,255,0.08)`, cursor:"pointer", textDecoration:"none", display:"block", textAlign:"center", transition:"all 0.2s" }}
+                          onMouseEnter={e=>{e.currentTarget.style.borderColor=`${A}44`;e.currentTarget.style.color=A;}}
+                          onMouseLeave={e=>{e.currentTarget.style.borderColor="rgba(255,255,255,0.08)";e.currentTarget.style.color="#52525b";}}>
+                          VIEW ALL BARBERS
+                        </a>
+                      </>
+                    : <>
+                        <button onClick={lock} style={{ width:"100%", padding:"16px 20px", background:"#22c55e", color:"black", ...D, fontSize:9, fontWeight:700, letterSpacing:"0.2em", textTransform:"uppercase", border:"none", cursor:"pointer",
+                          clipPath:"polygon(0 0,calc(100% - 10px) 0,100% 10px,100% 100%,10px 100%,0 calc(100% - 10px))"
+                        }}>✓ LOCKED IN — BOOK NOW</button>
+                        <button onClick={()=>setLocked(false)} style={{ width:"100%", padding:"13px 20px", background:"transparent", color:"#52525b", border:`1px solid rgba(255,255,255,0.08)`, cursor:"pointer", ...D, fontSize:8, letterSpacing:"0.15em", textTransform:"uppercase", transition:"all 0.2s" }}
+                          onMouseEnter={e=>{e.currentTarget.style.color="white";e.currentTarget.style.borderColor="rgba(255,255,255,0.3)";}}
+                          onMouseLeave={e=>{e.currentTarget.style.color="#52525b";e.currentTarget.style.borderColor="rgba(255,255,255,0.08)";}}>← CHANGE BARBER</button>
+                      </>
+                  }
                 </div>
               </div>
             </div>
           </div>
+          </div>
+        </div>
         )}
       </div>
     </section>
@@ -414,94 +415,134 @@ function PersonaSelect({ barbers, book, isMobile }) {
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   GALLERY CAROUSEL
+   GALLERY — Cinematic fullscreen slideshow
 ═══════════════════════════════════════════════════════════════════════════ */
 const GALLERY = [
-  { url:"/pictures/IMG_20260331_115011 (2).jpg", label:"Precision Fade",  sub:"Signature cut" },
-  { url:"/pictures/IMG_20260331_115011 (3).jpg", label:"Clean Lineup",    sub:"Sharp edges"   },
-  { url:"/pictures/IMG_20260331_115011 (4).jpg", label:"Beard Trim",      sub:"Sculpted look" },
-  { url:"/pictures/IMG_20260331_115011 (5).jpg", label:"Kids Cutz",       sub:"Ages 1–12"     },
-  { url:"/pictures/IMG_20260331_115011 (6).jpg", label:"Full Experience",  sub:"Cut & shave"   },
-  { url:"/pictures/IMG_20260331_115011 (7).jpg", label:"The Chair",       sub:"Your throne"   },
+  { url:"/pictures/IMG_20260331_115011 (2).jpg", label:"Precision Fade",   sub:"Signature cut",  num:"01" },
+  { url:"/pictures/IMG_20260331_115011 (3).jpg", label:"Clean Lineup",     sub:"Sharp edges",    num:"02" },
+  { url:"/pictures/IMG_20260331_115011 (4).jpg", label:"Beard Trim",       sub:"Sculpted look",  num:"03" },
+  { url:"/pictures/IMG_20260331_115011 (5).jpg", label:"Kids Cutz",        sub:"Ages 1–12",      num:"04" },
+  { url:"/pictures/IMG_20260331_115011 (6).jpg", label:"Full Experience",  sub:"Cut & shave",    num:"05" },
+  { url:"/pictures/IMG_20260331_115011 (7).jpg", label:"The Chair",        sub:"Your throne",    num:"06" },
 ];
 
 function GalleryCarousel({ isMobile }) {
-  const [angle,setAngle]     = useState(0);
-  const [active,setActive]   = useState(0);
-  const [spin,setSpin]       = useState(true);
-  const [drag,setDrag]       = useState(false);
-  const [sx,setSx]           = useState(0);
-  const rafRef = useRef(null);
-  const angRef = useRef(0);
-  const N=GALLERY.length; const STEP=360/N;
-  const RAD=isMobile?155:275; const W=isMobile?158:232; const H=isMobile?198:295;
+  const [active,  setActive]  = useState(0);
+  const [prev,    setPrev]    = useState(null);
+  const [trans,   setTrans]   = useState(false);
+  const timerRef = useRef(null);
+  const N = GALLERY.length;
 
-  useEffect(()=>{
-    if(!spin)return;
-    const t=()=>{angRef.current=(angRef.current+0.3)%360;setAngle(angRef.current);let i=Math.round(((360-angRef.current)%360)/STEP)%N;if(i<0)i+=N;setActive(i);rafRef.current=requestAnimationFrame(t);};
-    rafRef.current=requestAnimationFrame(t);
-    return()=>cancelAnimationFrame(rafRef.current);
-  },[spin]);
+  const goTo = useCallback((next) => {
+    if(trans) return;
+    setPrev(active);
+    setTrans(true);
+    setActive(next);
+    setTimeout(() => { setPrev(null); setTrans(false); }, 700);
+  }, [active, trans]);
 
-  const ds=(e)=>{setSpin(false);cancelAnimationFrame(rafRef.current);setDrag(true);setSx(e.touches?e.touches[0].clientX:e.clientX);};
-  const dm=(e)=>{if(!drag)return;const x=e.touches?e.touches[0].clientX:e.clientX;angRef.current=(angRef.current+(x-sx)*0.5)%360;setAngle(angRef.current);let i=Math.round(((360-angRef.current)%360)/STEP)%N;if(i<0)i+=N;setActive(i);setSx(x);};
-  const de=()=>{setDrag(false);setTimeout(()=>setSpin(true),700);};
-  const go=(i)=>{setSpin(false);cancelAnimationFrame(rafRef.current);angRef.current=((360-i*STEP)%360);setAngle(angRef.current);setActive(i);setTimeout(()=>setSpin(true),1400);};
+  const goNext = useCallback(() => goTo((active+1)%N),    [active, goTo, N]);
+  const goPrev = useCallback(() => goTo((active-1+N)%N),  [active, goTo, N]);
+
+  useEffect(() => {
+    timerRef.current = setInterval(goNext, 4500);
+    return () => clearInterval(timerRef.current);
+  }, [goNext]);
+
+  const pause  = () => clearInterval(timerRef.current);
+  const resume = () => { timerRef.current = setInterval(goNext, 4500); };
 
   return (
-    <section style={{ padding:isMobile?"44px 0 52px":"80px 0 92px", overflow:"hidden", background:"#000", borderTop:`1px solid ${A}22`, borderBottom:`1px solid ${A}22`, position:"relative" }}>
-      <style>{`@keyframes gc-p{0%,100%{box-shadow:0 0 0 0 rgba(245,158,11,0)}50%{box-shadow:0 0 50px rgba(245,158,11,0.4)}} .gc-a{animation:gc-p 2.5s ease-in-out infinite;}`}</style>
-      <div style={{ position:"absolute",top:"50%",left:"50%",transform:"translate(-50%,-50%)",width:600,height:500,background:"radial-gradient(ellipse,rgba(245,158,11,0.06) 0%,transparent 60%)",pointerEvents:"none" }}/>
+    <section
+      style={{ position:"relative", overflow:"hidden", background:"#000",
+        height:isMobile?"72vw":"min(78vh,660px)",
+        borderTop:"1px solid rgba(245,158,11,0.2)",
+        borderBottom:"1px solid rgba(245,158,11,0.2)",
+      }}
+      onMouseEnter={pause} onMouseLeave={resume}
+    >
+      <style>{`
+        @keyframes gIn  { from{opacity:0;transform:scale(1.05)} to{opacity:1;transform:scale(1)} }
+        @keyframes gOut { from{opacity:1;transform:scale(1)} to{opacity:0;transform:scale(0.97)} }
+        @keyframes gLbl { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:none} }
+        @keyframes gNum { from{opacity:0;transform:translateX(-10px)} to{opacity:1;transform:none} }
+        @keyframes gScan{ 0%{top:-2px} 100%{top:100%} }
+        .g-in  { animation: gIn  0.75s cubic-bezier(0.16,1,0.3,1) both; }
+        .g-out { animation: gOut 0.75s cubic-bezier(0.16,1,0.3,1) both; position:absolute;inset:0;z-index:1; }
+        .g-lbl { animation: gLbl 0.6s cubic-bezier(0.16,1,0.3,1) 0.25s both; }
+        .g-num { animation: gNum 0.5s cubic-bezier(0.16,1,0.3,1) 0.1s both; }
+      `}</style>
 
-      {/* Header */}
-      <div style={{ display:"flex", alignItems:"center", gap:0, marginBottom:isMobile?28:44, padding:"0 clamp(20px,5vw,44px)" }}>
-        <div style={{ background:R, padding:"5px 14px 5px 10px", clipPath:"polygon(0 0,100% 0,calc(100% - 8px) 100%,0 100%)", marginRight:0 }}>
-          <span style={{ ...D, fontSize:8, fontWeight:900, color:"white", letterSpacing:"0.4em", textTransform:"uppercase" }}>THE</span>
+      {/* Exiting slide */}
+      {prev!==null && (
+        <div className="g-out">
+          <img src={GALLERY[prev].url} alt="" style={{ width:"100%",height:"100%",objectFit:"cover",objectPosition:"center top" }}/>
+          <div style={{ position:"absolute",inset:0,background:"linear-gradient(to top,rgba(0,0,0,0.95) 0%,rgba(0,0,0,0.3) 55%,transparent 100%)" }}/>
         </div>
-        <div style={{ background:A, padding:"5px 16px 5px 12px", clipPath:"polygon(8px 0,100% 0,calc(100% - 8px) 100%,0 100%)" }}>
-          <span style={{ ...D, fontSize:8, fontWeight:900, color:"black", letterSpacing:"0.4em", textTransform:"uppercase" }}>WORK</span>
-        </div>
-        <div style={{ flex:1, height:2, background:`linear-gradient(to right,${A}55,transparent)`, marginLeft:12 }}/>
+      )}
+
+      {/* Active slide */}
+      <div className="g-in" style={{ position:"absolute",inset:0,zIndex:2 }}>
+        <img
+          src={GALLERY[active].url}
+          alt={GALLERY[active].label}
+          style={{ width:"100%",height:"100%",objectFit:"cover",objectPosition:"center top",display:"block" }}
+        />
+        <div style={{ position:"absolute",inset:0,background:"linear-gradient(to top,rgba(0,0,0,0.96) 0%,rgba(0,0,0,0.35) 45%,rgba(0,0,0,0.08) 100%)" }}/>
+        <div style={{ position:"absolute",left:0,right:0,height:1,background:"rgba(245,158,11,0.1)",animation:"gScan 3.5s linear infinite",zIndex:1,pointerEvents:"none" }}/>
+        <div style={{ position:"absolute",inset:0,backgroundImage:"repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.06) 2px,rgba(0,0,0,0.06) 3px)",pointerEvents:"none",zIndex:1 }}/>
       </div>
 
-      {/* Carousel */}
-      <div style={{ position:"relative",height:isMobile?262:392,perspective:isMobile?600:920,perspectiveOrigin:"50% 50%",cursor:drag?"grabbing":"grab",userSelect:"none",WebkitUserSelect:"none",touchAction:"none" }}
-        onMouseDown={ds} onMouseMove={dm} onMouseUp={de} onMouseLeave={de}
-        onTouchStart={ds} onTouchMove={dm} onTouchEnd={de}>
-        <div style={{ position:"absolute",top:"50%",left:"50%",transformStyle:"preserve-3d",transform:`translate(-50%,-50%) rotateY(${angle}deg)` }}>
-          {GALLERY.map((g,i)=>{
-            const front=i===active;
-            return (
-              <div key={i} className={front?"gc-a":""} onClick={()=>go(i)}
-                style={{ position:"absolute",width:W,height:H,left:-W/2,top:-H/2,transform:`rotateY(${i*STEP}deg) translateZ(${RAD}px)`,overflow:"hidden",cursor:"pointer",backfaceVisibility:"hidden",border:front?`2px solid ${A}`:`1px solid rgba(255,255,255,0.06)`,clipPath:front?"polygon(0 0,calc(100% - 14px) 0,100% 14px,100% 100%,14px 100%,0 calc(100% - 14px))":"none" }}>
-                <img src={g.url} alt={g.label} style={{ width:"100%",height:"100%",objectFit:"cover",objectPosition:"center top",filter:front?"none":"brightness(0.22) saturate(0.3)",transition:"filter 0.45s",pointerEvents:"none" }} loading="lazy"/>
-                {front && <>
-                  <div style={{ position:"absolute",inset:0,background:"linear-gradient(to top,rgba(0,0,0,0.97),rgba(0,0,0,0.55) 55%,transparent)" }}/>
-                  <div style={{ position:"absolute",bottom:0,left:0,right:0,padding:isMobile?"10px 12px 14px":"14px 16px 18px" }}>
-                    <p style={{ ...D,fontSize:isMobile?9:10,fontWeight:900,textTransform:"uppercase",color:"white",marginBottom:3 }}>{g.label}</p>
-                    <p style={{ ...M,fontSize:9,color:A,letterSpacing:"0.22em" }}>{g.sub}</p>
-                  </div>
-                  {/* P5 corner brackets */}
-                  {[{t:5,l:5,bt:"2px",bl:"2px"},{t:5,r:5,bt:"2px",br:"2px"},{b:5,l:5,bb:"2px",bl:"2px"},{b:5,r:5,bb:"2px",br:"2px"}].map((c,j)=>(
-                    <div key={j} style={{ position:"absolute",width:10,height:10,top:c.t,bottom:c.b,left:c.l,right:c.r,borderTop:c.bt&&`${c.bt} solid ${A}cc`,borderBottom:c.bb&&`${c.bb} solid ${A}cc`,borderLeft:c.bl&&`${c.bl} solid ${A}cc`,borderRight:c.br&&`${c.br} solid ${A}cc` }}/>
-                  ))}
-                  {/* Red slash on front card */}
-                  <div style={{ position:"absolute",top:0,bottom:0,right:"25%",width:2,background:`linear-gradient(to bottom,transparent,${R}44,transparent)`,transform:"skewX(6deg)",pointerEvents:"none" }}/>
-                </>}
-              </div>
-            );
-          })}
+      {/* Header stamp */}
+      <div style={{ position:"absolute",top:isMobile?14:24,left:isMobile?14:28,zIndex:10,display:"flex",alignItems:"center",gap:0 }}>
+        <div style={{ background:"#ef4444",padding:"5px 14px 5px 10px",clipPath:"polygon(0 0,100% 0,calc(100% - 8px) 100%,0 100%)" }}>
+          <span style={{ fontFamily:"'Syncopate',sans-serif",fontSize:7,fontWeight:900,color:"white",letterSpacing:"0.4em",textTransform:"uppercase" }}>THE</span>
         </div>
-        <div style={{ position:"absolute",bottom:6,left:"14%",right:"14%",height:1,background:`linear-gradient(to right,transparent,${A}33,transparent)` }}/>
+        <div style={{ background:"#f59e0b",padding:"5px 16px 5px 12px",clipPath:"polygon(8px 0,100% 0,calc(100% - 8px) 100%,0 100%)" }}>
+          <span style={{ fontFamily:"'Syncopate',sans-serif",fontSize:7,fontWeight:900,color:"black",letterSpacing:"0.4em",textTransform:"uppercase" }}>WORK</span>
+        </div>
       </div>
 
-      {/* Dots */}
-      <div style={{ display:"flex",justifyContent:"center",gap:8,marginTop:isMobile?16:22 }}>
-        {GALLERY.map((_,i)=>(
-          <button key={i} onClick={()=>go(i)} style={{ width:i===active?22:6,height:4,background:i===active?A:"rgba(255,255,255,0.12)",border:"none",cursor:"pointer",padding:0,transition:"all 0.3s",minHeight:"auto",minWidth:"auto",clipPath:i===active?"polygon(0 0,calc(100% - 3px) 0,100% 3px,100% 100%,3px 100%,0 calc(100% - 3px))":"none" }}/>
-        ))}
+      {/* Counter */}
+      <div key={"n"+active} className="g-num" style={{ position:"absolute",top:isMobile?14:24,right:isMobile?14:28,zIndex:10,display:"flex",alignItems:"baseline",gap:5 }}>
+        <span style={{ fontFamily:"'Syncopate',sans-serif",fontSize:isMobile?22:30,fontWeight:900,color:"#f59e0b",lineHeight:1 }}>{GALLERY[active].num}</span>
+        <span style={{ fontFamily:"'DM Mono',monospace",fontSize:10,color:"rgba(255,255,255,0.25)" }}>/{String(N).padStart(2,"0")}</span>
       </div>
-      <p style={{ ...M,fontSize:9,color:"#a1a1aa",textAlign:"center",letterSpacing:"0.4em",textTransform:"uppercase",marginTop:14 }}>✦ DRAG TO SPIN ✦</p>
+
+      {/* Bottom: label + controls */}
+      <div style={{ position:"absolute",bottom:0,left:0,right:0,zIndex:10,padding:isMobile?"16px 16px 20px":"24px 36px 32px",display:"flex",justifyContent:"space-between",alignItems:"flex-end",gap:16 }}>
+        <div key={"l"+active} className="g-lbl" style={{ flex:1,minWidth:0 }}>
+          <p style={{ fontFamily:"'DM Mono',monospace",fontSize:isMobile?8:9,color:"#f59e0b",letterSpacing:"0.4em",textTransform:"uppercase",marginBottom:5 }}>
+            {GALLERY[active].sub}
+          </p>
+          <h3 style={{ fontFamily:"'Syncopate',sans-serif",fontSize:isMobile?"clamp(1.1rem,5vw,1.6rem)":"clamp(1.4rem,2.8vw,2.2rem)",fontWeight:900,textTransform:"uppercase",letterSpacing:"-0.03em",color:"white",lineHeight:1,margin:0 }}>
+            {GALLERY[active].label}
+          </h3>
+        </div>
+        <div style={{ display:"flex",flexDirection:"column",alignItems:"flex-end",gap:12,flexShrink:0 }}>
+          <div style={{ display:"flex",gap:6 }}>
+            {[[goPrev,"←"],[goNext,"→"]].map(([fn,icon])=>(
+              <button key={icon} onClick={fn}
+                style={{ width:isMobile?36:42,height:isMobile?36:42,background:"rgba(0,0,0,0.55)",border:"1px solid rgba(245,158,11,0.3)",color:"#f59e0b",cursor:"pointer",fontSize:15,display:"flex",alignItems:"center",justifyContent:"center",backdropFilter:"blur(10px)",transition:"all 0.18s" }}
+                onMouseEnter={e=>{e.currentTarget.style.background="rgba(245,158,11,0.15)";e.currentTarget.style.borderColor="#f59e0b";}}
+                onMouseLeave={e=>{e.currentTarget.style.background="rgba(0,0,0,0.55)";e.currentTarget.style.borderColor="rgba(245,158,11,0.3)";}}>
+                {icon}
+              </button>
+            ))}
+          </div>
+          <div style={{ display:"flex",gap:5,alignItems:"center" }}>
+            {GALLERY.map((_,i)=>(
+              <button key={i} onClick={()=>goTo(i)}
+                style={{ width:i===active?20:4,height:3,background:i===active?"#f59e0b":"rgba(255,255,255,0.2)",border:"none",cursor:"pointer",padding:0,transition:"all 0.35s cubic-bezier(0.16,1,0.3,1)",minHeight:"auto",minWidth:"auto",clipPath:i===active?"polygon(0 0,calc(100% - 3px) 0,100% 3px,100% 100%,3px 100%,0 calc(100% - 3px))":"none" }}/>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {!isMobile && <>
+        <div onClick={goPrev} style={{ position:"absolute",left:0,top:0,bottom:0,width:"12%",cursor:"w-resize",zIndex:5 }}/>
+        <div onClick={goNext} style={{ position:"absolute",right:0,top:0,bottom:0,width:"12%",cursor:"e-resize",zIndex:5 }}/>
+      </>}
     </section>
   );
 }
@@ -995,3 +1036,4 @@ export default function HomePage() {
     </>
   );
 }
+
