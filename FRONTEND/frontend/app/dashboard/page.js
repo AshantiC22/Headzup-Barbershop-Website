@@ -43,21 +43,21 @@ function RescheduleModal({ appt, onClose, onDone }) {
 
   // ── Fetch barber working days on mount ──────────────────────────────────
   useEffect(() => {
-    if (!appt?.barber_id) { setSchedLoading(false); return; }
-    API.get(`barbers/${appt.barber_id}/working-days/`)
+    if (!appt?.barber_id||appt?.barber) { setSchedLoading(false); return; }
+    API.get(`barbers/${appt.barber_id||appt.barber}/working-days/`)
       .then(r => {
         setAllDays(r.data.all_days || []);
         setTimeOffDates(r.data.time_off_dates || []);
       })
       .catch(() => {})
       .finally(() => setSchedLoading(false));
-  }, [appt?.barber_id]);
+  }, [appt?.barber_id||appt?.barber]);
 
   // ── Fetch time slots when date changes ──────────────────────────────────
   useEffect(() => {
-    if (!newDate || !appt?.barber_id) return;
+    if (!newDate || !appt?.barber_id||appt?.barber) return;
     setSlotsLoading(true); setSlots([]); setBookedSlots([]); setTimeOff(false); setNewTime("");
-    API.get(`available-slots/?barber=${appt.barber_id}&date=${newDate}&service=${appt.service_id||""}`)
+    API.get(`available-slots/?barber=${appt.barber_id||appt.barber}&date=${newDate}&service=${appt.service_id||appt.service||""}`)
       .then(r => {
         if (r.data.time_off) { setTimeOff(true); return; }
         setSlots(r.data.available_slots || []);
@@ -69,7 +69,7 @@ function RescheduleModal({ appt, onClose, onDone }) {
         setBookedSlots([]);
       })
       .finally(() => setSlotsLoading(false));
-  }, [newDate, appt?.barber_id, appt?.service_id]);
+  }, [newDate, appt?.barber_id||appt?.barber, appt?.service_id||appt?.service]);
 
   // ── DOW conversion: Python 0=Mon→JS 1, Python 6=Sun→JS 0 ────────────────
   const hasSchedule  = allDays.length > 0;
@@ -294,7 +294,7 @@ function RescheduleModal({ appt, onClose, onDone }) {
                   <p style={{...mono,fontSize:11,color:"#3f3f46",marginTop:4}}>No open slots this day — try another date.</p>
                   <button onClick={()=>{
                     setSlotsLoading(true); setSlots([]); setBookedSlots([]); setTimeOff(false);
-                    API.get(`available-slots/?barber=${appt.barber_id}&date=${newDate}&service=${appt.service_id||""}`)
+                    API.get(`available-slots/?barber=${appt.barber_id||appt.barber}&date=${newDate}&service=${appt.service_id||appt.service||""}`)
                       .then(r=>{ if(r.data.time_off){setTimeOff(true);return;} setSlots(r.data.available_slots||[]); setBookedSlots(r.data.booked_slots||[]); })
                       .catch(()=>{})
                       .finally(()=>setSlotsLoading(false));
