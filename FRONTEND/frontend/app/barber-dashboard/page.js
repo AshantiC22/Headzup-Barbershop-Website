@@ -757,17 +757,27 @@ export default function BarberDashboard(){
 
   useEffect(()=>{if(activeTab==="schedule")loadSchedule(selectedDate);},[selectedDate,activeTab,loadSchedule]);
 
-  /* load all appt dates for calendar dots — load 180 days ahead */
-  useEffect(()=>{
-    API.get("barber/schedule/?days=180").then(r=>{
-      const arr=Array.isArray(r.data)?r.data:r.data.appointments||r.data.results||[];
-      // Store as array of {date, count} objects for the badge
-      const dateArr = arr.map(a=>a.date);
-      setAllApptDates(dateArr);
-    }).catch(()=>{});
-  },[]);
+  /* load all appt dates for calendar — fetch current + next month */
+  const loadCalendarDates = useCallback(async (year, month) => {
+    try {
+      const dateStr = `${year}-${String(month+1).padStart(2,"0")}-01`;
+      const r = await API.get(`barber/schedule/?date=${dateStr}&month=true`);
+      const arr = Array.isArray(r.data) ? r.data : r.data.appointments || r.data.results || [];
+      const dateArr = arr.filter(a=>a.status!=="cancelled").map(a=>a.date);
+      setAllApptDates(prev => {
+        // Merge with existing dates from other months
+        const existing = prev.filter(d => {
+          const m = new Date(d+"T00:00:00").getMonth();
+          const y = new Date(d+"T00:00:00").getFullYear();
+          return !(y===year && m===month);
+        });
+        return [...existing, ...dateArr];
+      });
+    } catch {}
+  }, []);
 
-  /* services loaded on mount above */
+  // Load calendar dates whenever calYear/calMonth changes
+  useEffect(()=>{ loadCalendarDates(calYear, calMonth); },[calYear, calMonth, loadCalendarDates]);
 
   /* load availability */
   const loadAvailability=useCallback(async()=>{
