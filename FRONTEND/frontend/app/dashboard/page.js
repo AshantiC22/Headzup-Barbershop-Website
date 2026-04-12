@@ -63,7 +63,11 @@ function RescheduleModal({ appt, onClose, onDone }) {
         setSlots(r.data.available_slots || []);
         setBookedSlots(r.data.booked_slots || []);
       })
-      .catch(() => setTimeOff(true))
+      .catch(() => {
+        // Network error — don't show "not available", show empty with retry message
+        setSlots([]);
+        setBookedSlots([]);
+      })
       .finally(() => setSlotsLoading(false));
   }, [newDate, appt?.barber_id, appt?.service_id]);
 
@@ -255,7 +259,16 @@ function RescheduleModal({ appt, onClose, onDone }) {
               ) : slots.length===0 ? (
                 <div style={{padding:"14px",background:"rgba(255,255,255,0.02)",border:"1px solid rgba(255,255,255,0.06)",textAlign:"center",marginBottom:16}}>
                   <p style={{...sf,fontSize:8,color:"#52525b",letterSpacing:"0.2em",textTransform:"uppercase"}}>Fully Booked</p>
-                  <p style={{...mono,fontSize:11,color:"#3f3f46",marginTop:4}}>No open slots — try another date.</p>
+                  <p style={{...mono,fontSize:11,color:"#3f3f46",marginTop:4}}>No open slots this day — try another date.</p>
+                  <button onClick={()=>{
+                    setSlotsLoading(true); setSlots([]); setBookedSlots([]); setTimeOff(false);
+                    API.get(`available-slots/?barber=${appt.barber_id}&date=${newDate}&service=${appt.service_id||""}`)
+                      .then(r=>{ if(r.data.time_off){setTimeOff(true);return;} setSlots(r.data.available_slots||[]); setBookedSlots(r.data.booked_slots||[]); })
+                      .catch(()=>{})
+                      .finally(()=>setSlotsLoading(false));
+                  }} style={{marginTop:10,padding:"6px 14px",background:"rgba(245,158,11,0.06)",border:"1px solid rgba(245,158,11,0.2)",color:"#f59e0b",...mono,fontSize:9,cursor:"pointer",letterSpacing:"0.1em"}}>
+                    ↺ Retry
+                  </button>
                 </div>
               ) : (
                 <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:5,marginBottom:16}}>
@@ -749,20 +762,32 @@ Cancel anyway?`
                           {/* Actions */}
                           {canReschedule&&(
                             <button onClick={()=>setReschedAppt(appt)}
-                              style={{width:isMobile?34:28,height:isMobile?34:28,background:"transparent",border:"1px solid rgba(245,158,11,0.25)",color:"#a1a1aa",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,transition:"all 0.2s",flexShrink:0}}
-                              title="Request reschedule"
-                              onMouseEnter={e=>{e.currentTarget.style.borderColor="#f59e0b";e.currentTarget.style.color="#f59e0b";e.currentTarget.style.background="rgba(245,158,11,0.08)";}}
-                              onMouseLeave={e=>{e.currentTarget.style.borderColor="rgba(245,158,11,0.25)";e.currentTarget.style.color="#a1a1aa";e.currentTarget.style.background="transparent";}}>
-                              ↻
+                              style={{padding:isMobile?"6px 10px":"7px 14px",background:"transparent",
+                                border:"1px solid rgba(245,158,11,0.25)",color:"#f59e0b",
+                                cursor:"pointer",display:"flex",alignItems:"center",gap:5,
+                                fontSize:10,transition:"all 0.2s",flexShrink:0,
+                                fontFamily:"'DM Mono',monospace",letterSpacing:"0.1em",
+                              }}
+                              onMouseEnter={e=>{e.currentTarget.style.background="rgba(245,158,11,0.08)";e.currentTarget.style.borderColor="#f59e0b";}}
+                              onMouseLeave={e=>{e.currentTarget.style.background="transparent";e.currentTarget.style.borderColor="rgba(245,158,11,0.25)";}}>
+                              ↻{!isMobile&&" Reschedule"}
                             </button>
                           )}
                           {canCancel&&(
                             <button onClick={()=>handleCancel(appt)} disabled={cancelling===appt.id}
-                              style={{width:isMobile?34:28,height:isMobile?34:28,background:"transparent",border:"1px solid rgba(248,113,113,0.2)",color:"#a1a1aa",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,transition:"all 0.2s",flexShrink:0}}
-                              title="Cancel appointment"
-                              onMouseEnter={e=>{e.currentTarget.style.borderColor="#f87171";e.currentTarget.style.color="#f87171";e.currentTarget.style.background="rgba(248,113,113,0.08)";}}
-                              onMouseLeave={e=>{e.currentTarget.style.borderColor="rgba(248,113,113,0.2)";e.currentTarget.style.color="#a1a1aa";e.currentTarget.style.background="transparent";}}>
-                              {cancelling===appt.id?"·":"✕"}
+                              style={{padding:isMobile?"6px 10px":"7px 14px",background:"transparent",
+                                border:"1px solid rgba(248,113,113,0.25)",color:"#f87171",
+                                cursor:cancelling===appt.id?"not-allowed":"pointer",
+                                display:"flex",alignItems:"center",gap:5,
+                                fontSize:10,transition:"all 0.2s",flexShrink:0,
+                                fontFamily:"'DM Mono',monospace",letterSpacing:"0.1em",
+                              }}
+                              onMouseEnter={e=>{if(cancelling!==appt.id){e.currentTarget.style.background="rgba(248,113,113,0.1)";e.currentTarget.style.borderColor="#f87171";}}}
+                              onMouseLeave={e=>{e.currentTarget.style.background="transparent";e.currentTarget.style.borderColor="rgba(248,113,113,0.25)";}}>
+                              {cancelling===appt.id
+                                ? <><span style={{width:10,height:10,border:"1.5px solid #3f3f46",borderTopColor:"#f87171",borderRadius:"50%",display:"inline-block",animation:"spin 0.7s linear infinite"}}/>{!isMobile&&" Cancelling"}</>
+                                : <>{!isMobile?"✕ Cancel":"✕"}</>
+                              }
                             </button>
                           )}
                         </div>

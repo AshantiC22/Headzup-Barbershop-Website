@@ -2889,7 +2889,7 @@ class BarberWorkingDaysView(APIView):
 
 
 class AvailableSlotsView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticatedOrReadOnly]
 
     def get(self, request):
         barber_id  = request.query_params.get("barber")
