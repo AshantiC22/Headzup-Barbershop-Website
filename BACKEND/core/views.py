@@ -2350,7 +2350,9 @@ class DepositSuccessView(APIView):
                 f"&payment=deposit"
             )
         except Exception as e:
-            return redirect(f"{FRONTEND_URL}/book?deposit_error=true")
+            import logging
+            logging.getLogger(__name__).error(f"DepositSuccessView error: {e}")
+            return redirect(f"{FRONTEND_URL}/booking-confirmed?payment=deposit&error=true")
 
 
 def send_strike_email(user, profile, reason, appt):
@@ -2728,7 +2730,7 @@ class PaymentSuccessView(APIView):
     def get(self, request):
         session_id = request.GET.get("session_id")
         if not session_id:
-            return redirect(f"{FRONTEND_URL}/dashboard?booked=true")
+            return redirect(f"{FRONTEND_URL}/booking-confirmed?payment=online")
 
         try:
             session  = stripe.checkout.Session.retrieve(session_id)
@@ -2761,7 +2763,9 @@ class PaymentSuccessView(APIView):
                 f"&payment=online"
             )
         except Exception as e:
-            return redirect(f"{FRONTEND_URL}/dashboard?booked=true")
+            import logging
+            logging.getLogger(__name__).error(f"PaymentSuccessView error: {e}")
+            return redirect(f"{FRONTEND_URL}/booking-confirmed?payment=online&error=true")
 
 
 # ── Admin schedule ────────────────────────────────────────────────────────────
