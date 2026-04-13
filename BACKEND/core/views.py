@@ -3345,9 +3345,11 @@ class WalkInBookingView(APIView):
                 time_str = str(time_val)
 
             welcome_msg = (
-                f"Hey {client_name}! Welcome to HEADZ UP Barbershop ✂️🔥 "
-                f"You're booked for {service.name} on {date_str} at {time_str} "
-                f"with {target_barber.name}. We'll take care of you. See you in the chair!"
+                f"Hey {client_name}! Welcome to HEADZ UP ✂️\n"
+                f"Booked: {service.name} · {date_str} at {time_str} with {target_barber.name}.\n\n"
+                f"Join the family & book online anytime:\n"
+                f"{FRONTEND_URL}/login\n\n"
+                f"Book a cut: {FRONTEND_URL}/book"
             )
 
             if phone:
