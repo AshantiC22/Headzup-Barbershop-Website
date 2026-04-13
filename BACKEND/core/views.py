@@ -52,7 +52,9 @@ def send_booking_confirmation(appointment):
         appt_time    = appointment.time.strftime("%I:%M %p").lstrip("0")
         pay_label    = "Paid online via Stripe" if appointment.payment_method == "online" else "Pay in shop"
         notes        = appointment.client_notes or ""
-    except Exception:
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).error(f"send_booking_confirmation prep failed: {e}", exc_info=True)
         return
 
     # ── Email CLIENT ──────────────────────────────────────────────────────────
@@ -176,7 +178,15 @@ def _sendgrid_send(to_email, subject, plain, html):
     api_key    = getattr(settings, "SENDGRID_API_KEY", "")
     from_email = getattr(settings, "DEFAULT_FROM_EMAIL", "")
 
-    if not api_key or not to_email:
+    if not api_key:
+        import logging
+        logging.getLogger(__name__).error("SENDGRID_API_KEY not set in Railway environment variables")
+        return
+    if not to_email:
+        return
+    if not sender_email:
+        import logging
+        logging.getLogger(__name__).error("DEFAULT_FROM_EMAIL not set in Railway — cannot send email")
         return
 
     match        = re.search(r'<(.+?)>', from_email)
@@ -240,8 +250,8 @@ def send_reschedule_request_email(reschedule_request):
         old_time      = appt.time.strftime("%I:%M %p").lstrip("0")
         new_date_str  = rr.new_date.strftime("%A, %B %d, %Y")
         new_time_str  = rr.new_time.strftime("%I:%M %p").lstrip("0")
-        accept_url    = f"{FRONTEND_URL}/reschedule/respond?token={rr.token}&action=accept"
-        reject_url    = f"{FRONTEND_URL}/reschedule/respond?token={rr.token}&action=reject"
+        accept_url    = f"{FRONTEND_URL}/reschedule?token={rr.token}&action=accept"
+        reject_url    = f"{FRONTEND_URL}/reschedule?token={rr.token}&action=reject"
     except Exception as e:
         logger.error(f"send_reschedule_request_email prep failed: {e}")
         return
@@ -1136,6 +1146,60 @@ class TestSMSView(APIView):
                 "config": config,
             }, status=500)
 
+
+
+class TestEmailView(APIView):
+    """POST /api/test-email/ {"to":"email@example.com"} — tests SendGrid config"""
+    permission_classes = [IsAdminUser]
+
+    def post(self, request):
+        import urllib.request, json as json_lib, re, logging
+        logger = logging.getLogger(__name__)
+        to_email   = request.data.get("to", "").strip()
+        api_key    = getattr(settings, "SENDGRID_API_KEY", "")
+        from_email = getattr(settings, "DEFAULT_FROM_EMAIL", "")
+        match      = re.search(r'<(.+?)>', from_email)
+        sender     = match.group(1) if match else from_email
+
+        config = {
+            "SENDGRID_API_KEY":   "SET (" + api_key[:8] + "...)" if api_key else "NOT SET",
+            "DEFAULT_FROM_EMAIL": from_email or "NOT SET",
+            "sender_email":       sender or "EMPTY — this will fail",
+            "to_email":           to_email,
+        }
+
+        if not api_key:
+            return Response({"error": "SENDGRID_API_KEY not set", "config": config}, status=400)
+        if not from_email or not sender:
+            return Response({"error": "DEFAULT_FROM_EMAIL not set or malformed", "config": config}, status=400)
+        if not to_email or "@" not in to_email:
+            return Response({"error": "to must be a valid email", "config": config}, status=400)
+
+        payload = {
+            "personalizations": [{"to": [{"email": to_email}]}],
+            "from": {"email": sender, "name": "HEADZ UP Test"},
+            "subject": "✅ HEADZ UP — SendGrid Test Email",
+            "content": [
+                {"type": "text/plain", "value": "This is a test email from HEADZ UP. SendGrid is working!"},
+                {"type": "text/html",  "value": "<h1>HEADZ UP</h1><p>SendGrid is working! ✅</p>"},
+            ],
+        }
+        try:
+            data = json_lib.dumps(payload).encode("utf-8")
+            req  = urllib.request.Request(
+                "https://api.sendgrid.com/v3/mail/send",
+                data=data,
+                headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+                method="POST",
+            )
+            with urllib.request.urlopen(req, timeout=10) as resp:
+                return Response({"success": True, "sendgrid_status": resp.status, "config": config})
+        except urllib.error.HTTPError as e:
+            try:   err = json_lib.loads(e.read().decode())
+            except: err = str(e)
+            return Response({"success": False, "sendgrid_error": err, "config": config}, status=400)
+        except Exception as e:
+            return Response({"success": False, "error": str(e), "config": config}, status=500)
 
 
 def _get_client_phone(user):
@@ -4570,7 +4634,10 @@ class ClientRescheduleRequestView(APIView):
 
 
 class RescheduleResponseView(APIView):
-    """Accept or reject a reschedule request via token link from email."""
+    """Accept or reject a reschedule request via token link from email.
+    Returns JSON so the frontend Next.js page can handle the result without
+    following a redirect to an HTML page.
+    """
     permission_classes = [AllowAny]
 
     def get(self, request):
@@ -4578,20 +4645,23 @@ class RescheduleResponseView(APIView):
         action = request.query_params.get("action")  # "accept" or "reject"
 
         if not token or action not in ("accept", "reject"):
-            return redirect(f"{FRONTEND_URL}/?reschedule=invalid")
+            return Response({"status": "invalid", "message": "Invalid or missing token/action."}, status=400)
 
         try:
-            rr = RescheduleRequest.objects.select_related("appointment", "appointment__user", "appointment__barber", "appointment__service").get(token=token)
+            rr = RescheduleRequest.objects.select_related(
+                "appointment", "appointment__user",
+                "appointment__barber", "appointment__barber__user",
+                "appointment__service",
+            ).get(token=token)
         except RescheduleRequest.DoesNotExist:
-            return redirect(f"{FRONTEND_URL}/?reschedule=invalid")
+            return Response({"status": "invalid", "message": "Reschedule request not found."}, status=404)
 
         if rr.status != "pending":
-            return redirect(f"{FRONTEND_URL}/?reschedule=already_handled")
+            return Response({"status": "already_handled", "message": "This request has already been responded to."}, status=200)
 
         if action == "accept":
             rr.status = "accepted"
             rr.save()
-            # Update the actual appointment
             appt = rr.appointment
             appt.date = rr.new_date
             appt.time = rr.new_time
@@ -4603,7 +4673,7 @@ class RescheduleResponseView(APIView):
             ).get(pk=rr.pk)
             send_reschedule_response_email(rr_full, accepted=True)
             sms_reschedule_response(rr_full, accepted=True)
-            return redirect(f"{FRONTEND_URL}/dashboard?reschedule=accepted")
+            return Response({"status": "accepted", "message": "Reschedule approved — client has been notified."}, status=200)
         else:
             rr.status = "rejected"
             rr.save()
@@ -4614,7 +4684,7 @@ class RescheduleResponseView(APIView):
             ).get(pk=rr.pk)
             send_reschedule_response_email(rr_full, accepted=False)
             sms_reschedule_response(rr_full, accepted=False)
-            return redirect(f"{FRONTEND_URL}/dashboard?reschedule=rejected")
+            return Response({"status": "rejected", "message": "Reschedule declined — client has been notified."}, status=200)
 
 
 class BarberRescheduleRequestView(APIView):
