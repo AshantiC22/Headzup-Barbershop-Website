@@ -299,8 +299,7 @@ function StripeConnectPanel({ barber, isMobile }) {
                   <div style={{ width:6,height:6,background:"#f59e0b",borderRadius:"50%" }}/>
                   <p style={{ ...mono, fontSize:11, color:"#f59e0b", margin:0 }}>Setup incomplete — finish onboarding</p>
                 </div>
-              ) : (
-                <div style={{ display:"flex", alignItems:"center", gap:6 }}>
+              ) : (<div style={{ display:"flex", alignItems:"center", gap:6 }}>
                   <div style={{ width:6,height:6,background:"#52525b",borderRadius:"50%" }}/>
                   <p style={{ ...mono, fontSize:11, color:"#71717a", margin:0 }}>Not connected — clients can't pay online yet</p>
                 </div>
@@ -330,8 +329,7 @@ function StripeConnectPanel({ barber, isMobile }) {
                   Manage
                 </button>
               </>
-            ) : (
-              <button onClick={connectStripe} disabled={connecting}
+            ) : (<button onClick={connectStripe} disabled={connecting}
                 style={{ padding:"12px 22px", background:"#635bff", color:"white", ...sf, fontSize:8, fontWeight:700, letterSpacing:"0.2em", textTransform:"uppercase", border:"none", cursor:connecting?"wait":"pointer",
                   clipPath:"polygon(0 0,calc(100% - 8px) 0,100% 8px,100% 100%,8px 100%,0 calc(100% - 8px))",
                   boxShadow:"0 0 24px rgba(99,91,255,0.35)", display:"flex", alignItems:"center", gap:8, minHeight:"auto", transition:"opacity 0.2s"
@@ -1820,8 +1818,7 @@ export default function BarberDashboard(){
                     <div style={{padding:"14px",background:T.surface,border:`1px solid ${T.border}`,textAlign:"center"}}>
                       <p style={{...mono,fontSize:11,color:T.dim}}>No available slots for this day.</p>
                     </div>
-                  ) : (
-                    <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:5}}>
+                  ) : (<div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:5}}>
                       {wiSlots.map(s=>{
                         const hr=parseInt(s.split(":")[0]);
                         const min=s.split(":")[1];
@@ -2071,7 +2068,7 @@ export default function BarberDashboard(){
                       }} style={{padding:"9px 16px",...sf,fontSize:7,letterSpacing:"0.15em",textTransform:"uppercase",background:clientDetail.is_vip?T.amberDim:"transparent",border:`1px solid ${clientDetail.is_vip?T.amber:T.border}`,color:clientDetail.is_vip?T.amber:T.muted,cursor:"pointer",transition:"all 0.2s"}}>
                         {clientDetail.is_vip?"★ VIP":"☆ VIP"}
                       </button>
-                      <button onClick={()=>{
+                      <button onClick={async()=>{
                         const username = clientDetail.username||clientDetail.name;
                         const isBlocked = blockList.includes(username);
                         if(isBlocked){
@@ -2609,8 +2606,7 @@ export default function BarberDashboard(){
                 <div style={{width:18,height:18,border:"2px solid rgba(245,158,11,0.2)",borderTopColor:T.amber,borderRadius:"50%",animation:"spin 0.8s linear infinite",margin:"0 auto 12px"}}/>
                 <p style={{...mono,fontSize:11,color:T.dim}}>Loading services...</p>
               </div>
-            ) : (
-              <div style={{display:"flex",flexDirection:"column",gap:8}}>
+            ) : (<div style={{display:"flex",flexDirection:"column",gap:8}}>
                 {pricingList.map(svc=>{
                   const editing   = pricingEdits[svc.id] !== undefined;
                   const editVal   = editing ? pricingEdits[svc.id] : "";
@@ -2690,8 +2686,7 @@ export default function BarberDashboard(){
                                 ✕
                               </button>
                             </>
-                          ) : (
-                            <>
+                          ) : (<>
                               <p style={{...sf,fontSize:18,fontWeight:900,color:hasCustom?T.amber:"white",margin:0,letterSpacing:"-0.02em"}}>
                                 ${svc.effective_price.toFixed(2)}
                               </p>
@@ -2769,8 +2764,7 @@ export default function BarberDashboard(){
                         alt={barber?.name||"photo"}
                         style={{width:"100%",height:"100%",objectFit:"cover",objectPosition:"center top",display:"block"}}
                       />
-                    ) : (
-                      <div style={{width:"100%",height:"100%",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:4}}>
+                    ) : (<div style={{width:"100%",height:"100%",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:4}}>
                         <span style={{fontSize:32}}>📷</span>
                         <p style={{...mono,fontSize:7,color:"#3f3f46",letterSpacing:"0.2em",textAlign:"center"}}>NO PHOTO</p>
                       </div>
