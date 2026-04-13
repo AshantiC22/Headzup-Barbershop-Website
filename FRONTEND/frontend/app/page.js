@@ -16,6 +16,8 @@ const D = { fontFamily:"'Syncopate',sans-serif" };
 const M = { fontFamily:"'DM Mono',monospace" };
 const A = "#f59e0b";
 const R = "#ef4444";
+const SHOP_PHONE     = "+16012065206";  // ← UPDATE with real shop number
+const SHOP_PHONE_DISPLAY = "(601) 206-5206";
 
 // Only use photo if it's a base64 data URL or a real https URL — ignore stale Railway /media/ paths
 const validPhoto = (url) => {
@@ -890,9 +892,9 @@ export default function HomePage() {
               <a href="/book" onClick={book} style={{ ...D,fontSize:8.5,fontWeight:700,letterSpacing:"0.22em",textTransform:"uppercase",padding:"17px 34px",background:"black",color:"white",textDecoration:"none",clipPath:"polygon(0 0,calc(100% - 8px) 0,100% 8px,100% 100%,8px 100%,0 calc(100% - 8px))",transition:"all 0.25s" }}
                 onMouseEnter={e=>{e.currentTarget.style.background="#030303";e.currentTarget.style.color=A;}}
                 onMouseLeave={e=>{e.currentTarget.style.background="black";e.currentTarget.style.color="white";}}>Book Now →</a>
-              <a href="tel:+16012345678" style={{ ...M,fontSize:11,color:"rgba(0,0,0,0.45)",textDecoration:"none",transition:"color 0.2s" }}
+              <a href={`tel:${SHOP_PHONE}`} style={{ ...M,fontSize:11,color:"rgba(0,0,0,0.45)",textDecoration:"none",transition:"color 0.2s" }}
                 onMouseEnter={e=>e.currentTarget.style.color="black"}
-                onMouseLeave={e=>e.currentTarget.style.color="rgba(0,0,0,0.45)"}>Or call us</a>
+                onMouseLeave={e=>e.currentTarget.style.color="rgba(0,0,0,0.45)"}>{SHOP_PHONE_DISPLAY}</a>
             </div>
           </div>
         </section>

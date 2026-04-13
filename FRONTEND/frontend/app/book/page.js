@@ -269,8 +269,7 @@ function TimeSlotGrid({ slots, bookedSlots, selectedTime, onSelect, loading, tim
           <button onClick={onRetry} style={{ display:"inline-block", padding:"10px 20px", background:"rgba(245,158,11,0.08)", border:"1px solid rgba(245,158,11,0.25)", color:"#f59e0b", fontFamily:"'Syncopate',sans-serif", fontSize:7, fontWeight:700, letterSpacing:"0.15em", textTransform:"uppercase", cursor:"pointer" }}>
             ↺ Retry
           </button>
-        ) : (
-          <a href="/waitlist" style={{ display:"inline-block", padding:"10px 20px", background:"rgba(245,158,11,0.08)", border:"1px solid rgba(245,158,11,0.25)", color:"#f59e0b", fontFamily:"'Syncopate',sans-serif", fontSize:7, fontWeight:700, letterSpacing:"0.15em", textTransform:"uppercase", textDecoration:"none" }}>
+        ) : (<a href="/waitlist" style={{ display:"inline-block", padding:"10px 20px", background:"rgba(245,158,11,0.08)", border:"1px solid rgba(245,158,11,0.25)", color:"#f59e0b", fontFamily:"'Syncopate',sans-serif", fontSize:7, fontWeight:700, letterSpacing:"0.15em", textTransform:"uppercase", textDecoration:"none" }}>
             Join Waitlist →
           </a>
         )}
@@ -703,8 +702,7 @@ function BookContent() {
                 <div key={i} style={{ height: 76, background: "linear-gradient(90deg, rgba(255,255,255,0.02) 25%, rgba(255,255,255,0.05) 50%, rgba(255,255,255,0.02) 75%)", backgroundSize: "200% 100%", animation: "shimmer 1.5s infinite" }} />
               ))}
             </div>
-          ) : (
-            <div className="step-content">
+          ) : (<div className="step-content">
 
               {/* ── STEP 1: Service ── */}
               {step === 1 && (
@@ -776,8 +774,7 @@ function BookContent() {
                             alt={b.name}
                             style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "center top", display: "block" }}
                           />
-                        ) : (
-                          <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", background: "linear-gradient(135deg,#1a1a1a,#111)" }}>
+                        ) : (<div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", background: "linear-gradient(135deg,#1a1a1a,#111)" }}>
                             <span style={{ ...sf, fontSize: 22, color: "#f59e0b", fontWeight: 900 }}>{b.name.charAt(0).toUpperCase()}</span>
                           </div>
                         )}
@@ -1121,9 +1118,23 @@ function BookContent() {
                               <p style={{ fontFamily:"'DM Mono',monospace", fontSize:12, color:"#a1a1aa", lineHeight:1.8 }}>{body}</p>
                             </div>
                           ))}
-                          <p style={{ fontFamily:"'DM Mono',monospace", fontSize:10, color:"#3f3f46", lineHeight:1.7, marginTop:4 }}>
-                            Booking an appointment means you have read and accepted these terms in full.
-                          </p>
+                          <div style={{ marginTop:16, padding:"14px 16px", background:"rgba(245,158,11,0.03)", border:"1px solid rgba(245,158,11,0.1)" }}>
+                            <p style={{ fontFamily:"'DM Mono',monospace", fontSize:10, color:"#52525b", lineHeight:1.8, marginBottom:8 }}>
+                              Booking an appointment means you have read and accepted these terms in full.
+                            </p>
+                            <div style={{ display:"flex", gap:16, flexWrap:"wrap" }}>
+                              <a href="/terms" target="_blank" style={{ fontFamily:"'DM Mono',monospace", fontSize:10, color:"rgba(245,158,11,0.5)", textDecoration:"none", transition:"color 0.2s" }}
+                                onMouseEnter={e=>e.currentTarget.style.color="#f59e0b"}
+                                onMouseLeave={e=>e.currentTarget.style.color="rgba(245,158,11,0.5)"}>
+                                Terms of Service →
+                              </a>
+                              <a href="/terms#privacy" target="_blank" style={{ fontFamily:"'DM Mono',monospace", fontSize:10, color:"rgba(245,158,11,0.5)", textDecoration:"none", transition:"color 0.2s" }}
+                                onMouseEnter={e=>e.currentTarget.style.color="#f59e0b"}
+                                onMouseLeave={e=>e.currentTarget.style.color="rgba(245,158,11,0.5)"}>
+                                Privacy Policy →
+                              </a>
+                            </div>
+                          </div>
                         </div>
 
                         {/* Footer */}
