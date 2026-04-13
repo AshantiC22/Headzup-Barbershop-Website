@@ -3367,9 +3367,7 @@ class WalkInBookingView(APIView):
     <tr><td align="center">
       <table width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;">
         <tr><td style="padding-bottom:24px;">
-          <p style="font-family:'Courier New',monospace;font-size:22px;font-weight:900;letter-spacing:-0.05em;margin:0;text-transform:uppercase;">
-            HEADZ<span style="color:#f59e0b;font-style:italic;">UP</span>
-          </p>
+          <p style="font-family:'Courier New',monospace;font-size:24px;font-weight:900;letter-spacing:-0.05em;margin:0;text-transform:uppercase;">HEADZ<span style="color:#f59e0b;font-style:italic;">UP</span></p>
         </td></tr>
         <tr><td style="padding-bottom:16px;">
           <div style="width:52px;height:52px;background:rgba(245,158,11,0.12);border:1px solid rgba(245,158,11,0.3);display:inline-flex;align-items:center;justify-content:center;">
@@ -3377,20 +3375,19 @@ class WalkInBookingView(APIView):
           </div>
         </td></tr>
         <tr><td style="padding-bottom:8px;">
-          <h1 style="font-family:'Courier New',monospace;font-size:26px;font-weight:900;text-transform:uppercase;margin:0;line-height:1.05;">
-            You're Booked<br><span style="color:#f59e0b;font-style:italic;">Welcome In_</span>
+          <h1 style="font-family:'Courier New',monospace;font-size:26px;font-weight:900;text-transform:uppercase;margin:0;line-height:1.1;">
+            You're In The<br><span style="color:#f59e0b;font-style:italic;">Chair_</span>
           </h1>
         </td></tr>
-        <tr><td style="padding-bottom:28px;">
+        <tr><td style="padding-bottom:24px;">
           <p style="color:#71717a;font-size:13px;margin:0;line-height:1.8;">
-            Hey <strong style="color:white;">{client_name}</strong>! You just walked into the right place.
-            You're officially part of the <strong style="color:#f59e0b;">HEADZ UP</strong> family.
+            Hey <strong style="color:white;">{client_name}</strong>! Great seeing you today. Here's your appointment summary.
           </p>
         </td></tr>
-        <tr><td style="background:#0a0a0a;border:1px solid rgba(255,255,255,0.08);padding:22px;">
+        <tr><td style="background:#0a0a0a;border:1px solid rgba(255,255,255,0.08);padding:22px;margin-bottom:20px;">
           <table width="100%" cellpadding="0" cellspacing="0">
             <tr><td style="padding-bottom:14px;">
-              <p style="font-family:'Courier New',monospace;font-size:9px;letter-spacing:0.3em;color:#52525b;text-transform:uppercase;margin:0 0 4px;">Your Appointment</p>
+              <p style="font-family:'Courier New',monospace;font-size:9px;letter-spacing:0.3em;color:#52525b;text-transform:uppercase;margin:0 0 4px;">Date &amp; Time</p>
               <p style="font-size:18px;color:#f59e0b;margin:0;font-weight:900;font-family:'Courier New',monospace;">{date_str} · {time_str}</p>
             </td></tr>
             <tr><td style="padding-bottom:14px;border-top:1px solid rgba(255,255,255,0.06);padding-top:14px;">
@@ -3403,30 +3400,39 @@ class WalkInBookingView(APIView):
             </td></tr>
           </table>
         </td></tr>
-        <tr><td style="padding:24px 0 0;">
-          <p style="font-size:13px;color:#71717a;margin:0;line-height:1.8;">
-            We'll take care of you every time. Book your next appointment online anytime.
-          </p>
+        <tr><td style="padding:24px 0 16px;">
+          <div style="background:linear-gradient(135deg,#ef4444 0%,#ef4444 48%,#f59e0b 48%,#f59e0b 100%);padding:24px 22px;position:relative;overflow:hidden;">
+            <div style="position:absolute;top:0;bottom:0;left:47%;width:2px;background:rgba(0,0,0,0.25);transform:skewX(-3deg);"></div>
+            <p style="font-family:'Courier New',monospace;font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:0.2em;color:black;margin:0 0 6px;">Join The HEADZ UP Family</p>
+            <p style="font-size:12px;color:rgba(0,0,0,0.65);margin:0 0 16px;line-height:1.6;">Create a free account to book online anytime, manage your appointments, and never wait in line again.</p>
+            <a href="{FRONTEND_URL}/login" style="display:inline-block;padding:12px 24px;background:black;color:white;font-family:'Courier New',monospace;font-size:9px;font-weight:900;text-transform:uppercase;letter-spacing:0.2em;text-decoration:none;margin-right:8px;">Create Account &rarr;</a>
+            <a href="{FRONTEND_URL}/book" style="display:inline-block;padding:12px 20px;background:transparent;color:black;font-family:'Courier New',monospace;font-size:9px;font-weight:900;text-transform:uppercase;letter-spacing:0.2em;text-decoration:none;border:1.5px solid rgba(0,0,0,0.3);">Book Online</a>
+          </div>
         </td></tr>
-        <tr><td style="padding-top:20px;">
-          <a href="{FRONTEND_URL}/book" style="display:inline-block;padding:13px 26px;background:#f59e0b;color:black;font-family:'Courier New',monospace;font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:0.15em;text-decoration:none;">Book Your Next Cut &rarr;</a>
+        <tr><td style="padding-top:8px;">
+          <p style="font-size:12px;color:#52525b;margin:0;line-height:1.8;">📍 2509 W 4th St, Hattiesburg, MS 39401 &nbsp;·&nbsp; Mon–Fri 9AM–6PM &nbsp;·&nbsp; Sat 9AM–4PM</p>
         </td></tr>
-        <tr><td style="border-top:1px solid rgba(255,255,255,0.06);padding-top:20px;margin-top:24px;">
-          <p style="font-size:11px;color:#3f3f46;margin:0;">HEADZ UP Barbershop · 2509 W 4th St, Hattiesburg, MS 39401</p>
+        <tr><td style="border-top:1px solid rgba(255,255,255,0.06);padding-top:20px;margin-top:20px;">
+          <p style="font-size:11px;color:#3f3f46;margin:0;">HEADZ UP Barbershop &middot; 2509 W 4th St, Hattiesburg, MS 39401</p>
         </td></tr>
       </table>
     </td></tr>
   </table>
 </body></html>"""
                     plain = (
-                        f"Hey {client_name}! Welcome to HEADZ UP Barbershop. "
-                        f"You're booked for {service.name} with {target_barber.name} "
-                        f"on {date_str} at {time_str}. "
-                        f"Book your next cut: {FRONTEND_URL}/book"
+                        f"Hey {client_name}! Great seeing you today at HEADZ UP.\n\n"
+                        f"Service: {service.name}\n"
+                        f"Barber: {target_barber.name}\n"
+                        f"Date: {date_str} at {time_str}\n\n"
+                        f"Join the HEADZ UP family — create a free account to book online anytime:\n"
+                        f"{FRONTEND_URL}/login\n\n"
+                        f"Or book your next cut directly:\n"
+                        f"{FRONTEND_URL}/book\n\n"
+                        f"See you next time!\n— HEADZ UP Barbershop\n2509 W 4th St, Hattiesburg MS"
                     )
                     _sendgrid_send(
                         email,
-                        f"You're Booked at HEADZ UP ✂️ — {date_str} at {time_str}",
+                        f"Great seeing you, {client_name}! Join the HEADZ UP family ✂️",
                         plain, html
                     )
                 except Exception as e:

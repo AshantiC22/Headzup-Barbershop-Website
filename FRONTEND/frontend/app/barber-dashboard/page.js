@@ -1334,7 +1334,7 @@ export default function BarberDashboard(){
                             </div>
                             <div>
                               <p style={{...sf,fontSize:11,fontWeight:700,textTransform:"uppercase",marginBottom:2}}>{rr.client_name}</p>
-                              <p style={{...mono,fontSize:9,color:"#71717a"}}>{rr.service_name} · {rr.created_at}</p>
+                              <p style={{...mono,fontSize:9,color:"#71717a"}}>{rr.service_name} · Requested {rr.created_at}</p>
                             </div>
                           </div>
                           <div style={{padding:"5px 14px",background:statusBg,border:`1px solid ${statusColor}33`}}>
