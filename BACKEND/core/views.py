@@ -3328,6 +3328,8 @@ class WalkInBookingView(APIView):
         # ── Send welcome SMS + email to walk-in client (synchronous) ──────────
         import logging
         logger = logging.getLogger(__name__)
+        sms_status   = "not attempted"
+        email_status = "not attempted"
 
         try:
             from datetime import date as date_type
@@ -3355,10 +3357,22 @@ class WalkInBookingView(APIView):
             if phone:
                 try:
                     raw = phone.strip().replace("-","").replace("(","").replace(")","").replace(" ","")
-                    e164 = f"+1{raw}" if not raw.startswith("+") else raw
+                    digits = raw.lstrip("+")
+                    if len(digits) == 10:
+                        e164 = f"+1{digits}"
+                    elif len(digits) == 11 and digits.startswith("1"):
+                        e164 = f"+{digits}"
+                    else:
+                        e164 = f"+1{digits}" if not raw.startswith("+") else raw
+                    logger.info(f"Walk-in SMS: sending to {e164}")
                     _twilio_send(e164, welcome_msg)
+                    sms_status = f"sent to {e164}"
+                    logger.info(f"Walk-in SMS sent to {e164}")
                 except Exception as e:
+                    sms_status = f"error: {e}"
                     logger.error(f"Walk-in SMS failed: {e}")
+            else:
+                sms_status = "no phone provided"
 
             if email:
                 try:
@@ -3437,10 +3451,15 @@ class WalkInBookingView(APIView):
                         f"Great seeing you, {client_name}! Join the HEADZ UP family ✂️",
                         plain, html
                     )
+                    email_status = f"sent to {email}"
+                    logger.info(f"Walk-in email sent to {email}")
                 except Exception as e:
-                    logger.error(f"Walk-in email failed: {e}")
+                    email_status = f"error: {e}"
+                    logger.error(f"Walk-in email failed: {e}", exc_info=True)
+            else:
+                email_status = "no email provided"
         except Exception as e:
-            logger.error(f"Walk-in welcome failed: {e}")
+            logger.error(f"Walk-in welcome failed: {e}", exc_info=True)
 
         # ── Add to waitlist so barber sees them in Waitlist tab ───────────────
         try:
@@ -3458,12 +3477,14 @@ class WalkInBookingView(APIView):
             logger.error(f"Walk-in waitlist entry failed: {e}")
 
         return Response({
-            "message": "Walk-in booked.",
-            "id":      appt.id,
-            "client":  client_name,
-            "service": service.name,
-            "date":    str(appt.date),
-            "time":    str(appt.time),
+            "message":      "Walk-in booked.",
+            "id":           appt.id,
+            "client":       client_name,
+            "service":      service.name,
+            "date":         str(appt.date),
+            "time":         str(appt.time),
+            "sms_status":   sms_status,
+            "email_status": email_status,
         }, status=201)
 
 

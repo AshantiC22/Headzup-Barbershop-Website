@@ -1010,14 +1010,17 @@ export default function BarberDashboard(){
       }
       const payload={client_name:wiName.trim(),service_id:wiSvc,barber_id:targetBarber,
         date:wiDate,time:time24,notes:wiNotes,phone:wiPhone,email:wiEmail,is_walk_in:true};
-      await API.post("barber/walk-in/",payload);
+      const res = await API.post("barber/walk-in/",payload);
       const svcName=services.find(s=>String(s.id)===String(wiSvc))?.name||"service";
       setWiSuccess({name:wiName.trim(),service:svcName,time:wiTime,date:wiDate});
+      const smsOk   = res.data?.sms_status?.startsWith("sent");
+      const emailOk = res.data?.email_status?.startsWith("sent");
+      const notif   = (wiPhone||wiEmail) ? (" — "+(smsOk&&emailOk?"📱✉️ SMS+email sent":smsOk?"📱 SMS sent":emailOk?"✉️ Email sent":"⚠ Notification failed — check logs")) : "";
       setWiName("");setWiPhone("");setWiNotes("");setWiSvc("");
       setWiEmail("");setWiTime("");setWiSlots([]);setWiBooked([]);
       loadSchedule(selectedDate);
-      loadWaitlist();  // increments unreadWaitlist automatically since length increases
-      showToast(`✓ ${wiName} added${(wiPhone||wiEmail)?" — welcome message sent!":""}`);
+      loadWaitlist();
+      showToast(`✓ ${wiName} added${notif}`);
     }catch(e){showToast(e.response?.data?.error||"Could not add walk-in.","error");}
     finally{setWiLoading(false);}
   };
