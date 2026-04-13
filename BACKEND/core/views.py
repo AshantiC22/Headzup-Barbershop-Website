@@ -179,19 +179,21 @@ def _sendgrid_send(to_email, subject, plain, html):
     from_email = getattr(settings, "DEFAULT_FROM_EMAIL", "")
 
     if not api_key:
-        import logging
-        logging.getLogger(__name__).error("SENDGRID_API_KEY not set in Railway environment variables")
+        logger.error("SENDGRID_API_KEY not set in Railway — skipping email")
         return
     if not to_email:
         return
-    if not sender_email:
-        import logging
-        logging.getLogger(__name__).error("DEFAULT_FROM_EMAIL not set in Railway — cannot send email")
+    if not from_email:
+        logger.error("DEFAULT_FROM_EMAIL not set in Railway — cannot send email")
         return
 
     match        = re.search(r'<(.+?)>', from_email)
     sender_email = match.group(1) if match else from_email
     sender_name  = from_email.split("<")[0].strip() if "<" in from_email else "HEADZ UP"
+
+    if not sender_email:
+        logger.error(f"DEFAULT_FROM_EMAIL malformed: {from_email!r}")
+        return
 
     payload = {
         "personalizations": [{"to": [{"email": to_email}]}],
