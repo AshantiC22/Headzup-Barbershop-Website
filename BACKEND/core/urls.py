@@ -91,8 +91,8 @@ urlpatterns = [
     # Auth helpers
     path("check-username/",              CheckUsernameView.as_view(),           name="check_username"),
     path("password-reset/",              PasswordResetView.as_view(),           name="password_reset"),
-    path("password-reset/confirm/",
-    path("change-password/",               ChangePasswordView.as_view(),          name="change_password"),      PasswordResetConfirmView.as_view(),    name="password_reset_confirm"),
+    path("password-reset/confirm/",        PasswordResetConfirmView.as_view(),    name="password_reset_confirm"),
+    path("change-password/",               ChangePasswordView.as_view(),          name="change_password"),
 
     # Account recovery — security question flow
     path("security-questions/",          SecurityQuestionsListView.as_view(),   name="security_questions"),
