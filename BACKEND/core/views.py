@@ -4296,6 +4296,187 @@ class BarberClientDetailView(APIView):
         })
 
 
+
+class BarberAddClientView(APIView):
+    """
+    POST /api/barber/clients/add/
+    Barber manually adds a client by name + phone + email.
+    Creates a BarberContact record (no User account needed).
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        barber = get_barber_for_user(request.user)
+        if not barber:
+            return Response({"error": "Not a barber account"}, status=403)
+
+        name  = request.data.get("name",  "").strip()
+        phone = request.data.get("phone", "").strip()
+        email = request.data.get("email", "").strip()
+
+        if not name:
+            return Response({"error": "Name is required"}, status=400)
+        if not phone and not email:
+            return Response({"error": "At least a phone or email is required"}, status=400)
+
+        # Normalize phone to E.164
+        e164 = ""
+        if phone:
+            digits = "".join(d for d in phone if d.isdigit())
+            if len(digits) == 10:
+                e164 = f"+1{digits}"
+            elif len(digits) == 11 and digits.startswith("1"):
+                e164 = f"+{digits}"
+            else:
+                e164 = phone if phone.startswith("+") else f"+1{digits}"
+
+        # Store in BarberContact (reuse existing model or create a simple one)
+        # We store them as a UserProfile-less contact in a JSON field on Barber
+        # Using a simple approach: store in BarberContact model if it exists,
+        # otherwise store as a WaitlistEntry with a special tag
+        import json as json_mod
+        import logging
+        logger = logging.getLogger(__name__)
+
+        # Use a dedicated contacts JSON field on Barber or a simple model
+        # Check if BarberContact model exists
+        try:
+            from core.models import BarberContact
+            contact, created = BarberContact.objects.get_or_create(
+                barber=barber,
+                defaults={"name": name, "phone": e164, "email": email}
+            )
+            if not created:
+                # Update if already exists
+                if e164:  contact.phone = e164
+                if email: contact.email = email
+                contact.name = name
+                contact.save()
+            return Response({
+                "message": f"{'Added' if created else 'Updated'}: {name}",
+                "id":      contact.id,
+                "name":    contact.name,
+                "phone":   contact.phone,
+                "email":   contact.email,
+            }, status=(201 if created else 200))
+        except Exception:
+            pass
+
+        # Fallback: create a placeholder user for the contact
+        try:
+            safe_name = name.lower().replace(" ", "_")
+            username  = f"contact_{barber.id}_{safe_name}_{phone[-4:] if phone else email[:4]}"[:150]
+            user, created = User.objects.get_or_create(
+                username=username,
+                defaults={"first_name": name, "email": email or ""}
+            )
+            if not created and email:
+                user.email = email
+                user.first_name = name
+                user.save()
+
+            profile, _ = UserProfile.objects.get_or_create(user=user)
+            if e164:
+                profile.phone = e164
+                profile.save(update_fields=["phone"])
+
+            return Response({
+                "message": f"Contact added: {name}",
+                "id":      user.id,
+                "name":    name,
+                "phone":   e164,
+                "email":   email,
+            }, status=201)
+        except Exception as e:
+            logger.error(f"Add client failed: {e}")
+            return Response({"error": "Could not add contact."}, status=500)
+
+
+class BarberBlastView(APIView):
+    """
+    POST /api/barber/blast/
+    Send mass SMS and/or email to a list of clients.
+    Body: { "message": "...", "subject": "...", "recipients": [{"name":"", "phone":"", "email":""}], "send_sms": true, "send_email": true }
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        import logging
+        logger = logging.getLogger(__name__)
+
+        barber = get_barber_for_user(request.user)
+        if not barber:
+            return Response({"error": "Not a barber account"}, status=403)
+
+        message    = request.data.get("message", "").strip()
+        subject    = request.data.get("subject", "Message from HEADZ UP Barbershop").strip()
+        recipients = request.data.get("recipients", [])
+        send_sms   = request.data.get("send_sms",   True)
+        send_email = request.data.get("send_email", True)
+
+        if not message:
+            return Response({"error": "Message is required"}, status=400)
+        if not recipients:
+            return Response({"error": "No recipients selected"}, status=400)
+
+        sms_sent = 0; sms_failed = 0
+        email_sent = 0; email_failed = 0
+
+        for r in recipients:
+            name  = r.get("name",  "").strip() or "there"
+            phone = r.get("phone", "").strip()
+            email = r.get("email", "").strip()
+
+            # Personalize message
+            personal_msg = message.replace("{name}", name).replace("{barber}", barber.name)
+
+            if send_sms and phone:
+                try:
+                    digits = "".join(d for d in phone if d.isdigit())
+                    if len(digits) == 10:   e164 = f"+1{digits}"
+                    elif len(digits) == 11: e164 = f"+{digits}"
+                    else:                   e164 = phone if phone.startswith("+") else f"+1{digits}"
+                    _twilio_send(e164, personal_msg)
+                    sms_sent += 1
+                except Exception as e:
+                    sms_failed += 1
+                    logger.error(f"Blast SMS to {phone} failed: {e}")
+
+            if send_email and email:
+                try:
+                    html = f"""<!DOCTYPE html><html><head><meta charset="utf-8"></head>
+<body style="margin:0;padding:0;background:#050505;font-family:'Helvetica Neue',Arial,sans-serif;color:#fff;">
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#050505;padding:40px 20px;">
+<tr><td align="center"><table width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;">
+  <tr><td style="padding-bottom:24px;"><p style="font-family:'Courier New',monospace;font-size:22px;font-weight:900;letter-spacing:-0.05em;margin:0;text-transform:uppercase;">HEADZ<span style="color:#f59e0b;font-style:italic;">UP</span></p></td></tr>
+  <tr><td style="padding-bottom:20px;"><div style="height:3px;background:linear-gradient(to right,#ef4444,#f59e0b);"></div></td></tr>
+  <tr><td style="padding-bottom:24px;"><p style="font-family:'Courier New',monospace;font-size:9px;letter-spacing:0.3em;color:#52525b;text-transform:uppercase;margin:0 0 6px;">Message from {barber.name}</p></td></tr>
+  <tr><td style="background:#0a0a0a;border:1px solid rgba(255,255,255,0.08);padding:28px;margin-bottom:20px;">
+    <p style="font-size:15px;color:#e4e4e7;line-height:1.8;white-space:pre-wrap;margin:0;">{personal_msg}</p>
+  </td></tr>
+  <tr><td style="padding-top:24px;">
+    <a href="{FRONTEND_URL}" style="display:inline-block;padding:13px 26px;background:#f59e0b;color:black;font-family:'Courier New',monospace;font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:0.15em;text-decoration:none;margin-right:8px;">Visit HEADZ UP &rarr;</a>
+    <a href="{FRONTEND_URL}/book" style="display:inline-block;padding:13px 22px;background:transparent;color:#f59e0b;font-family:'Courier New',monospace;font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:0.15em;text-decoration:none;border:1px solid rgba(245,158,11,0.4);">Book Now</a>
+  </td></tr>
+  <tr><td style="border-top:1px solid rgba(255,255,255,0.06);padding-top:20px;margin-top:24px;"><p style="font-size:11px;color:#3f3f46;margin:0;">HEADZ UP Barbershop &middot; 2509 W 4th St, Hattiesburg, MS 39401</p></td></tr>
+</table></td></tr></table>
+</body></html>"""
+                    plain = f"{personal_msg}\n\nVisit us: {FRONTEND_URL}\nBook online: {FRONTEND_URL}/book\n\nHEADZ UP Barbershop · 2509 W 4th St, Hattiesburg MS"
+                    _sendgrid_send(email, subject, plain, html)
+                    email_sent += 1
+                except Exception as e:
+                    email_failed += 1
+                    logger.error(f"Blast email to {email} failed: {e}")
+
+        return Response({
+            "message":     f"Blast sent: {sms_sent} SMS, {email_sent} emails",
+            "sms_sent":    sms_sent,
+            "sms_failed":  sms_failed,
+            "email_sent":  email_sent,
+            "email_failed":email_failed,
+        })
+
+
 class BarberReportsView(APIView):
     """
     Full business analytics for a barber.

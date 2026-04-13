@@ -756,7 +756,15 @@ export default function BarberDashboard(){
 
   /* clients */
   const [clients,      setClients]     = useState([]);
-  const [clientSearch, setClientSearch]= useState("");
+  const [clientSearch,  setClientSearch]  = useState("");
+  const [showAddClient, setShowAddClient] = useState(false);
+  const [addClientForm, setAddClientForm] = useState({name:"",phone:"",email:""});
+  const [addClientBusy, setAddClientBusy] = useState(false);
+  const [showBlast,     setShowBlast]     = useState(false);
+  const [blastForm,     setBlastForm]     = useState({subject:"Message from HEADZ UP Barbershop",message:"",send_sms:true,send_email:true});
+  const [blastSelected, setBlastSelected] = useState([]);
+  const [blastBusy,     setBlastBusy]     = useState(false);
+  const [blastResult,   setBlastResult]   = useState(null);
   const [clientDetail, setClientDetail]= useState(null);
   const [clientNotes,  setClientNotes] = useState("");
   const [savingCN,     setSavingCN]    = useState(false);
@@ -2027,6 +2035,181 @@ export default function BarberDashboard(){
                 ))}
               </div>
             </div>
+
+            {/* Action buttons */}
+            <div style={{display:"flex",gap:8,marginBottom:12,flexWrap:"wrap"}}>
+              <button onClick={()=>{setShowAddClient(s=>!s);setShowBlast(false);setBlastResult(null);}}
+                style={{padding:"9px 16px",...sf,fontSize:6.5,letterSpacing:"0.15em",textTransform:"uppercase",
+                  background:showAddClient?"rgba(34,197,94,0.12)":"transparent",
+                  border:`1px solid ${showAddClient?"rgba(34,197,94,0.4)":T.border}`,
+                  color:showAddClient?"#4ade80":T.muted,cursor:"pointer",transition:"all 0.2s"}}>
+                + Add Client
+              </button>
+              <button onClick={()=>{setShowBlast(s=>!s);setShowAddClient(false);setBlastResult(null);if(!showBlast)setBlastSelected(clients.filter(c=>c.phone||c.email).map(c=>c.id));}}
+                style={{padding:"9px 16px",...sf,fontSize:6.5,letterSpacing:"0.15em",textTransform:"uppercase",
+                  background:showBlast?"rgba(245,158,11,0.12)":"transparent",
+                  border:`1px solid ${showBlast?T.amberBorder:T.border}`,
+                  color:showBlast?T.amber:T.muted,cursor:"pointer",transition:"all 0.2s"}}>
+                📣 Send Blast
+              </button>
+            </div>
+
+            {/* Add Client Form */}
+            {showAddClient&&(
+              <div style={{background:T.surface,border:"1px solid rgba(34,197,94,0.25)",padding:"20px",marginBottom:16,
+                clipPath:"polygon(0 0,calc(100% - 12px) 0,100% 12px,100% 100%,12px 100%,0 calc(100% - 12px))"}}>
+                <p style={{...sf,fontSize:7,letterSpacing:"0.35em",color:"#4ade80",textTransform:"uppercase",marginBottom:14}}>Add Client to Your Book</p>
+                <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr 1fr",gap:10,marginBottom:12}}>
+                  {[["Name *","text","name","John Smith"],["Phone","tel","phone","601-555-0100"],["Email","email","email","client@email.com"]].map(([label,type,field,ph])=>(
+                    <div key={field}>
+                      <label style={{...sf,fontSize:6,letterSpacing:"0.3em",color:T.muted,textTransform:"uppercase",display:"block",marginBottom:6}}>{label}</label>
+                      <input type={type} value={addClientForm[field]} onChange={e=>setAddClientForm(p=>({...p,[field]:e.target.value}))}
+                        placeholder={ph}
+                        style={{width:"100%",background:T.bg,border:`1px solid ${T.border}`,padding:"11px 12px",color:"white",...mono,fontSize:13,outline:"none"}}
+                        onFocus={e=>e.target.style.borderColor="rgba(34,197,94,0.5)"}
+                        onBlur={e=>e.target.style.borderColor=T.border}/>
+                    </div>
+                  ))}
+                </div>
+                <div style={{display:"flex",gap:8}}>
+                  <button onClick={async()=>{
+                    if(!addClientForm.name.trim()||(!addClientForm.phone&&!addClientForm.email)){showToast("Name + phone or email required","error");return;}
+                    setAddClientBusy(true);
+                    try{
+                      await API.post("barber/clients/add/",addClientForm);
+                      setAddClientForm({name:"",phone:"",email:""});
+                      setShowAddClient(false);
+                      loadClients();
+                      showToast(`✓ ${addClientForm.name} added to your client book`);
+                    }catch(e){showToast(e.response?.data?.error||"Could not add client","error");}
+                    finally{setAddClientBusy(false);}
+                  }} disabled={addClientBusy}
+                    style={{padding:"11px 22px",background:"rgba(34,197,94,0.15)",border:"1px solid rgba(34,197,94,0.35)",color:"#4ade80",...sf,fontSize:7,fontWeight:700,letterSpacing:"0.15em",textTransform:"uppercase",cursor:"pointer",
+                      clipPath:"polygon(0 0,calc(100% - 7px) 0,100% 7px,100% 100%,7px 100%,0 calc(100% - 7px))"}}>
+                    {addClientBusy?"Adding...":"Add Client →"}
+                  </button>
+                  <button onClick={()=>{setShowAddClient(false);setAddClientForm({name:"",phone:"",email:""}); }}
+                    style={{padding:"11px 16px",background:"transparent",border:`1px solid ${T.border}`,color:T.muted,...mono,fontSize:10,cursor:"pointer"}}>
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Blast Form */}
+            {showBlast&&(
+              <div style={{background:T.surface,border:`1px solid ${T.amberBorder}`,padding:"20px",marginBottom:16,
+                clipPath:"polygon(0 0,calc(100% - 12px) 0,100% 12px,100% 100%,12px 100%,0 calc(100% - 12px))"}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14,flexWrap:"wrap",gap:10}}>
+                  <p style={{...sf,fontSize:7,letterSpacing:"0.35em",color:T.amber,textTransform:"uppercase"}}>📣 Send Blast Message</p>
+                  <div style={{display:"flex",gap:12,alignItems:"center"}}>
+                    <span style={{...mono,fontSize:10,color:T.muted}}>{blastSelected.length} recipients</span>
+                    <button onClick={()=>setBlastSelected(clients.filter(c=>c.phone||c.email).map(c=>c.id))}
+                      style={{...mono,fontSize:9,color:T.amber,background:"transparent",border:"none",cursor:"pointer",textDecoration:"underline"}}>Select All</button>
+                    <button onClick={()=>setBlastSelected([])}
+                      style={{...mono,fontSize:9,color:T.muted,background:"transparent",border:"none",cursor:"pointer",textDecoration:"underline"}}>Clear</button>
+                  </div>
+                </div>
+
+                {/* Channel toggles */}
+                <div style={{display:"flex",gap:10,marginBottom:14}}>
+                  {[["send_sms","📱 SMS",blastForm.send_sms],["send_email","✉️ Email",blastForm.send_email]].map(([field,label,on])=>(
+                    <button key={field} onClick={()=>setBlastForm(p=>({...p,[field]:!p[field]}))}
+                      style={{padding:"7px 14px",...mono,fontSize:10,
+                        background:on?"rgba(245,158,11,0.12)":"transparent",
+                        border:`1px solid ${on?T.amberBorder:T.border}`,
+                        color:on?T.amber:T.muted,cursor:"pointer",transition:"all 0.18s"}}>
+                      {label} {on?"ON":"OFF"}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Subject (email only) */}
+                {blastForm.send_email&&(
+                  <div style={{marginBottom:10}}>
+                    <label style={{...sf,fontSize:6,letterSpacing:"0.3em",color:T.muted,textTransform:"uppercase",display:"block",marginBottom:6}}>Email Subject</label>
+                    <input value={blastForm.subject} onChange={e=>setBlastForm(p=>({...p,subject:e.target.value}))}
+                      style={{width:"100%",background:T.bg,border:`1px solid ${T.border}`,padding:"11px 12px",color:"white",...mono,fontSize:13,outline:"none"}}
+                      onFocus={e=>e.target.style.borderColor=T.amber}
+                      onBlur={e=>e.target.style.borderColor=T.border}/>
+                  </div>
+                )}
+
+                {/* Message */}
+                <div style={{marginBottom:12}}>
+                  <label style={{...sf,fontSize:6,letterSpacing:"0.3em",color:T.muted,textTransform:"uppercase",display:"block",marginBottom:6}}>
+                    Message <span style={{color:"#52525b",textTransform:"none",letterSpacing:0}}>— use {"{name}"} for personalization</span>
+                  </label>
+                  <textarea value={blastForm.message} onChange={e=>setBlastForm(p=>({...p,message:e.target.value}))}
+                    rows={4} placeholder={"Hey {name}! HEADZ UP Barbershop here — book your next cut online anytime: "+window?.location?.origin+"/book"}
+                    style={{width:"100%",background:T.bg,border:`1px solid ${T.border}`,padding:"11px 12px",color:"white",...mono,fontSize:13,outline:"none",resize:"vertical"}}
+                    onFocus={e=>e.target.style.borderColor=T.amber}
+                    onBlur={e=>e.target.style.borderColor=T.border}/>
+                </div>
+
+                {/* Recipient selector */}
+                <div style={{maxHeight:180,overflowY:"auto",border:`1px solid ${T.border}`,marginBottom:14}}>
+                  {clients.filter(c=>c.phone||c.email).length===0?(
+                    <p style={{...mono,fontSize:11,color:T.muted,padding:"16px",textAlign:"center"}}>No clients with phone or email yet</p>
+                  ):(
+                    clients.filter(c=>c.phone||c.email).map(cl=>{
+                      const sel = blastSelected.includes(cl.id);
+                      return(
+                        <div key={cl.id} onClick={()=>setBlastSelected(p=>sel?p.filter(x=>x!==cl.id):[...p,cl.id])}
+                          style={{display:"flex",alignItems:"center",gap:12,padding:"10px 14px",borderBottom:`1px solid ${T.border}`,cursor:"pointer",
+                            background:sel?"rgba(245,158,11,0.05)":"transparent",transition:"background 0.15s"}}>
+                          <div style={{width:16,height:16,border:`2px solid ${sel?T.amber:T.border}`,background:sel?"rgba(245,158,11,0.2)":"transparent",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center"}}>
+                            {sel&&<span style={{color:T.amber,fontSize:9}}>✓</span>}
+                          </div>
+                          <div style={{flex:1,minWidth:0}}>
+                            <span style={{...sf,fontSize:9,color:sel?"white":"#a1a1aa",textTransform:"uppercase"}}>{cl.name}</span>
+                          </div>
+                          <div style={{display:"flex",gap:8,flexShrink:0}}>
+                            {cl.phone&&<span style={{...mono,fontSize:9,color:"#4ade80"}}>📱</span>}
+                            {cl.email&&<span style={{...mono,fontSize:9,color:T.amber}}>✉️</span>}
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+
+                {/* Result */}
+                {blastResult&&(
+                  <div style={{padding:"12px 14px",background:blastResult.ok?"rgba(34,197,94,0.06)":"rgba(239,68,68,0.06)",border:`1px solid ${blastResult.ok?"rgba(34,197,94,0.2)":"rgba(239,68,68,0.2)"}`,marginBottom:12}}>
+                    <p style={{...mono,fontSize:11,color:blastResult.ok?"#4ade80":"#f87171",margin:0}}>{blastResult.msg}</p>
+                  </div>
+                )}
+
+                <div style={{display:"flex",gap:8}}>
+                  <button onClick={async()=>{
+                    if(!blastForm.message.trim()){showToast("Write a message first","error");return;}
+                    if(blastSelected.length===0){showToast("Select at least one recipient","error");return;}
+                    if(!blastForm.send_sms&&!blastForm.send_email){showToast("Enable SMS or Email","error");return;}
+                    setBlastBusy(true); setBlastResult(null);
+                    try{
+                      const recipients = clients.filter(c=>blastSelected.includes(c.id)).map(c=>({name:c.name,phone:c.phone||"",email:c.email||""}));
+                      const r = await API.post("barber/blast/",{...blastForm,recipients});
+                      setBlastResult({ok:true,msg:`✓ ${r.data.message}`});
+                      showToast(`📣 Blast sent — ${r.data.sms_sent} SMS, ${r.data.email_sent} emails`);
+                    }catch(e){
+                      const msg = e.response?.data?.error||"Blast failed";
+                      setBlastResult({ok:false,msg:`✗ ${msg}`});
+                      showToast(msg,"error");
+                    }
+                    finally{setBlastBusy(false);}
+                  }} disabled={blastBusy||blastSelected.length===0}
+                    style={{padding:"11px 22px",background:"rgba(245,158,11,0.15)",border:`1px solid ${T.amberBorder}`,color:T.amber,...sf,fontSize:7,fontWeight:700,letterSpacing:"0.15em",textTransform:"uppercase",cursor:blastBusy?"not-allowed":"pointer",
+                      clipPath:"polygon(0 0,calc(100% - 7px) 0,100% 7px,100% 100%,7px 100%,0 calc(100% - 7px))"}}>
+                    {blastBusy?`Sending...`:`Send to ${blastSelected.length} →`}
+                  </button>
+                  <button onClick={()=>{setShowBlast(false);setBlastResult(null);}}
+                    style={{padding:"11px 16px",background:"transparent",border:`1px solid ${T.border}`,color:T.muted,...mono,fontSize:10,cursor:"pointer"}}>
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
 
             {/* Search */}
             <input value={clientSearch} onChange={e=>setClientSearch(e.target.value)} placeholder="Search by name or email..."

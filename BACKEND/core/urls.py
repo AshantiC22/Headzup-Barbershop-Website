@@ -51,6 +51,8 @@ from core.views import (
     SendRemindersView,
     BarberClientListView,
     BarberClientDetailView,
+    BarberAddClientView,
+    BarberBlastView,
     BarberReportsView,
     ClientRescheduleRequestView,
     RescheduleResponseView,
@@ -67,6 +69,7 @@ from core.views import (
     BarberServicePriceView,
     VapidPublicKeyView,
     TestSMSView,
+    TestEmailView,
 )
 
 router = DefaultRouter()
@@ -140,6 +143,8 @@ urlpatterns = [
     # Client management
     path("barber/clients/",              BarberClientListView.as_view(),        name="barber_clients"),
     path("barber/clients/<int:pk>/",     BarberClientDetailView.as_view(),      name="barber_client_detail"),
+    path("barber/clients/add/",          BarberAddClientView.as_view(),         name="barber_client_add"),
+    path("barber/blast/",                BarberBlastView.as_view(),             name="barber_blast"),
     # Reports
     path("barber/reports/",              BarberReportsView.as_view(),           name="barber_reports"),
     # Test email (debug)
@@ -161,7 +166,8 @@ urlpatterns = [
     path("waitlist/mine/",               ClientWaitlistView.as_view(),               name="waitlist_mine"),
     path("waitlist/<int:pk>/",           ClientWaitlistView.as_view(),               name="waitlist_remove"),
 
-    path("test-sms/", TestSMSView.as_view(), name="test_sms"),
+    path("test-sms/",   TestSMSView.as_view(),   name="test_sms"),
+    path("test-email/", TestEmailView.as_view(), name="test_email"),
 
     path("", include(router.urls)),
 ]
