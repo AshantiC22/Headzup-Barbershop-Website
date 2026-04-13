@@ -1094,6 +1094,7 @@ export default function BarberDashboard(){
 
   return(
     <>
+      {ModalEl}
       <style jsx global>{`
         *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
         html,body{background:${T.bg};color:white;font-family:'DM Mono',monospace;overflow-x:hidden;-webkit-text-size-adjust:100%;}
