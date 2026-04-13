@@ -246,8 +246,10 @@ class Review(models.Model):
     client      = models.ForeignKey(User, on_delete=models.CASCADE)
     completed   = models.BooleanField(default=True)   # True = yes haircut done, False = no
     rating      = models.PositiveSmallIntegerField(default=5)  # 1-5, auto 5 on yes
-    comment     = models.TextField(blank=True, default="")
-    created_at  = models.DateTimeField(auto_now_add=True)
+    comment      = models.TextField(blank=True, default="")
+    barber_reply = models.TextField(blank=True, default="")  # barber response
+    replied_at   = models.DateTimeField(null=True, blank=True)
+    created_at   = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
         return f"{self.client.username} -> {self.barber.name} ({'done' if self.completed else 'no-show'})"

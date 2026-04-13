@@ -75,7 +75,7 @@ function Toast({toast}){
 }
 
 /* ─────────────────────────── appointment ticket ─────────────────── */
-function ApptTicket({appt,onStatusChange,onReschedule,onCancel,onNotes,onStrike,isMobile}){
+function ApptTicket({appt,onStatusChange,onReschedule,onCancel,onNotes,onStrike,onRemind,isMobile}){
   const [open,setOpen]     = useState(false);
   const [note,setNote]     = useState(appt.barber_notes||"");
   const [saving,setSaving] = useState(false);
@@ -196,6 +196,14 @@ function ApptTicket({appt,onStatusChange,onReschedule,onCancel,onNotes,onStrike,
               onMouseLeave={e=>{e.currentTarget.style.borderColor=T.border;e.currentTarget.style.color=T.muted;}}>
               Reschedule
             </button>
+            {(status==="confirmed"||status==="pending_shop")&&(
+              <button onClick={()=>onRemind&&onRemind(appt)}
+                style={{padding:"8px 14px",...sf,fontSize:7,letterSpacing:"0.15em",textTransform:"uppercase",background:"transparent",border:"1px solid rgba(99,91,255,0.3)",color:"#a78bfa",cursor:"pointer",transition:"all 0.2s"}}
+                onMouseEnter={e=>{e.currentTarget.style.background="rgba(99,91,255,0.08)";e.currentTarget.style.borderColor="rgba(99,91,255,0.6)";}}
+                onMouseLeave={e=>{e.currentTarget.style.background="transparent";e.currentTarget.style.borderColor="rgba(99,91,255,0.3)";}}>
+                📧 Remind
+              </button>
+            )}
             <button onClick={()=>onCancel&&onCancel(appt.id)}
               style={{padding:"8px 14px",...sf,fontSize:7,letterSpacing:"0.15em",textTransform:"uppercase",background:"transparent",border:`1px solid ${T.redBorder}`,color:T.red,cursor:"pointer",transition:"all 0.2s"}}
               onMouseEnter={e=>e.currentTarget.style.background=T.redDim}
@@ -789,6 +797,12 @@ export default function BarberDashboard(){
   const [uploadingPhoto,setUploadingPhoto]= useState(false);
   // Reschedules
   const [reschedules,    setReschedules]    = useState([]);
+  const [reviews,        setReviews]        = useState([]);
+  const [reviewsAvg,     setReviewsAvg]     = useState(0);
+  const [reviewsLoading, setReviewsLoading] = useState(false);
+  const [replyText,      setReplyText]      = useState({});
+  const [replyBusy,      setReplyBusy]      = useState({});
+  const [replyDone,      setReplyDone]      = useState({});
   const [reschedLoading, setReschedLoading] = useState(false);
 
   /* availability */
@@ -931,6 +945,17 @@ export default function BarberDashboard(){
   },[]);
   useEffect(()=>{if(activeTab==="newsletter")loadNewsletter();},[activeTab,loadNewsletter]);
 
+  const loadReviews=useCallback(async()=>{
+    setReviewsLoading(true);
+    try{
+      const r=await API.get("barber/reviews/");
+      setReviews(r.data.reviews||[]);
+      setReviewsAvg(r.data.average_rating||0);
+    }catch{}
+    finally{setReviewsLoading(false);}
+  },[]);
+  useEffect(()=>{if(activeTab==="reviews")loadReviews();},[activeTab,loadReviews]);
+
   const loadReschedules=useCallback(async()=>{
     setReschedLoading(true);
     try{const r=await API.get("barber/reschedules/");setReschedules(r.data);}catch{}
@@ -972,6 +997,14 @@ export default function BarberDashboard(){
       loadCalendarDates(calYear, calMonth);  // no_show/cancelled removes badge
       showToast(msg);
     }catch(e){showToast(e.response?.data?.error||"Could not issue strike.","error");}
+  };
+
+  const handleRemind=async(appt)=>{
+    const clientName=appt.client_name||appt.user_name||"this client";
+    try{
+      const r=await API.post(`barber/appointments/${appt.id}/remind/`,{});
+      showToast(`📧 ${r.data.message||"Reminder sent to "+clientName}`);
+    }catch(e){showToast(e.response?.data?.error||"Could not send reminder","error");}
   };
 
   const handleCancel=async(id)=>{
@@ -1101,6 +1134,7 @@ export default function BarberDashboard(){
     {key:"pricing",     label:"Pricing",     icon:"💲"},
     {key:"availability",label:"My Hours",   icon:"⏰"},
     {key:"timeoff",     label:"Time Off",    icon:"🏖"},
+    {key:"reviews",     label:"Reviews",     icon:"⭐"},
   ];
 
   return(
@@ -1277,6 +1311,157 @@ export default function BarberDashboard(){
             ))}
           </div>
         </div>
+
+        {/* ══ REVIEWS TAB ══ */}
+        {activeTab==="reviews"&&(
+          <div className="bd-enter">
+
+            {/* Header */}
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:24,flexWrap:"wrap",gap:12}}>
+              <div style={{display:"flex",alignItems:"center",gap:14}}>
+                <div style={{width:4,height:28,background:"linear-gradient(to bottom,#f59e0b,#ef4444)",flexShrink:0}}/>
+                <div>
+                  <p style={{...mono,fontSize:7,color:"rgba(245,158,11,0.5)",letterSpacing:"0.5em",textTransform:"uppercase",marginBottom:2}}>HEADZ UP · FEEDBACK</p>
+                  <p style={{...sf,fontSize:13,fontWeight:900,textTransform:"uppercase"}}>Client Reviews</p>
+                </div>
+              </div>
+              <div style={{display:"flex",gap:10,alignItems:"center",flexWrap:"wrap"}}>
+                {reviews.length>0&&(
+                  <div style={{display:"flex",alignItems:"center",gap:8,padding:"8px 14px",background:"rgba(245,158,11,0.08)",border:`1px solid ${T.amberBorder}`}}>
+                    <span style={{...sf,fontSize:18,fontWeight:900,color:T.amber}}>{reviewsAvg.toFixed(1)}</span>
+                    <div>
+                      <div style={{display:"flex",gap:2}}>{[1,2,3,4,5].map(s=><span key={s} style={{color:s<=Math.round(reviewsAvg)?T.amber:"rgba(255,255,255,0.1)",fontSize:10}}>★</span>)}</div>
+                      <p style={{...mono,fontSize:8,color:T.muted}}>{reviews.length} review{reviews.length!==1?"s":""}</p>
+                    </div>
+                  </div>
+                )}
+                <button onClick={loadReviews}
+                  style={{padding:"8px 14px",...sf,fontSize:6,letterSpacing:"0.15em",textTransform:"uppercase",background:"transparent",border:`1px solid ${T.border}`,color:T.muted,cursor:"pointer",transition:"all 0.2s"}}
+                  onMouseEnter={e=>{e.currentTarget.style.borderColor=T.amber;e.currentTarget.style.color=T.amber;}}
+                  onMouseLeave={e=>{e.currentTarget.style.borderColor=T.border;e.currentTarget.style.color=T.muted;}}>
+                  ↺ Refresh
+                </button>
+              </div>
+            </div>
+
+            {reviewsLoading?(
+              <div style={{padding:"64px",textAlign:"center"}}>
+                <div style={{width:20,height:20,border:`2px solid rgba(245,158,11,0.2)`,borderTopColor:T.amber,borderRadius:"50%",animation:"spin 0.8s linear infinite",margin:"0 auto 12px"}}/>
+                <p style={{...mono,fontSize:11,color:T.muted}}>Loading reviews...</p>
+              </div>
+            ):reviews.length===0?(
+              <div style={{padding:"64px 20px",textAlign:"center",border:`1px solid ${T.border}`,background:T.surface,
+                clipPath:"polygon(0 0,calc(100% - 16px) 0,100% 16px,100% 100%,16px 100%,0 calc(100% - 16px))"}}>
+                <p style={{fontSize:36,marginBottom:12}}>⭐</p>
+                <p style={{...sf,fontSize:9,color:"rgba(255,255,255,0.08)",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:8}}>No Reviews Yet</p>
+                <p style={{...mono,fontSize:11,color:"#52525b"}}>Reviews from completed appointments will appear here</p>
+              </div>
+            ):(
+              <div style={{display:"flex",flexDirection:"column",gap:12}}>
+                {reviews.map(rv=>{
+                  const hasReply = !!rv.barber_reply;
+                  const isReplying = !!replyText[rv.id];
+                  return(
+                    <div key={rv.id} style={{background:T.surface,border:`1px solid ${T.border}`,
+                      clipPath:"polygon(0 0,calc(100% - 12px) 0,100% 12px,100% 100%,12px 100%,0 calc(100% - 12px))"}}>
+                      <div style={{height:2,background:`linear-gradient(to right,${T.amber},transparent)`,opacity:0.5}}/>
+
+                      <div style={{padding:"18px 20px"}}>
+                        {/* Client + rating row */}
+                        <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:12,flexWrap:"wrap",gap:10}}>
+                          <div style={{display:"flex",alignItems:"center",gap:12}}>
+                            <div style={{width:36,height:36,background:T.amberDim,border:`1px solid ${T.amberBorder}`,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,
+                              clipPath:"polygon(0 0,calc(100% - 5px) 0,100% 5px,100% 100%,5px 100%,0 calc(100% - 5px))"}}>
+                              <span style={{...sf,fontSize:13,fontWeight:900,color:T.amber}}>{rv.client?.charAt(0)?.toUpperCase()||"?"}</span>
+                            </div>
+                            <div>
+                              <p style={{...sf,fontSize:10,fontWeight:700,textTransform:"uppercase",marginBottom:2}}>{rv.client}</p>
+                              <p style={{...mono,fontSize:9,color:T.muted}}>{rv.created_at}</p>
+                            </div>
+                          </div>
+                          <div style={{display:"flex",gap:2}}>
+                            {[1,2,3,4,5].map(s=>(
+                              <span key={s} style={{color:s<=rv.rating?T.amber:"rgba(255,255,255,0.1)",fontSize:14}}>★</span>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Review comment */}
+                        {rv.comment&&(
+                          <div style={{padding:"12px 14px",background:"rgba(255,255,255,0.02)",border:`1px solid ${T.border}`,marginBottom:12}}>
+                            <p style={{...mono,fontSize:13,color:"#d4d4d4",lineHeight:1.75,fontStyle:"italic"}}>"{rv.comment}"</p>
+                          </div>
+                        )}
+
+                        {/* Existing reply */}
+                        {hasReply&&!isReplying&&(
+                          <div style={{padding:"12px 14px",background:"rgba(245,158,11,0.04)",border:`1px solid ${T.amberBorder}`,marginBottom:10}}>
+                            <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:6}}>
+                              <span style={{fontSize:12}}>✂️</span>
+                              <p style={{...sf,fontSize:6,letterSpacing:"0.3em",color:T.amber,textTransform:"uppercase"}}>Your Reply{rv.replied_at?` · ${rv.replied_at}`:""}</p>
+                            </div>
+                            <p style={{...mono,fontSize:12,color:"#a1a1aa",lineHeight:1.7}}>{rv.barber_reply}</p>
+                          </div>
+                        )}
+
+                        {/* Reply input */}
+                        {isReplying&&(
+                          <div style={{marginBottom:10}}>
+                            <textarea
+                              value={replyText[rv.id]||""}
+                              onChange={e=>setReplyText(p=>({...p,[rv.id]:e.target.value}))}
+                              rows={3}
+                              placeholder="Write your reply — thank the client, address their feedback..."
+                              style={{width:"100%",background:T.bg,border:`1px solid ${T.amberBorder}`,padding:"10px 12px",color:"white",...mono,fontSize:13,outline:"none",resize:"vertical",marginBottom:8}}
+                              onFocus={e=>e.target.style.borderColor=T.amber}
+                              onBlur={e=>e.target.style.borderColor=T.amberBorder}
+                              autoFocus
+                            />
+                            <div style={{display:"flex",gap:8}}>
+                              <button onClick={async()=>{
+                                const txt=(replyText[rv.id]||"").trim();
+                                if(!txt){showToast("Write a reply first","error");return;}
+                                setReplyBusy(p=>({...p,[rv.id]:true}));
+                                try{
+                                  await API.patch(`barber/reviews/${rv.id}/`,{barber_reply:txt});
+                                  setReviews(p=>p.map(r=>r.id===rv.id?{...r,barber_reply:txt,replied_at:"Today"}:r));
+                                  setReplyText(p=>({...p,[rv.id]:""}));
+                                  setReplyDone(p=>({...p,[rv.id]:true}));
+                                  showToast("✓ Reply posted!");
+                                }catch(e){showToast(e.response?.data?.error||"Could not save reply","error");}
+                                finally{setReplyBusy(p=>({...p,[rv.id]:false}));}
+                              }} disabled={replyBusy[rv.id]}
+                                style={{padding:"8px 18px",background:"rgba(245,158,11,0.15)",border:`1px solid ${T.amberBorder}`,color:T.amber,...sf,fontSize:6.5,fontWeight:700,letterSpacing:"0.15em",textTransform:"uppercase",cursor:replyBusy[rv.id]?"not-allowed":"pointer",transition:"all 0.2s",
+                                  clipPath:"polygon(0 0,calc(100% - 6px) 0,100% 6px,100% 100%,6px 100%,0 calc(100% - 6px))"}}>
+                                {replyBusy[rv.id]?"Saving...":"Post Reply →"}
+                              </button>
+                              <button onClick={()=>setReplyText(p=>({...p,[rv.id]:""})) }
+                                style={{padding:"8px 14px",background:"transparent",border:`1px solid ${T.border}`,color:T.muted,...mono,fontSize:10,cursor:"pointer"}}>
+                                Cancel
+                              </button>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Reply / Edit button */}
+                        {!isReplying&&(
+                          <button onClick={()=>setReplyText(p=>({...p,[rv.id]:rv.barber_reply||""}))}
+                            style={{padding:"6px 14px",...sf,fontSize:6,letterSpacing:"0.15em",textTransform:"uppercase",
+                              background:"transparent",border:`1px solid ${hasReply?T.amberBorder:T.border}`,
+                              color:hasReply?T.amber:T.muted,cursor:"pointer",transition:"all 0.2s"}}
+                            onMouseEnter={e=>{e.currentTarget.style.borderColor=T.amber;e.currentTarget.style.color=T.amber;}}
+                            onMouseLeave={e=>{e.currentTarget.style.borderColor=hasReply?T.amberBorder:T.border;e.currentTarget.style.color=hasReply?T.amber:T.muted;}}>
+                            {hasReply?"✏️ Edit Reply":"💬 Reply"}
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* ══ SCHEDULE TAB ══ */}
         {/* ══ RESCHEDULES TAB ══ */}

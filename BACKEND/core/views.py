@@ -3875,7 +3875,7 @@ class HaircutReviewView(APIView):
 
 
 class BarberReviewsView(APIView):
-    """Returns reviews for a barber (barber or admin only)."""
+    """Returns reviews for a barber and handles barber replies."""
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
@@ -3892,15 +3892,40 @@ class BarberReviewsView(APIView):
             return Response({"error": "barber_id required"}, status=400)
 
         data = [{
-            "id":         r.id,
-            "client":     r.client.username,
-            "rating":     r.rating,
-            "comment":    r.comment,
-            "created_at": r.created_at.strftime("%B %d, %Y"),
+            "id":           r.id,
+            "client":       r.client.first_name or r.client.username,
+            "rating":       r.rating,
+            "comment":      r.comment,
+            "barber_reply": getattr(r, "barber_reply", "") or "",
+            "replied_at":   r.replied_at.strftime("%B %d, %Y") if getattr(r, "replied_at", None) else None,
+            "created_at":   r.created_at.strftime("%B %d, %Y"),
         } for r in reviews]
 
         avg = sum(r["rating"] for r in data) / len(data) if data else 0
         return Response({"reviews": data, "average_rating": round(avg, 1), "total": len(data)})
+
+    def patch(self, request, pk):
+        """Barber posts a reply to a review."""
+        barber = get_barber_for_user(request.user)
+        if not barber:
+            return Response({"error": "Not a barber account"}, status=403)
+        try:
+            review = Review.objects.get(pk=pk, barber=barber)
+        except Review.DoesNotExist:
+            return Response({"error": "Review not found"}, status=404)
+
+        reply = request.data.get("barber_reply", "").strip()
+        if not reply:
+            return Response({"error": "Reply cannot be empty"}, status=400)
+
+        from django.utils import timezone
+        review.barber_reply = reply
+        review.replied_at   = timezone.now()
+        try:
+            review.save(update_fields=["barber_reply", "replied_at"])
+        except Exception:
+            review.save()
+        return Response({"message": "Reply saved.", "barber_reply": reply})
 
 
 class AdminStatsView(APIView):
@@ -4731,6 +4756,92 @@ class BarberReportsView(APIView):
             "busiest_hours":busiest_hours,
             "top_clients":  top_clients,
         })
+
+
+
+class AppointmentReminderView(APIView):
+    """POST barber/appointments/<pk>/remind/ — send manual reminder to one client."""
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, pk):
+        barber = get_barber_for_user(request.user)
+        if not barber:
+            return Response({"error": "Not a barber account"}, status=403)
+        try:
+            appt = Appointment.objects.select_related(
+                "user", "barber", "barber__user", "service"
+            ).get(pk=pk, barber=barber)
+        except Appointment.DoesNotExist:
+            return Response({"error": "Appointment not found"}, status=404)
+
+        if appt.status not in ("confirmed", "pending_shop"):
+            return Response({"error": "Can only remind for confirmed appointments"}, status=400)
+
+        import logging
+        logger = logging.getLogger(__name__)
+        sent = []
+
+        try:
+            from datetime import date as date_type
+            appt_date = appt.date.strftime("%A, %B %d")
+            appt_time = appt.time.strftime("%I:%M %p").lstrip("0")
+            client_name = appt.user.first_name or appt.user.username
+            svc_name    = appt.service.name if appt.service else "appointment"
+            barber_name = appt.barber.name if appt.barber else "your barber"
+
+            # Email reminder
+            client_email = appt.user.email
+            if client_email:
+                plain = (
+                    f"Hey {client_name}! Just a reminder about your upcoming appointment.\n\n"
+                    f"Service: {svc_name}\nBarber: {barber_name}\n"
+                    f"Date: {appt_date}\nTime: {appt_time}\n\n"
+                    f"Please arrive 5 minutes early.\n"
+                    f"Address: 2509 W 4th St, Hattiesburg MS\n\n"
+                    f"-- HEADZ UP Barbershop"
+                )
+                html = f"""<!DOCTYPE html><html><head><meta charset="utf-8"></head>
+<body style="margin:0;padding:0;background:#050505;font-family:'Helvetica Neue',Arial,sans-serif;color:#fff;">
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#050505;padding:40px 20px;">
+<tr><td align="center"><table width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;">
+  <tr><td style="padding-bottom:24px;"><p style="font-family:'Courier New',monospace;font-size:22px;font-weight:900;letter-spacing:-0.05em;margin:0;text-transform:uppercase;">HEADZ<span style="color:#f59e0b;font-style:italic;">UP</span></p></td></tr>
+  <tr><td style="padding-bottom:8px;"><h1 style="font-family:'Courier New',monospace;font-size:24px;font-weight:900;text-transform:uppercase;margin:0;">Appointment<br><span style="color:#f59e0b;font-style:italic;">Reminder_</span></h1></td></tr>
+  <tr><td style="padding-bottom:24px;"><p style="color:#71717a;font-size:13px;margin:0;line-height:1.8;">Hey <strong style="color:white;">{client_name}</strong>! Your appointment is coming up.</p></td></tr>
+  <tr><td style="background:#0a0a0a;border:1px solid rgba(255,255,255,0.08);padding:22px;">
+    <table width="100%" cellpadding="0" cellspacing="0">
+      <tr><td style="padding-bottom:12px;"><p style="font-family:'Courier New',monospace;font-size:9px;letter-spacing:0.3em;color:#52525b;text-transform:uppercase;margin:0 0 4px;">Service</p><p style="font-size:15px;color:white;margin:0;font-weight:700;">{svc_name}</p></td></tr>
+      <tr><td style="padding-bottom:12px;border-top:1px solid rgba(255,255,255,0.06);padding-top:12px;"><p style="font-family:'Courier New',monospace;font-size:9px;letter-spacing:0.3em;color:#52525b;text-transform:uppercase;margin:0 0 4px;">Date &amp; Time</p><p style="font-size:18px;color:#f59e0b;margin:0;font-weight:900;font-family:'Courier New',monospace;">{appt_date} · {appt_time}</p></td></tr>
+      <tr><td style="border-top:1px solid rgba(255,255,255,0.06);padding-top:12px;"><p style="font-family:'Courier New',monospace;font-size:9px;letter-spacing:0.3em;color:#52525b;text-transform:uppercase;margin:0 0 4px;">Barber</p><p style="font-size:15px;color:white;margin:0;font-weight:700;">{barber_name}</p></td></tr>
+    </table>
+  </td></tr>
+  <tr><td style="padding-top:20px;"><p style="font-size:12px;color:#52525b;margin:0;line-height:1.8;">📍 2509 W 4th St, Hattiesburg, MS 39401 · Please arrive 5 minutes early.</p></td></tr>
+  <tr><td style="padding-top:16px;"><a href="{FRONTEND_URL}/dashboard" style="display:inline-block;padding:12px 24px;background:#f59e0b;color:black;font-family:'Courier New',monospace;font-size:10px;font-weight:900;text-transform:uppercase;text-decoration:none;">View My Appointment &rarr;</a></td></tr>
+  <tr><td style="border-top:1px solid rgba(255,255,255,0.06);padding-top:20px;margin-top:20px;"><p style="font-size:11px;color:#3f3f46;margin:0;">HEADZ UP Barbershop · 2509 W 4th St, Hattiesburg, MS 39401</p></td></tr>
+</table></td></tr></table>
+</body></html>"""
+                _sendgrid_send(client_email, f"📅 Reminder: {svc_name} tomorrow at {appt_time} — HEADZ UP", plain, html)
+                sent.append("email")
+                logger.info(f"Manual reminder email sent to {client_email} for appt {pk}")
+
+            # SMS reminder
+            client_phone = _get_client_phone(appt.user)
+            if client_phone:
+                sms = (
+                    f"📅 HEADZ UP Reminder: {client_name}, your {svc_name} with {barber_name} "
+                    f"is on {appt_date} at {appt_time}. "
+                    f"📍 2509 W 4th St, Hattiesburg MS. See you soon!"
+                )
+                _twilio_send(client_phone, sms)
+                sent.append("SMS")
+                logger.info(f"Manual reminder SMS sent to {client_phone} for appt {pk}")
+
+        except Exception as e:
+            logger.error(f"Manual reminder failed for appt {pk}: {e}", exc_info=True)
+            return Response({"error": f"Reminder failed: {e}"}, status=500)
+
+        if not sent:
+            return Response({"message": "No contact info — client has no email or phone on file"}, status=200)
+        return Response({"message": f"Reminder sent via {' + '.join(sent)} to {client_name}"})
 
 
 class BarberRescheduleListView(APIView):

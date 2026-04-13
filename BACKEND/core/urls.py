@@ -58,6 +58,7 @@ from core.views import (
     ClientRescheduleRequestView,
     RescheduleResponseView,
     BarberRescheduleListView,
+    AppointmentReminderView,
     BarberRescheduleRequestView,
     TestEmailView,
     # Push notifications + reviews
@@ -152,6 +153,8 @@ urlpatterns = [
     # Test email (debug)
     path("test-email/",                  TestEmailView.as_view(),               name="test_email"),
     # Reschedule requests
+    path("barber/appointments/<int:pk>/remind/", AppointmentReminderView.as_view(), name="appt_remind"),
+    path("barber/reviews/<int:pk>/",     BarberReviewsView.as_view(),       name="barber_review_reply"),
     path("barber/reschedules/",              BarberRescheduleListView.as_view(),  name="barber_reschedule_list"),
     path("barber/reschedules/<int:pk>/",     BarberRescheduleListView.as_view(),  name="barber_reschedule_action"),
     path("appointments/<int:pk>/reschedule/",        ClientRescheduleRequestView.as_view(),  name="client_reschedule"),
