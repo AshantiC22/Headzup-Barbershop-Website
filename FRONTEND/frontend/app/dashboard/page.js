@@ -196,8 +196,7 @@ function RescheduleModal({ appt, onClose, onDone }) {
             <div style={{padding:"24px",textAlign:"center"}}>
               <div style={{width:16,height:16,border:"2px solid rgba(245,158,11,0.2)",borderTopColor:"#f59e0b",borderRadius:"50%",animation:"spin 0.8s linear infinite",margin:"0 auto"}}/>
             </div>
-          ) : (
-            <div style={{background:"#050505",border:"1px solid rgba(255,255,255,0.08)",marginBottom:16,overflow:"hidden",
+          ) : (<div style={{background:"#050505",border:"1px solid rgba(255,255,255,0.08)",marginBottom:16,overflow:"hidden",
               clipPath:"polygon(0 0,calc(100% - 8px) 0,100% 8px,100% 100%,8px 100%,0 calc(100% - 8px))"
             }}>
               {/* Month nav */}
@@ -323,8 +322,7 @@ function RescheduleModal({ appt, onClose, onDone }) {
                     ↺ Retry
                   </button>
                 </div>
-              ) : (
-                <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:5,marginBottom:16}}>
+              ) : (<div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:5,marginBottom:16}}>
                   {slots.map(s=>{
                     const display   = fmtSlot(s);
                     const isBooked  = bookedSlots.includes(s);
@@ -465,6 +463,22 @@ function DashboardContent() {
   const [editingPhone, setEditingPhone] = useState(false);
   const [phoneInput,   setPhoneInput]   = useState("");
   const [phoneSaving,  setPhoneSaving]  = useState(false);
+  // Review
+  const [showReview,   setShowReview]   = useState(false);
+  const [reviewAppt,   setReviewAppt]   = useState(null);
+  const [reviewRating, setReviewRating] = useState(5);
+  const [reviewText,   setReviewText]   = useState("");
+  const [reviewBusy,   setReviewBusy]   = useState(false);
+  const [reviewDone,   setReviewDone]   = useState(false);
+  // Change password
+  const [showPwd,      setShowPwd]      = useState(false);
+  const [pwdForm,      setPwdForm]      = useState({current:"",next:"",confirm:""});
+  const [pwdBusy,      setPwdBusy]      = useState(false);
+  const [pwdErr,       setPwdErr]       = useState("");
+  const [pwdOk,        setPwdOk]        = useState(false);
+  // Push notifications
+  const [pushEnabled,  setPushEnabled]  = useState(false);
+  const [pushBusy,     setPushBusy]     = useState(false);
 
   const showToast = (msg, type="success") => { setToast({msg,type}); setTimeout(()=>setToast(null),4000); };
 
@@ -500,6 +514,14 @@ function DashboardContent() {
         }
       }catch{ showToast("Could not load data.","error"); }
       finally{ setLoading(false); }
+      // Check push subscription state
+      if("serviceWorker" in navigator && "PushManager" in window){
+        try{
+          const reg = await navigator.serviceWorker.ready;
+          const sub = await reg.pushManager.getSubscription();
+          setPushEnabled(!!sub);
+        }catch{}
+      }
     };
     load();
   },[]);
@@ -933,6 +955,238 @@ function DashboardContent() {
                     })}
                   </div>
                 )}
+              </div>
+
+              {/* ── ACCOUNT SETTINGS ─────────────────────────────────── */}
+              <div className="dc" style={{marginTop:isMobile?32:48,borderTop:"1px solid rgba(255,255,255,0.07)",paddingTop:isMobile?32:48}}>
+                <p style={{...mono,fontSize:7,color:"rgba(245,158,11,0.5)",letterSpacing:"0.5em",textTransform:"uppercase",marginBottom:20}}>Account Settings</p>
+
+                <div style={{display:"flex",flexDirection:"column",gap:10}}>
+
+                  {/* ── LEAVE A REVIEW ── */}
+                  {appointments.filter(a=>a.status==="completed").length>0&&(
+                    <div style={{background:"rgba(255,255,255,0.02)",border:"1px solid rgba(255,255,255,0.07)",clipPath:"polygon(0 0,calc(100% - 10px) 0,100% 10px,100% 100%,10px 100%,0 calc(100% - 10px))"}}>
+                      <div style={{padding:"16px 18px",display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:10}}>
+                        <div style={{display:"flex",alignItems:"center",gap:12}}>
+                          <span style={{fontSize:18}}>⭐</span>
+                          <div>
+                            <p style={{...sf,fontSize:7,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.15em",marginBottom:2}}>Leave a Review</p>
+                            <p style={{...mono,fontSize:11,color:"#52525b"}}>
+                              {reviewDone?"✓ Review submitted — thank you!":"Share your experience with your barber"}
+                            </p>
+                          </div>
+                        </div>
+                        {!reviewDone&&(
+                          <button onClick={()=>{
+                            const last=appointments.find(a=>a.status==="completed");
+                            setReviewAppt(last);
+                            setReviewRating(5);setReviewText("");
+                            setShowReview(s=>!s);
+                          }}
+                            style={{padding:"7px 14px",...sf,fontSize:6,fontWeight:700,letterSpacing:"0.2em",textTransform:"uppercase",
+                              background:showReview?"rgba(245,158,11,0.15)":"transparent",
+                              border:`1px solid ${showReview?"rgba(245,158,11,0.5)":"rgba(255,255,255,0.12)"}`,
+                              color:showReview?"#f59e0b":"#a1a1aa",cursor:"pointer",transition:"all 0.2s"}}
+                            onMouseEnter={e=>{e.currentTarget.style.borderColor="#f59e0b";e.currentTarget.style.color="#f59e0b";}}
+                            onMouseLeave={e=>{if(!showReview){e.currentTarget.style.borderColor="rgba(255,255,255,0.12)";e.currentTarget.style.color="#a1a1aa";}}}>
+                            {showReview?"Close":"Write Review"}
+                          </button>
+                        )}
+                      </div>
+
+                      {showReview&&!reviewDone&&(
+                        <div style={{padding:"0 18px 18px",borderTop:"1px solid rgba(255,255,255,0.06)",paddingTop:16}}>
+                          {reviewAppt&&(
+                            <p style={{...mono,fontSize:10,color:"#71717a",marginBottom:14}}>
+                              Reviewing: <strong style={{color:"white"}}>{reviewAppt.service_name}</strong> with <strong style={{color:"#f59e0b"}}>{reviewAppt.barber_name}</strong>
+                            </p>
+                          )}
+                          {/* Stars */}
+                          <div style={{display:"flex",gap:6,marginBottom:14}}>
+                            {[1,2,3,4,5].map(s=>(
+                              <button key={s} onClick={()=>setReviewRating(s)}
+                                style={{background:"none",border:"none",cursor:"pointer",fontSize:isMobile?26:28,color:s<=reviewRating?"#f59e0b":"rgba(255,255,255,0.12)",transition:"color 0.15s",padding:0,lineHeight:1}}
+                                onMouseEnter={e=>e.currentTarget.style.transform="scale(1.2)"}
+                                onMouseLeave={e=>e.currentTarget.style.transform="scale(1)"}>
+                                ★
+                              </button>
+                            ))}
+                            <span style={{...mono,fontSize:11,color:"#f59e0b",alignSelf:"center",marginLeft:6}}>{["","Awful","Poor","OK","Good","Amazing!"][reviewRating]}</span>
+                          </div>
+                          {/* Text */}
+                          <textarea
+                            value={reviewText}
+                            onChange={e=>setReviewText(e.target.value)}
+                            placeholder="Tell us about your experience — the cut, the vibe, the barber..."
+                            rows={3}
+                            style={{width:"100%",background:"#0a0a0a",border:"1px solid rgba(255,255,255,0.1)",padding:"11px 14px",color:"white",...mono,fontSize:13,outline:"none",resize:"vertical",marginBottom:12,transition:"border-color 0.2s"}}
+                            onFocus={e=>e.target.style.borderColor="rgba(245,158,11,0.4)"}
+                            onBlur={e=>e.target.style.borderColor="rgba(255,255,255,0.1)"}
+                          />
+                          <div style={{display:"flex",gap:8}}>
+                            <button onClick={async()=>{
+                              if(!reviewText.trim()){showToast("Write something first","error");return;}
+                              setReviewBusy(true);
+                              try{
+                                await API.post("review/submit/",{
+                                  appointment: reviewAppt?.id,
+                                  rating:      reviewRating,
+                                  comment:     reviewText.trim(),
+                                });
+                                setReviewDone(true);
+                                setShowReview(false);
+                                showToast("⭐ Review submitted — thank you!");
+                              }catch(e){showToast(e.response?.data?.error||"Could not submit review","error");}
+                              finally{setReviewBusy(false);}
+                            }} disabled={reviewBusy}
+                              style={{padding:"10px 22px",background:"rgba(245,158,11,0.15)",border:"1px solid rgba(245,158,11,0.4)",color:"#f59e0b",...sf,fontSize:7,fontWeight:700,letterSpacing:"0.15em",textTransform:"uppercase",cursor:reviewBusy?"not-allowed":"pointer",transition:"all 0.2s",
+                                clipPath:"polygon(0 0,calc(100% - 6px) 0,100% 6px,100% 100%,6px 100%,0 calc(100% - 6px))"}}>
+                              {reviewBusy?"Submitting...":"Submit Review →"}
+                            </button>
+                            <button onClick={()=>setShowReview(false)}
+                              style={{padding:"10px 14px",background:"transparent",border:"1px solid rgba(255,255,255,0.08)",color:"#71717a",...mono,fontSize:10,cursor:"pointer"}}>
+                              Cancel
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* ── CHANGE PASSWORD ── */}
+                  <div style={{background:"rgba(255,255,255,0.02)",border:"1px solid rgba(255,255,255,0.07)",clipPath:"polygon(0 0,calc(100% - 10px) 0,100% 10px,100% 100%,10px 100%,0 calc(100% - 10px))"}}>
+                    <div style={{padding:"16px 18px",display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:10}}>
+                      <div style={{display:"flex",alignItems:"center",gap:12}}>
+                        <span style={{fontSize:18}}>🔑</span>
+                        <div>
+                          <p style={{...sf,fontSize:7,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.15em",marginBottom:2}}>Change Password</p>
+                          <p style={{...mono,fontSize:11,color:"#52525b"}}>{pwdOk?"✓ Password updated successfully":"Update your account password"}</p>
+                        </div>
+                      </div>
+                      <button onClick={()=>{setShowPwd(s=>!s);setPwdErr("");setPwdOk(false);setPwdForm({current:"",next:"",confirm:""}); }}
+                        style={{padding:"7px 14px",...sf,fontSize:6,fontWeight:700,letterSpacing:"0.2em",textTransform:"uppercase",
+                          background:showPwd?"rgba(245,158,11,0.15)":"transparent",
+                          border:`1px solid ${showPwd?"rgba(245,158,11,0.5)":"rgba(255,255,255,0.12)"}`,
+                          color:showPwd?"#f59e0b":"#a1a1aa",cursor:"pointer",transition:"all 0.2s"}}
+                        onMouseEnter={e=>{e.currentTarget.style.borderColor="#f59e0b";e.currentTarget.style.color="#f59e0b";}}
+                        onMouseLeave={e=>{if(!showPwd){e.currentTarget.style.borderColor="rgba(255,255,255,0.12)";e.currentTarget.style.color="#a1a1aa";}}}>
+                        {showPwd?"Close":"Change"}
+                      </button>
+                    </div>
+
+                    {showPwd&&(
+                      <div style={{padding:"0 18px 18px",borderTop:"1px solid rgba(255,255,255,0.06)",paddingTop:16}}>
+                        {pwdErr&&<p style={{...mono,fontSize:11,color:"#f87171",marginBottom:10}}>⚠ {pwdErr}</p>}
+                        <div style={{display:"flex",flexDirection:"column",gap:10,marginBottom:14}}>
+                          {[["current","Current Password"],["next","New Password"],["confirm","Confirm New Password"]].map(([field,label])=>(
+                            <div key={field}>
+                              <label style={{...sf,fontSize:6,letterSpacing:"0.3em",color:"#52525b",textTransform:"uppercase",display:"block",marginBottom:6}}>{label}</label>
+                              <input
+                                type="password"
+                                value={pwdForm[field]}
+                                onChange={e=>setPwdForm(p=>({...p,[field]:e.target.value}))}
+                                placeholder="••••••••"
+                                style={{width:"100%",background:"#0a0a0a",border:"1px solid rgba(255,255,255,0.1)",padding:"11px 14px",color:"white",...mono,fontSize:14,outline:"none",transition:"border-color 0.2s"}}
+                                onFocus={e=>e.target.style.borderColor="rgba(245,158,11,0.4)"}
+                                onBlur={e=>e.target.style.borderColor="rgba(255,255,255,0.1)"}
+                              />
+                            </div>
+                          ))}
+                        </div>
+                        <div style={{display:"flex",gap:8}}>
+                          <button onClick={async()=>{
+                            setPwdErr("");
+                            if(!pwdForm.current||!pwdForm.next||!pwdForm.confirm){setPwdErr("All fields required");return;}
+                            if(pwdForm.next!==pwdForm.confirm){setPwdErr("New passwords don't match");return;}
+                            if(pwdForm.next.length<8){setPwdErr("Password must be at least 8 characters");return;}
+                            setPwdBusy(true);
+                            try{
+                              await API.post("change-password/",{
+                                old_password: pwdForm.current,
+                                new_password: pwdForm.next,
+                              });
+                              setPwdOk(true);
+                              setShowPwd(false);
+                              setPwdForm({current:"",next:"",confirm:""});
+                              showToast("🔑 Password updated!");
+                            }catch(e){
+                              setPwdErr(e.response?.data?.error||e.response?.data?.detail||"Incorrect current password");
+                            }finally{setPwdBusy(false);}
+                          }} disabled={pwdBusy}
+                            style={{padding:"10px 22px",background:"rgba(245,158,11,0.15)",border:"1px solid rgba(245,158,11,0.4)",color:"#f59e0b",...sf,fontSize:7,fontWeight:700,letterSpacing:"0.15em",textTransform:"uppercase",cursor:pwdBusy?"not-allowed":"pointer",transition:"all 0.2s",
+                              clipPath:"polygon(0 0,calc(100% - 6px) 0,100% 6px,100% 100%,6px 100%,0 calc(100% - 6px))"}}>
+                            {pwdBusy?"Saving...":"Update Password →"}
+                          </button>
+                          <button onClick={()=>{setShowPwd(false);setPwdErr("");}}
+                            style={{padding:"10px 14px",background:"transparent",border:"1px solid rgba(255,255,255,0.08)",color:"#71717a",...mono,fontSize:10,cursor:"pointer"}}>
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* ── PUSH NOTIFICATIONS ── */}
+                  {"Notification" in window||true ? (
+                    <div style={{background:"rgba(255,255,255,0.02)",border:"1px solid rgba(255,255,255,0.07)",padding:"16px 18px",
+                      clipPath:"polygon(0 0,calc(100% - 10px) 0,100% 10px,100% 100%,10px 100%,0 calc(100% - 10px))"}}>
+                      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:10}}>
+                        <div style={{display:"flex",alignItems:"center",gap:12}}>
+                          <span style={{fontSize:18}}>🔔</span>
+                          <div>
+                            <p style={{...sf,fontSize:7,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.15em",marginBottom:2}}>Push Notifications</p>
+                            <p style={{...mono,fontSize:11,color:pushEnabled?"#4ade80":"#52525b"}}>
+                              {pushEnabled?"✓ Enabled — you'll get booking alerts":"Get notified about bookings & reminders"}
+                            </p>
+                          </div>
+                        </div>
+                        <button onClick={async()=>{
+                          if(!("serviceWorker" in navigator)||!("PushManager" in window)){
+                            showToast("Push notifications not supported on this browser","error");return;
+                          }
+                          setPushBusy(true);
+                          try{
+                            const reg = await navigator.serviceWorker.ready;
+                            if(pushEnabled){
+                              // Unsubscribe
+                              const sub = await reg.pushManager.getSubscription();
+                              if(sub) await sub.unsubscribe();
+                              setPushEnabled(false);
+                              showToast("🔕 Push notifications disabled");
+                            } else {
+                              // Subscribe
+                              const perm = await Notification.requestPermission();
+                              if(perm!=="granted"){showToast("Permission denied — enable in browser settings","error");return;}
+                              const keyResp = await API.get("push/vapid-key/");
+                              const vapidKey = keyResp.data.public_key;
+                              const sub = await reg.pushManager.subscribe({
+                                userVisibleOnly: true,
+                                applicationServerKey: vapidKey,
+                              });
+                              await API.post("push/subscribe/",{
+                                endpoint:  sub.endpoint,
+                                p256dh:    btoa(String.fromCharCode(...new Uint8Array(sub.getKey("p256dh")))),
+                                auth:      btoa(String.fromCharCode(...new Uint8Array(sub.getKey("auth")))),
+                              });
+                              setPushEnabled(true);
+                              showToast("🔔 Push notifications enabled!");
+                            }
+                          }catch(e){showToast(e.message||"Could not update push settings","error");}
+                          finally{setPushBusy(false);}
+                        }} disabled={pushBusy}
+                          style={{padding:"7px 14px",...sf,fontSize:6,fontWeight:700,letterSpacing:"0.2em",textTransform:"uppercase",
+                            background:pushEnabled?"rgba(34,197,94,0.12)":"transparent",
+                            border:`1px solid ${pushEnabled?"rgba(34,197,94,0.4)":"rgba(255,255,255,0.12)"}`,
+                            color:pushEnabled?"#4ade80":"#a1a1aa",cursor:pushBusy?"not-allowed":"pointer",transition:"all 0.2s"}}
+                          onMouseEnter={e=>{if(!pushBusy){e.currentTarget.style.borderColor=pushEnabled?"rgba(34,197,94,0.6)":"#f59e0b";e.currentTarget.style.color=pushEnabled?"#4ade80":"#f59e0b";}}}
+                          onMouseLeave={e=>{e.currentTarget.style.borderColor=pushEnabled?"rgba(34,197,94,0.4)":"rgba(255,255,255,0.12)";e.currentTarget.style.color=pushEnabled?"#4ade80":"#a1a1aa";}}>
+                          {pushBusy?"...":(pushEnabled?"Disable":"Enable")}
+                        </button>
+                      </div>
+                    </div>
+                  ) : null}
+
+                </div>
               </div>
 
               {/* QUICK ACTIONS */}

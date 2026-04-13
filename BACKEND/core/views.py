@@ -2044,6 +2044,27 @@ class PasswordResetConfirmView(APIView):
         return Response({"message": "Password updated successfully"})
 
 
+
+class ChangePasswordView(APIView):
+    """Authenticated — change password from inside the dashboard."""
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        old_password = request.data.get("old_password", "")
+        new_password = request.data.get("new_password", "")
+
+        if not old_password or not new_password:
+            return Response({"error": "old_password and new_password required"}, status=400)
+        if len(new_password) < 8:
+            return Response({"error": "Password must be at least 8 characters"}, status=400)
+        if not request.user.check_password(old_password):
+            return Response({"error": "Incorrect current password"}, status=400)
+
+        request.user.set_password(new_password)
+        request.user.save()
+        return Response({"message": "Password updated successfully"})
+
+
 # ── Strike & Deposit System ───────────────────────────────────────────────────
 
 DEPOSIT_BASE   = Decimal("10.00")
