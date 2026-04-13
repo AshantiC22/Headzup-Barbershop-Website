@@ -1,0 +1,96 @@
+name: HEADZ UP — PR Check
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+
+  # ── BACKEND: migration safety ─────────────────────────────────────────────────
+  migration-safety:
+    name: No missing migrations
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: BACKEND
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - run: pip install -r requirements.txt
+
+      - name: Check models match migrations
+        env:
+          DATABASE_URL: sqlite:///./test.db
+          SECRET_KEY: ci-check-key
+          DEBUG: "True"
+        run: |
+          python manage.py makemigrations --check --dry-run
+          if [ $? -ne 0 ]; then
+            echo "❌ You have model changes with no migration file."
+            echo "Run: python manage.py makemigrations"
+            echo "Then commit the new migration file before merging."
+            exit 1
+          fi
+          echo "✓ All model changes have migration files"
+
+  # ── FRONTEND: no broken build ─────────────────────────────────────────────────
+  build-check:
+    name: Next.js build passes
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: FRONTEND/frontend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: FRONTEND/frontend/package-lock.json
+
+      - run: npm ci
+
+      - name: Build
+        env:
+          NEXT_PUBLIC_API_URL: https://headzup-barbershop-website-production.up.railway.app/api
+        run: npm run build
+
+  # ── FILE SAFETY: check no secrets committed ───────────────────────────────────
+  secret-scan:
+    name: No secrets in diff
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Scan for common secret patterns
+        run: |
+          PATTERNS=(
+            "SENDGRID_API_KEY\s*=\s*SG\."
+            "sk_live_[A-Za-z0-9]+"
+            "sk_test_[A-Za-z0-9]+"
+            "AC[a-z0-9]{32}"
+            "twilio.*auth.*token"
+          )
+          FAILED=0
+          for PATTERN in "${PATTERNS[@]}"; do
+            if git diff origin/main...HEAD | grep -iE "$PATTERN"; then
+              echo "❌ Possible secret found matching pattern: $PATTERN"
+              FAILED=1
+            fi
+          done
+          if [ $FAILED -eq 1 ]; then
+            echo "Remove secrets from your commit and use Railway/Vercel env vars instead."
+            exit 1
+          fi
+          echo "✓ No obvious secrets found in diff"

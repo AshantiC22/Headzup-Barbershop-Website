@@ -1,0 +1,57 @@
+name: HEADZ UP — Weekly Health Check
+
+on:
+  schedule:
+    # Every Monday at 9 AM CST (15:00 UTC)
+    - cron: "0 15 * * 1"
+  workflow_dispatch: # allow manual trigger from GitHub UI
+
+jobs:
+
+  health-check:
+    name: Production health check
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check backend API is responding
+        run: |
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+            https://headzup-barbershop-website-production.up.railway.app/api/barbers/ \
+            --max-time 15)
+          echo "Backend /api/barbers/ → HTTP $STATUS"
+          if [ "$STATUS" != "200" ]; then
+            echo "❌ Backend returned $STATUS — check Railway logs"
+            exit 1
+          fi
+          echo "✓ Backend healthy"
+
+      - name: Check frontend is serving
+        run: |
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+            https://headzup-barbershop-website.vercel.app \
+            --max-time 15)
+          echo "Frontend / → HTTP $STATUS"
+          if [ "$STATUS" != "200" ]; then
+            echo "❌ Frontend returned $STATUS — check Vercel dashboard"
+            exit 1
+          fi
+          echo "✓ Frontend healthy"
+
+      - name: Check available-slots endpoint
+        run: |
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+            "https://headzup-barbershop-website-production.up.railway.app/api/available-slots/?barber=1&date=$(date +%Y-%m-%d)" \
+            --max-time 15)
+          echo "Slots endpoint → HTTP $STATUS"
+          # 200 or 400 (no barber 1) are both fine — just checking it's alive
+          if [ "$STATUS" = "000" ] || [ "$STATUS" = "502" ] || [ "$STATUS" = "503" ]; then
+            echo "❌ Slots endpoint unreachable ($STATUS)"
+            exit 1
+          fi
+          echo "✓ Slots endpoint responding"
+
+      - name: Summary
+        if: always()
+        run: |
+          echo "## Weekly Health Check — $(date '+%Y-%m-%d')" >> $GITHUB_STEP_SUMMARY
+          echo "Run this workflow manually any time from Actions → Weekly Health Check → Run workflow" >> $GITHUB_STEP_SUMMARY
