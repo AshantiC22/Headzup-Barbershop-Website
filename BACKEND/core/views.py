@@ -2255,6 +2255,7 @@ class DepositCheckoutView(APIView):
                     "quantity": 1,
                 }],
                 mode="payment",
+                automatic_tax={"enabled": True},
                 payment_intent_data={
                     "transfer_data": {"destination": barber.stripe_account_id},
                     "description":   f"HEADZ UP Deposit — {service.name} with {barber.name}",
@@ -2673,8 +2674,8 @@ class CreateCheckoutSessionView(APIView):
         except Exception:
             pass
 
-        # Platform fee — 0% for now (you can add a % later e.g. 50 cents per booking)
-        # application_fee_amount = 50  # 50 cents platform fee
+        # Platform fee — $1.50 flat on every online booking (goes to your Stripe account)
+        application_fee_amount = 150  # 150 cents = $1.50
 
         try:
             checkout_session = stripe.checkout.Session.create(
@@ -2691,8 +2692,10 @@ class CreateCheckoutSessionView(APIView):
                     "quantity": 1,
                 }],
                 mode="payment",
+                automatic_tax={"enabled": True},
                 # This routes the payment directly to the barber's Stripe account
                 payment_intent_data={
+                    "application_fee_amount": application_fee_amount,
                     "transfer_data": {
                         "destination": barber.stripe_account_id,
                     },
