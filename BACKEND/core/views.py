@@ -2641,8 +2641,9 @@ class StripeConnectTestSetupView(APIView):
             )
 
             # In test mode, fill in the account so charges are enabled
-            stripe.Account.update(account.id, **{
-                "individual": {
+            stripe.Account.modify(
+                account.id,
+                individual={
                     "first_name": "Test",
                     "last_name":  "Barber",
                     "dob":        {"day": 1, "month": 1, "year": 1990},
@@ -2657,24 +2658,24 @@ class StripeConnectTestSetupView(APIView):
                     "email":      request.user.email or f"barber_{barber.id}@headzupp.com",
                     "phone":      "+16012065206",
                 },
-                "business_profile": {
+                business_profile={
                     "name": f"{barber.name} — HEADZ UP Barbershop",
                     "mcc":  "7230",
                     "url":  FRONTEND_URL,
                 },
-                "tos_acceptance": {
+                tos_acceptance={
                     "date":      1609798905,
                     "ip":        "8.8.8.8",
                     "user_agent":"Mozilla/5.0",
                 },
-                "external_account": {
+                external_account={
                     "object":          "bank_account",
                     "country":         "US",
                     "currency":        "usd",
                     "routing_number":  "110000000",
                     "account_number":  "000123456789",
                 },
-            })
+            )
 
             barber.stripe_account_id = account.id
             barber.save(update_fields=["stripe_account_id"])
