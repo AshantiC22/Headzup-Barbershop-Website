@@ -2551,7 +2551,7 @@ class StripeConnectOnboardView(APIView):
                     },
                     business_profile={
                         "name":  f"{barber.name} — HEADZ UP Barbershop",
-                        "mcc":   "7241",  # Barber shops
+                        "mcc":   "7230",  # Barber shops
                         "url":   FRONTEND_URL,
                     },
                     metadata={
@@ -2631,7 +2631,7 @@ class StripeConnectTestSetupView(APIView):
                 },
                 business_profile={
                     "name": f"{barber.name} — HEADZ UP Barbershop",
-                    "mcc":  "7241",
+                    "mcc":  "7230",
                     "url":  FRONTEND_URL,
                 },
                 metadata={
@@ -2659,7 +2659,7 @@ class StripeConnectTestSetupView(APIView):
                 },
                 "business_profile": {
                     "name": f"{barber.name} — HEADZ UP Barbershop",
-                    "mcc":  "7241",
+                    "mcc":  "7230",
                     "url":  FRONTEND_URL,
                 },
                 "tos_acceptance": {
