@@ -337,18 +337,36 @@ function StripeConnectPanel({ barber, isMobile }) {
                   Manage
                 </button>
               </>
-            ) : (<button onClick={connectStripe} disabled={connecting}
-                style={{ padding:"12px 22px", background:"#635bff", color:"white", ...sf, fontSize:8, fontWeight:700, letterSpacing:"0.2em", textTransform:"uppercase", border:"none", cursor:connecting?"wait":"pointer",
-                  clipPath:"polygon(0 0,calc(100% - 8px) 0,100% 8px,100% 100%,8px 100%,0 calc(100% - 8px))",
-                  boxShadow:"0 0 24px rgba(99,91,255,0.35)", display:"flex", alignItems:"center", gap:8, minHeight:"auto", transition:"opacity 0.2s"
-                }}
-                onMouseEnter={e=>e.currentTarget.style.opacity="0.85"}
-                onMouseLeave={e=>e.currentTarget.style.opacity="1"}>
-                {connecting
-                  ? <><span style={{ width:12,height:12,border:"2px solid rgba(255,255,255,0.3)",borderTopColor:"white",borderRadius:"50%",display:"inline-block",animation:"spin 0.7s linear infinite" }}/>Connecting...</>
-                  : connected ? "Finish Setup →" : "Connect Stripe →"
-                }
-              </button>
+            ) : (
+              <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+                <button onClick={connectStripe} disabled={connecting}
+                  style={{ padding:"12px 22px", background:"#635bff", color:"white", ...sf, fontSize:8, fontWeight:700, letterSpacing:"0.2em", textTransform:"uppercase", border:"none", cursor:connecting?"wait":"pointer",
+                    clipPath:"polygon(0 0,calc(100% - 8px) 0,100% 8px,100% 100%,8px 100%,0 calc(100% - 8px))",
+                    boxShadow:"0 0 24px rgba(99,91,255,0.35)", display:"flex", alignItems:"center", gap:8, minHeight:"auto", transition:"opacity 0.2s"
+                  }}
+                  onMouseEnter={e=>e.currentTarget.style.opacity="0.85"}
+                  onMouseLeave={e=>e.currentTarget.style.opacity="1"}>
+                  {connecting
+                    ? <><span style={{ width:12,height:12,border:"2px solid rgba(255,255,255,0.3)",borderTopColor:"white",borderRadius:"50%",display:"inline-block",animation:"spin 0.7s linear infinite" }}/>Connecting...</>
+                    : connected ? "Finish Setup →" : "Connect Stripe →"
+                  }
+                </button>
+                {/* SANDBOX ONLY — remove before going live */}
+                <button onClick={async()=>{
+                  setConnecting(true);setErr("");
+                  try{
+                    const r=await API.post("barber/stripe/test-setup/");
+                    showToast(`✓ ${r.data.message}`);
+                    const s=await API.get("barber/stripe/status/");
+                    setStatus(s.data);
+                  }catch(e){setErr(e.response?.data?.error||"Test setup failed");}
+                  finally{setConnecting(false);}
+                }} disabled={connecting}
+                  style={{padding:"12px 18px",background:"rgba(99,91,255,0.12)",color:"#a78bfa",...sf,fontSize:7,fontWeight:700,letterSpacing:"0.15em",textTransform:"uppercase",border:"1px solid rgba(99,91,255,0.3)",cursor:"pointer",transition:"all 0.2s",minHeight:"auto",
+                    clipPath:"polygon(0 0,calc(100% - 8px) 0,100% 8px,100% 100%,8px 100%,0 calc(100% - 8px))"}}>
+                  🧪 Sandbox Setup
+                </button>
+              </div>
             )}
           </div>
         </div>

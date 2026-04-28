@@ -2602,6 +2602,94 @@ class StripeConnectStatusView(APIView):
             return Response({"connected": False, "charges_enabled": False, "error": str(e)})
 
 
+
+class StripeConnectTestSetupView(APIView):
+    """
+    POST barber/stripe/test-setup/
+    Sandbox only — creates a proper test connected account under this platform
+    and marks it as having charges enabled so payments work in test mode.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        import logging
+        logger = logging.getLogger(__name__)
+
+        barber = get_barber_for_user(request.user)
+        if not barber:
+            return Response({"error": "Not a barber account"}, status=403)
+
+        try:
+            # Create a real Express account under THIS platform
+            account = stripe.Account.create(
+                type="express",
+                country="US",
+                email=request.user.email or f"barber_{barber.id}@headzupp.com",
+                capabilities={
+                    "card_payments": {"requested": True},
+                    "transfers":     {"requested": True},
+                },
+                business_profile={
+                    "name": f"{barber.name} — HEADZ UP Barbershop",
+                    "mcc":  "7241",
+                    "url":  FRONTEND_URL,
+                },
+                metadata={
+                    "barber_id":   str(barber.id),
+                    "barber_name": barber.name,
+                },
+            )
+
+            # In test mode, fill in the account so charges are enabled
+            stripe.Account.update(account.id, **{
+                "individual": {
+                    "first_name": "Test",
+                    "last_name":  "Barber",
+                    "dob":        {"day": 1, "month": 1, "year": 1990},
+                    "address": {
+                        "line1":       "2509 W 4th St",
+                        "city":        "Hattiesburg",
+                        "state":       "MS",
+                        "postal_code": "39401",
+                        "country":     "US",
+                    },
+                    "ssn_last_4": "0000",
+                    "email":      request.user.email or f"barber_{barber.id}@headzupp.com",
+                    "phone":      "+16012065206",
+                },
+                "business_profile": {
+                    "name": f"{barber.name} — HEADZ UP Barbershop",
+                    "mcc":  "7241",
+                    "url":  FRONTEND_URL,
+                },
+                "tos_acceptance": {
+                    "date":      1609798905,
+                    "ip":        "8.8.8.8",
+                    "user_agent":"Mozilla/5.0",
+                },
+                "external_account": {
+                    "object":          "bank_account",
+                    "country":         "US",
+                    "currency":        "usd",
+                    "routing_number":  "110000000",
+                    "account_number":  "000123456789",
+                },
+            })
+
+            barber.stripe_account_id = account.id
+            barber.save(update_fields=["stripe_account_id"])
+
+            logger.info(f"Test Stripe account created: {account.id} for barber {barber.id}")
+            return Response({
+                "message":    f"Test Stripe account created and connected",
+                "account_id": account.id,
+            })
+
+        except Exception as e:
+            logger.error(f"Test Stripe setup failed: {e}")
+            return Response({"error": str(e)}, status=400)
+
+
 class StripeConnectDashboardView(APIView):
     """
     GET — returns a link to the barber's Stripe Express dashboard
