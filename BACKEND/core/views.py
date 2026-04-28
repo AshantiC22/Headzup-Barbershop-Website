@@ -31,7 +31,12 @@ class HeadzUpTokenView(TokenObtainPairView):
 import math
 import json
 
-stripe.api_key = settings.STRIPE_SECRET_KEY
+# Use test or live key based on STRIPE_MODE env var
+_stripe_mode = getattr(settings, "STRIPE_MODE", "test").lower()
+if _stripe_mode == "live":
+    stripe.api_key = getattr(settings, "STRIPE_SECRET_KEY_LIVE", settings.STRIPE_SECRET_KEY)
+else:
+    stripe.api_key = getattr(settings, "STRIPE_SECRET_KEY_TEST", settings.STRIPE_SECRET_KEY)
 User = get_user_model()
 logger = logging.getLogger(__name__)
 
