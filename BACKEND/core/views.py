@@ -2688,8 +2688,11 @@ class StripeConnectTestSetupView(APIView):
                 "account_id": account.id,
             })
 
+        except stripe.error.StripeError as e:
+            logger.error(f"Test Stripe setup StripeError: {e.user_message} | {e.json_body}")
+            return Response({"error": e.user_message or str(e)}, status=400)
         except Exception as e:
-            logger.error(f"Test Stripe setup failed: {e}")
+            logger.error(f"Test Stripe setup failed: {e}", exc_info=True)
             return Response({"error": str(e)}, status=400)
 
 
