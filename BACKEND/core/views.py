@@ -2670,11 +2670,6 @@ class StripeConnectTestSetupView(APIView):
                     "mcc":  "7230",
                     "url":  FRONTEND_URL,
                 },
-                tos_acceptance={
-                    "date":      1609798905,
-                    "ip":        "8.8.8.8",
-                    "user_agent":"Mozilla/5.0",
-                },
                 external_account={
                     "object":          "bank_account",
                     "country":         "US",
