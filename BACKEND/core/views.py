@@ -2626,20 +2626,14 @@ class StripeConnectTestSetupView(APIView):
             return Response({"error": "Not a barber account"}, status=403)
 
         try:
-            # Create a real Express account under THIS platform
+            # Just create the Express account — no modify needed for test payments
             account = stripe.Account.create(
                 type="express",
                 country="US",
                 email=request.user.email or f"barber_{barber.id}@headzupp.com",
-                business_type="individual",
                 capabilities={
                     "card_payments": {"requested": True},
                     "transfers":     {"requested": True},
-                },
-                business_profile={
-                    "name": f"{barber.name} — HEADZ UP Barbershop",
-                    "mcc":  "7230",
-                    "url":  FRONTEND_URL,
                 },
                 metadata={
                     "barber_id":   str(barber.id),
@@ -2647,52 +2641,21 @@ class StripeConnectTestSetupView(APIView):
                 },
             )
 
-            # In test mode, fill in the account so charges are enabled
-            stripe.Account.modify(
-                account.id,
-                individual={
-                    "first_name": "Test",
-                    "last_name":  "Barber",
-                    "dob":        {"day": 1, "month": 1, "year": 1990},
-                    "address": {
-                        "line1":       "2509 W 4th St",
-                        "city":        "Hattiesburg",
-                        "state":       "MS",
-                        "postal_code": "39401",
-                        "country":     "US",
-                    },
-                    "ssn_last_4": "0000",
-                    "email":      request.user.email or f"barber_{barber.id}@headzupp.com",
-                    "phone":      "+16012065206",
-                },
-                business_profile={
-                    "name": f"{barber.name} — HEADZ UP Barbershop",
-                    "mcc":  "7230",
-                    "url":  FRONTEND_URL,
-                },
-                external_account={
-                    "object":          "bank_account",
-                    "country":         "US",
-                    "currency":        "usd",
-                    "routing_number":  "110000000",
-                    "account_number":  "000123456789",
-                },
-            )
-
             barber.stripe_account_id = account.id
             barber.save(update_fields=["stripe_account_id"])
 
-            logger.info(f"Test Stripe account created: {account.id} for barber {barber.id}")
+            logger.info(f"Sandbox Stripe account created: {account.id} for barber {barber.id}")
             return Response({
-                "message":    f"Test Stripe account created and connected",
+                "message":    "Sandbox Stripe account created and connected",
                 "account_id": account.id,
             })
 
         except stripe.error.StripeError as e:
-            logger.error(f"Test Stripe setup StripeError: {e.user_message} | {e.json_body}")
-            return Response({"error": e.user_message or str(e)}, status=400)
+            msg = str(e.user_message or e)
+            logger.error(f"Sandbox Stripe StripeError: {msg}")
+            return Response({"error": msg}, status=400)
         except Exception as e:
-            logger.error(f"Test Stripe setup failed: {e}", exc_info=True)
+            logger.error(f"Sandbox Stripe failed: {e}", exc_info=True)
             return Response({"error": str(e)}, status=400)
 
 
