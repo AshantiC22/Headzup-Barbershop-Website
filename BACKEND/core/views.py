@@ -31,12 +31,13 @@ class HeadzUpTokenView(TokenObtainPairView):
 import math
 import json
 
-# Use test or live key based on STRIPE_MODE env var
-_stripe_mode = getattr(settings, "STRIPE_MODE", "test").lower()
-if _stripe_mode == "live":
-    stripe.api_key = getattr(settings, "STRIPE_SECRET_KEY_LIVE", settings.STRIPE_SECRET_KEY)
-else:
-    stripe.api_key = getattr(settings, "STRIPE_SECRET_KEY_TEST", settings.STRIPE_SECRET_KEY)
+# Stripe key — uses STRIPE_SECRET_KEY_TEST if set, falls back to STRIPE_SECRET_KEY
+_test_key = getattr(settings, "STRIPE_SECRET_KEY_TEST", None)
+_live_key = getattr(settings, "STRIPE_SECRET_KEY_LIVE", None)
+_mode     = getattr(settings, "STRIPE_MODE", "test").lower()
+stripe.api_key = (_test_key if _mode == "test" and _test_key
+                  else _live_key if _mode == "live" and _live_key
+                  else getattr(settings, "STRIPE_SECRET_KEY", ""))
 User = get_user_model()
 logger = logging.getLogger(__name__)
 
@@ -2630,6 +2631,7 @@ class StripeConnectTestSetupView(APIView):
                 type="express",
                 country="US",
                 email=request.user.email or f"barber_{barber.id}@headzupp.com",
+                business_type="individual",
                 capabilities={
                     "card_payments": {"requested": True},
                     "transfers":     {"requested": True},
