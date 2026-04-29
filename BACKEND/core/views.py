@@ -2612,8 +2612,7 @@ class StripeConnectStatusView(APIView):
 class StripeConnectTestSetupView(APIView):
     """
     POST barber/stripe/test-setup/
-    Sandbox only — creates a proper test connected account under this platform
-    and marks it as having charges enabled so payments work in test mode.
+    Sandbox only — creates a test connected account under this platform.
     """
     permission_classes = [IsAuthenticated]
 
@@ -2626,7 +2625,6 @@ class StripeConnectTestSetupView(APIView):
             return Response({"error": "Not a barber account"}, status=403)
 
         try:
-            # Just create the Express account — no modify needed for test payments
             account = stripe.Account.create(
                 type="express",
                 country="US",
@@ -2643,7 +2641,6 @@ class StripeConnectTestSetupView(APIView):
 
             barber.stripe_account_id = account.id
             barber.save(update_fields=["stripe_account_id"])
-
             logger.info(f"Sandbox Stripe account created: {account.id} for barber {barber.id}")
             return Response({
                 "message":    "Sandbox Stripe account created and connected",
