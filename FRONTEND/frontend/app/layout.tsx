@@ -1,9 +1,9 @@
 import type { Metadata, Viewport } from "next";
-// @ts-ignore - CSS side-effect import: add a `*.css` declaration file if you prefer a typed fix
 import "./globals.css";
 import PWAProvider from "@/lib/PWAProvider";
+import NotificationProvider from "@/components/NotificationSystem";
 
-const SITE_URL = "https://headzup-barbershop-website.vercel.app";
+const SITE_URL  = "https://headzup-barbershop-website.vercel.app";
 const SITE_NAME = "HEADZ UP Barbershop";
 const DESCRIPTION =
   "Hattiesburg's premier barbershop. Precision fades, clean lineups, and beard trims by expert barbers. Book your appointment online — available 24/7.";
@@ -25,16 +25,8 @@ export const metadata: Metadata = {
   },
   description: DESCRIPTION,
   keywords: [
-    "barbershop",
-    "Hattiesburg",
-    "Mississippi",
-    "haircut",
-    "fade",
-    "lineup",
-    "beard trim",
-    "book barber online",
-    "HEADZ UP",
-    "W 4th St",
+    "barbershop", "Hattiesburg", "Mississippi", "haircut", "fade",
+    "lineup", "beard trim", "book barber online", "HEADZ UP", "W 4th St",
   ],
   authors: [{ name: SITE_NAME, url: SITE_URL }],
   creator: SITE_NAME,
@@ -42,37 +34,37 @@ export const metadata: Metadata = {
 
   // ── Open Graph (Facebook, Instagram link previews) ──
   openGraph: {
-    type: "website",
-    locale: "en_US",
-    url: SITE_URL,
-    siteName: SITE_NAME,
-    title: `${SITE_NAME} — Hattiesburg, MS`,
+    type:        "website",
+    locale:      "en_US",
+    url:         SITE_URL,
+    siteName:    SITE_NAME,
+    title:       `${SITE_NAME} — Hattiesburg, MS`,
     description: DESCRIPTION,
     images: [
       {
-        url: `${SITE_URL}/og-image.jpg`,
-        width: 1200,
+        url:    `${SITE_URL}/og-image.jpg`,
+        width:  1200,
         height: 630,
-        alt: `${SITE_NAME} — Precision Cuts in Hattiesburg MS`,
+        alt:    `${SITE_NAME} — Precision Cuts in Hattiesburg MS`,
       },
     ],
   },
 
   // ── Twitter / X Card ──
   twitter: {
-    card: "summary_large_image",
-    title: `${SITE_NAME} — Hattiesburg, MS`,
+    card:        "summary_large_image",
+    title:       `${SITE_NAME} — Hattiesburg, MS`,
     description: DESCRIPTION,
-    images: [`${SITE_URL}/og-image.jpg`],
+    images:      [`${SITE_URL}/og-image.jpg`],
   },
 
   // ── PWA + Icons ──
   manifest: "/site.webmanifest",
   appleWebApp: {
-    capable: true,
-    statusBarStyle: "black-translucent",
-    title: "HEADZ UP",
-    startupImage: [{ url: "/apple-touch-icon.png" }],
+    capable:         true,
+    statusBarStyle:  "black-translucent",
+    title:           "HEADZ UP",
+    startupImage:    [{ url: "/apple-touch-icon.png" }],
   },
   icons: {
     apple: "/apple-touch-icon.png",
@@ -84,23 +76,23 @@ export const metadata: Metadata = {
 
   // ── Additional meta ──
   other: {
-    "mobile-web-app-capable": "yes",
-    "apple-mobile-web-app-capable": "yes",
+    "mobile-web-app-capable":            "yes",
+    "apple-mobile-web-app-capable":      "yes",
     "apple-mobile-web-app-status-bar-style": "black-translucent",
-    "format-detection": "telephone=no",
-    "geo.region": "US-MS",
-    "geo.placename": "Hattiesburg",
-    "geo.position": "31.3271;-89.2903",
-    ICBM: "31.3271, -89.2903",
+    "format-detection":                  "telephone=no",
+    "geo.region":                        "US-MS",
+    "geo.placename":                     "Hattiesburg",
+    "geo.position":                      "31.3271;-89.2903",
+    "ICBM":                              "31.3271, -89.2903",
   },
 
   // ── Robots ──
   robots: {
-    index: true,
-    follow: true,
+    index:           true,
+    follow:          true,
     googleBot: {
-      index: true,
-      follow: true,
+      index:         true,
+      follow:        true,
       "max-image-preview": "large",
     },
   },
@@ -113,20 +105,10 @@ export default function RootLayout({
     <html lang="en">
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link
-          rel="preconnect"
-          href="https://fonts.gstatic.com"
-          crossOrigin="anonymous"
-        />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         {/* Preconnect to Railway API so first request is instant */}
-        <link
-          rel="preconnect"
-          href="https://headzup-barbershop-website-production.up.railway.app"
-        />
-        <link
-          rel="dns-prefetch"
-          href="https://headzup-barbershop-website-production.up.railway.app"
-        />
+        <link rel="preconnect" href="https://api.headzupp.com" />
+        <link rel="dns-prefetch" href="https://api.headzupp.com" />
         <link
           href="https://fonts.googleapis.com/css2?family=Syncopate:wght@400;700&family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300;1,400;1,500&display=swap"
           rel="stylesheet"
@@ -136,53 +118,37 @@ export default function RootLayout({
           type="application/ld+json"
           dangerouslySetInnerHTML={{
             __html: JSON.stringify({
-              "@context": "https://schema.org",
-              "@type": "HairSalon",
-              name: "HEADZ UP Barbershop",
-              description: DESCRIPTION,
-              url: SITE_URL,
-              telephone: "",
-              address: {
-                "@type": "PostalAddress",
-                streetAddress: "2509 W 4th St",
-                addressLocality: "Hattiesburg",
-                addressRegion: "MS",
-                postalCode: "39401",
-                addressCountry: "US",
+              "@context":       "https://schema.org",
+              "@type":          "HairSalon",
+              "name":           "HEADZ UP Barbershop",
+              "description":    DESCRIPTION,
+              "url":            SITE_URL,
+              "telephone":      "",
+              "address": {
+                "@type":          "PostalAddress",
+                "streetAddress":  "2509 W 4th St",
+                "addressLocality":"Hattiesburg",
+                "addressRegion":  "MS",
+                "postalCode":     "39401",
+                "addressCountry": "US",
               },
-              geo: {
-                "@type": "GeoCoordinates",
-                latitude: 31.3271,
-                longitude: -89.2903,
+              "geo": {
+                "@type":     "GeoCoordinates",
+                "latitude":  31.3271,
+                "longitude": -89.2903,
               },
-              openingHoursSpecification: [
-                {
-                  "@type": "OpeningHoursSpecification",
-                  dayOfWeek: [
-                    "Monday",
-                    "Tuesday",
-                    "Wednesday",
-                    "Thursday",
-                    "Friday",
-                  ],
-                  opens: "09:00",
-                  closes: "18:00",
-                },
-                {
-                  "@type": "OpeningHoursSpecification",
-                  dayOfWeek: ["Saturday"],
-                  opens: "09:00",
-                  closes: "16:00",
-                },
+              "openingHoursSpecification": [
+                { "@type": "OpeningHoursSpecification", "dayOfWeek": ["Monday","Tuesday","Wednesday","Thursday","Friday"], "opens": "09:00", "closes": "18:00" },
+                { "@type": "OpeningHoursSpecification", "dayOfWeek": ["Saturday"], "opens": "09:00", "closes": "16:00" },
               ],
-              priceRange: "$$",
-              image: `${SITE_URL}/og-image.jpg`,
+              "priceRange": "$$",
+              "image": `${SITE_URL}/og-image.jpg`,
             }),
           }}
         />
       </head>
       <body>
-        <PWAProvider>{children}</PWAProvider>
+        <PWAProvider><NotificationProvider>{children}</NotificationProvider></PWAProvider>
       </body>
     </html>
   );

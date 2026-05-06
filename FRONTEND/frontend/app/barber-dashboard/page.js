@@ -1,4 +1,5 @@
 "use client";
+import { useNotifications } from "@/components/NotificationSystem";
 
 // Disable static prerendering — dashboard requires auth + live data
 export const dynamic = "force-dynamic";

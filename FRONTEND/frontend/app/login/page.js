@@ -177,6 +177,7 @@ function LoginContent() {
       localStorage.setItem("refresh", res.data.refresh);
       const dash = await API.get("dashboard/");
       router.replace(dash.data.is_staff ? "/barber-dashboard" : "/book");
+      setTimeout(()=>{ window.dispatchEvent(new CustomEvent("headzup:trigger-permit")); }, 2500);
     } catch (e) {
       setError(e.response?.status === 401 ? "Invalid username or password." : "Login failed. Please try again.");
     } finally {
@@ -618,8 +619,7 @@ function LoginContent() {
                       <Field label="Username or Email" value={recId} onChange={e => setRecId(e.target.value)}
                         onKeyDown={e => e.key === "Enter" && handleRecStep1()}
                         placeholder="Enter your username or email" />
-                    ) : (
-                      <>
+                    ) : (<>
                         <p style={{ ...mono, fontSize: 11, color: "#71717a", lineHeight: 1.6 }}>
                           Choose your security question and enter the answer — we'll find your account.
                         </p>

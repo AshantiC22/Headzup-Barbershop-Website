@@ -6,15 +6,15 @@
 //   • Push notifications    → unchanged
 
 const CACHE_VERSION = "headzup-v4";
-const STATIC_CACHE = `${CACHE_VERSION}-static`;
-const PAGE_CACHE = `${CACHE_VERSION}-pages`;
+const STATIC_CACHE  = `${CACHE_VERSION}-static`;
+const PAGE_CACHE    = `${CACHE_VERSION}-pages`;
 
 // ── Install: cache only the bare minimum ──────────────────────────────────────
 self.addEventListener("install", (event) => {
   event.waitUntil(
-    caches
-      .open(PAGE_CACHE)
-      .then((cache) => cache.addAll(["/offline"]).catch(() => {})),
+    caches.open(PAGE_CACHE).then((cache) =>
+      cache.addAll(["/offline"]).catch(() => {})
+    )
   );
   // Take over immediately — don't wait for old SW to die
   self.skipWaiting();
@@ -23,16 +23,13 @@ self.addEventListener("install", (event) => {
 // ── Activate: wipe ALL old caches ────────────────────────────────────────────
 self.addEventListener("activate", (event) => {
   event.waitUntil(
-    caches
-      .keys()
-      .then((keys) =>
-        Promise.all(
-          keys
-            .filter((k) => k !== STATIC_CACHE && k !== PAGE_CACHE)
-            .map((k) => caches.delete(k)),
-        ),
+    caches.keys().then((keys) =>
+      Promise.all(
+        keys
+          .filter((k) => k !== STATIC_CACHE && k !== PAGE_CACHE)
+          .map((k) => caches.delete(k))
       )
-      .then(() => self.clients.claim()),
+    ).then(() => self.clients.claim())
   );
 });
 
@@ -61,7 +58,7 @@ self.addEventListener("fetch", (event) => {
         } catch {
           return new Response("Offline", { status: 503 });
         }
-      }),
+      })
     );
     return;
   }
@@ -82,10 +79,10 @@ self.addEventListener("fetch", (event) => {
       })
       .catch(() => {
         // Network failed → try cache
-        return caches
-          .match(request)
-          .then((cached) => cached || caches.match("/offline"));
-      }),
+        return caches.match(request).then(
+          (cached) => cached || caches.match("/offline")
+        );
+      })
   );
 });
 
@@ -100,36 +97,71 @@ self.addEventListener("message", (event) => {
 });
 
 // ── Push notifications ────────────────────────────────────────────────────────
+const NOTIF_ICONS = {
+  booking_confirmed:   "✅",
+  booking_cancelled:   "❌",
+  booking_reminder:    "📅",
+  reschedule_request:  "↻",
+  reschedule_response: "📅",
+  walk_in:             "✂️",
+  strike:              "⚠️",
+  haircut_review:      "⭐",
+  new_booking:         "📅",
+  signup_client:       "✂️",
+  signup_barber:       "✂️",
+  blast:               "📣",
+};
+
+const NOTIF_URLS = {
+  booking_confirmed:   "/dashboard",
+  booking_cancelled:   "/dashboard",
+  booking_reminder:    "/dashboard",
+  reschedule_request:  "/barber-dashboard",
+  reschedule_response: "/dashboard",
+  walk_in:             "/dashboard",
+  strike:              "/dashboard",
+  haircut_review:      "/dashboard",
+  new_booking:         "/barber-dashboard",
+  signup_client:       "/book",
+  signup_barber:       "/barber-dashboard",
+  blast:               "/",
+};
+
 self.addEventListener("push", (event) => {
   let payload = {};
   try {
     payload = event.data ? event.data.json() : {};
   } catch {
-    payload = {
-      title: "HEADZ UP",
-      body: event.data ? event.data.text() : "New notification",
-    };
+    payload = { title: "HEADZ UP", body: event.data ? event.data.text() : "New notification" };
   }
 
-  const title = payload.title || "HEADZ UP";
-  const body = payload.body || "You have a new notification";
-  const data = payload.data || {};
-  const isReview = data.type === "haircut_review";
+  const title    = payload.title || "HEADZ UP ✂️";
+  const body     = payload.body  || "You have a new notification";
+  const data     = payload.data  || {};
+  const type     = data.type || "general";
+  const isReview = type === "haircut_review";
+  const url      = data.url || NOTIF_URLS[type] || "/";
 
   const options = {
     body,
-    icon: "/icon-192.png",
-    badge: "/icon-192.png",
-    data,
+    icon:    "/icon-192.png",
+    badge:   "/icon-192.png",
+    image:   type === "booking_confirmed" ? "/icon-512.png" : undefined,
+    data:    { ...data, url },
     vibrate: [200, 100, 200],
-    requireInteraction: isReview,
+    requireInteraction: isReview || type === "reschedule_request",
+    silent:  false,
     actions: isReview
       ? [
-          { action: "yes", title: "Yes, it was great!" },
-          { action: "no", title: "No, not yet" },
+          { action: "review", title: "⭐ Leave Review" },
+          { action: "later",  title: "Later" },
+        ]
+      : type === "reschedule_request"
+      ? [
+          { action: "open", title: "View Request" },
         ]
       : [],
-    tag: isReview ? `review-${data.appointment_id}` : "headzup-notification",
+    tag: `headzup-${type}-${Date.now()}`,
   };
 
   event.waitUntil(self.registration.showNotification(title, options));
@@ -138,15 +170,32 @@ self.addEventListener("push", (event) => {
 // ── Notification click ────────────────────────────────────────────────────────
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
-  const data = event.notification.data || {};
-  const action = event.action;
-  const apptId = data.appointment_id;
+  const data     = event.notification.data || {};
+  const action   = event.action;
+  const apptId   = data.appointment_id;
   const isReview = data.type === "haircut_review";
+  const url      = data.url || "/";
+
+  // Non-review clicks — just open the right page
+  if (!isReview || action === "later" || action === "open") {
+    event.waitUntil(
+      self.clients.matchAll({ type: "window" }).then((clients) => {
+        for (const client of clients) {
+          if (client.url.includes(self.location.origin)) {
+            client.focus();
+            client.postMessage({ type: "PUSH_NOTIFICATION_CLICK", url });
+            return;
+          }
+        }
+        return self.clients.openWindow(url);
+      })
+    );
+    return;
+  }
 
   if (isReview && apptId && (action === "yes" || action === "no")) {
     const completed = action === "yes";
-    const apiBase =
-      "https://headzup-barbershop-website-production.up.railway.app/api";
+    const apiBase   = "https://api.headzupp.com/api";
 
     event.waitUntil(
       (async () => {
@@ -160,30 +209,22 @@ self.addEventListener("notificationclick", (event) => {
               client.postMessage({ type: "GET_TOKEN" }, [channel.port2]);
               setTimeout(() => resolve(null), 1000);
             });
-            if (response?.token) {
-              token = response.token;
-              break;
-            }
+            if (response?.token) { token = response.token; break; }
           }
           if (token) {
             await fetch(`${apiBase}/review/submit/`, {
               method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${token}`,
-              },
+              headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
               body: JSON.stringify({ appointment_id: apptId, completed }),
             });
           }
           const url = completed ? "/dashboard?review=thanks" : "/dashboard";
-          if (allClients.length > 0) {
-            allClients[0].focus();
-            allClients[0].navigate(url);
-          } else self.clients.openWindow(url);
+          if (allClients.length > 0) { allClients[0].focus(); allClients[0].navigate(url); }
+          else self.clients.openWindow(url);
         } catch {
           self.clients.openWindow("/dashboard");
         }
-      })(),
+      })()
     );
     return;
   }
@@ -191,11 +232,8 @@ self.addEventListener("notificationclick", (event) => {
   event.waitUntil(
     self.clients.matchAll({ type: "window" }).then((clients) => {
       const url = data.url || "/";
-      if (clients.length > 0) {
-        clients[0].focus();
-        return;
-      }
+      if (clients.length > 0) { clients[0].focus(); return; }
       return self.clients.openWindow(url);
-    }),
+    })
   );
 });

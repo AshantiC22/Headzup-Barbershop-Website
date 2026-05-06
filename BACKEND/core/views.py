@@ -1438,11 +1438,31 @@ def sms_deposit_paid(appointment):
 
 
 # ── Push notification helper ─────────────────────────────────────────────────
-def send_push_notification(user, title, body, data=None):
+# ── Notification type constants ──────────────────────────────────────────────
+NOTIF_BOOKING_CONFIRMED  = "booking_confirmed"
+NOTIF_BOOKING_CANCELLED  = "booking_cancelled"
+NOTIF_BOOKING_REMINDER   = "booking_reminder"
+NOTIF_RESCHEDULE_REQUEST = "reschedule_request"
+NOTIF_RESCHEDULE_RESPONSE= "reschedule_response"
+NOTIF_WALK_IN            = "walk_in"
+NOTIF_STRIKE             = "strike"
+NOTIF_REVIEW_REQUEST     = "haircut_review"
+NOTIF_NEW_BOOKING        = "new_booking"       # barber receives
+NOTIF_SIGNUP_CLIENT      = "signup_client"
+NOTIF_SIGNUP_BARBER      = "signup_barber"
+NOTIF_BLAST              = "blast"
+
+def send_push_notification(user, title, body, data=None, notif_type=None, url=None):
     """Send a Web Push notification to a user. Silently fails if not subscribed."""
     try:
         from pywebpush import webpush, WebPushException
         sub = PushSubscription.objects.get(user=user)
+        if data is None:
+            data = {}
+        if notif_type:
+            data["type"] = notif_type
+        if url:
+            data["url"] = url
         payload = json.dumps({"title": title, "body": body, "data": data or {}})
         webpush(
             subscription_info={
@@ -1487,6 +1507,23 @@ class UserProfileViewSet(viewsets.ModelViewSet):
             ).get(pk=appt.pk)
             send_booking_confirmation(appt_full)
             sms_booking_confirmation(appt_full)
+            # Push to client
+            send_push_notification(
+                appt_full.user,
+                title="Booking Confirmed ✅",
+                body=f"{appt_full.service.name} with {appt_full.barber.name} on {appt_full.date.strftime('%b %d')} at {appt_full.time.strftime('%I:%M %p').lstrip('0')}",
+                notif_type=NOTIF_BOOKING_CONFIRMED,
+                url="/dashboard"
+            )
+            # Push to barber
+            if appt_full.barber and appt_full.barber.user:
+                send_push_notification(
+                    appt_full.barber.user,
+                    title="New Booking 📅",
+                    body=f"{appt_full.user.first_name or appt_full.user.username} booked {appt_full.service.name} on {appt_full.date.strftime('%b %d')} at {appt_full.time.strftime('%I:%M %p').lstrip('0')}",
+                    notif_type=NOTIF_NEW_BOOKING,
+                    url="/barber-dashboard"
+                )
         except IntegrityError:
             raise serializers.ValidationError("This time slot is already booked.")
 
@@ -1539,6 +1576,13 @@ class RegisterView(APIView):
                 # Send welcome email + SMS
                 send_welcome_email(user)
                 sms_welcome(user)
+                send_push_notification(
+                    user,
+                    title="Welcome to HEADZ UP ✂️",
+                    body="Your account is ready. Book your first cut anytime.",
+                    notif_type=NOTIF_SIGNUP_CLIENT,
+                    url="/book"
+                )
                 return Response({"message": "Account created successfully"}, status=status.HTTP_201_CREATED)
             except Exception as e:
                 return Response({"detail": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
@@ -1793,6 +1837,15 @@ class AppointmentViewSet(viewsets.ModelViewSet):
                     logging.getLogger(__name__).error(f"Client cancel notification failed: {client_notify_err}")
         except IntegrityError:
             raise serializers.ValidationError("That time slot is already booked. Please choose another.")
+            try:
+                send_push_notification(
+                    appt.user,
+                    title="Appointment Cancelled",
+                    body=f"Your appointment has been cancelled.",
+                    notif_type=NOTIF_BOOKING_CANCELLED,
+                    url="/dashboard"
+                )
+            except Exception: pass
 
     def perform_destroy(self, instance):
         """Client cancels appointment — email the barber."""
@@ -5035,6 +5088,14 @@ class ClientRescheduleRequestView(APIView):
         logger.info(f"Reschedule request created id={rr.pk} for appt={appt.pk} by {request.user.username}")
         send_reschedule_request_email(rr_full)
         sms_reschedule_request(rr_full)
+        if rr_full.barber and rr_full.barber.user:
+            send_push_notification(
+                rr_full.barber.user,
+                title="Reschedule Request ↻",
+                body=f"{rr_full.client.first_name or rr_full.client.username} wants to reschedule their appointment",
+                notif_type=NOTIF_RESCHEDULE_REQUEST,
+                url="/barber-dashboard"
+            )
         return Response({"message": "Reschedule request sent to your barber.", "id": rr.id})
 
 

@@ -1,4 +1,5 @@
 "use client";
+import { useNotifications } from "@/components/NotificationSystem";
 export const dynamic = "force-dynamic";
 
 import { Suspense, useEffect, useState, useCallback } from "react";
@@ -562,6 +563,7 @@ function DashboardContent() {
         API.get("client/strike-status/").then(r=>setStrikeInfo(r.data)).catch(()=>{});
       } else {
         showToast("Appointment cancelled.");
+        addNotif?.("Appointment Cancelled","Your appointment has been cancelled.","booking_cancelled","/dashboard");
       }
     }catch{ showToast("Could not cancel.","error"); }
     finally{ setCancelling(null); }
@@ -1036,6 +1038,7 @@ function DashboardContent() {
                                 setReviewDone(true);
                                 setShowReview(false);
                                 showToast("⭐ Review submitted — thank you!");
+                                addNotif?.("Review Submitted ⭐","Thanks for sharing your experience!","haircut_review");
                               }catch(e){showToast(e.response?.data?.error||"Could not submit review","error");}
                               finally{setReviewBusy(false);}
                             }} disabled={reviewBusy}
