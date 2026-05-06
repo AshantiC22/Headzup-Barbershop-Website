@@ -24,7 +24,7 @@ function RescheduleRespondInner() {
 
     // Call backend directly with fetch — no auth header needed (AllowAny)
     // Using fetch instead of API.get so there's no axios redirect-following issue
-    const apiBase = process.env.NEXT_PUBLIC_API_URL || "https://headzup-barbershop-website-production.up.railway.app";
+    const apiBase = process.env.NEXT_PUBLIC_API_URL || "https://api.headzupp.com";
     fetch(`${apiBase}/api/reschedule/respond/?token=${token}&action=${action}`, {
       method: "GET",
       headers: { "Content-Type": "application/json" },
