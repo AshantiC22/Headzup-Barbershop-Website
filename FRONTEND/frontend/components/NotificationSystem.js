@@ -28,6 +28,20 @@ const NotifContext = createContext(null);
 export const useNotifications = () => useContext(NotifContext);
 
 // ── Provider ──────────────────────────────────────────────────────────────────
+// ── Helpers ──────────────────────────────────────────────────────────────────
+function formatTime(date) {
+  const diff = Math.floor((Date.now() - date.getTime()) / 1000);
+  if (diff < 5)  return "just now";
+  if (diff < 60) return `${diff}s ago`;
+  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+  return date.toLocaleTimeString([], { hour:"2-digit", minute:"2-digit" });
+}
+
+function isMobileCheck() {
+  if (typeof window === "undefined") return false;
+  return window.innerWidth < 768;
+}
+
 export default function NotificationProvider({ children }) {
   const router = useRouter();
   const [notifs,       setNotifs]       = useState([]);
@@ -265,16 +279,4 @@ export default function NotificationProvider({ children }) {
   );
 }
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
-function formatTime(date) {
-  const diff = Math.floor((Date.now() - date.getTime()) / 1000);
-  if (diff < 5)  return "just now";
-  if (diff < 60) return `${diff}s ago`;
-  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
-  return date.toLocaleTimeString([], { hour:"2-digit", minute:"2-digit" });
-}
 
-function isMobileCheck() {
-  if (typeof window === "undefined") return false;
-  return window.innerWidth < 768;
-}
