@@ -148,9 +148,17 @@ export default function NotificationProvider({ children }) {
         setShowPermit(false);
         return;
       }
+      // Convert VAPID public key from base64url to Uint8Array
+      var padding = "=".repeat((4 - vapidKey.length % 4) % 4);
+      var base64   = (vapidKey + padding).replace(/-/g, "+").replace(/_/g, "/");
+      var rawData  = window.atob(base64);
+      var keyArray = new Uint8Array(rawData.length);
+      for (var i = 0; i < rawData.length; i++) {
+        keyArray[i] = rawData.charCodeAt(i);
+      }
       var sub = await reg.pushManager.subscribe({
         userVisibleOnly:      true,
-        applicationServerKey: vapidKey,
+        applicationServerKey: keyArray,
       });
       await API.post("push/subscribe/", {
         endpoint: sub.endpoint,
@@ -208,6 +216,20 @@ export default function NotificationProvider({ children }) {
 
     return function() { window.removeEventListener("headzup:trigger-permit", handler); };
   }, [router, showPermitPrompt]);
+
+  // Direct mount check - show prompt if permission is default and no sub
+  useEffect(function() {
+    var timer = setTimeout(function() {
+      if (typeof window === "undefined") return;
+      if (typeof Notification === "undefined") return;
+      if (Notification.permission !== "default") return;
+      if (localStorage.getItem("headzup_push_dismissed")) return;
+      if (sessionStorage.getItem("headzup_permit_shown")) return;
+      sessionStorage.setItem("headzup_permit_shown", "1");
+      setShowPermit(true);
+    }, 3500);
+    return function() { clearTimeout(timer); };
+  }, []); // empty deps - runs once on mount
 
   return (
     <NotifContext.Provider value={{ addNotif, dismissNotif, showPermitPrompt, pushEnabled, setPushEnabled }}>
