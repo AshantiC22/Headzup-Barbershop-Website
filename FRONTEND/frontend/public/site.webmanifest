@@ -8,6 +8,13 @@
   "orientation": "portrait",
   "background_color": "#040404",
   "theme_color": "#040404",
+  "categories": [
+    "lifestyle",
+    "health",
+    "beauty"
+  ],
+  "lang": "en-US",
+  "prefer_related_applications": false,
   "icons": [
     {
       "src": "/icon-192.png",
@@ -32,14 +39,46 @@
     {
       "name": "Book Appointment",
       "short_name": "Book",
+      "description": "Book your next haircut",
       "url": "/book",
-      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+      "icons": [
+        {
+          "src": "/icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
     },
     {
       "name": "My Dashboard",
       "short_name": "Dashboard",
+      "description": "View your appointments",
       "url": "/dashboard",
-      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+      "icons": [
+        {
+          "src": "/icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "Barber Portal",
+      "short_name": "Portal",
+      "description": "Barber dashboard",
+      "url": "/barber-dashboard",
+      "icons": [
+        {
+          "src": "/icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/og-image.jpg",
+      "sizes": "1200x630",
+      "type": "image/jpeg",
+      "form_factor": "wide"
     }
   ]
 }

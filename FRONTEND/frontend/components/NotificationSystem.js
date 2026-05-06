@@ -20,6 +20,31 @@ function isMobile() {
   return typeof window !== "undefined" && window.innerWidth < 768;
 }
 
+function isStandalone() {
+  if (typeof window === "undefined") return false;
+  return (
+    window.matchMedia("(display-mode: standalone)").matches ||
+    window.navigator.standalone === true
+  );
+}
+
+function isIOS() {
+  if (typeof window === "undefined") return false;
+  return /iphone|ipad|ipod/i.test(navigator.userAgent);
+}
+
+function isAndroid() {
+  if (typeof window === "undefined") return false;
+  return /android/i.test(navigator.userAgent);
+}
+
+function supportsPush() {
+  if (typeof window === "undefined") return false;
+  // iOS needs to be in standalone mode (home screen) for push to work
+  if (isIOS()) return isStandalone() && "PushManager" in window;
+  return "serviceWorker" in navigator && "PushManager" in window;
+}
+
 // ── Notification config ───────────────────────────────────────────────────────
 function getConfig(type) {
   var configs = {
@@ -48,7 +73,8 @@ export default function NotificationProvider({ children }) {
   var router = useRouter();
   var [notifs,      setNotifs]      = useState([]);
   var [showPermit,  setShowPermit]  = useState(false);
-  var [pushEnabled, setPushEnabled] = useState(false);
+  var [pushEnabled,   setPushEnabled]   = useState(false);
+  var [showIOSInstall, setShowIOSInstall] = useState(false);
   var timers = useRef({});
 
   // Add in-app notification
@@ -73,18 +99,33 @@ export default function NotificationProvider({ children }) {
   var showPermitPrompt = useCallback(function() {
     if (typeof window === "undefined") return;
     var dismissed = localStorage.getItem("headzup_push_dismissed");
+    if (dismissed) return;
     var perm = typeof Notification !== "undefined" ? Notification.permission : "default";
-    if (perm === "granted" || dismissed) return;
-    setTimeout(function() { setShowPermit(true); }, 2000);
+    if (perm === "granted") return;
+    // Don't show if push not supported at all
+    if (!supportsPush() && !isIOS()) return;
+    setTimeout(function() { setShowPermit(true); }, 2500);
   }, []);
 
   // Enable push
   var enablePush = useCallback(async function() {
     try {
+      // iOS not installed as home screen app yet
+      if (isIOS() && !isStandalone()) {
+        setShowPermit(false);
+        setShowIOSInstall(true);
+        return;
+      }
+      if (!supportsPush()) {
+        setShowPermit(false);
+        addNotif("Not Supported", "Use Chrome on Android or add to home screen on iPhone.", "general");
+        return;
+      }
       var perm = await Notification.requestPermission();
       if (perm !== "granted") {
         setShowPermit(false);
         localStorage.setItem("headzup_push_dismissed", "1");
+        addNotif("Notifications Blocked", "You can enable them in your browser settings.", "general");
         return;
       }
       var reg    = await navigator.serviceWorker.ready;
@@ -167,7 +208,10 @@ export default function NotificationProvider({ children }) {
                   <p style={{ ...SF, fontSize:8, fontWeight:700, textTransform:"uppercase",
                     letterSpacing:"0.15em", color:"white", marginBottom:4 }}>Allow Notifications</p>
                   <p style={{ ...MONO, fontSize:11, color:"#71717a", lineHeight:1.7 }}>
-                    Stay updated on bookings, reminders, and messages from HEADZ UP.
+                    {isIOS() && !isStandalone()
+                      ? "Install the app on your home screen to enable push notifications."
+                      : "Stay updated on bookings, reminders, and messages from HEADZ UP."
+                    }
                   </p>
                 </div>
               </div>
@@ -177,7 +221,7 @@ export default function NotificationProvider({ children }) {
                   color:"#f59e0b", ...SF, fontSize:6.5, fontWeight:700, letterSpacing:"0.2em",
                   textTransform:"uppercase", cursor:"pointer", transition:"all 0.2s",
                   clipPath:"polygon(0 0,calc(100% - 6px) 0,100% 6px,100% 100%,6px 100%,0 calc(100% - 6px))" }}>
-                  Allow →
+                  {isIOS() && !isStandalone() ? "How to Install →" : "Allow →"}
                 </button>
                 <button onClick={dismissPermit} style={{ padding:"10px 14px",
                   background:"transparent", border:"1px solid rgba(255,255,255,0.08)",
@@ -186,6 +230,39 @@ export default function NotificationProvider({ children }) {
                 </button>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* iOS install prompt */}
+      {showIOSInstall && (
+        <div style={{ position:"fixed", bottom:0, left:0, right:0, zIndex:99999,
+          background:"#0a0a0a", borderTop:"2px solid #f59e0b",
+          padding:"20px 18px", animation:"npSlideUp 0.4s cubic-bezier(0.16,1,0.3,1) both" }}>
+          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:10 }}>
+            <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+              <span style={{ fontSize:22 }}>📲</span>
+              <div>
+                <p style={{ ...SF, fontSize:8, fontWeight:700, color:"#f59e0b",
+                  textTransform:"uppercase", letterSpacing:"0.15em", marginBottom:3 }}>
+                  Add to Home Screen
+                </p>
+                <p style={{ ...MONO, fontSize:11, color:"#71717a", lineHeight:1.7 }}>
+                  To enable notifications on iPhone, install the app first.
+                </p>
+              </div>
+            </div>
+            <button onClick={function(){ setShowIOSInstall(false); localStorage.setItem("headzup_push_dismissed","1"); }}
+              style={{ background:"none", border:"none", color:"#52525b", fontSize:18, cursor:"pointer", padding:0 }}>✕</button>
+          </div>
+          <div style={{ background:"rgba(245,158,11,0.06)", border:"1px solid rgba(245,158,11,0.15)",
+            padding:"12px 14px", borderRadius:4 }}>
+            <p style={{ ...MONO, fontSize:11, color:"#a1a1aa", lineHeight:1.9 }}>
+              1. Tap the <strong style={{color:"#f59e0b"}}>Share button</strong> at the bottom of Safari<br/>
+              2. Scroll down and tap <strong style={{color:"#f59e0b"}}>"Add to Home Screen"</strong><br/>
+              3. Open the app from your home screen<br/>
+              4. Log in and allow notifications when prompted
+            </p>
           </div>
         </div>
       )}

@@ -4,7 +4,7 @@ import PWAProvider from "@/lib/PWAProvider";
 import ClientProviders from "@/components/ClientProviders";
 
 
-const SITE_URL  = "https://headzup-barbershop-website.vercel.app";
+const SITE_URL  = "https://headzupp.com";
 const SITE_NAME = "HEADZ UP Barbershop";
 const DESCRIPTION =
   "Hattiesburg's premier barbershop. Precision fades, clean lineups, and beard trims by expert barbers. Book your appointment online — available 24/7.";
@@ -114,6 +114,15 @@ export default function RootLayout({
           href="https://fonts.googleapis.com/css2?family=Syncopate:wght@400;700&family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300;1,400;1,500&display=swap"
           rel="stylesheet"
         />
+        {/* iOS PWA meta tags */}
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+        <meta name="apple-mobile-web-app-title" content="HEADZ UP" />
+        <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+        <link rel="apple-touch-startup-image" href="/apple-touch-icon.png" />
+        {/* Android PWA */}
+        <meta name="mobile-web-app-capable" content="yes" />
+        <meta name="theme-color" content="#040404" />
         {/* Local business structured data for Google */}
         <script
           type="application/ld+json"
