@@ -1,7 +1,7 @@
 "use client";
 import { createContext, useContext, useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
-import API from "@/utils/api";
+import API from "../utils/api";
 
 const sf   = { fontFamily:"'Syncopate',sans-serif" };
 const mono = { fontFamily:"'DM Mono',monospace" };
