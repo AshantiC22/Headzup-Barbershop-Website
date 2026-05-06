@@ -137,10 +137,20 @@ export default function NotificationProvider({ children }) {
         return;
       }
       var reg    = await navigator.serviceWorker.ready;
-      var keyRes = await API.get("push/vapid-key/");
-      var sub    = await reg.pushManager.subscribe({
+      // Use env var first (faster), fall back to API
+      var vapidKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+      if (!vapidKey) {
+        var keyRes = await API.get("push/vapid-key/");
+        vapidKey = keyRes.data.public_key;
+      }
+      if (!vapidKey) {
+        addNotif("Setup Required", "Push notifications not configured yet.", "general");
+        setShowPermit(false);
+        return;
+      }
+      var sub = await reg.pushManager.subscribe({
         userVisibleOnly:      true,
-        applicationServerKey: keyRes.data.public_key,
+        applicationServerKey: vapidKey,
       });
       await API.post("push/subscribe/", {
         endpoint: sub.endpoint,
