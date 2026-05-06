@@ -851,6 +851,12 @@ export default function BarberDashboard(){
   useEffect(()=>{
     const load=async()=>{
       try{
+        // Verify this is actually a barber account
+        const authCheck = await API.get("dashboard/").catch(()=>null);
+        if(authCheck && !authCheck.data.is_staff){
+          router.replace("/dashboard");
+          return;
+        }
         const [barberRes, schedRes, svcRes, barbersRes] = await Promise.all([
           API.get("barber/me/"),
           API.get(`barber/schedule/?date=${todayISO()}`),

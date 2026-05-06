@@ -506,6 +506,8 @@ function DashboardContent() {
           API.get("appointments/"),
           API.get("client/strike-status/").catch(()=>({data:null})),
         ]);
+        // Barbers should never see the client dashboard
+        if(d.data.is_staff){ router.replace("/barber-dashboard"); return; }
         setUser(d.data);
         const appts=Array.isArray(a.data)?a.data:a.data.results||[];
         setAppointments(appts.sort((x,y)=>new Date(y.date)-new Date(x.date)));
@@ -513,7 +515,11 @@ function DashboardContent() {
           setStrikeInfo(s.data);
           if(s.data.phone){ setPhoneNumber(s.data.phone); setPhoneInput(s.data.phone); }
         }
-      }catch{ showToast("Could not load data.","error"); }
+      }catch(e){
+        const status = e?.response?.status;
+        if(status===401){ router.replace("/login"); return; }
+        showToast("Could not load data.","error");
+      }
       finally{ setLoading(false); }
       // Check push subscription state
       if("serviceWorker" in navigator && "PushManager" in window){
