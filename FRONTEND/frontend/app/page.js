@@ -242,7 +242,7 @@ function PersonaSelect({ barbers, book, isMobile }) {
   const [flash,  setFlash]  = useState(false);
   const list   = barbers.length ? barbers : [{ id:0, name:"Barber", bio:"", photo_url:null }];
   const active = list[sel] || list[0];
-  const SKILLS = [{k:"FADE",v:98},{k:"LINEUP",v:99},{k:"BEARD",v:95},{k:"PRECISION",v:97},{k:"VIBE",v:100}];
+
 
   const lock = (e) => {
     setFlash(true);
@@ -299,7 +299,7 @@ function PersonaSelect({ barbers, book, isMobile }) {
       <div style={{ position:"relative", zIndex:1, maxWidth:1320, margin:"0 auto",
         padding:isMobile ? "40px 20px" : "52px clamp(18px,5vw,44px)" }}>
         <div style={{ display:"grid",
-          gridTemplateColumns:isMobile ? "1fr" : (list.length > 2 ? "200px 1fr 200px" : "200px 1fr"),
+          gridTemplateColumns:isMobile ? "1fr" : (list.length > 2 ? "180px 1fr" : "180px 1fr"),
           gap:isMobile ? 28 : 52 }}>
 
           {/* Left: barber selector cards */}
@@ -313,34 +313,38 @@ function PersonaSelect({ barbers, book, isMobile }) {
                   style={{ flexShrink:0,
                     border:`1px solid ${isSel ? A : "rgba(255,255,255,0.07)"}`,
                     background:isSel ? "rgba(245,158,11,0.06)" : "rgba(255,255,255,0.02)",
-                    padding:"10px 12px",
+                    padding:isMobile?"6px":"8px",
                     clipPath:"polygon(0 0,calc(100% - 8px) 0,100% 8px,100% 100%,8px 100%,0 calc(100% - 8px))",
-                    filter:isSel ? "none" : "brightness(0.6)",
-                    display:"flex", alignItems:"center", gap:10,
+                    filter:isSel ? "none" : "brightness(0.55)",
+                    display:"flex", flexDirection:"column", alignItems:"center", gap:0,
+                    width:isMobile?80:"100%",
                   }}>
+                  {/* Photo - prominent */}
                   {validPhoto(b.photo_url||b.photo) ? (
-                    <img src={validPhoto(b.photo_url||b.photo)} alt={b.name}
-                      style={{ width:isMobile?36:44, height:isMobile?36:44,
-                        objectFit:"cover", flexShrink:0,
-                        clipPath:"polygon(0 0,calc(100% - 4px) 0,100% 4px,100% 100%,4px 100%,0 calc(100% - 4px))" }}/>
+                    <div style={{ width:"100%", position:"relative" }}>
+                      <img src={validPhoto(b.photo_url||b.photo)} alt={b.name}
+                        style={{ width:"100%", height:isMobile?52:72,
+                          objectFit:"cover", objectPosition:"center top", display:"block",
+                          clipPath:"polygon(0 0,calc(100% - 6px) 0,100% 6px,100% 100%,6px 100%,0 calc(100% - 6px))" }}/>
+                      {isSel && <div style={{ position:"absolute",inset:0,border:`1px solid ${A}`,
+                        clipPath:"polygon(0 0,calc(100% - 6px) 0,100% 6px,100% 100%,6px 100%,0 calc(100% - 6px))",
+                        pointerEvents:"none" }}/>}
+                    </div>
                   ) : (
-                    <div style={{ width:isMobile?36:44, height:isMobile?36:44,
-                      background:`${A}20`, flexShrink:0, display:"flex",
+                    <div style={{ width:"100%", height:isMobile?52:72,
+                      background:`${A}15`, display:"flex",
                       alignItems:"center", justifyContent:"center",
-                      clipPath:"polygon(0 0,calc(100% - 4px) 0,100% 4px,100% 100%,4px 100%,0 calc(100% - 4px))" }}>
-                      <span style={{ ...D, fontSize:14, fontWeight:900, color:A }}>
+                      clipPath:"polygon(0 0,calc(100% - 6px) 0,100% 6px,100% 100%,6px 100%,0 calc(100% - 6px))" }}>
+                      <span style={{ ...D, fontSize:20, fontWeight:900, color:A }}>
                         {(b.name||"B").charAt(0).toUpperCase()}
                       </span>
                     </div>
                   )}
-                  {!isMobile && (
-                    <div>
-                      <p style={{ ...D, fontSize:7, fontWeight:700, textTransform:"uppercase",
-                        color:isSel?"white":"#a1a1aa", letterSpacing:"0.1em" }}>{b.name}</p>
-                      {isSel && <p style={{ ...M, fontSize:8, color:A,
-                        letterSpacing:"0.2em", marginTop:2 }}>SELECTED</p>}
-                    </div>
-                  )}
+                  {/* Name below photo */}
+                  <p style={{ ...D, fontSize:isMobile?7:6.5, fontWeight:700,
+                    textTransform:"uppercase", letterSpacing:"0.08em",
+                    color:isSel?"white":"#71717a", textAlign:"center",
+                    marginTop:4, transition:"color 0.2s" }}>{b.name.split(" ")[0]}</p>
                 </div>
               );
             })}
@@ -372,25 +376,7 @@ function PersonaSelect({ barbers, book, isMobile }) {
               {active.bio || "Precision cuts. Clean lineups. Every time."}
             </p>
 
-            {/* Skill bars */}
-            <div style={{ marginBottom:isMobile?24:36, display:"flex",
-              flexDirection:"column", gap:8 }}>
-              {SKILLS.map(({k,v}) => (
-                <div key={k} style={{ display:"flex", alignItems:"center", gap:12 }}>
-                  <span style={{ ...M, fontSize:8, color:`${A}88`, letterSpacing:"0.3em",
-                    minWidth:72, textTransform:"uppercase" }}>{k}</span>
-                  <div style={{ flex:1, height:3, background:"rgba(255,255,255,0.06)",
-                    position:"relative", overflow:"hidden" }}>
-                    <div className="ps-br" key={active.id+k}
-                      style={{ position:"absolute", top:0, left:0, height:"100%",
-                        background:`linear-gradient(to right,${A},${R})`,
-                        "--w":`${v}%`, borderRadius:0 }}/>
-                  </div>
-                  <span style={{ ...M, fontSize:9, color:A, minWidth:28,
-                    textAlign:"right" }}>{v}</span>
-                </div>
-              ))}
-            </div>
+
 
             {/* CTA */}
             <div style={{ display:"flex", gap:12, alignItems:"center", flexWrap:"wrap" }}>

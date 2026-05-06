@@ -7,7 +7,7 @@ import API from "@/lib/api";
 
 // Pre-warm Railway backend on page load
 if (typeof window !== "undefined") {
-  fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000"}/api/barbers/`, {
+  fetch(`${process.env.NEXT_PUBLIC_API_URL || "https://api.headzupp.com"}/api/barbers/`, {
     method: "HEAD",
     signal: AbortSignal.timeout?.(8000),
   }).catch(() => {});
@@ -303,6 +303,18 @@ function LoginContent() {
   return (
     <>
       <style jsx global>{`
+        /* Noise + barber pole from design system */
+        body::before{content:"";position:fixed;inset:0;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='1'/%3E%3C/svg%3E");opacity:0.018;pointer-events:none;z-index:9999;mix-blend-mode:overlay;}
+        body::after{content:"";position:fixed;left:0;top:0;bottom:0;width:5px;background:repeating-linear-gradient(-45deg,#ef4444 0px,#ef4444 6px,#ffffff 6px,#ffffff 12px,#f59e0b 12px,#f59e0b 18px,#000 18px,#000 24px);opacity:0.5;z-index:9998;pointer-events:none;}
+        @media(max-width:768px){body::after{display:none;}}
+        .btn-primary{position:relative;overflow:hidden;}
+        .btn-primary::after{content:"";position:absolute;top:0;left:0;width:35%;height:100%;background:linear-gradient(to right,transparent,rgba(255,255,255,0.18),transparent);transform:translateX(-100%);}
+        .btn-primary:hover::after{transform:translateX(280%);transition:transform 0.5s ease;}
+        @media(hover:none){button:active,a:active{opacity:0.75;}}
+        @keyframes shimmer{from{transform:translateX(-100%)}to{transform:translateX(280%)}}
+        @keyframes floatUp{from{opacity:0;transform:translateY(32px)}to{opacity:1;transform:none}}
+        @keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
         html, body { background: #040404; color: white; font-family: 'DM Mono', monospace; min-height: 100vh; overflow-x: hidden; -webkit-text-size-adjust: 100%; }
         input:-webkit-autofill, input:-webkit-autofill:hover, input:-webkit-autofill:focus {
