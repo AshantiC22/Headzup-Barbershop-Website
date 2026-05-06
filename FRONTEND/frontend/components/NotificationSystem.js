@@ -98,14 +98,22 @@ export default function NotificationProvider({ children }) {
   // Show permit prompt
   var showPermitPrompt = useCallback(function() {
     if (typeof window === "undefined") return;
+    // Never show again if already granted
+    var perm = typeof Notification !== "undefined" ? Notification.permission : "default";
+    if (perm === "granted") { setPushEnabled(true); return; }
+    // Never show again if permanently dismissed
+    if (perm === "denied") return;
+    // Never show again if user clicked Not Now
     var dismissed = localStorage.getItem("headzup_push_dismissed");
     if (dismissed) return;
-    var perm = typeof Notification !== "undefined" ? Notification.permission : "default";
-    if (perm === "granted") return;
-    // Don't show if push not supported at all
+    // Don't show if device can't support push
     if (!supportsPush() && !isIOS()) return;
+    // Only show once per session
+    var shownThisSession = sessionStorage.getItem("headzup_permit_shown");
+    if (shownThisSession) return;
+    sessionStorage.setItem("headzup_permit_shown", "1");
     setTimeout(function() { setShowPermit(true); }, 2500);
-  }, []);
+  }, [setPushEnabled]);
 
   // Enable push
   var enablePush = useCallback(async function() {
@@ -149,7 +157,14 @@ export default function NotificationProvider({ children }) {
 
   var dismissPermit = useCallback(function() {
     setShowPermit(false);
-    localStorage.setItem("headzup_push_dismissed", "1");
+    // Remember for this session - will ask again next login session
+    sessionStorage.setItem("headzup_permit_shown", "1");
+    // If they click Not Now 3 times total, stop asking permanently
+    var count = parseInt(localStorage.getItem("headzup_push_dismissals") || "0") + 1;
+    localStorage.setItem("headzup_push_dismissals", String(count));
+    if (count >= 3) {
+      localStorage.setItem("headzup_push_dismissed", "1");
+    }
   }, []);
 
   // Check push on mount + listen for login event

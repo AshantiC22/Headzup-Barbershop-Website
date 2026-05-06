@@ -2420,6 +2420,16 @@ def send_strike_email(user, profile, reason, appt):
     email = user.email
     if not email:
         return
+        # Push notification for strike
+        try:
+            send_push_notification(
+                appt.user,
+                title="Strike Issued ⚠️",
+                body="A strike has been added to your account due to a no-show or late cancellation.",
+                notif_type=NOTIF_STRIKE,
+                url="/dashboard"
+            )
+        except Exception: pass
 
     reason_label = "No Show" if reason == "no_show" else "Late Cancellation (within 2 hours)"
     next_deposit = profile.get_deposit_fee()
@@ -3589,6 +3599,18 @@ class WalkInBookingView(APIView):
                         plain, html
                     )
                     email_status = f"sent to {email}"
+                    # Push to walk-in client
+                    try:
+                        walk_in_user = appt.user if hasattr(appt, 'user') else None
+                        if walk_in_user:
+                            send_push_notification(
+                                walk_in_user,
+                                title="Welcome to HEADZ UP ✂️",
+                                body=f"You're booked! {service.name} on {date_str} at {time_str}. Join the family at headzupp.com",
+                                notif_type=NOTIF_WALK_IN,
+                                url="/"
+                            )
+                    except Exception: pass
                     logger.info(f"Walk-in email sent to {email}")
                 except Exception as e:
                     email_status = f"error: {e}"
@@ -5028,6 +5050,15 @@ class BarberRescheduleListView(APIView):
                 "appointment__service",
             ).get(pk=rr.pk)
             send_reschedule_response_email(rr_full, accepted=True)
+            try:
+                send_push_notification(
+                    rr_full.client,
+                    title="Reschedule Approved ✅",
+                    body="Your reschedule request has been approved. Check your new time in the dashboard.",
+                    notif_type=NOTIF_RESCHEDULE_RESPONSE,
+                    url="/dashboard"
+                )
+            except Exception: pass
             sms_reschedule_response(rr_full, accepted=True)
             return Response({"message": "Reschedule approved — client has been notified."})
         else:
@@ -5039,6 +5070,15 @@ class BarberRescheduleListView(APIView):
                 "appointment__service",
             ).get(pk=rr.pk)
             send_reschedule_response_email(rr_full, accepted=False)
+            try:
+                send_push_notification(
+                    rr_full.client,
+                    title="Reschedule Declined",
+                    body="Your reschedule request was declined. Your original appointment time stands.",
+                    notif_type=NOTIF_RESCHEDULE_RESPONSE,
+                    url="/dashboard"
+                )
+            except Exception: pass
             sms_reschedule_response(rr_full, accepted=False)
             return Response({"message": "Reschedule declined — client has been notified."})
 
@@ -5138,6 +5178,15 @@ class RescheduleResponseView(APIView):
                 "appointment__service",
             ).get(pk=rr.pk)
             send_reschedule_response_email(rr_full, accepted=True)
+            try:
+                send_push_notification(
+                    rr_full.client,
+                    title="Reschedule Approved ✅",
+                    body=f"Your reschedule request has been approved. Check your dashboard for the new time.",
+                    notif_type=NOTIF_RESCHEDULE_RESPONSE,
+                    url="/dashboard"
+                )
+            except Exception: pass
             sms_reschedule_response(rr_full, accepted=True)
             return Response({"status": "accepted", "message": "Reschedule approved — client has been notified."}, status=200)
         else:
@@ -5149,6 +5198,9 @@ class RescheduleResponseView(APIView):
                 "appointment__service",
             ).get(pk=rr.pk)
             send_reschedule_response_email(rr_full, accepted=False)
+            try:
+                send_push_notification(rr_full.client, title="Reschedule Declined", body="Your reschedule request was declined. Original time stands.", notif_type=NOTIF_RESCHEDULE_RESPONSE, url="/dashboard")
+            except Exception: pass
             sms_reschedule_response(rr_full, accepted=False)
             return Response({"status": "rejected", "message": "Reschedule declined — client has been notified."}, status=200)
 
