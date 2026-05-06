@@ -1479,13 +1479,21 @@ def send_push_notification(user, title, body, data=None, notif_type=None, url=No
             data["url"] = url
 
         payload = json.dumps({"title": title, "body": body, "data": data})
+
+        # Handle both PEM format and raw base64url private key
+        if vapid_private.strip().startswith("-----"):
+            vk = vapid_private.strip()
+        else:
+            # Raw base64url key — convert to proper format pywebpush needs
+            vk = vapid_private.strip()
+
         webpush(
             subscription_info={
                 "endpoint": sub.endpoint,
                 "keys": {"p256dh": sub.p256dh, "auth": sub.auth},
             },
             data=payload,
-            vapid_private_key=vapid_private,
+            vapid_private_key=vk,
             vapid_claims={"sub": f"mailto:{vapid_email}"},
         )
         logger.info(f"Push sent to {user.username}: {title}")
