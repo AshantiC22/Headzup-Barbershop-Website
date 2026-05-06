@@ -1454,27 +1454,44 @@ NOTIF_BLAST              = "blast"
 
 def send_push_notification(user, title, body, data=None, notif_type=None, url=None):
     """Send a Web Push notification to a user. Silently fails if not subscribed."""
+    import logging
+    logger = logging.getLogger(__name__)
     try:
         from pywebpush import webpush, WebPushException
-        sub = PushSubscription.objects.get(user=user)
+
+        # Fail fast if VAPID keys not configured
+        vapid_private = getattr(settings, "VAPID_PRIVATE_KEY", "")
+        vapid_email   = getattr(settings, "VAPID_CLAIM_EMAIL", "")
+        if not vapid_private or not vapid_email:
+            logger.warning("Push skipped — VAPID_PRIVATE_KEY or VAPID_CLAIM_EMAIL not set in Railway env vars")
+            return
+
+        try:
+            sub = PushSubscription.objects.get(user=user)
+        except PushSubscription.DoesNotExist:
+            return  # User has no subscription — normal, don't log
+
         if data is None:
             data = {}
         if notif_type:
             data["type"] = notif_type
         if url:
             data["url"] = url
-        payload = json.dumps({"title": title, "body": body, "data": data or {}})
+
+        payload = json.dumps({"title": title, "body": body, "data": data})
         webpush(
             subscription_info={
                 "endpoint": sub.endpoint,
                 "keys": {"p256dh": sub.p256dh, "auth": sub.auth},
             },
             data=payload,
-            vapid_private_key=settings.VAPID_PRIVATE_KEY,
-            vapid_claims={"sub": f"mailto:{settings.VAPID_CLAIM_EMAIL}"},
+            vapid_private_key=vapid_private,
+            vapid_claims={"sub": f"mailto:{vapid_email}"},
         )
-    except Exception:
-        pass
+        logger.info(f"Push sent to {user.username}: {title}")
+
+    except Exception as e:
+        logger.error(f"Push failed for {user.username}: {e}")
 
 
 def get_barber_for_user(user):
@@ -4298,6 +4315,49 @@ class ClientWaitlistView(APIView):
 
 
 # ── VAPID public key endpoint (needed by frontend to subscribe) ───────────────
+
+class TestPushView(APIView):
+    """POST push/test/ — send a test notification to yourself."""
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        import logging
+        logger = logging.getLogger(__name__)
+
+        # Check VAPID config
+        vapid_private = getattr(settings, "VAPID_PRIVATE_KEY", "")
+        vapid_public  = getattr(settings, "VAPID_PUBLIC_KEY", "")
+        vapid_email   = getattr(settings, "VAPID_CLAIM_EMAIL", "")
+
+        if not vapid_private or not vapid_email:
+            return Response({
+                "error": "VAPID keys not configured in Railway",
+                "fix": "Set VAPID_PRIVATE_KEY, VAPID_PUBLIC_KEY, VAPID_CLAIM_EMAIL in Railway env vars",
+                "how": "Run: python -c \"from py_vapid import Vapid; v=Vapid(); v.generate_keys(); print(v.private_pem().decode()); print(v.public_key.public_bytes_raw().hex())\" or use web-push-codelab.glitch.me"
+            }, status=400)
+
+        try:
+            sub = PushSubscription.objects.get(user=request.user)
+        except PushSubscription.DoesNotExist:
+            return Response({
+                "error": "No push subscription found for your account",
+                "fix": "Go to your dashboard, allow notifications first, then test"
+            }, status=400)
+
+        send_push_notification(
+            request.user,
+            title="Test Notification ✅",
+            body="Push notifications are working! HEADZ UP is live.",
+            notif_type="general",
+            url="/dashboard"
+        )
+        return Response({
+            "message": "Test push sent",
+            "endpoint": sub.endpoint[:60] + "...",
+            "vapid_configured": bool(vapid_private and vapid_email),
+        })
+
+
 class VapidPublicKeyView(APIView):
     permission_classes = [AllowAny]
 
