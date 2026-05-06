@@ -128,7 +128,10 @@ CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
     "https://headzup-barbershop-website.vercel.app",
+    "https://headzupp.com",
+    "https://www.headzupp.com",
 ]
+CORS_ALLOW_ALL_ORIGINS = False
 CORS_ALLOW_METHODS = [
     "DELETE", "GET", "OPTIONS", "PATCH", "POST", "PUT",
 ]
@@ -143,8 +146,8 @@ STRIPE_CONNECT_CLIENT_ID = os.environ.get("STRIPE_CONNECT_CLIENT_ID", "")
 STRIPE_WEBHOOK_SECRET    = os.environ.get("STRIPE_WEBHOOK_SECRET", "")
 STRIPE_PUBLISHABLE_KEY = os.environ.get("STRIPE_PUBLISHABLE_KEY", "")
 
-FRONTEND_URL = os.environ.get("FRONTEND_URL", "https://headzup-barbershop-website.vercel.app")
-BACKEND_URL  = os.environ.get("BACKEND_URL",  "https://headzup-barbershop-website-production.up.railway.app")
+FRONTEND_URL = os.environ.get("FRONTEND_URL", "https://headzupp.com")
+BACKEND_URL  = os.environ.get("BACKEND_URL",  "https://api.headzupp.com")
 
 # ── Email — SendGrid HTTP API (not SMTP — Railway blocks port 587) ────────────
 SENDGRID_API_KEY   = os.environ.get("SENDGRID_API_KEY", "")
