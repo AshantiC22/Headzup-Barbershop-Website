@@ -3,7 +3,7 @@ import axios from "axios";
 // ── Base URL ──────────────────────────────────────────────────────────────────
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL
   ? `${process.env.NEXT_PUBLIC_API_URL}/api/`
-  : "http://127.0.0.1:8000/api/";
+  : "https://api.headzupp.com/api/";
 
 const API = axios.create({
   baseURL: BASE_URL,
