@@ -1,7 +1,8 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import PWAProvider from "@/lib/PWAProvider";
-import NotificationProvider from "@/components/NotificationSystem";
+import ClientProviders from "@/components/ClientProviders";
+
 
 const SITE_URL  = "https://headzup-barbershop-website.vercel.app";
 const SITE_NAME = "HEADZ UP Barbershop";
@@ -148,7 +149,7 @@ export default function RootLayout({
         />
       </head>
       <body>
-        <PWAProvider><NotificationProvider>{children}</NotificationProvider></PWAProvider>
+        <PWAProvider><ClientProviders>{children}</ClientProviders></PWAProvider>
       </body>
     </html>
   );
