@@ -167,7 +167,7 @@ export default function NotificationProvider({ children }) {
       });
       setPushEnabled(true);
       setShowPermit(false);
-      addNotif("Notifications Enabled 🔔", "You will get booking alerts and reminders.", "general");
+      addNotif("Notifications Enabled 🔔", "You will get booking alerts and reminders.", "general", null);
     } catch(e) {
       setShowPermit(false);
     }
@@ -340,7 +340,7 @@ export default function NotificationProvider({ children }) {
 
               {/* Action buttons */}
               <div style={{ display:"flex", gap:8 }}>
-                <button className="np-allow" onClick={enablePush} style={{
+                <button className="np-allow" onClick={function(e){ e.preventDefault(); e.stopPropagation(); enablePush(); }} style={{
                   flex:1, padding:"13px 18px",
                   background:"linear-gradient(135deg,#f59e0b,#ef4444)",
                   border:"none", color:"black",
@@ -369,7 +369,7 @@ export default function NotificationProvider({ children }) {
               {/* Fine print */}
               <p style={{ ...MONO, fontSize:9, color:"#3f3f46",
                 textAlign:"center", marginTop:10, letterSpacing:"0.1em" }}>
-                We never spam · Booking alerts only · Turn off anytime
+                We never spam · Booking alerts only · Turn off anytime · Stay on this page
               </p>
             </div>
           </div>
@@ -419,7 +419,7 @@ export default function NotificationProvider({ children }) {
             <div key={n.id} style={{ pointerEvents:"auto",
               animation:"npSlideIn 0.35s cubic-bezier(0.16,1,0.3,1) both",
               cursor: n.url ? "pointer" : "default" }}
-              onClick={function() { dismissNotif(n.id); if(n.url) router.push(n.url); }}>
+              onClick={function() { dismissNotif(n.id); if(n.url && n.url !== null && n.url !== "") router.push(n.url); }}>
               <div style={{ background:"#0a0a0a",
                 border:"1px solid " + cfg.color + "33",
                 boxShadow:"0 4px 24px rgba(0,0,0,0.6)",
