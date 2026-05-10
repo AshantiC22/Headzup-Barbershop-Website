@@ -160,16 +160,23 @@ export default function NotificationProvider({ children }) {
         userVisibleOnly:      true,
         applicationServerKey: keyArray,
       });
-      await API.post("push/subscribe/", {
+      var p256dh = btoa(String.fromCharCode(...new Uint8Array(sub.getKey("p256dh"))));
+      var auth   = btoa(String.fromCharCode(...new Uint8Array(sub.getKey("auth"))));
+
+      var saveRes = await API.post("push/subscribe/", {
         endpoint: sub.endpoint,
-        p256dh:   btoa(String.fromCharCode(...new Uint8Array(sub.getKey("p256dh")))),
-        auth:     btoa(String.fromCharCode(...new Uint8Array(sub.getKey("auth")))),
+        p256dh:   p256dh,
+        auth:     auth,
       });
+
       setPushEnabled(true);
       setShowPermit(false);
-      addNotif("Notifications Enabled 🔔", "You will get booking alerts and reminders.", "general", null);
+      // Show success toast - no url so no navigation on tap
+      addNotif("Notifications On 🔔", "You will get alerts for bookings, reminders and more.", "general", null);
     } catch(e) {
+      console.error("[Push] enablePush error:", e);
       setShowPermit(false);
+      addNotif("Setup Issue", "Could not enable notifications. Try again.", "general", null);
     }
   }, [addNotif]);
 
@@ -357,7 +364,12 @@ export default function NotificationProvider({ children }) {
 
               {/* Action buttons */}
               <div style={{ display:"flex", gap:8 }}>
-                <button className="np-allow" onClick={function(e){ e.preventDefault(); e.stopPropagation(); enablePush(); }} style={{
+                <button className="np-allow" onClick={function(e){ 
+                  e.preventDefault(); 
+                  e.stopPropagation(); 
+                  e.nativeEvent && e.nativeEvent.stopImmediatePropagation && e.nativeEvent.stopImmediatePropagation();
+                  enablePush(); 
+                }} style={{
                   flex:1, padding:"13px 18px",
                   background:"linear-gradient(135deg,#f59e0b,#ef4444)",
                   border:"none", color:"black",
@@ -436,7 +448,14 @@ export default function NotificationProvider({ children }) {
             <div key={n.id} style={{ pointerEvents:"auto",
               animation:"npSlideIn 0.35s cubic-bezier(0.16,1,0.3,1) both",
               cursor: n.url ? "pointer" : "default" }}
-              onClick={function() { dismissNotif(n.id); if(n.url && n.url !== null && n.url !== "") router.push(n.url); }}>
+              onClick={function() { 
+                if(n.url && n.url !== null && n.url !== "") { 
+                  dismissNotif(n.id); 
+                  router.push(n.url); 
+                } else {
+                  dismissNotif(n.id);
+                }
+              }}>
               <div style={{ background:"#0a0a0a",
                 border:"1px solid " + cfg.color + "33",
                 boxShadow:"0 4px 24px rgba(0,0,0,0.6)",

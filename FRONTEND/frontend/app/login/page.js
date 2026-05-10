@@ -176,7 +176,7 @@ function LoginContent() {
       localStorage.setItem("access",  res.data.access);
       localStorage.setItem("refresh", res.data.refresh);
       const dash = await API.get("dashboard/");
-      router.replace(dash.data.is_staff ? "/barber-dashboard" : "/book");
+      router.replace(dash.data.is_staff ? "/barber-dashboard" : "/dashboard");
       setTimeout(()=>{ window.dispatchEvent(new CustomEvent("headzup:trigger-permit")); }, 2500);
     } catch (e) {
       setError(e.response?.status === 401 ? "Invalid username or password." : "Login failed. Please try again.");
@@ -209,7 +209,7 @@ function LoginContent() {
       try {
         await API.post("security-question/set/", { question: regSecQ, answer: regSecA.trim() });
       } catch {}
-      router.replace("/book");
+      router.replace("/dashboard");
     } catch (e) {
       const d = e.response?.data || {};
       if (d.username) setFieldErrors(p => ({ ...p, regUser: d.username[0] }));
