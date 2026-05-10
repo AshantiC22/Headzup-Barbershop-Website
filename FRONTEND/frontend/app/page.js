@@ -176,9 +176,8 @@ function GalleryGrid({ isMobile }) {
     <div style={{ display:"grid", gridTemplateColumns:"repeat(6,1fr)", gap:3,
       padding:"0 clamp(20px,5vw,44px)" }}>
       <style>{`
-        .gc { transition: transform 0.45s cubic-bezier(0.16,1,0.3,1),
-          box-shadow 0.35s, clip-path 0.35s; }
-        .gc:hover { transform:scale(1.05); z-index:10; }
+        .gc { transition: transform 0.4s cubic-bezier(0.16,1,0.3,1),box-shadow 0.3s;will-change:transform; }
+        .gc:hover { transform:scale(1.04); z-index:10; }
         .gcl { opacity:0; transform:translateY(8px);
           transition: opacity 0.3s, transform 0.3s; }
         .gc:hover .gcl { opacity:1; transform:none; }
@@ -429,6 +428,7 @@ export default function HomePage() {
   const [heroIn,     setHeroIn]     = useState(false);
   const [time,       setTime]       = useState("");
   const [statsVis,   setStatsVis]   = useState(false);
+  // Remove scan line state - use pure CSS
   const statsRef = useRef(null);
 
   useEffect(()=>{
@@ -545,11 +545,11 @@ export default function HomePage() {
         @keyframes ticker { from{transform:translateX(0)} to{transform:translateX(-50%)} }
         @keyframes menuSlide { from{opacity:0;transform:translateY(-8px)} to{opacity:1;transform:none} }
         @keyframes floatUp { from{opacity:0;transform:translateY(32px)} to{opacity:1;transform:none} }
-        @keyframes statPop { from{opacity:0;transform:translateY(24px) scale(0.92)} to{opacity:1;transform:none} }
+        @keyframes statPop { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:none} }
         @keyframes shimmer { from{transform:translateX(-100%)} to{transform:translateX(200%)} }
-        @keyframes pulseBorder { 0%,100%{border-color:rgba(245,158,11,0.2)} 50%{border-color:rgba(245,158,11,0.5)} }
 
-        .ticker-w { animation:ticker 34s linear infinite;display:flex;width:max-content; }
+
+        .ticker-w { animation:ticker 34s linear infinite;display:flex;width:max-content;will-change:transform; }
         .ticker-w:hover { animation-play-state:paused; }
 
         /* Service row */
@@ -602,9 +602,10 @@ export default function HomePage() {
       <div style={{ position:"fixed",bottom:"16%",left:"-9%",width:540,height:540,
         background:`radial-gradient(circle,${A}04 0%,transparent 58%)`,pointerEvents:"none",zIndex:0 }}/>
       <div style={{ position:"fixed",inset:0,zIndex:1,pointerEvents:"none",overflow:"hidden" }}>
-        <div style={{ position:"absolute",left:0,right:0,height:1,
-          background:`linear-gradient(to right,transparent,${A}20,transparent)`,
-          animation:"scandown 9s linear infinite" }}/>
+        <div style={{ position:"absolute",top:0,left:0,right:0,height:1,
+          background:`linear-gradient(to right,transparent,${A}18,transparent)`,
+          animation:"scandown 10s linear infinite",
+          willChange:"transform" }}/>
       </div>
 
       <div style={{ position:"relative",zIndex:10 }}>
@@ -874,7 +875,7 @@ export default function HomePage() {
               flexWrap:"nowrap",
               overflow:"hidden",
               boxShadow:`0 24px 80px rgba(0,0,0,0.8), 0 0 0 1px ${A}15`,
-              animation: statsVis ? "pulseBorder 3s ease infinite" : "none",
+              border: `1px solid rgba(245,158,11,${statsVis ? 0.3 : 0.15})`,
             }}>
               {/* Left amber accent bar */}
               <div style={{ width:4, background:`linear-gradient(to bottom,${R},${A})`, flexShrink:0 }}/>

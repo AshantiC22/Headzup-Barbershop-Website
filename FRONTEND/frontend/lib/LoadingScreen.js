@@ -1,98 +1,33 @@
 "use client";
 import { useEffect, useState, useRef } from "react";
 
-// ─── Seeded pseudo-random (no Math.random drift per frame) ───────────────────
-function seededRand(seed) {
-  let s = seed;
-  return () => {
-    s = (s * 16807 + 0) % 2147483647;
-    return (s - 1) / 2147483646;
-  };
-}
-
-// ─── Simple value noise ──────────────────────────────────────────────────────
-function valueNoise(x, y, t) {
-  const xi = Math.floor(x);
-  const yi = Math.floor(y);
-  const ti = Math.floor(t);
-  const xf = x - xi;
-  const yf = y - yi;
-  const tf = t - ti;
-
-  const fade = v => v * v * v * (v * (v * 6 - 15) + 10);
-  const lerp  = (a, b, t) => a + t * (b - a);
-
-  const hash = (xi, yi, ti) => {
-    let n = xi * 374761393 + yi * 668265263 + ti * 374761393;
-    n = (n ^ (n >> 13)) * 1274126177;
-    return ((n ^ (n >> 16)) & 0xffffffff) / 0xffffffff;
-  };
-
-  const u = fade(xf), v = fade(yf), w = fade(tf);
-
-  return lerp(
-    lerp(lerp(hash(xi,yi,ti), hash(xi+1,yi,ti), u), lerp(hash(xi,yi+1,ti), hash(xi+1,yi+1,ti), u), v),
-    lerp(lerp(hash(xi,yi,ti+1), hash(xi+1,yi,ti+1), u), lerp(hash(xi,yi+1,ti+1), hash(xi+1,yi+1,ti+1), u), v),
-    w
-  );
-}
-
-// ─── Main component ──────────────────────────────────────────────────────────
 export default function LoadingScreen({ onComplete }) {
   const [progress, setProgress] = useState(0);
-  const [phase,    setPhase]    = useState("in");
+  const [phase,    setPhase]    = useState("in");   // "in" | "out"
   const [visible,  setVisible]  = useState(true);
-  const [tick,     setTick]     = useState(0);
-  const [glitch,   setGlitch]   = useState(false);
-  const [scanLine, setScanLine] = useState(0);
-
   const canvasRef  = useRef(null);
   const rafRef     = useRef(null);
   const timeRef    = useRef(0);
   const embersRef  = useRef([]);
 
-  // ── Progress ─────────────────────────────────────────────────────────────
+  // ── Progress ──────────────────────────────────────────────────────────────
   useEffect(() => {
     let p = 0;
-    const steps = [{sp:22,max:35},{sp:6,max:68},{sp:25,max:100}];
-    let si = 0;
     const id = setInterval(() => {
-      p = Math.min(p + Math.random() * steps[si].sp + 2, steps[si].max);
+      // Smooth, predictable progress — no Math.random() jumps
+      const speed = p < 40 ? 1.8 : p < 75 ? 1.1 : p < 92 ? 0.7 : 0.4;
+      p = Math.min(p + speed, 100);
       setProgress(Math.round(p));
-      if (p >= steps[si].max && si < steps.length - 1) si++;
       if (p >= 100) {
         clearInterval(id);
-        setTimeout(() => setPhase("out"), 300);
-        setTimeout(() => { setVisible(false); onComplete?.(); }, 950);
+        setTimeout(() => setPhase("out"), 200);
+        setTimeout(() => { setVisible(false); onComplete?.(); }, 750);
       }
-    }, 50);
+    }, 40);
     return () => clearInterval(id);
   }, [onComplete]);
 
-  // ── UI tick ───────────────────────────────────────────────────────────────
-  useEffect(() => {
-    const id = setInterval(() => setTick(t => t + 1), 80);
-    return () => clearInterval(id);
-  }, []);
-
-  // ── Glitch ────────────────────────────────────────────────────────────────
-  useEffect(() => {
-    const fire = () => {
-      setGlitch(true);
-      setTimeout(() => setGlitch(false), 120);
-      setTimeout(fire, 2800 + Math.random() * 1400);
-    };
-    const t = setTimeout(fire, 900);
-    return () => clearTimeout(t);
-  }, []);
-
-  // ── Scan line ─────────────────────────────────────────────────────────────
-  useEffect(() => {
-    const id = setInterval(() => setScanLine(s => (s + 2) % 100), 16);
-    return () => clearInterval(id);
-  }, []);
-
-  // ── FIRE CANVAS ───────────────────────────────────────────────────────────
+  // ── Fire canvas ───────────────────────────────────────────────────────────
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -104,176 +39,125 @@ export default function LoadingScreen({ onComplete }) {
     resize();
     window.addEventListener("resize", resize);
 
+    // Spawn ember helper
+    const spawnEmber = (W, H, randomY = false) => ({
+      x:     W / 2 + (Math.random() - 0.5) * W * 0.5,
+      y:     randomY ? H - Math.random() * H * 0.35 : H + 4,
+      vx:    (Math.random() - 0.5) * 0.7,
+      vy:    -(Math.random() * 1.4 + 0.4),
+      life:  Math.random(),
+      decay: 0.003 + Math.random() * 0.006,
+      size:  Math.random() * 2 + 0.5,
+      hot:   Math.random() > 0.5,
+      drift: (Math.random() - 0.5) * 0.012,
+    });
+
     // Init embers
-    embersRef.current = Array.from({ length: 55 }, () => spawnEmber(
-      canvas.width, canvas.height, true
-    ));
+    embersRef.current = Array.from({ length: 40 }, () =>
+      spawnEmber(canvas.width, canvas.height, true)
+    );
 
-    function spawnEmber(W, H, randomY = false) {
-      const spread = W * 0.55;
-      const cx     = W / 2;
-      return {
-        x:     cx + (Math.random() - 0.5) * spread,
-        y:     randomY ? H - Math.random() * H * 0.4 : H + 4,
-        vx:    (Math.random() - 0.5) * 0.9,
-        vy:    -(Math.random() * 1.6 + 0.5),
-        life:  Math.random(),
-        decay: 0.004 + Math.random() * 0.007,
-        size:  Math.random() * 2.2 + 0.6,
-        hot:   Math.random() > 0.45,  // white-hot vs amber
-        drift: (Math.random() - 0.5) * 0.015,
-      };
-    }
+    // Smooth noise
+    const hash = (x, y, t) => {
+      let n = (x * 374761393 + y * 668265263 + t * 374761393) | 0;
+      n = Math.imul(n ^ (n >>> 13), 1274126177);
+      return ((n ^ (n >>> 16)) >>> 0) / 0xffffffff;
+    };
+    const lerp  = (a, b, t) => a + t * (b - a);
+    const fade  = v => v * v * v * (v * (v * 6 - 15) + 10);
+    const noise = (x, y, t) => {
+      const xi = x | 0, yi = y | 0, ti = t | 0;
+      const xf = fade(x - xi), yf = fade(y - yi), tf = fade(t - ti);
+      return lerp(
+        lerp(lerp(hash(xi,yi,ti), hash(xi+1,yi,ti), xf), lerp(hash(xi,yi+1,ti), hash(xi+1,yi+1,ti), xf), yf),
+        lerp(lerp(hash(xi,yi,ti+1), hash(xi+1,yi,ti+1), xf), lerp(hash(xi,yi+1,ti+1), hash(xi+1,yi+1,ti+1), xf), yf),
+        tf
+      );
+    };
 
-    // ── DRAW LOOP ─────────────────────────────────────────────────────────
-    function draw() {
+    const draw = () => {
       const ctx = canvas.getContext("2d");
       const W   = canvas.width;
       const H   = canvas.height;
-
       ctx.clearRect(0, 0, W, H);
-      timeRef.current += 0.012;
+      timeRef.current += 0.01;
       const t = timeRef.current;
 
-      // ── Layer 1: FIRE FIELD (noise-driven columns) ──────────────────────
-      // We draw many vertical columns, each height driven by noise.
-      // This creates a continuous, organic fire sheet — not individual flames.
-      const COLS        = Math.ceil(W / 3);   // one column per 3px
-      const FIRE_HEIGHT = H * 0.52;           // max flame height from bottom
-
-      for (let col = 0; col < COLS; col++) {
-        const x      = col * 3;
-        const nx     = col / COLS * 3.5;      // noise x scale
-
-        // Multi-octave noise for organic shape
-        const n1 = valueNoise(nx, 0, t * 1.1);
-        const n2 = valueNoise(nx * 2.1, 0, t * 2.3 + 7) * 0.5;
-        const n3 = valueNoise(nx * 4.2, 0, t * 4.1 + 13) * 0.25;
-        const n  = (n1 + n2 + n3) / 1.75;
-
-        // Flame height: taller in centre, shorter at edges, modulated by noise
-        const edgeFade = 1 - Math.pow(Math.abs((col / COLS) - 0.5) * 2, 1.6);
-        const flameH   = n * FIRE_HEIGHT * edgeFade * (0.55 + n * 0.7);
-
-        if (flameH < 6) continue;
-
-        const base = H;
-        const tip  = H - flameH;
-
-        // Gradient per column: deep red at base → amber → orange → yellow-white at tip
-        const grad = ctx.createLinearGradient(0, base, 0, tip - flameH * 0.15);
-        grad.addColorStop(0,    "rgba(180,20,0,0.82)");
-        grad.addColorStop(0.15, "rgba(220,50,0,0.78)");
-        grad.addColorStop(0.35, "rgba(240,90,0,0.72)");
-        grad.addColorStop(0.55, "rgba(245,150,10,0.65)");
-        grad.addColorStop(0.72, "rgba(250,190,30,0.45)");
-        grad.addColorStop(0.86, "rgba(255,230,120,0.22)");
-        grad.addColorStop(1,    "transparent");
-
-        ctx.save();
-        ctx.globalCompositeOperation = "lighter";
-
-        // Column width widens at base, narrows to a point at tip
-        const baseW = 3.5;
-        ctx.beginPath();
-        ctx.moveTo(x - baseW, base);
-        ctx.bezierCurveTo(
-          x - baseW * 0.8, base - flameH * 0.4,
-          x - baseW * 0.3, base - flameH * 0.75,
-          x,               tip
-        );
-        ctx.bezierCurveTo(
-          x + baseW * 0.3, base - flameH * 0.75,
-          x + baseW * 0.8, base - flameH * 0.4,
-          x + baseW,       base
-        );
-        ctx.closePath();
-        ctx.fillStyle = grad;
-        ctx.fill();
-        ctx.restore();
-      }
-
-      // ── Layer 2: WIDE GLOW BASE (heat body) ────────────────────────────
-      // Horizontal gaussian-like glow that pulses with a slow noise value
-      const pulseN = valueNoise(1, 0, t * 0.6);
-      const glowH  = H * (0.28 + pulseN * 0.12);
-      const glow   = ctx.createLinearGradient(0, H, 0, H - glowH);
-      glow.addColorStop(0,   "rgba(220,50,0,0.28)");
-      glow.addColorStop(0.3, "rgba(240,100,0,0.14)");
-      glow.addColorStop(0.65,"rgba(245,158,11,0.07)");
-      glow.addColorStop(1,   "transparent");
-
+      // Fire columns
+      const COLS  = Math.ceil(W / 4);
+      const FIRE_H = H * 0.48;
       ctx.save();
       ctx.globalCompositeOperation = "lighter";
-      ctx.fillStyle = glow;
-      ctx.fillRect(0, H - glowH, W, glowH);
+      for (let col = 0; col < COLS; col++) {
+        const x  = col * 4;
+        const nx = col / COLS * 3.5;
+        const n  = noise(nx, 0, t * 1.1) * 0.6
+                 + noise(nx * 2, 0, t * 2.2) * 0.3
+                 + noise(nx * 4, 0, t * 4.0) * 0.1;
+        const ef = 1 - Math.pow(Math.abs((col / COLS) - 0.5) * 2, 1.6);
+        const fh = n * FIRE_H * ef * (0.5 + n * 0.7);
+        if (fh < 5) continue;
+        const g = ctx.createLinearGradient(0, H, 0, H - fh);
+        g.addColorStop(0,    "rgba(180,20,0,0.75)");
+        g.addColorStop(0.3,  "rgba(240,80,0,0.6)");
+        g.addColorStop(0.6,  "rgba(245,150,10,0.45)");
+        g.addColorStop(0.85, "rgba(250,210,40,0.2)");
+        g.addColorStop(1,    "transparent");
+        ctx.beginPath();
+        ctx.moveTo(x - 2, H);
+        ctx.bezierCurveTo(x - 1.5, H - fh * 0.4, x - 0.5, H - fh * 0.75, x, H - fh);
+        ctx.bezierCurveTo(x + 0.5, H - fh * 0.75, x + 1.5, H - fh * 0.4, x + 2, H);
+        ctx.closePath();
+        ctx.fillStyle = g;
+        ctx.fill();
+      }
       ctx.restore();
 
-      // ── Layer 3: EMBERS ────────────────────────────────────────────────
+      // Base glow
+      const pn = noise(1, 0, t * 0.5);
+      const gh = H * (0.25 + pn * 0.1);
+      const gg = ctx.createLinearGradient(0, H, 0, H - gh);
+      gg.addColorStop(0,   "rgba(220,50,0,0.22)");
+      gg.addColorStop(0.4, "rgba(240,100,0,0.1)");
+      gg.addColorStop(1,   "transparent");
+      ctx.save();
+      ctx.globalCompositeOperation = "lighter";
+      ctx.fillStyle = gg;
+      ctx.fillRect(0, H - gh, W, gh);
+      ctx.restore();
+
+      // Embers
       embersRef.current.forEach((e, i) => {
         e.x  += e.vx;
         e.vx += e.drift;
-        e.vy *= 0.998;           // very slight drag
         e.y  += e.vy;
+        e.vy *= 0.999;
         e.life -= e.decay;
-
-        if (e.life <= 0 || e.y < -30) {
+        if (e.life <= 0 || e.y < -20) {
           embersRef.current[i] = spawnEmber(W, H);
           return;
         }
-
-        const a   = Math.pow(Math.max(0, e.life), 0.7);
-        const r   = e.size * (0.5 + e.life * 0.5);
-
-        // Inner white-hot dot + outer amber halo
+        const a = Math.pow(Math.max(0, e.life), 0.6);
+        const r = e.size * (0.4 + e.life * 0.6);
         ctx.save();
         ctx.globalCompositeOperation = "lighter";
-
-        // Halo
-        const hg = ctx.createRadialGradient(e.x, e.y, 0, e.x, e.y, r * 3.5);
-        hg.addColorStop(0,   e.hot ? `rgba(255,255,220,${a * 0.9})`  : `rgba(255,160,20,${a * 0.75})`);
-        hg.addColorStop(0.35,e.hot ? `rgba(255,200,50,${a * 0.7})`   : `rgba(240,100,0,${a * 0.55})`);
+        const hg = ctx.createRadialGradient(e.x, e.y, 0, e.x, e.y, r * 3);
+        hg.addColorStop(0,   e.hot ? `rgba(255,255,220,${a*0.85})`  : `rgba(255,150,20,${a*0.7})`);
+        hg.addColorStop(0.4, e.hot ? `rgba(255,190,50,${a*0.6})`    : `rgba(240,90,0,${a*0.5})`);
         hg.addColorStop(1,   "transparent");
         ctx.fillStyle = hg;
         ctx.beginPath();
-        ctx.arc(e.x, e.y, r * 3.5, 0, Math.PI * 2);
+        ctx.arc(e.x, e.y, r * 3, 0, Math.PI * 2);
         ctx.fill();
-
-        // Core
-        ctx.fillStyle = e.hot ? `rgba(255,255,255,${a})` : `rgba(255,210,80,${a * 0.9})`;
+        ctx.fillStyle = e.hot ? `rgba(255,255,255,${a})` : `rgba(255,200,60,${a*0.9})`;
         ctx.beginPath();
         ctx.arc(e.x, e.y, r, 0, Math.PI * 2);
         ctx.fill();
-
         ctx.restore();
       });
 
-      // ── Layer 4: SMOKE (near-black wisps at very top of flames) ────────
-      // Thin, barely-visible dark wisps add depth without looking cartoony
-      for (let col = 0; col < COLS; col += 4) {
-        const x  = col * 3;
-        const nx = col / COLS * 2.8;
-        const sn = valueNoise(nx, 0.5, t * 0.55 + 20);
-        const sh = sn * FIRE_HEIGHT * 0.18;
-        if (sh < 10) continue;
-
-        const edgeFade = 1 - Math.pow(Math.abs((col / COLS) - 0.5) * 2, 2);
-        if (edgeFade < 0.2) continue;
-
-        const smokeY = H - FIRE_HEIGHT * edgeFade * 0.6;
-        const sg = ctx.createRadialGradient(x, smokeY, 0, x, smokeY, sh * 1.8);
-        sg.addColorStop(0,   `rgba(20,10,5,${sn * 0.08 * edgeFade})`);
-        sg.addColorStop(1,   "transparent");
-        ctx.save();
-        ctx.fillStyle = sg;
-        ctx.beginPath();
-        ctx.arc(x, smokeY, sh * 1.8, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.restore();
-      }
-
       rafRef.current = requestAnimationFrame(draw);
-    }
+    };
 
     draw();
     return () => {
@@ -285,218 +169,203 @@ export default function LoadingScreen({ onComplete }) {
   if (!visible) return null;
 
   const pct      = progress;
-  const segments = 20;
+  const segments = 24;
   const filled   = Math.floor((pct / 100) * segments);
+  const label    = pct < 25 ? "Connecting..."
+                 : pct < 50 ? "Loading barbers..."
+                 : pct < 75 ? "Syncing schedule..."
+                 : pct < 95 ? "Almost ready..."
+                 : "Let's go ✂️";
 
   return (
     <div style={{
       position:"fixed", inset:0, zIndex:99999,
       background:"#000",
-      opacity:   phase==="out" ? 0 : 1,
-      transform: phase==="out" ? "scale(1.04)" : "scale(1)",
-      transition:"opacity 0.65s ease, transform 0.65s ease",
-      pointerEvents: phase==="out" ? "none" : "all",
+      opacity:   phase === "out" ? 0 : 1,
+      transform: phase === "out" ? "scale(1.03)" : "scale(1)",
+      transition:"opacity 0.55s cubic-bezier(0.4,0,0.2,1), transform 0.55s cubic-bezier(0.4,0,0.2,1)",
+      pointerEvents: phase === "out" ? "none" : "all",
       overflow:"hidden",
-      fontFamily:"'Syncopate',sans-serif",
     }}>
       <style>{`
-        @keyframes ls-flicker{0%,89%,91%,93%,100%{opacity:1}90%,92%{opacity:0.05}}
-        @keyframes ls-rgb{
-          0%  {text-shadow:3px 0 #f59e0b,-3px 0 rgba(239,68,68,0.6),0 0 20px rgba(245,158,11,0.4)}
-          33% {text-shadow:-3px 0 #f59e0b,3px 0 rgba(239,68,68,0.6),0 0 20px rgba(245,158,11,0.4)}
-          66% {text-shadow:0 3px #f59e0b,0 -3px rgba(239,68,68,0.6),0 0 20px rgba(245,158,11,0.4)}
-          100%{text-shadow:3px 0 #f59e0b,-3px 0 rgba(239,68,68,0.6),0 0 20px rgba(245,158,11,0.4)}
-        }
-        @keyframes ls-glitch-1{
-          0%,100%{clip-path:inset(0 0 95% 0);transform:translate(-4px,0)}
-          20%    {clip-path:inset(30% 0 50% 0);transform:translate(4px,0)}
-          40%    {clip-path:inset(60% 0 20% 0);transform:translate(-3px,0)}
-          60%    {clip-path:inset(10% 0 75% 0);transform:translate(3px,0)}
-          80%    {clip-path:inset(80% 0 5% 0);transform:translate(-2px,0)}
-        }
-        @keyframes ls-glitch-2{
-          0%,100%{clip-path:inset(50% 0 30% 0);transform:translate(3px,0);color:#ef4444}
-          25%    {clip-path:inset(20% 0 60% 0);transform:translate(-3px,0);color:#f59e0b}
-          50%    {clip-path:inset(70% 0 10% 0);transform:translate(2px,0);color:#ef4444}
-          75%    {clip-path:inset(5% 0 80% 0);transform:translate(-2px,0);color:#f59e0b}
-        }
-        @keyframes ls-pulse  {0%,100%{opacity:0.3;transform:scale(1)}50%{opacity:1;transform:scale(1.02)}}
-        @keyframes ls-blink  {0%,49%{opacity:1}50%,100%{opacity:0}}
-        @keyframes ls-slidein{from{opacity:0;transform:translateX(-40px) skewX(-6deg)}to{opacity:1;transform:none}}
-        @keyframes ls-bar-flash{
-          0%,100%{box-shadow:0 0 8px rgba(245,158,11,0.6)}
-          50%    {box-shadow:0 0 24px rgba(245,158,11,1),0 0 48px rgba(245,158,11,0.4)}
-        }
-        @keyframes ls-shimmer{
-          0%  {transform:translateY(0px) scaleX(1);  opacity:0.18}
-          30% {transform:translateY(-3px) scaleX(1.02);opacity:0.28}
-          60% {transform:translateY(-1px) scaleX(0.98);opacity:0.20}
-          100%{transform:translateY(0px) scaleX(1);  opacity:0.18}
-        }
-        @keyframes ls-heatwave{
-          0%  {clip-path:inset(0 0 0 0);transform:skewY(0deg)}
-          20% {clip-path:inset(20% 0 0 0);transform:skewY(0.4deg)}
-          40% {clip-path:inset(0 0 30% 0);transform:skewY(-0.3deg)}
-          60% {clip-path:inset(10% 0 20% 0);transform:skewY(0.2deg)}
-          80% {clip-path:inset(30% 0 0 0);transform:skewY(-0.4deg)}
-          100%{clip-path:inset(0 0 0 0);transform:skewY(0deg)}
+        @import url('https://fonts.googleapis.com/css2?family=Syncopate:wght@400;700&family=DM+Mono:wght@400;500&display=swap');
+
+        /* Barber pole top edge */
+        .ls-pole {
+          position:absolute; top:0; left:0; right:0; height:4px;
+          background:repeating-linear-gradient(90deg,#ef4444 0px,#ef4444 10px,#fff 10px,#fff 20px,#f59e0b 20px,#f59e0b 30px,#000 30px,#000 40px);
+          opacity:0.65;
         }
 
-        .ls-main-title{animation:ls-flicker 6s ease infinite,ls-rgb 3s ease infinite}
-        .ls-glitch-1  {animation:ls-glitch-1 0.15s steps(1) infinite}
-        .ls-glitch-2  {animation:ls-glitch-2 0.18s steps(1) infinite}
-        .ls-bar-seg   {animation:ls-bar-flash 1.2s ease infinite}
-        .ls-shimmer   {animation:ls-shimmer 2.6s ease-in-out infinite}
-        .ls-heatwave  {animation:ls-heatwave 3.2s ease-in-out infinite}
+        /* Subtle grid */
+        .ls-grid {
+          position:absolute; inset:0;
+          background-image:linear-gradient(rgba(245,158,11,0.02) 1px,transparent 1px),linear-gradient(90deg,rgba(245,158,11,0.02) 1px,transparent 1px);
+          background-size:52px 52px;
+          pointer-events:none;
+        }
+
+        /* CRT scanlines — very subtle */
+        .ls-scan {
+          position:absolute; inset:0; pointer-events:none;
+          background-image:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.12) 2px,rgba(0,0,0,0.12) 3px);
+        }
+
+        /* Progress bar segments */
+        .ls-seg {
+          flex:1; height:8px;
+          clip-path:polygon(0 0,calc(100% - 2px) 0,100% 2px,100% 100%,2px 100%,0 calc(100% - 2px));
+          transition:background 0.12s ease, box-shadow 0.12s ease;
+        }
+
+        /* Logo fade in */
+        @keyframes ls-in { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:none} }
+        .ls-logo { animation:ls-in 0.7s cubic-bezier(0.16,1,0.3,1) 0.1s both; }
+        .ls-tag  { animation:ls-in 0.7s cubic-bezier(0.16,1,0.3,1) 0.25s both; }
+        .ls-bar  { animation:ls-in 0.7s cubic-bezier(0.16,1,0.3,1) 0.35s both; }
+
+        /* Status label slide */
+        @keyframes ls-status { from{opacity:0;transform:translateX(-8px)} to{opacity:1;transform:none} }
+        .ls-status { animation:ls-status 0.3s ease both; }
+
+        /* Scissors snip */
+        @keyframes ls-snip { 0%,100%{transform:rotate(0deg)} 50%{transform:rotate(-18deg)} }
+        .ls-scissors { animation:ls-snip 1.8s cubic-bezier(0.4,0,0.2,1) infinite; transform-origin:50% 65%; }
+
+        /* Blink cursor */
+        @keyframes ls-blink { 0%,49%{opacity:1}50%,100%{opacity:0} }
+        .ls-cursor { animation:ls-blink 1s step-end infinite; }
       `}</style>
 
-      {/* ── FIRE CANVAS ── */}
-      <canvas ref={canvasRef} style={{
-        position:"absolute", inset:0, zIndex:1, pointerEvents:"none",
-      }}/>
+      {/* Fire canvas */}
+      <canvas ref={canvasRef} style={{ position:"absolute", inset:0, zIndex:1, pointerEvents:"none" }}/>
 
-      {/* ── CRT SCANLINES ── */}
-      <div style={{position:"absolute",inset:0,zIndex:2,pointerEvents:"none",
-        backgroundImage:"repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.18) 2px,rgba(0,0,0,0.18) 3px)"
-      }}/>
+      {/* Layers */}
+      <div className="ls-grid" style={{ zIndex:2 }}/>
+      <div className="ls-scan" style={{ zIndex:3 }}/>
+      <div className="ls-pole" style={{ zIndex:6 }}/>
 
-      {/* ── MOVING SCAN LINE ── */}
-      <div style={{
-        position:"absolute",left:0,right:0,height:2,zIndex:4,pointerEvents:"none",
-        top:`${scanLine}%`,
-        background:"linear-gradient(to right,transparent,rgba(245,158,11,0.6),rgba(245,158,11,0.9),rgba(245,158,11,0.6),transparent)",
-        boxShadow:"0 0 12px rgba(245,158,11,0.8)",
-        opacity:0.7,
-      }}/>
-
-      {/* ── GRID ── */}
-      <div style={{position:"absolute",inset:0,zIndex:0,pointerEvents:"none",
-        backgroundImage:"linear-gradient(rgba(245,158,11,0.025) 1px,transparent 1px),linear-gradient(90deg,rgba(245,158,11,0.025) 1px,transparent 1px)",
-        backgroundSize:"48px 48px",
-      }}/>
-
-      {/* ── TOP HUD ── */}
-      <div style={{position:"absolute",top:16,left:24,right:24,zIndex:10,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-        <span style={{fontFamily:"'DM Mono',monospace",fontSize:8,color:"rgba(245,158,11,0.4)",letterSpacing:"0.5em",textTransform:"uppercase"}}>SYS://HEADZUP_OS v2.6</span>
-        <span style={{fontFamily:"'DM Mono',monospace",fontSize:8,color:"rgba(245,158,11,0.4)",letterSpacing:"0.4em",textTransform:"uppercase"}}>HAT.MS · 31.3271°N</span>
+      {/* HUD — top */}
+      <div style={{ position:"absolute", top:14, left:20, right:20, zIndex:10,
+        display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+        <span style={{ fontFamily:"'DM Mono',monospace", fontSize:8, color:"rgba(245,158,11,0.35)",
+          letterSpacing:"0.5em", textTransform:"uppercase" }}>HEADZUP · v2.6</span>
+        <span style={{ fontFamily:"'DM Mono',monospace", fontSize:8, color:"rgba(245,158,11,0.35)",
+          letterSpacing:"0.4em", textTransform:"uppercase" }}>HAT.MS · 31.3°N</span>
       </div>
 
-      {/* ── BOTTOM HUD ── */}
-      <div style={{position:"absolute",bottom:16,left:24,right:24,zIndex:10,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-        <span style={{fontFamily:"'DM Mono',monospace",fontSize:8,color:"rgba(245,158,11,0.3)",letterSpacing:"0.4em",textTransform:"uppercase"}}>2509 W 4TH ST · HATTIESBURG MS</span>
-        <span style={{fontFamily:"'DM Mono',monospace",fontSize:8,color:"rgba(245,158,11,0.3)",letterSpacing:"0.4em",textTransform:"uppercase",animation:"ls-blink 1s step-end infinite"}}>▮ INITIALIZING</span>
+      {/* HUD — bottom */}
+      <div style={{ position:"absolute", bottom:14, left:20, right:20, zIndex:10,
+        display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+        <span style={{ fontFamily:"'DM Mono',monospace", fontSize:8, color:"rgba(245,158,11,0.25)",
+          letterSpacing:"0.35em", textTransform:"uppercase" }}>2509 W 4TH ST · HATTIESBURG</span>
+        <span className="ls-cursor" style={{ fontFamily:"'DM Mono',monospace", fontSize:8,
+          color:"rgba(245,158,11,0.4)", letterSpacing:"0.4em" }}>▮</span>
       </div>
 
-      {/* ── MAIN CONTENT ── */}
+      {/* Main content */}
       <div style={{
-        position:"relative",zIndex:5,
-        display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",
-        height:"100%",gap:0,padding:"60px 20px",
+        position:"relative", zIndex:5,
+        display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center",
+        height:"100%", gap:0, padding:"60px 20px",
       }}>
 
-        {/* Animated scissors */}
-        <div style={{marginBottom:20,position:"relative"}}>
+        {/* Scissors icon */}
+        <div style={{ marginBottom:18 }}>
           <div style={{
-            width:56,height:56,
-            border:"1px solid rgba(245,158,11,0.3)",
-            display:"flex",alignItems:"center",justifyContent:"center",
-            clipPath:"polygon(0 0,calc(100% - 8px) 0,100% 8px,100% 100%,8px 100%,0 calc(100% - 8px))",
-            background:"rgba(245,158,11,0.06)",
-            boxShadow:"0 0 20px rgba(245,158,11,0.15),inset 0 0 20px rgba(245,158,11,0.04)",
+            width:50, height:50,
+            border:"1px solid rgba(245,158,11,0.25)",
+            display:"flex", alignItems:"center", justifyContent:"center",
+            clipPath:"polygon(0 0,calc(100% - 7px) 0,100% 7px,100% 100%,7px 100%,0 calc(100% - 7px))",
+            background:"rgba(245,158,11,0.05)",
           }}>
-            <svg width="28" height="28" viewBox="0 0 36 36" fill="none">
-              <line x1={tick%20<10?8:3} y1={tick%20<10?10:18} x2="32" y2="32"
-                stroke="#f59e0b" strokeWidth="2" strokeLinecap="round"
-                style={{transition:"all 0.3s cubic-bezier(0.4,0,0.2,1)"}}/>
-              <line x1={tick%20<10?8:3} y1={tick%20<10?26:18} x2="32" y2="4"
-                stroke="#f59e0b" strokeWidth="2" strokeLinecap="round"
-                style={{transition:"all 0.3s cubic-bezier(0.4,0,0.2,1)"}}/>
-              <circle cx={tick%20<10?6:3} cy={tick%20<10?9:18}  r="3.5" stroke="#f59e0b" strokeWidth="1.5" fill="rgba(245,158,11,0.15)" style={{transition:"all 0.3s cubic-bezier(0.4,0,0.2,1)"}}/>
-              <circle cx={tick%20<10?6:3} cy={tick%20<10?27:18} r="3.5" stroke="#f59e0b" strokeWidth="1.5" fill="rgba(245,158,11,0.15)" style={{transition:"all 0.3s cubic-bezier(0.4,0,0.2,1)"}}/>
+            <svg className="ls-scissors" width="26" height="26" viewBox="0 0 24 24"
+              fill="none" stroke="#f59e0b" strokeWidth="1.5"
+              strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="6" cy="6" r="3"/>
+              <circle cx="6" cy="18" r="3"/>
+              <line x1="20" y1="4" x2="8.12" y2="15.88"/>
+              <line x1="14.47" y1="14.48" x2="20" y2="20"/>
+              <line x1="8.12" y1="8.12" x2="12" y2="12"/>
             </svg>
           </div>
         </div>
 
-        {/* LOGO */}
-        <div style={{position:"relative",marginBottom:6}}>
-          <div className="ls-shimmer" style={{
-            position:"absolute",
-            bottom:-8, left:"-5%", right:"-5%",
-            height:"30%",
-            background:"linear-gradient(to top,rgba(245,120,0,0.12),transparent)",
-            filter:"blur(3px)",
-            zIndex:-1,
-            pointerEvents:"none",
+        {/* Logo */}
+        <div className="ls-logo" style={{ marginBottom:8, position:"relative" }}>
+          <div style={{
+            position:"absolute", bottom:-6, left:"-8%", right:"-8%", height:"30%",
+            background:"linear-gradient(to top,rgba(245,120,0,0.1),transparent)",
+            filter:"blur(4px)", zIndex:-1,
           }}/>
           <img
             src="/logo1.jpg"
-            alt="Headz Up Barbershop"
+            alt="HEADZ UP Barbershop"
             style={{
-              width:"clamp(180px,50vw,340px)",
+              width:"clamp(160px,45vw,300px)",
               height:"auto",
               objectFit:"contain",
               userSelect:"none",
-              filter: glitch
-                ? "drop-shadow(2px 0 0 #ef4444) drop-shadow(-2px 0 0 #f59e0b) brightness(1.1)"
-                : "brightness(1.05)",
-              transition:"filter 0.1s",
+              filter:"brightness(1.05) contrast(1.02)",
             }}
           />
         </div>
 
         {/* Tagline */}
-        <p style={{fontFamily:"'DM Mono',monospace",fontSize:"clamp(8px,2vw,11px)",color:"rgba(245,158,11,0.55)",letterSpacing:"0.65em",textTransform:"uppercase",marginBottom:40,animation:"ls-pulse 3s ease infinite"}}>
+        <p className="ls-tag" style={{
+          fontFamily:"'DM Mono',monospace",
+          fontSize:"clamp(8px,1.8vw,10px)",
+          color:"rgba(245,158,11,0.45)",
+          letterSpacing:"0.6em",
+          textTransform:"uppercase",
+          marginBottom:36,
+        }}>
           ✦ BARBERSHOP · HATTIESBURG MS ✦
         </p>
 
-        {/* SEGMENTED PROGRESS BAR */}
-        <div style={{width:"min(420px,85vw)",marginBottom:12}}>
-          <div style={{display:"flex",justifyContent:"space-between",marginBottom:8}}>
-            <span style={{fontFamily:"'DM Mono',monospace",fontSize:8,color:"rgba(245,158,11,0.5)",letterSpacing:"0.4em",textTransform:"uppercase"}}>LOADING</span>
-            <span style={{fontFamily:"'DM Mono',monospace",fontSize:8,color:"#f59e0b",letterSpacing:"0.3em",fontWeight:500}}>{pct}%</span>
+        {/* Progress bar */}
+        <div className="ls-bar" style={{ width:"min(380px,80vw)", marginBottom:10 }}>
+          <div style={{ display:"flex", justifyContent:"space-between", marginBottom:7 }}>
+            <span style={{ fontFamily:"'DM Mono',monospace", fontSize:8,
+              color:"rgba(245,158,11,0.4)", letterSpacing:"0.4em", textTransform:"uppercase" }}>
+              LOADING
+            </span>
+            <span style={{ fontFamily:"'DM Mono',monospace", fontSize:8,
+              color:"#f59e0b", letterSpacing:"0.3em", fontWeight:500 }}>
+              {pct}%
+            </span>
           </div>
-          <div style={{display:"flex",gap:3}}>
-            {Array.from({length:segments}).map((_,i)=>{
+          <div style={{ display:"flex", gap:2.5 }}>
+            {Array.from({ length: segments }).map((_, i) => {
               const isFilled = i < filled;
               const isActive = i === filled;
               return (
-                <div key={i}
-                  className={isActive?"ls-bar-seg":""}
-                  style={{
-                    flex:1, height:10,
-                    background: isFilled
-                      ? i < segments*0.5 ? "#f59e0b"
-                        : i < segments*0.8 ? "#fbbf24"
-                        : "#ef4444"
-                      : "rgba(255,255,255,0.05)",
-                    clipPath:"polygon(0 0,calc(100% - 2px) 0,100% 2px,100% 100%,2px 100%,0 calc(100% - 2px))",
-                    transition:"background 0.15s",
-                    boxShadow:isFilled?"0 0 6px rgba(245,158,11,0.5)":"none",
-                  }}
-                />
+                <div key={i} className="ls-seg" style={{
+                  background: isFilled
+                    ? i < segments * 0.5 ? "#f59e0b"
+                      : i < segments * 0.8 ? "#fbbf24"
+                      : "#ef4444"
+                    : "rgba(255,255,255,0.04)",
+                  boxShadow: isFilled
+                    ? `0 0 ${isActive ? 10 : 4}px rgba(245,158,11,${isActive ? 0.8 : 0.35})`
+                    : "none",
+                }}/>
               );
             })}
           </div>
         </div>
 
-        {/* STATUS TEXT */}
-        <div style={{height:16,overflow:"hidden",marginBottom:32}}>
-          <p style={{fontFamily:"'DM Mono',monospace",fontSize:9,color:"rgba(245,158,11,0.4)",letterSpacing:"0.5em",textTransform:"uppercase",margin:0,animation:"ls-slidein 0.3s ease both"}}
-            key={Math.floor(pct/10)}>
-            {pct<25?"CONNECTING TO SERVER...":pct<45?"LOADING BARBER PROFILES...":pct<65?"SYNCING APPOINTMENTS...":pct<82?"CALIBRATING PRECISION...":pct<95?"ALMOST READY...":"HEADZ UP — LET'S GO"}
-          </p>
-        </div>
-
-        {/* BOTTOM DECORATORS */}
-        <div style={{display:"flex",alignItems:"center",gap:16}}>
-          <div style={{width:20,height:20,border:"1px solid rgba(245,158,11,0.4)",transform:`rotate(${tick*4}deg)`,transition:"none",clipPath:"polygon(50% 0%,100% 25%,100% 75%,50% 100%,0% 75%,0% 25%)",background:"rgba(245,158,11,0.06)"}}/>
-          <div style={{display:"flex",gap:4}}>
-            {[0,1,2,3,4].map(i=>(
-              <div key={i} style={{width:4,height:8+Math.sin((tick*0.3)+i*0.8)*6,background:`rgba(245,158,11,${0.2+Math.abs(Math.sin((tick*0.3)+i*0.8))*0.7})`,transition:"height 0.08s",boxShadow:`0 0 4px rgba(245,158,11,${Math.abs(Math.sin((tick*0.3)+i*0.8))*0.5})`}}/>
-            ))}
-          </div>
-          <div style={{width:20,height:20,border:"1px solid rgba(239,68,68,0.4)",transform:`rotate(${-tick*3}deg)`,transition:"none",clipPath:"polygon(50% 0%,100% 25%,100% 75%,50% 100%,0% 75%,0% 25%)",background:"rgba(239,68,68,0.06)"}}/>
-        </div>
+        {/* Status text */}
+        <p className="ls-status" key={label} style={{
+          fontFamily:"'DM Mono',monospace",
+          fontSize:9,
+          color:"rgba(245,158,11,0.38)",
+          letterSpacing:"0.45em",
+          textTransform:"uppercase",
+          marginBottom:0,
+        }}>
+          {label}
+        </p>
 
       </div>
     </div>
