@@ -126,6 +126,31 @@ def send_booking_confirmation(appointment):
 </body></html>"""
         _sendgrid_send(barber_email, f"📅 New Booking — {client_name} at {appt_time}", barber_plain, barber_html)
 
+    # ── Push notifications — mirrors the email ────────────────────────────────
+    try:
+        _svc  = appointment.service.name if appointment.service else "appointment"
+        _bar  = appointment.barber.name  if appointment.barber  else "your barber"
+        _dt   = appointment.date.strftime("%b %d") if appointment.date else ""
+        _tm   = appointment.time.strftime("%I:%M %p").lstrip("0") if appointment.time else ""
+        _cnm  = appointment.user.first_name or appointment.user.username
+        send_push_notification(
+            appointment.user,
+            title="Booking Confirmed ✅",
+            body=f"{_svc} with {_bar} — {_dt} at {_tm}",
+            notif_type=NOTIF_BOOKING_CONFIRMED,
+            url="/dashboard"
+        )
+        if appointment.barber and appointment.barber.user:
+            send_push_notification(
+                appointment.barber.user,
+                title="New Booking 📅",
+                body=f"{_cnm} booked {_svc} — {_dt} at {_tm}",
+                notif_type=NOTIF_NEW_BOOKING,
+                url="/barber-dashboard"
+            )
+    except Exception: pass
+
+
 def _html_email_wrapper(logo, icon_html, headline, subhead, body_rows, cta_url, cta_label, footer="HEADZ UP Barbershop · 2509 W 4th St, Hattiesburg, MS 39401"):
     """Shared HTML email shell."""
     return f"""<!DOCTYPE html>
@@ -432,6 +457,34 @@ def send_reschedule_request_email(reschedule_request):
     _send()  # synchronous
 
 
+    # ── Push notification — mirrors the reschedule request email ─────────────
+    try:
+        _rr  = reschedule_request
+        _appt = _rr.appointment
+        _cnm  = _appt.user.first_name or _appt.user.username
+        _svc  = _appt.service.name if _appt.service else "appointment"
+        _ndt  = _rr.new_date.strftime("%b %d") if _rr.new_date else ""
+        _ntm  = _rr.new_time.strftime("%I:%M %p").lstrip("0") if _rr.new_time else ""
+        if _rr.initiated_by == "client":
+            if _appt.barber and _appt.barber.user:
+                send_push_notification(
+                    _appt.barber.user,
+                    title="Reschedule Request ↻",
+                    body=f"{_cnm} wants to reschedule their {_svc} to {_ndt} at {_ntm}.",
+                    notif_type=NOTIF_RESCHEDULE_REQUEST,
+                    url="/barber-dashboard"
+                )
+        else:
+            send_push_notification(
+                _appt.user,
+                title="Reschedule Proposed ↻",
+                body=f"Your barber wants to move your {_svc} to {_ndt} at {_ntm}.",
+                notif_type=NOTIF_RESCHEDULE_REQUEST,
+                url="/dashboard"
+            )
+    except Exception: pass
+
+
 def send_reschedule_response_email(reschedule_request, accepted):
     """
     Notify the CLIENT that their reschedule was approved or declined.
@@ -598,6 +651,31 @@ def send_reschedule_response_email(reschedule_request, accepted):
     _send()  # synchronous
 
 
+    # ── Push notification — mirrors the reschedule response email ────────────
+    try:
+        _rr   = reschedule_request
+        _appt = _rr.appointment
+        _ndt  = _rr.new_date.strftime("%b %d") if _rr.new_date else ""
+        _ntm  = _rr.new_time.strftime("%I:%M %p").lstrip("0") if _rr.new_time else ""
+        if accepted:
+            send_push_notification(
+                _appt.user,
+                title="Reschedule Approved ✅",
+                body=f"New time confirmed: {_ndt} at {_ntm}. Check your dashboard.",
+                notif_type=NOTIF_RESCHEDULE_RESPONSE,
+                url="/dashboard"
+            )
+        else:
+            send_push_notification(
+                _appt.user,
+                title="Reschedule Declined",
+                body="Your original appointment time still stands. Check your dashboard.",
+                notif_type=NOTIF_RESCHEDULE_RESPONSE,
+                url="/dashboard"
+            )
+    except Exception: pass
+
+
 def send_cancellation_email(appointment, cancelled_by="client"):
     """
     Fires when an appointment is cancelled.
@@ -758,6 +836,31 @@ def send_cancellation_email(appointment, cancelled_by="client"):
     _send()  # synchronous so Railway doesn't kill it
 
 
+    # ── Push notification — mirrors the cancellation email ───────────────────
+    try:
+        _svc = appointment.service.name if appointment.service else "appointment"
+        _dt  = appointment.date.strftime("%b %d") if appointment.date else ""
+        _cnm = appointment.user.first_name or appointment.user.username
+        if cancelled_by == "barber":
+            send_push_notification(
+                appointment.user,
+                title="Appointment Cancelled ❌",
+                body=f"Your {_svc} on {_dt} was cancelled by your barber.",
+                notif_type=NOTIF_BOOKING_CANCELLED,
+                url="/dashboard"
+            )
+        else:
+            if appointment.barber and appointment.barber.user:
+                send_push_notification(
+                    appointment.barber.user,
+                    title="Booking Cancelled",
+                    body=f"{_cnm} cancelled their {_svc} on {_dt}.",
+                    notif_type=NOTIF_BOOKING_CANCELLED,
+                    url="/barber-dashboard"
+                )
+    except Exception: pass
+
+
 def send_welcome_email(user):
     """
     Sent immediately when a new client registers.
@@ -839,6 +942,19 @@ def send_welcome_email(user):
             logger.error(f"send_welcome_email failed: {e}", exc_info=True)
 
     _send()  # synchronous
+
+
+    # ── Push notification — mirrors the welcome email ─────────────────────────
+    try:
+        _nm = user.first_name or user.username
+        send_push_notification(
+            user,
+            title="Welcome to HEADZ UP ✂️",
+            body=f"Hey {_nm}! Your account is ready. Book your first cut anytime.",
+            notif_type=NOTIF_SIGNUP_CLIENT,
+            url="/book"
+        )
+    except Exception: pass
 
 
 def send_deposit_paid_email(appointment):
@@ -937,6 +1053,30 @@ def send_deposit_paid_email(appointment):
     _send()  # synchronous
 
 
+    # ── Push notification — mirrors the deposit email ─────────────────────────
+    try:
+        _cnm = appointment.user.first_name or appointment.user.username
+        _svc = appointment.service.name if appointment.service else "appointment"
+        _dt  = appointment.date.strftime("%b %d") if appointment.date else ""
+        _dep = appointment.deposit_amount or "10.00"
+        if appointment.barber and appointment.barber.user:
+            send_push_notification(
+                appointment.barber.user,
+                title="Deposit Paid 💰",
+                body=f"{_cnm} paid ${_dep} deposit for {_svc} on {_dt}.",
+                notif_type=NOTIF_BOOKING_CONFIRMED,
+                url="/barber-dashboard"
+            )
+        send_push_notification(
+            appointment.user,
+            title="Deposit Confirmed ✅",
+            body=f"Your ${_dep} deposit for {_svc} on {_dt} is confirmed.",
+            notif_type=NOTIF_BOOKING_CONFIRMED,
+            url="/dashboard"
+        )
+    except Exception: pass
+
+
 def send_review_request_email(appointment):
     """
     Sent to the CLIENT after the barber marks their appointment as completed.
@@ -1022,6 +1162,20 @@ def send_review_request_email(appointment):
             logger.error(f"send_review_request_email failed: {e}", exc_info=True)
 
     _send()  # synchronous
+
+
+    # ── Push notification — mirrors the review request email ─────────────────
+    try:
+        _bar = appointment.barber.name if appointment.barber else "your barber"
+        _svc = appointment.service.name if appointment.service else "your cut"
+        send_push_notification(
+            appointment.user,
+            title="How was your cut? ⭐",
+            body=f"Rate your {_svc} with {_bar} — takes 10 seconds.",
+            notif_type=NOTIF_REVIEW_REQUEST,
+            url="/dashboard"
+        )
+    except Exception: pass
 
 
 def _twilio_send(to_phone, body):
@@ -1379,6 +1533,17 @@ def sms_strike(user, profile, reason):
     _send()  # synchronous
 
 
+    # ── Push notification — mirrors the strike SMS ────────────────────────────
+    try:
+        send_push_notification(
+            user,
+            title="Strike Issued ⚠️",
+            body=f"Strike #{profile.strike_count} added. Your next deposit is ${profile.get_deposit_fee():.2f}.",
+            notif_type=NOTIF_STRIKE,
+            url="/dashboard"
+        )
+    except Exception: pass
+
 def sms_welcome(user):
     """New client gets a welcome SMS — fires synchronously on registration."""
     try:
@@ -1394,6 +1559,18 @@ def sms_welcome(user):
             f"2509 W 4th St, Hattiesburg MS"
         )
 
+
+    # ── Push notification — mirrors the welcome SMS ───────────────────────────
+    try:
+        _nm = user.first_name or user.username
+        send_push_notification(
+            user,
+            title="Welcome to HEADZ UP ✂️",
+            body=f"Hey {_nm}! Book your first cut anytime at headzupp.com",
+            notif_type=NOTIF_SIGNUP_CLIENT,
+            url="/book"
+        )
+    except Exception: pass
 
 def sms_review_request(appointment):
     """Client gets SMS asking for a review after their cut."""
