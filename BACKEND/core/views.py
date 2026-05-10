@@ -5297,7 +5297,7 @@ class BarberRescheduleListView(APIView):
             send_reschedule_response_email(rr_full, accepted=True)
             try:
                 send_push_notification(
-                    rr_full.client,
+                    rr_full.appointment.user,
                     title="Reschedule Approved ✅",
                     body="Your reschedule request has been approved. Check your new time in the dashboard.",
                     notif_type=NOTIF_RESCHEDULE_RESPONSE,
@@ -5317,7 +5317,7 @@ class BarberRescheduleListView(APIView):
             send_reschedule_response_email(rr_full, accepted=False)
             try:
                 send_push_notification(
-                    rr_full.client,
+                    rr_full.appointment.user,
                     title="Reschedule Declined",
                     body="Your reschedule request was declined. Your original appointment time stands.",
                     notif_type=NOTIF_RESCHEDULE_RESPONSE,
@@ -5368,8 +5368,6 @@ class ClientRescheduleRequestView(APIView):
             "appointment__barber",
             "appointment__barber__user",
             "appointment__service",
-            "client",
-            "barber",
         ).get(pk=rr.pk)
 
         logger.info(f"Reschedule request created id={rr.pk} for appt={appt.pk} by {request.user.username}")
@@ -5442,7 +5440,7 @@ class RescheduleResponseView(APIView):
             send_reschedule_response_email(rr_full, accepted=True)
             try:
                 send_push_notification(
-                    rr_full.client,
+                    rr_full.appointment.user,
                     title="Reschedule Approved ✅",
                     body=f"Your reschedule request has been approved. Check your dashboard for the new time.",
                     notif_type=NOTIF_RESCHEDULE_RESPONSE,
@@ -5461,7 +5459,7 @@ class RescheduleResponseView(APIView):
             ).get(pk=rr.pk)
             send_reschedule_response_email(rr_full, accepted=False)
             try:
-                send_push_notification(rr_full.client, title="Reschedule Declined", body="Your reschedule request was declined. Original time stands.", notif_type=NOTIF_RESCHEDULE_RESPONSE, url="/dashboard")
+                send_push_notification(rr_full.appointment.user, title="Reschedule Declined", body="Your reschedule request was declined. Original time stands.", notif_type=NOTIF_RESCHEDULE_RESPONSE, url="/dashboard")
             except Exception: pass
             sms_reschedule_response(rr_full, accepted=False)
             return Response({"status": "rejected", "message": "Reschedule declined — client has been notified."}, status=200)
