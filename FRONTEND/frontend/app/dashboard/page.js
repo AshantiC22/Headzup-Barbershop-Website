@@ -481,8 +481,7 @@ function DashboardContent() {
   const [strikeInfo,   setStrikeInfo]   = useState(null);
   const [phoneNumber,  setPhoneNumber]  = useState("");
   const [editingPhone, setEditingPhone] = useState(false);
-  const [phoneInput,   setPhoneInput]   = useState("");
-  const [phoneSaving,  setPhoneSaving]  = useState(false);
+
   // Review
   const [showReview,   setShowReview]   = useState(false);
   const [reviewAppt,   setReviewAppt]   = useState(null);
