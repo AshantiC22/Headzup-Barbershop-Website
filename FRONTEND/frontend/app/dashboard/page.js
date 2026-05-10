@@ -462,6 +462,8 @@ function DashboardContent() {
   const router       = useRouter();
   const searchParams = useSearchParams();
   const { isMobile } = useBreakpoint();
+  const { addNotif, showPermitPrompt } = useNotifications() || {};
+  useEffect(()=>{ showPermitPrompt?.(); },[showPermitPrompt]);
 
   const [user,         setUser]         = useState(null);
   const [appointments, setAppointments] = useState([]);

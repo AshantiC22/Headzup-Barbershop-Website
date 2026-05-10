@@ -738,6 +738,8 @@ function useConfirm() {
 
 export default function BarberDashboard(){
   const router = useRouter();
+  const { addNotif, showPermitPrompt } = useNotifications() || {};
+  useEffect(()=>{ showPermitPrompt?.(); },[showPermitPrompt]);
   const {isMobile} = useBreakpoint();
 
   /* state */
@@ -883,6 +885,13 @@ export default function BarberDashboard(){
   },[]);
 
   useEffect(()=>{if(activeTab==="schedule")loadSchedule(selectedDate);},[selectedDate,activeTab,loadSchedule]);
+
+  // Auto-refresh schedule every 60s so cancellations appear without manual reload
+  useEffect(()=>{
+    if(activeTab!=="schedule") return;
+    const id = setInterval(()=>loadSchedule(selectedDate), 60000);
+    return ()=>clearInterval(id);
+  },[activeTab, selectedDate, loadSchedule]);
 
   /* load all appt dates for calendar — fetch current + next month */
   const loadCalendarDates = useCallback(async (year, month) => {
