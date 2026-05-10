@@ -471,6 +471,9 @@ function DashboardContent() {
   const [activeTab,    setActiveTab]    = useState("upcoming");
   const [toast,        setToast]        = useState(null);
   const [cancelling,   setCancelling]   = useState(null);
+  const [showPhonePrompt, setShowPhonePrompt] = useState(false);
+  const [phoneInput,      setPhoneInput]      = useState("");
+  const [phoneSaving,     setPhoneSaving]     = useState(false);
   const [modal,        setModal]        = useState(null);
   const [modalCb,      setModalCb]      = useState(null);
   const [reschedAppt,  setReschedAppt]  = useState(null);
@@ -600,7 +603,11 @@ function DashboardContent() {
 
       if(isLate){
         try{ await API.post(`barber/appointments/${appt.id}/strike/`, { reason:"late_cancel" }); }catch{}
-        API.get("client/strike-status/").then(r=>setStrikeInfo(r.data)).catch(()=>{});
+        API.get("client/strike-status/").then(r=>{
+        setStrikeInfo(r.data);
+        // Show phone prompt if no phone saved
+        if(!r.data.phone) setShowPhonePrompt(true);
+      }).catch(()=>{});
         showToast("Appointment cancelled. A strike has been issued.","error");
       } else {
         showToast("Appointment cancelled.");
@@ -677,6 +684,57 @@ function DashboardContent() {
           onClose={()=>setReschedAppt(null)}
           onDone={(msg)=>{ showToast(msg); setReschedAppt(null); }}
         />
+      )}
+
+      {/* Phone number prompt banner */}
+      {showPhonePrompt && (
+        <div style={{background:"rgba(245,158,11,0.06)",border:"1px solid rgba(245,158,11,0.2)",
+          padding:"14px 20px",margin:"0 0 16px",
+          clipPath:"polygon(0 0,calc(100% - 10px) 0,100% 10px,100% 100%,10px 100%,0 calc(100% - 10px))"}}>
+          <div style={{display:"flex",alignItems:"center",gap:12,flexWrap:"wrap"}}>
+            <span style={{fontSize:16}}>📱</span>
+            <div style={{flex:1,minWidth:200}}>
+              <p style={{...SF,fontSize:7,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.1em",color:"white",marginBottom:3}}>
+                Add your phone number
+              </p>
+              <p style={{...MONO,fontSize:11,color:"#71717a"}}>
+                Get SMS reminders before your cut
+              </p>
+            </div>
+            <div style={{display:"flex",gap:8,alignItems:"center"}}>
+              <input
+                value={phoneInput}
+                onChange={e=>setPhoneInput(e.target.value)}
+                placeholder="(601) 555-0100"
+                style={{padding:"8px 12px",background:"#0a0a0a",border:"1px solid rgba(245,158,11,0.3)",
+                  color:"white",...MONO,fontSize:12,width:160,outline:"none"}}
+                onFocus={e=>e.target.style.borderColor="#f59e0b"}
+                onBlur={e=>e.target.style.borderColor="rgba(245,158,11,0.3)"}
+              />
+              <button
+                disabled={phoneSaving}
+                onClick={async()=>{
+                  if(!phoneInput.trim()) return;
+                  setPhoneSaving(true);
+                  try{
+                    await API.patch("client/update-phone/",{phone:phoneInput.trim()});
+                    setShowPhonePrompt(false);
+                    showToast("Phone number saved! You will now receive SMS reminders.");
+                  }catch(e){
+                    showToast("Could not save phone number.","error");
+                  }finally{setPhoneSaving(false);}
+                }}
+                style={{padding:"8px 16px",background:"#f59e0b",border:"none",color:"black",
+                  ...SF,fontSize:6,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.15em",cursor:"pointer"}}>
+                {phoneSaving ? "..." : "Save"}
+              </button>
+              <button onClick={()=>setShowPhonePrompt(false)}
+                style={{background:"transparent",border:"none",color:"#52525b",...MONO,fontSize:16,cursor:"pointer",lineHeight:1}}>
+                ×
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Toast */}

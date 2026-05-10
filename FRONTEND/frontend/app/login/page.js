@@ -197,11 +197,23 @@ function LoginContent() {
     if (regPass !== regPass2) errs.regPass2 = "Passwords don't match";
     if (!regSecQ) errs.regSecQ = "Choose a security question";
     if (!regSecA.trim()) errs.regSecA = "Enter your security answer";
+    // Phone required + normalize
+    const rawPhone = regPhone.trim().replace(/\D/g,"");
+    if (!rawPhone) {
+      errs.regPhone = "Phone number is required for booking reminders";
+    } else if (rawPhone.length < 10) {
+      errs.regPhone = "Enter a valid 10-digit phone number";
+    }
     if (Object.keys(errs).length) { setFieldErrors(errs); return; }
+
+    // Normalize to E.164
+    const normPhone = rawPhone.length === 10 ? `+1${rawPhone}`
+                    : rawPhone.length === 11 && rawPhone.startsWith("1") ? `+${rawPhone}`
+                    : `+1${rawPhone}`;
 
     setLoading(true);
     try {
-      await API.post("register/", { username: regUser.trim(), email: regEmail.trim(), password: regPass, phone: regPhone.trim() });
+      await API.post("register/", { username: regUser.trim(), email: regEmail.trim(), password: regPass, phone: normPhone });
       const res = await API.post("token/", { username: regUser.trim(), password: regPass });
       localStorage.setItem("access",  res.data.access);
       localStorage.setItem("refresh", res.data.refresh);
@@ -508,8 +520,11 @@ function LoginContent() {
                   placeholder="you@email.com" error={fieldErrors.regEmail} autoComplete="email" />
 
                 <div>
-                  <Field label="Phone Number" type="tel" value={regPhone} onChange={e => setRegPhone(e.target.value)}
+                  <Field label="Phone Number *" type="tel" value={regPhone} onChange={e => setRegPhone(e.target.value)}
                     placeholder="(601) 555-0100" error={fieldErrors.regPhone} autoComplete="tel" />
+                  <p style={{fontFamily:"'DM Mono',monospace",fontSize:9,color:"#52525b",marginTop:-8,letterSpacing:"0.1em"}}>
+                    Required for booking reminders & notifications
+                  </p>
                   <p style={{ ...mono, fontSize: 9, color: "#52525b", marginTop: 6 }}>
                     Optional — used for appointment text reminders only
                   </p>
