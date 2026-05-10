@@ -113,17 +113,31 @@ function RescheduleModal({ appt, onClose, onDone }) {
     if (!newDate || !newTime) { setErr("Please pick a date and time."); return; }
     setBusy(true); setErr("");
     try {
-      // Convert "9:30 AM" → "09:30:00"
-      const [time, mod] = newTime.split(" ");
-      let [h, m] = time.split(":");
-      if (h === "12") h = "00";
-      if (mod === "PM") h = String(parseInt(h) + 12);
-      const time24 = `${h.padStart(2,"0")}:${m}:00`;
+      // Convert "9:30 AM" / "9:30 PM" → "09:30:00"
+      let time24;
+      if (newTime.includes(":")) {
+        // Already HH:MM:SS format from slots API
+        if (newTime.match(/^\d{2}:\d{2}:\d{2}$/)) {
+          time24 = newTime;
+        } else {
+          const parts = newTime.split(" ");
+          const mod   = parts[1] || "";
+          const [hStr, mStr] = parts[0].split(":");
+          let hr = parseInt(hStr);
+          if (mod === "PM" && hr !== 12) hr += 12;
+          if (mod === "AM" && hr === 12) hr = 0;
+          time24 = `${String(hr).padStart(2,"0")}:${mStr}:00`;
+        }
+      } else {
+        time24 = newTime;
+      }
       await API.post(`appointments/${appt.id}/reschedule/`, { new_date: newDate, new_time: time24 });
       onDone("Reschedule request sent to your barber!");
       onClose();
     } catch(e) {
-      setErr(e.response?.data?.error || "Could not send reschedule request.");
+      const msg = e.response?.data?.error || e.response?.data?.detail || e.message || "Could not send reschedule request.";
+      console.error("[Reschedule] error:", e.response?.data || e);
+      setErr(msg);
     } finally { setBusy(false); }
   };
 
