@@ -1,40 +1,44 @@
-Technical Overview
+HEADZ UP Barbershop
+A production-grade barbershop management and booking platform built and deployed solo. Real clients, live payments, and a full notification system — from architecture to deployment.
+🔗 Live Site: headzupp.com
 
-As a software engineer, I built this platform to explore the intersection of 3D rendering and responsive web design. The project focuses on high-performance visuals and smooth user interactions.
+Tech Stack
+LayerTechnologyFrontendNext.js 16, React, Tailwind CSSBackendDjango REST Framework, PythonDatabasePostgreSQLHostingVercel (frontend), Railway (backend)PaymentsStripe ConnectEmailSendGridSMSTwilio (A2P 10DLC)Push NotificationsWeb Push API (VAPID)AuthJWT (SimpleJWT), Role-Based Access ControlCI/CDGitHub ActionsPWAService Workers, Web App Manifest
 
-Key Features
-3D Interactive Hero: Leveraged Three.js to create engaging 3D elements that react to user input.
+Features
 
-Utility-First Design: Implemented Tailwind CSS for a fully responsive, modern UI that maintains performance across all device types.
+Real-time booking engine — availability management with barber schedules, time-off blocks, and walk-in slots
+Stripe Connect — payments route directly to the barber's bank account with an automatic $1.50 platform fee per transaction
+Full notification system — email, SMS, and push notifications across all 14 booking triggers
+PWA — installable on iOS and Android, offline-capable
+Role-based dashboards — separate client and barber portals with distinct permission layers
+Strike and deposit system — automated fee escalation for no-shows and late cancellations
+Client management — VIP flags, notes, booking history, and strike tracking
+Mass messaging — email and SMS blast to all clients
+News feed — barber posts that push to all clients
+A2P 10DLC compliance — registered SMS campaign with US carriers
+Custom design system — rubber hose animated UI with loading screen and micro-interactions
+CI/CD pipeline — automated deploys via GitHub Actions
 
-Modular Architecture: Organized with clean ES6+ JavaScript to ensure scalability as features are added.
 
-🛠️ Tech Stack
-Frontend: JavaScript (ES6+), HTML5, CSS3
+Screenshots
 
-Graphics: Three.js (WebGL)
+Coming soon
 
-Styling: Tailwind CSS
 
-Backend (In-Progress): Python integration for appointment scheduling and customer data persistence.
+Local Setup
+bash# Clone the repo
+git clone https://github.com/AshantiC22/Headzup-Barbershop-Website.git
+cd Headzup-Barbershop-Website
 
-Project Structure & Setup
+# Backend
+cd backend
+pip install -r requirements.txt
+cp .env.example .env  # add your environment variables
+python manage.py migrate
+python manage.py runserver
 
-├── assets/             # 3D models and textures
-├── src/                # JavaScript logic and Three.js scenes
-├── index.html          # Main entry point
-├── .gitignore          # Version control management
-└── README.md           # Documentation
-To Run Locally:
-Clone the repository:
-
-Bash: git clone https://github.com/AshantiC22/Headzup-Barbershop-Website.git
-Open index.html in your browser (or use a Live Server extension).
-
- Upcoming Milestones
- Backend Development: Building a Python API (FastAPI) to bridge the 3D frontend with a database.
-  Database Integration (PostgreSQL): I am currently learning **PostgreSQL** to implement a robust relational schema for:
-  * Secure User Authentication
-  * Barber availability and appointment scheduling
-  * Persistence of user booking history
-*Deployment: Moving from local development to a cloud-hosted environment (e.g., Render or Railway).
+# Frontend
+cd frontend
+npm install
+npm run dev
