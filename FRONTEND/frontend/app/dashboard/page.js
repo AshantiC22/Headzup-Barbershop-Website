@@ -571,7 +571,11 @@ function DashboardContent() {
         showToast("Appointment cancelled.");
         addNotif?.("Appointment Cancelled","Your appointment has been cancelled.","booking_cancelled","/dashboard");
       }
-    }catch{ showToast("Could not cancel.","error"); }
+    }catch(err){
+      const msg = err?.response?.data?.detail || err?.response?.data?.error || err?.message || "Could not cancel.";
+      console.error("[Cancel] error:", err?.response?.data || err);
+      showToast(msg, "error");
+    }
     finally{ setCancelling(null); }
   };
 

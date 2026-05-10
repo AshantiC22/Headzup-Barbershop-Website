@@ -1992,9 +1992,15 @@ class AppointmentViewSet(viewsets.ModelViewSet):
                 appt_full = Appointment.objects.select_related(
                     "user", "barber", "barber__user", "service"
                 ).get(pk=instance.pk)
-                # Notify barber
-                send_cancellation_email(appt_full, cancelled_by="client")
-                sms_cancellation(appt_full, cancelled_by="client")
+                # Notify barber — wrapped so notification errors don't break cancel
+                try:
+                    send_cancellation_email(appt_full, cancelled_by="client")
+                except Exception as _e:
+                    logger.error(f"Cancellation email failed: {_e}")
+                try:
+                    sms_cancellation(appt_full, cancelled_by="client")
+                except Exception as _e:
+                    logger.error(f"Cancellation SMS failed: {_e}")
                 # Confirm cancellation to client
                 try:
                     client_email = appt_full.user.email
@@ -2039,15 +2045,9 @@ class AppointmentViewSet(viewsets.ModelViewSet):
                     logging.getLogger(__name__).error(f"Client cancel notification failed: {client_notify_err}")
         except IntegrityError:
             raise serializers.ValidationError("That time slot is already booked. Please choose another.")
-            try:
-                send_push_notification(
-                    appt.user,
-                    title="Appointment Cancelled",
-                    body=f"Your appointment has been cancelled.",
-                    notif_type=NOTIF_BOOKING_CANCELLED,
-                    url="/dashboard"
-                )
-            except Exception: pass
+        except Exception as e:
+            logger.error(f"perform_update error: {e}", exc_info=True)
+            raise
 
     def perform_destroy(self, instance):
         """Client cancels appointment — email the barber."""
