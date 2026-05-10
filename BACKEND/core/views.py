@@ -3915,6 +3915,8 @@ class NewsletterPostManageView(APIView):
         if not request.user.is_staff:
             return Response({"error": "Barbers only"}, status=403)
         from core.models import NewsletterPost
+        import logging
+        _logger = logging.getLogger(__name__)
         barber = get_barber_for_user(request.user)
         title    = request.data.get("title", "").strip()
         body     = request.data.get("body",  "").strip()
@@ -3927,6 +3929,30 @@ class NewsletterPostManageView(APIView):
             barber=barber, title=title, body=body,
             category=category, emoji=emoji, pinned=pinned,
         )
+
+        # Push notification to all clients who have booked with this barber
+        try:
+            client_ids = Appointment.objects.filter(
+                barber=barber
+            ).values_list("user_id", flat=True).distinct()
+
+            push_count = 0
+            for client in User.objects.filter(id__in=client_ids):
+                try:
+                    send_push_notification(
+                        client,
+                        title=f"{emoji} {barber.name}",
+                        body=title,
+                        notif_type=NOTIF_BLAST,
+                        url="/newsletter"
+                    )
+                    push_count += 1
+                except Exception:
+                    pass
+            _logger.info(f"Newsletter push sent to {push_count} clients for post {post.id}")
+        except Exception as _e:
+            _logger.error(f"Newsletter push failed: {_e}")
+
         return Response({"message": "Post created", "id": post.id}, status=201)
 
     def patch(self, request, pk=None):

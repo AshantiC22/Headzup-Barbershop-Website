@@ -59,7 +59,7 @@ function getConfig(type) {
     new_booking:         { icon:"📅", color:"#4ade80", label:"New Booking"         },
     signup_client:       { icon:"✂️", color:"#f59e0b", label:"Welcome"             },
     signup_barber:       { icon:"✂️", color:"#f59e0b", label:"Welcome"             },
-    blast:               { icon:"📣", color:"#a78bfa", label:"Message"             },
+    blast:               { icon:"📣", color:"#a78bfa", label:"News from your barber"},
   };
   return configs[type] || { icon:"🔔", color:"#f59e0b", label:"HEADZ UP" };
 }
