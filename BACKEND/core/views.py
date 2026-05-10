@@ -1178,10 +1178,50 @@ def send_review_request_email(appointment):
     except Exception: pass
 
 
+def _textbee_send(to_phone, body):
+    """
+    Send SMS via Textbee (free — uses your Android phone as gateway).
+    Set TEXTBEE_API_KEY and TEXTBEE_DEVICE_ID in Railway env vars.
+    Get these from textbee.dev after installing the app on an Android phone.
+    """
+    import urllib.request, urllib.parse, json as _json, logging
+    logger = logging.getLogger(__name__)
+
+    api_key   = getattr(settings, "TEXTBEE_API_KEY",   "")
+    device_id = getattr(settings, "TEXTBEE_DEVICE_ID", "")
+
+    if not api_key or not device_id:
+        return False
+
+    if not to_phone or not to_phone.startswith("+"):
+        return False
+
+    try:
+        payload = _json.dumps({
+            "receivers": [to_phone],
+            "message":   body,
+        }).encode("utf-8")
+        req = urllib.request.Request(
+            f"https://api.textbee.dev/api/v1/gateway/devices/{device_id}/sendSMS",
+            data=payload,
+            headers={
+                "x-api-key":    api_key,
+                "Content-Type": "application/json",
+            },
+            method="POST",
+        )
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            logger.info(f"Textbee SMS sent to {to_phone} — {resp.status}")
+            return True
+    except Exception as e:
+        logger.error(f"Textbee SMS failed to {to_phone}: {e}")
+        return False
+
+
 def _twilio_send(to_phone, body):
     """
     Send SMS via Twilio REST API — no SDK needed, pure HTTP.
-    Silently skips if TWILIO_ACCOUNT_SID / TWILIO_AUTH_TOKEN / TWILIO_FROM_NUMBER not set.
+    Falls back to Textbee if Twilio not configured.
     to_phone must be E.164 format: +16015551234
     """
     import urllib.request
@@ -1195,7 +1235,10 @@ def _twilio_send(to_phone, body):
     from_number = getattr(settings, "TWILIO_FROM_NUMBER", "")
 
     if not account_sid or not auth_token or not from_number:
-        logger.debug("Twilio not configured — skipping SMS")
+        # Try Textbee as free fallback
+        if _textbee_send(to_phone, body):
+            return
+        logger.debug("No SMS provider configured — skipping SMS")
         return
     if not to_phone or not to_phone.startswith("+"):
         logger.debug(f"Invalid phone number for SMS: {to_phone!r}")
@@ -1235,9 +1278,38 @@ class TestSMSView(APIView):
     """
     Admin-only endpoint to test Twilio SMS directly.
     POST /api/test-sms/ with {"to": "+16015551234"}
+    GET  /api/test-sms/ — shows all phone numbers saved in profiles
     Returns the raw Twilio response so we can debug.
     """
     permission_classes = [IsAdminUser]
+
+    def get(self, request):
+        """Show all saved phone numbers so barber can see who will get SMS."""
+        profiles = UserProfile.objects.select_related("user").exclude(phone="").exclude(phone__isnull=True)
+        data = [{
+            "username": p.user.username,
+            "name":     p.user.first_name or p.user.username,
+            "phone":    p.phone,
+            "email":    p.user.email,
+        } for p in profiles]
+        barber_phones = []
+        for barber in Barber.objects.select_related("user").all():
+            phone = _get_barber_phone(barber)
+            barber_phones.append({
+                "barber": barber.name,
+                "phone":  phone or "NOT SET",
+            })
+        return Response({
+            "client_phones": data,
+            "barber_phones": barber_phones,
+            "total_with_phone": len(data),
+            "total_clients": User.objects.filter(is_staff=False).count(),
+            "twilio_configured": bool(
+                getattr(settings, "TWILIO_ACCOUNT_SID", "") and
+                getattr(settings, "TWILIO_AUTH_TOKEN", "") and
+                getattr(settings, "TWILIO_FROM_NUMBER", "")
+            ),
+        })
 
     def post(self, request):
         import urllib.request, urllib.parse, base64
