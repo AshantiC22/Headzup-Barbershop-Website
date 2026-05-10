@@ -91,11 +91,12 @@ function ApptTicket({appt,onStatusChange,onReschedule,onCancel,onNotes,onStrike,
     catch{}finally{setSaving(false);}
   };
 
+  const isCancelled = status==="cancelled";
   return(
-    <div style={{background:T.surface,border:`1px solid ${T.border}`,overflow:"hidden",transition:"border-color 0.2s"}}
-      onMouseEnter={e=>e.currentTarget.style.borderColor=T.amberBorder}
-      onMouseLeave={e=>e.currentTarget.style.borderColor=T.border}>
-      <div style={{height:2,background:`linear-gradient(to right,${sCfg.color},transparent)`,opacity:0.7}}/>
+    <div style={{background:T.surface,border:`1px solid ${isCancelled?"rgba(82,82,91,0.15)":T.border}`,overflow:"hidden",transition:"border-color 0.2s",opacity:isCancelled?0.6:1}}
+      onMouseEnter={e=>{if(!isCancelled)e.currentTarget.style.borderColor=T.amberBorder;}}
+      onMouseLeave={e=>e.currentTarget.style.borderColor=isCancelled?"rgba(82,82,91,0.15)":T.border}>
+      <div style={{height:2,background:`linear-gradient(to right,${sCfg.color},transparent)`,opacity:isCancelled?0.3:0.7}}/>
       <div style={{padding:isMobile?"14px 12px":"16px 20px",display:"flex",alignItems:"center",gap:isMobile?8:16,flexWrap:"wrap"}}>
         <div style={{width:isMobile?52:64,flexShrink:0,textAlign:"center",padding:"8px 0",background:T.surface2,border:`1px solid ${T.border}`}}>
           <p style={{...sf,fontSize:isMobile?13:16,fontWeight:900,color:T.amber,lineHeight:1,margin:0}}>{fmtTime(appt.time)||"—"}</p>
@@ -127,7 +128,34 @@ function ApptTicket({appt,onStatusChange,onReschedule,onCancel,onNotes,onStrike,
           onMouseLeave={e=>{e.currentTarget.style.borderColor=T.border;e.currentTarget.style.color=T.muted;}}>▾</button>
       </div>
 
-      {open&&(
+      {open&&(status==="cancelled"||status==="no_show")&&(
+        <div style={{borderTop:`1px solid ${T.border}`,padding:"16px 20px",background:"rgba(82,82,91,0.04)"}}>
+          <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:12}}>
+            <span style={{fontSize:16}}>{status==="cancelled"?"❌":"⚡"}</span>
+            <div>
+              <p style={{...sf,fontSize:7,letterSpacing:"0.3em",textTransform:"uppercase",color:status==="cancelled"?"#71717a":"#f87171",marginBottom:3}}>
+                {status==="cancelled"?"Appointment Cancelled":"No Show"}
+              </p>
+              <p style={{...mono,fontSize:10,color:"#52525b",lineHeight:1.6}}>
+                {status==="cancelled"
+                  ? "This appointment was cancelled. No action needed."
+                  : "Client did not show up. You can issue a strike below."}
+              </p>
+            </div>
+          </div>
+          {status==="no_show"&&(
+            <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+              <button onClick={()=>onStrike&&onStrike(appt.id,"no_show")}
+                style={{padding:"7px 14px",background:"rgba(239,68,68,0.08)",border:"1px solid rgba(239,68,68,0.3)",color:"#f87171",...sf,fontSize:6,letterSpacing:"0.1em",textTransform:"uppercase",cursor:"pointer",transition:"all 0.2s"}}
+                onMouseEnter={e=>e.currentTarget.style.background="rgba(239,68,68,0.15)"}
+                onMouseLeave={e=>e.currentTarget.style.background="rgba(239,68,68,0.08)"}>
+                ⚡ Issue No Show Strike
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+      {open&&status!=="cancelled"&&status!=="no_show"&&(
         <div style={{borderTop:`1px solid ${T.border}`,padding:"16px 20px",background:T.amberDim}}>
 
           {/* Confirm Arrival — shown prominently for pending_shop */}
