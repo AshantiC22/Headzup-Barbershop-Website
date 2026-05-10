@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Syncopate:wght@700&family=DM+Mono:wght@400;500&display=swap');
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    width:1200px; height:630px; overflow:hidden;
+    background:#050505; color:white;
+    font-family:'Syncopate',sans-serif;
+    position:relative;
+  }
+
+  /* Barber pole stripes */
+  .pole-l { position:absolute;left:0;top:0;bottom:0;width:8px;background:repeating-linear-gradient(-45deg,#ef4444 0,#ef4444 8px,#fff 8px,#fff 16px,#f59e0b 16px,#f59e0b 24px,#000 24px,#000 32px);opacity:0.6; }
+  .pole-r { position:absolute;right:0;top:0;bottom:0;width:8px;background:repeating-linear-gradient(-45deg,#ef4444 0,#ef4444 8px,#fff 8px,#fff 16px,#f59e0b 16px,#f59e0b 24px,#000 24px,#000 32px);opacity:0.6; }
+  .pole-t { position:absolute;top:0;left:0;right:0;height:5px;background:repeating-linear-gradient(90deg,#ef4444 0,#ef4444 10px,#fff 10px,#fff 20px,#f59e0b 20px,#f59e0b 30px,#000 30px,#000 40px);opacity:0.5; }
+  .pole-b { position:absolute;bottom:0;left:0;right:0;height:5px;background:repeating-linear-gradient(90deg,#ef4444 0,#ef4444 10px,#fff 10px,#fff 20px,#f59e0b 20px,#f59e0b 30px,#000 30px,#000 40px);opacity:0.5; }
+
+  /* Grid */
+  .grid { position:absolute;inset:0;background-image:linear-gradient(rgba(245,158,11,0.025) 1px,transparent 1px),linear-gradient(90deg,rgba(245,158,11,0.025) 1px,transparent 1px);background-size:60px 60px; }
+
+  /* Glow */
+  .glow-r { position:absolute;top:-100px;right:-100px;width:600px;height:600px;background:radial-gradient(circle,rgba(239,68,68,0.08) 0%,transparent 60%); }
+  .glow-l { position:absolute;bottom:-100px;left:-100px;width:500px;height:500px;background:radial-gradient(circle,rgba(245,158,11,0.06) 0%,transparent 60%); }
+
+  /* Giant bg text */
+  .bg-text { position:absolute;right:-20px;top:-20px;font-size:340px;font-weight:900;color:transparent;-webkit-text-stroke:1px rgba(255,255,255,0.022);letter-spacing:-0.06em;user-select:none;line-height:1; }
+
+  /* Content */
+  .content { position:absolute;inset:0;display:flex;align-items:center;padding:0 80px;gap:60px;z-index:10; }
+
+  .left { flex:1; }
+
+  /* Stamps */
+  .stamps { display:flex;gap:0;margin-bottom:22px; }
+  .stamp-r { background:#ef4444;padding:6px 16px 6px 10px;clip-path:polygon(0 0,100% 0,calc(100% - 8px) 100%,0 100%); }
+  .stamp-a { background:#f59e0b;padding:6px 16px 6px 12px;clip-path:polygon(8px 0,100% 0,calc(100% - 8px) 100%,0 100%); }
+  .stamp-r span, .stamp-a span { font-size:9px;font-weight:900;letter-spacing:0.4em;text-transform:uppercase; }
+  .stamp-r span { color:white; }
+  .stamp-a span { color:black; }
+
+  h1 { font-size:82px;font-weight:900;text-transform:uppercase;letter-spacing:-0.05em;line-height:0.88;margin-bottom:20px; }
+  h1 em { color:#f59e0b;font-style:italic; }
+
+  .sub { font-family:'DM Mono',monospace;font-size:16px;color:#71717a;letter-spacing:0.05em;margin-bottom:28px;line-height:1.7; }
+
+  /* Services pills */
+  .pills { display:flex;gap:6px;flex-wrap:wrap; }
+  .pill { font-family:'DM Mono',monospace;font-size:10px;color:#a1a1aa;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);padding:4px 14px;letter-spacing:0.1em;clip-path:polygon(0 0,calc(100% - 4px) 0,100% 4px,100% 100%,4px 100%,0 calc(100% - 4px)); }
+
+  /* Right — stat cards */
+  .right { display:flex;flex-direction:column;gap:12;width:260px;flex-shrink:0; }
+  .stat { background:rgba(255,255,255,0.03);border:1px solid rgba(245,158,11,0.15);padding:18px 20px;position:relative;overflow:hidden; }
+  .stat::before { content:"";position:absolute;top:0;left:0;width:3px;height:100%;background:linear-gradient(to bottom,#ef4444,#f59e0b); }
+  .stat-n { font-size:36px;font-weight:900;color:#f59e0b;line-height:1;margin-bottom:4px; }
+  .stat-l { font-family:'DM Mono',monospace;font-size:10px;color:#a1a1aa;letter-spacing:0.15em;text-transform:uppercase; }
+
+  /* URL badge */
+  .url { position:absolute;bottom:24px;right:80px;z-index:10;display:flex;align-items:center;gap:10;background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.2);padding:10px 20px;clip-path:polygon(0 0,calc(100% - 8px) 0,100% 8px,100% 100%,8px 100%,0 calc(100% - 8px)); }
+  .url-dot { width:7px;height:7px;background:#22c55e;border-radius:50%; }
+  .url-text { font-family:'DM Mono',monospace;font-size:12px;color:#f59e0b;letter-spacing:0.15em; }
+</style>
+</head>
+<body>
+  <div class="grid"></div>
+  <div class="glow-r"></div>
+  <div class="glow-l"></div>
+  <div class="bg-text">01</div>
+  <div class="pole-l"></div>
+  <div class="pole-r"></div>
+  <div class="pole-t"></div>
+  <div class="pole-b"></div>
+
+  <div class="content">
+    <div class="left">
+      <div class="stamps">
+        <div class="stamp-r"><span>HEADZ</span></div>
+        <div class="stamp-a"><span>UP</span></div>
+      </div>
+      <h1>Where<br>Every Cut<br><em>Tells A Story.</em></h1>
+      <p class="sub">Hattiesburg's premier barbershop.<br>Book online in under a minute.</p>
+      <div class="pills">
+        <span class="pill">✂️ Precision Fades</span>
+        <span class="pill">📅 Book Online 24/7</span>
+        <span class="pill">💰 Pay Online</span>
+        <span class="pill">🔔 Reminders</span>
+      </div>
+    </div>
+    <div class="right">
+      <div class="stat">
+        <div class="stat-n">5.0★</div>
+        <div class="stat-l">Google Rating</div>
+      </div>
+      <div class="stat">
+        <div class="stat-n">11</div>
+        <div class="stat-l">Services</div>
+      </div>
+      <div class="stat">
+        <div class="stat-n">24/7</div>
+        <div class="stat-l">Book Online</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="url">
+    <div class="url-dot"></div>
+    <span class="url-text">headzupp.com</span>
+  </div>
+</body>
+</html>
