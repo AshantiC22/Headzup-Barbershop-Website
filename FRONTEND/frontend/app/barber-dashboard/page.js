@@ -2347,6 +2347,31 @@ export default function BarberDashboard(){
             {showBlast&&(
               <div style={{background:T.surface,border:`1px solid ${T.amberBorder}`,padding:"20px",marginBottom:16,
                 clipPath:"polygon(0 0,calc(100% - 12px) 0,100% 12px,100% 100%,12px 100%,0 calc(100% - 12px))"}}>
+                {/* Quick template buttons */}
+                <div style={{marginBottom:16}}>
+                  <p style={{...sf,fontSize:6,letterSpacing:"0.4em",color:T.muted,textTransform:"uppercase",marginBottom:10}}>Quick Templates</p>
+                  <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+                    {[
+                      {label:"🚀 Website Launch",color:T.amber,bg:"rgba(245,158,11,0.08)",border:"rgba(245,158,11,0.25)",
+                       subject:"HEADZ UP is now booking online!",
+                       msg:"✂️ HEADZ UP is now booking online!\n\nBook your next cut at headzupp.com — pick your barber, choose your time, and lock in your spot in under a minute. Available 24/7.\n\n→ headzupp.com\n\n2509 W 4th St, Hattiesburg MS"},
+                      {label:"💈 We Miss You",color:"#a78bfa",bg:"rgba(167,139,250,0.08)",border:"rgba(167,139,250,0.2)",
+                       subject:"We miss you at HEADZ UP!",
+                       msg:"✂️ Hey {name}! It's been a while — your next cut is overdue!\n\nBook online anytime at headzupp.com\n\n2509 W 4th St, Hattiesburg MS"},
+                      {label:"🎯 Promo",color:"#4ade80",bg:"rgba(34,197,94,0.06)",border:"rgba(34,197,94,0.2)",
+                       subject:"Special offer from HEADZ UP",
+                       msg:"✂️ Hey {name}! Special offer this week at HEADZ UP.\n\nBook your cut online:\nheadzupp.com\n\n2509 W 4th St, Hattiesburg MS"},
+                    ].map(t=>(
+                      <button key={t.label} onClick={()=>setBlastForm(p=>({...p,subject:t.subject,message:t.msg}))}
+                        style={{padding:"7px 12px",background:t.bg,border:`1px solid ${t.border}`,color:t.color,...mono,fontSize:9,letterSpacing:"0.1em",cursor:"pointer",transition:"all 0.2s"}}
+                        onMouseEnter={e=>e.currentTarget.style.opacity="0.8"}
+                        onMouseLeave={e=>e.currentTarget.style.opacity="1"}>
+                        {t.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
                 <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14,flexWrap:"wrap",gap:10}}>
                   <p style={{...sf,fontSize:7,letterSpacing:"0.35em",color:T.amber,textTransform:"uppercase"}}>📣 Send Blast Message</p>
                   <div style={{display:"flex",gap:12,alignItems:"center"}}>
