@@ -217,19 +217,36 @@ export default function NotificationProvider({ children }) {
     return function() { window.removeEventListener("headzup:trigger-permit", handler); };
   }, [router, showPermitPrompt]);
 
-  // Direct mount check - show prompt if permission is default and no sub
+  // Direct mount check - show prompt if not yet subscribed
   useEffect(function() {
-    var timer = setTimeout(function() {
+    var timer = setTimeout(async function() {
       if (typeof window === "undefined") return;
       if (typeof Notification === "undefined") return;
-      if (Notification.permission !== "default") return;
+      if (Notification.permission === "denied") return;
       if (localStorage.getItem("headzup_push_dismissed")) return;
-      if (sessionStorage.getItem("headzup_permit_shown")) return;
-      sessionStorage.setItem("headzup_permit_shown", "1");
+
+      // Check if already subscribed on THIS device
+      try {
+        if ("serviceWorker" in navigator && "PushManager" in window) {
+          var reg = await navigator.serviceWorker.ready;
+          var sub = await reg.pushManager.getSubscription();
+          if (sub) {
+            // Already subscribed — save to backend silently in case it was lost
+            setPushEnabled(true);
+            return;
+          }
+        }
+      } catch(e) {}
+
+      // Not subscribed — show prompt regardless of session
+      // Only skip if dismissed 3+ times
+      var dismissals = parseInt(localStorage.getItem("headzup_push_dismissals") || "0");
+      if (dismissals >= 3) return;
+
       setShowPermit(true);
-    }, 3500);
+    }, 3000);
     return function() { clearTimeout(timer); };
-  }, []); // empty deps - runs once on mount
+  }, [setPushEnabled]); // empty deps - runs once on mount
 
   return (
     <NotifContext.Provider value={{ addNotif, dismissNotif, showPermitPrompt, pushEnabled, setPushEnabled }}>
