@@ -5368,19 +5368,36 @@ class ClientRescheduleRequestView(APIView):
             "appointment__barber",
             "appointment__barber__user",
             "appointment__service",
+            "client",
+            "barber",
         ).get(pk=rr.pk)
 
         logger.info(f"Reschedule request created id={rr.pk} for appt={appt.pk} by {request.user.username}")
-        send_reschedule_request_email(rr_full)
-        sms_reschedule_request(rr_full)
-        if rr_full.barber and rr_full.barber.user:
-            send_push_notification(
-                rr_full.barber.user,
-                title="Reschedule Request ↻",
-                body=f"{rr_full.client.first_name or rr_full.client.username} wants to reschedule their appointment",
-                notif_type=NOTIF_RESCHEDULE_REQUEST,
-                url="/barber-dashboard"
-            )
+
+        # Notifications — wrapped so they never cause a 500
+        try:
+            send_reschedule_request_email(rr_full)
+        except Exception as _e:
+            logger.error(f"Reschedule request email failed: {_e}")
+        try:
+            sms_reschedule_request(rr_full)
+        except Exception as _e:
+            logger.error(f"Reschedule request SMS failed: {_e}")
+        try:
+            barber_user = (rr_full.appointment.barber.user
+                          if rr_full.appointment.barber else None)
+            if barber_user:
+                client_name = request.user.first_name or request.user.username
+                send_push_notification(
+                    barber_user,
+                    title="Reschedule Request ↻",
+                    body=f"{client_name} wants to reschedule their appointment",
+                    notif_type=NOTIF_RESCHEDULE_REQUEST,
+                    url="/barber-dashboard"
+                )
+        except Exception as _e:
+            logger.error(f"Reschedule request push failed: {_e}")
+
         return Response({"message": "Reschedule request sent to your barber.", "id": rr.id})
 
 
