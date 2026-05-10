@@ -550,43 +550,66 @@ function DashboardContent() {
   const handleLogout=()=>{ localStorage.removeItem("access"); localStorage.removeItem("refresh"); router.replace("/login"); };
 
   const handleCancel=async(appt)=>{
-    const apptDT = new Date(`${appt.date}T${appt.time}`);
-    const now2   = new Date();
-    const diffHrs= (apptDT - now2) / (1000 * 60 * 60);
-    const isLate = diffHrs >= 0 && diffHrs < 2;
+    const apptDT  = new Date(`${appt.date}T${appt.time||"00:00:00"}`);
+    const now2    = new Date();
+    const diffHrs = (apptDT - now2) / (1000 * 60 * 60);
+    const isLate  = diffHrs >= 0 && diffHrs < 2;
+    const isPaid  = appt.payment_method === "online" && appt.deposit_paid;
+    const isShop  = appt.payment_method === "shop" || appt.payment_method === "pending_shop";
+
+    // Build the right message based on payment type + timing
+    let modalMsg, modalBadge, modalType;
+
+    if (isLate) {
+      modalType  = "strike";
+      modalMsg   = `You are cancelling within 2 hours of your appointment. A STRIKE will be issued and your deposit fee increases by $1.50 on your next booking.`;
+      modalBadge = "Strike will be issued";
+    } else if (isPaid) {
+      modalType  = "danger";
+      modalMsg   = `Cancel your ${appt.service_name||"appointment"} on ${fmtDate(appt.date)}?`;
+      modalBadge = "Your deposit is non-refundable";
+    } else if (isShop) {
+      modalType  = "danger";
+      modalMsg   = `Cancel your ${appt.service_name||"appointment"} on ${fmtDate(appt.date)} with ${appt.barber_name||"your barber"}?`;
+      modalBadge = null; // No deposit taken — nothing to refund, don't mention it
+    } else {
+      modalType  = "danger";
+      modalMsg   = `Cancel your ${appt.service_name||"appointment"} on ${fmtDate(appt.date)}?`;
+      modalBadge = null;
+    }
 
     await new Promise((resolve, reject) => {
       setModal({
-        type:         isLate ? "strike" : "danger",
-        title:        isLate ? "Late Cancellation" : "Cancel Appointment",
-        message:      isLate
-          ? `You are cancelling within 2 hours of your appointment. This will result in a STRIKE and your deposit will increase by $1.50 on your next booking.`
-          : `Cancel your ${appt.service_name||"appointment"} on ${fmtDate(appt.date)}?`,
-        badge:        isLate ? "Strike will be issued" : "Deposit is non-refundable",
-        confirmLabel: isLate ? "Yes, Cancel" : "Cancel Appt",
-        cancelLabel:  "Keep It",
+        type:         modalType,
+        title:        isLate ? "Late Cancellation ⚠️" : "Cancel Appointment",
+        message:      modalMsg,
+        badge:        modalBadge,
+        confirmLabel: isLate ? "Yes, Cancel Anyway" : "Yes, Cancel",
+        cancelLabel:  "Keep My Appointment",
       });
       setModalCb(() => ({ resolve, reject }));
-    }).catch(() => { throw new Error("cancelled"); });
+    }).catch(() => { throw new Error("dismissed"); });
+
     setModal(null);
     setCancelling(appt.id);
+
     try{
       await API.patch(`appointments/${appt.id}/`, { status:"cancelled" });
+
       if(isLate){
-        // Backend issues strike automatically via the late_cancel endpoint
         try{ await API.post(`barber/appointments/${appt.id}/strike/`, { reason:"late_cancel" }); }catch{}
-      }
-      setAppointments(p=>p.map(a=>a.id===appt.id?{...a,status:"cancelled"}:a));
-      if(isLate){
-        showToast("Appointment cancelled. A strike has been added to your account.","error");
-        // Refresh strike info
         API.get("client/strike-status/").then(r=>setStrikeInfo(r.data)).catch(()=>{});
+        showToast("Appointment cancelled. A strike has been issued.","error");
       } else {
         showToast("Appointment cancelled.");
-        addNotif?.("Appointment Cancelled","Your appointment has been cancelled.","booking_cancelled","/dashboard");
+        addNotif?.("Appointment Cancelled","Your appointment has been cancelled.","booking_cancelled",null);
       }
+
+      setAppointments(p=>p.map(a=>a.id===appt.id?{...a,status:"cancelled"}:a));
+
     }catch(err){
-      const msg = err?.response?.data?.detail || err?.response?.data?.error || err?.message || "Could not cancel.";
+      if(err.message === "dismissed") return; // User clicked "Keep My Appointment"
+      const msg = err?.response?.data?.detail || err?.response?.data?.error || err?.message || "Could not cancel. Please try again.";
       console.error("[Cancel] error:", err?.response?.data || err);
       showToast(msg, "error");
     }
