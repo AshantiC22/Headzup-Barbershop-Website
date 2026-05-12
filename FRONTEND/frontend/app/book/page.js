@@ -385,7 +385,7 @@ function BookContent() {
   const [timeOffDates,   setTimeOffDates]      = useState([]);
   const [selectedDate, setSelectedDate]       = useState("");
   const [selectedTime, setSelectedTime]       = useState("");
-  const [paymentMethod, setPaymentMethod]     = useState("online"); // "online" | "shop"
+  const [paymentMethod, setPaymentMethod]     = useState("online"); // "online" only for now
   const [clientNotes, setClientNotes]         = useState("");
 
   // Strike & deposit
@@ -985,28 +985,33 @@ function BookContent() {
                     </button>
 
                     {/* Pay in shop */}
-                    <button onClick={()=>setPaymentMethod("shop")}
-                      style={{ width:"100%", padding:"18px 16px", background:paymentMethod==="shop"?"rgba(255,255,255,0.04)":"rgba(255,255,255,0.015)", border:`2px solid ${paymentMethod==="shop"?"rgba(255,255,255,0.3)":"rgba(255,255,255,0.07)"}`, cursor:"pointer", textAlign:"left", transition:"all 0.2s",
-                        clipPath:"polygon(0 0,calc(100% - 10px) 0,100% 10px,100% 100%,10px 100%,0 calc(100% - 10px))"
-                      }}
-                      onMouseEnter={e=>{if(paymentMethod!=="shop"){e.currentTarget.style.borderColor="rgba(255,255,255,0.2)";}}}
-                      onMouseLeave={e=>{if(paymentMethod!=="shop"){e.currentTarget.style.borderColor="rgba(255,255,255,0.07)";}}}
-                    >
-                      <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between" }}>
-                        <div style={{ display:"flex", alignItems:"center", gap:14 }}>
-                          <div style={{ width:44, height:44, background:"rgba(255,255,255,0.05)", border:"1px solid rgba(255,255,255,0.1)", borderRadius:10, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
-                            <span style={{ fontSize:20 }}>✂️</span>
-                          </div>
-                          <div>
-                            <p style={{ ...sf, fontSize:10, textTransform:"uppercase", color:paymentMethod==="shop"?"white":"#71717a", margin:"0 0 3px" }}>Pay In Shop</p>
-                            <p style={{ fontFamily:"'DM Mono',monospace", fontSize:11, color:"#52525b", margin:0 }}>Full ${selectedService?.price} due at the chair</p>
-                          </div>
+                    {/* Pay in shop — coming soon */}
+                    <div style={{ width:"100%", padding:"18px 16px",
+                      background:"rgba(255,255,255,0.01)",
+                      border:"2px solid rgba(255,255,255,0.04)",
+                      cursor:"not-allowed", textAlign:"left",
+                      opacity:0.45,
+                      clipPath:"polygon(0 0,calc(100% - 10px) 0,100% 10px,100% 100%,10px 100%,0 calc(100% - 10px))",
+                      position:"relative", overflow:"hidden"
+                    }}>
+                      {/* Coming soon badge */}
+                      <div style={{ position:"absolute", top:10, right:12,
+                        background:"rgba(245,158,11,0.12)", border:"1px solid rgba(245,158,11,0.25)",
+                        padding:"3px 10px",
+                        clipPath:"polygon(0 0,calc(100% - 4px) 0,100% 4px,100% 100%,4px 100%,0 calc(100% - 4px))"
+                      }}>
+                        <span style={{ fontFamily:"'DM Mono',monospace", fontSize:9, color:"#f59e0b", letterSpacing:"0.2em", textTransform:"uppercase" }}>Coming Soon</span>
+                      </div>
+                      <div style={{ display:"flex", alignItems:"center", gap:14 }}>
+                        <div style={{ width:44, height:44, background:"rgba(255,255,255,0.03)", border:"1px solid rgba(255,255,255,0.06)", borderRadius:10, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+                          <span style={{ fontSize:20 }}>✂️</span>
                         </div>
-                        <div style={{ width:20, height:20, borderRadius:"50%", border:`2px solid ${paymentMethod==="shop"?"rgba(255,255,255,0.5)":"rgba(255,255,255,0.2)"}`, display:"flex", alignItems:"center", justifyContent:"center" }}>
-                          {paymentMethod==="shop" && <div style={{ width:10, height:10, borderRadius:"50%", background:"white" }}/>}
+                        <div>
+                          <p style={{ ...sf, fontSize:10, textTransform:"uppercase", color:"#52525b", margin:"0 0 3px" }}>Pay In Shop</p>
+                          <p style={{ fontFamily:"'DM Mono',monospace", fontSize:11, color:"#3f3f46", margin:0 }}>Available soon — use online deposit for now</p>
                         </div>
                       </div>
-                    </button>
+                    </div>
 
                     {/* Terms acceptance */}
                     <div style={{ marginTop:14, display:"flex", alignItems:"flex-start", gap:10 }}>

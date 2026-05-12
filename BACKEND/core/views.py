@@ -236,10 +236,23 @@ def _sendgrid_send(to_email, subject, plain, html):
             {"type": "text/html",  "value": html},
         ],
         "headers": {
-            "List-Unsubscribe": f"<mailto:{sender_email}?subject=unsubscribe>",
+            # Anti-spam headers — help deliverability
+            "List-Unsubscribe":       f"<mailto:{sender_email}?subject=unsubscribe>",
+            "List-Unsubscribe-Post":  "List-Unsubscribe=One-Click",
+            "X-Entity-Ref-ID":        f"headzup-{hash(to_email + subject) & 0xffffffff:08x}",
+            "Precedence":             "bulk",
+        },
+        "tracking_settings": {
+            "click_tracking":  {"enable": True},
+            "open_tracking":   {"enable": True},
         },
         "mail_settings": {
-            "bypass_spam_management": {"enable": True},
+            "bypass_spam_management": {"enable": False},
+            "footer": {
+                "enable":   True,
+                "text":     f"HEADZ UP Barbershop · 2509 W 4th St, Hattiesburg MS 39401 · To unsubscribe reply STOP to {sender_email}",
+                "html":     f"<p style='font-size:11px;color:#71717a;text-align:center;'>HEADZ UP Barbershop · 2509 W 4th St, Hattiesburg MS 39401<br>To unsubscribe <a href='mailto:{sender_email}?subject=unsubscribe' style='color:#f59e0b;'>click here</a></p>",
+            },
         },
     }
 
@@ -2694,16 +2707,6 @@ def send_strike_email(user, profile, reason, appt):
     email = user.email
     if not email:
         return
-        # Push notification for strike
-        try:
-            send_push_notification(
-                appt.user,
-                title="Strike Issued ⚠️",
-                body="A strike has been added to your account due to a no-show or late cancellation.",
-                notif_type=NOTIF_STRIKE,
-                url="/dashboard"
-            )
-        except Exception: pass
 
     reason_label = "No Show" if reason == "no_show" else "Late Cancellation (within 2 hours)"
     next_deposit = profile.get_deposit_fee()
@@ -3147,6 +3150,8 @@ class PaymentSuccessView(APIView):
                     "user", "barber", "barber__user", "service"
                 ).get(pk=appt.pk)
                 send_booking_confirmation(appt_full)
+                try: sms_booking_confirmation(appt_full)
+                except Exception: pass
 
             return redirect(
                 f"{FRONTEND_URL}/booking-confirmed"
@@ -3665,7 +3670,18 @@ class BarberAppointmentUpdateView(APIView):
             ).get(pk=appt.pk)
             _schedule_review_notification(appt_full)
             send_review_request_email(appt_full)
-            sms_review_request(appt_full)
+            try: sms_review_request(appt_full)
+            except Exception: pass
+
+        if new_status == "cancelled":
+            try:
+                appt_full = Appointment.objects.select_related(
+                    "user", "barber", "barber__user", "service"
+                ).get(pk=appt.pk)
+                send_cancellation_email(appt_full, cancelled_by="barber")
+                try: sms_cancellation(appt_full, cancelled_by="barber")
+                except Exception: pass
+            except Exception: pass
 
         return Response({"message": "Updated", "id": appt.id, "barber_notes": appt.barber_notes})
 
