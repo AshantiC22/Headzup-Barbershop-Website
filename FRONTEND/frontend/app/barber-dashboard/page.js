@@ -1784,7 +1784,11 @@ export default function BarberDashboard(){
                   <div style={{display:"flex",flexDirection:"column",gap:6}}>
                     {schedule.map(appt=>{
                       const isShop = appt.payment_method==="shop";
-                      const apptPast = new Date(`${appt.date}T${appt.time}`) < new Date();
+                      // Only mark past AFTER appointment end time (duration + 15min grace)
+                      const apptStart    = new Date(`${appt.date}T${appt.time}`);
+                      const durationMins = appt.service_duration || 30;
+                      const apptEnd      = new Date(apptStart.getTime() + (durationMins + 15) * 60000);
+                      const apptPast     = apptEnd < new Date();
                       const shopStatus = shopPayments[appt.id];
                       return(
                         <div key={appt.id}>
