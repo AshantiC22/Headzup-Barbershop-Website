@@ -257,6 +257,18 @@ class Command(BaseCommand):
                                 f"2509 W 4th St, Hattiesburg MS\n"
                                 f"Cancel 2hrs+ before to avoid a strike."
                             )
+                        # Push notification
+                        try:
+                            from core.views import send_push_notification, NOTIF_BOOKING_REMINDER
+                            send_push_notification(
+                                appt.user,
+                                title="⏰ Appointment Tomorrow",
+                                body=f"{svc_name} w/ {barber_nm} at {appt_time}. See you tomorrow!",
+                                notif_type=NOTIF_BOOKING_REMINDER,
+                                url="/dashboard"
+                            )
+                        except Exception as _pe:
+                            logger.error(f"CLIENT 24HR push failed: {_pe}")
                         appt.reminder_sent = True
                         appt.save(update_fields=["reminder_sent"])
                         sent += 1
@@ -268,9 +280,9 @@ class Command(BaseCommand):
             # Fires once when appointment is 1.5–2.5 hours away
             try:
                 reminder_2hr = getattr(appt, "reminder_2hr_sent", False)
-                if not reminder_2hr and 1.5 <= diff_hours <= 2.5:
+                if not reminder_2hr and 0.75 <= diff_hours <= 1.5:
                     if client_email:
-                        subj  = f"✂️ Your appointment is in 2 hours — HEADZ UP"
+                        subj  = f"✂️ Your appointment is in 1 hour — HEADZ UP"
                         plain = (
                             f"Hey {client_nm},\n\n"
                             f"Your appointment is coming up in about 2 hours!\n\n"
@@ -287,10 +299,22 @@ class Command(BaseCommand):
                         _sendgrid_send(client_email, subj, plain, html)
                         if client_phone:
                             _twilio_send(client_phone,
-                                f"✂️ HEADZ UP: 2 hours away!\n"
+                                f"✂️ HEADZ UP: 1 hour away!\n"
                                 f"{svc_name} w/ {barber_nm} at {appt_time} today.\n"
                                 f"Please be on time!"
                             )
+                        # Push notification
+                        try:
+                            from core.views import send_push_notification, NOTIF_BOOKING_REMINDER
+                            send_push_notification(
+                                appt.user,
+                                title="✂️ 2 Hours Away!",
+                                body=f"{svc_name} w/ {barber_nm} at {appt_time} today. Don't be late!",
+                                notif_type=NOTIF_BOOKING_REMINDER,
+                                url="/dashboard"
+                            )
+                        except Exception as _pe:
+                            logger.error(f"CLIENT 2HR push failed: {_pe}")
                         try:
                             appt.reminder_2hr_sent = True
                             appt.save(update_fields=["reminder_2hr_sent"])
@@ -306,7 +330,7 @@ class Command(BaseCommand):
             # Gives barber enough time to prepare for the next client
             try:
                 barber_2hr = getattr(appt, "barber_reminder_2hr", False)
-                if not barber_2hr and 1.5 <= diff_hours <= 2.5:
+                if not barber_2hr and 0.75 <= diff_hours <= 1.5:
                     if barber_email:
                         subj  = f"⚡ Heads up — {client_nm} at {appt_time} (2 hours)"
                         plain = (
@@ -329,6 +353,19 @@ class Command(BaseCommand):
                                 f"{svc_name} at {appt_time} today."
                                 + (f"\nNotes: {notes}" if notes else "")
                             )
+                        # Push to barber
+                        try:
+                            from core.views import send_push_notification, NOTIF_BOOKING_REMINDER
+                            if appt.barber and appt.barber.user:
+                                send_push_notification(
+                                    appt.barber.user,
+                                    title=f"⚡ {client_nm} in 2 Hours",
+                                    body=f"{svc_name} at {appt_time} today. Get ready!",
+                                    notif_type=NOTIF_BOOKING_REMINDER,
+                                    url="/barber-dashboard"
+                                )
+                        except Exception as _pe:
+                            logger.error(f"BARBER 2HR push failed: {_pe}")
                         try:
                             appt.barber_reminder_2hr = True
                             appt.save(update_fields=["barber_reminder_2hr"])
@@ -366,6 +403,19 @@ class Command(BaseCommand):
                                 f"{svc_name} at {appt_time}."
                                 + (f"\nNotes: {notes}" if notes else "")
                             )
+                        # Push to barber
+                        try:
+                            from core.views import send_push_notification, NOTIF_BOOKING_REMINDER
+                            if appt.barber and appt.barber.user:
+                                send_push_notification(
+                                    appt.barber.user,
+                                    title=f"🪑 {client_nm} is Up NOW",
+                                    body=f"{svc_name} at {appt_time} — they're here!",
+                                    notif_type=NOTIF_BOOKING_REMINDER,
+                                    url="/barber-dashboard"
+                                )
+                        except Exception as _pe:
+                            logger.error(f"BARBER NOW push failed: {_pe}")
                         try:
                             appt.barber_reminder_now = True
                             appt.save(update_fields=["barber_reminder_now"])
