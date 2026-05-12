@@ -1760,14 +1760,40 @@ export default function BarberDashboard(){
                       {fmtFull(selectedDate)}
                     </h2>
                   </div>
-                  <div style={{display:"flex",gap:10,alignItems:"center"}}>
+                  <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
                     <span style={{...mono,fontSize:11,color:T.muted}}>{summary.confirmed} confirmed</span>
+
+                    {/* Refresh */}
                     <button onClick={()=>loadSchedule(selectedDate)}
                       style={{padding:"7px 14px",...sf,fontSize:6,letterSpacing:"0.2em",textTransform:"uppercase",background:"transparent",border:`1px solid ${T.border}`,color:T.muted,cursor:"pointer",transition:"all 0.2s"}}
                       onMouseEnter={e=>{e.currentTarget.style.borderColor=T.amber;e.currentTarget.style.color=T.amber;}}
                       onMouseLeave={e=>{e.currentTarget.style.borderColor=T.border;e.currentTarget.style.color=T.muted;}}>
                       ↻ Refresh
                     </button>
+
+                    {/* Go to Today */}
+                    {selectedDate!==today&&(
+                      <button onClick={()=>{setSelectedDate(today);loadSchedule(today);}}
+                        style={{padding:"7px 14px",...sf,fontSize:6,letterSpacing:"0.2em",textTransform:"uppercase",background:"rgba(245,158,11,0.08)",border:`1px solid rgba(245,158,11,0.25)`,color:T.amber,cursor:"pointer",transition:"all 0.2s"}}
+                        onMouseEnter={e=>{e.currentTarget.style.background="rgba(245,158,11,0.15)";}}
+                        onMouseLeave={e=>{e.currentTarget.style.background="rgba(245,158,11,0.08)";}}>
+                        → Today
+                      </button>
+                    )}
+
+                    {/* Clear / reset schedule view */}
+                    {schedule.length>0&&(
+                      <button onClick={()=>{
+                        if(window.confirm(`Clear all completed and cancelled appointments from ${fmtFull(selectedDate)}?`)){
+                          setSchedule(p=>p.filter(a=>a.status!=="completed"&&a.status!=="cancelled"&&a.status!=="no_show"));
+                        }
+                      }}
+                        style={{padding:"7px 14px",...sf,fontSize:6,letterSpacing:"0.2em",textTransform:"uppercase",background:"rgba(239,68,68,0.06)",border:"1px solid rgba(239,68,68,0.2)",color:"#f87171",cursor:"pointer",transition:"all 0.2s"}}
+                        onMouseEnter={e=>{e.currentTarget.style.background="rgba(239,68,68,0.12)";}}
+                        onMouseLeave={e=>{e.currentTarget.style.background="rgba(239,68,68,0.06)";}}>
+                        ✕ Clear Done
+                      </button>
+                    )}
                   </div>
                 </div>
 
