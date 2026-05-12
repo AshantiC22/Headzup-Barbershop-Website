@@ -1979,6 +1979,17 @@ class BarberRegisterView(APIView):
                 except Exception:
                     pass
 
+            # Push notification to barber — welcome to the team
+            try:
+                send_push_notification(
+                    user,
+                    title="Welcome to HEADZ UP ✂️",
+                    body=f"Hey {full_name.split()[0]}! You're on the team. Set your schedule and start taking bookings.",
+                    notif_type=NOTIF_SIGNUP_BARBER,
+                    url="/barber-dashboard"
+                )
+            except Exception: pass
+
             # Return tokens directly — avoids second round-trip race condition
             refresh = RefreshToken.for_user(user)
             return Response({
@@ -4224,10 +4235,36 @@ class PushSubscriptionView(APIView):
         if not all([endpoint, p256dh, auth]):
             return Response({"error": "endpoint, p256dh, and auth required"}, status=400)
 
-        sub, _ = PushSubscription.objects.update_or_create(
+        sub, created = PushSubscription.objects.update_or_create(
             user=request.user,
             defaults={"endpoint": endpoint, "p256dh": p256dh, "auth": auth},
         )
+
+        # First time subscribing — send welcome push immediately
+        if created:
+            try:
+                user = request.user
+                if user.is_staff:
+                    barber = get_barber_for_user(user)
+                    name   = barber.name.split()[0] if barber else user.first_name or user.username
+                    send_push_notification(
+                        user,
+                        title="Notifications On 🔔",
+                        body=f"Hey {name}! You'll get alerts for new bookings, reschedules and more.",
+                        notif_type=NOTIF_SIGNUP_BARBER,
+                        url="/barber-dashboard"
+                    )
+                else:
+                    name = user.first_name or user.username
+                    send_push_notification(
+                        user,
+                        title="Welcome to HEADZ UP ✂️",
+                        body=f"Hey {name}! You'll get booking confirmations and reminders right here.",
+                        notif_type=NOTIF_SIGNUP_CLIENT,
+                        url="/dashboard"
+                    )
+            except Exception: pass
+
         return Response({"message": "Subscription saved"})
 
     def delete(self, request):
