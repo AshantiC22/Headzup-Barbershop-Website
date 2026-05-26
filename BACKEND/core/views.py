@@ -4715,8 +4715,12 @@ class SendRemindersView(APIView):
         try:
             from django.core.management import call_command
             from io import StringIO
-            out = StringIO()
-            call_command("send_reminders", stdout=out)
+            out   = StringIO()
+            force = request.data.get("force", False)
+            if force:
+                call_command("send_reminders", "--force", stdout=out)
+            else:
+                call_command("send_reminders", stdout=out)
             return Response({"message": out.getvalue().strip() or "Reminders processed"})
         except Exception as e:
             return Response({"error": str(e)}, status=400)
