@@ -188,7 +188,7 @@ class Command(BaseCommand):
             logger.error(f"Waitlist pass failed: {e}")
         appts = Appointment.objects.filter(
             date__in=[today, today + timedelta(days=1)],
-            status="confirmed",
+            status__in=["confirmed", "pending_shop"],
         ).select_related("user", "barber", "service", "barber__user", "user__profile")
 
         sent = 0
