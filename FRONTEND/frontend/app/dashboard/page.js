@@ -67,19 +67,20 @@ function ApptCard({ appt, onCancel, onReschedule, cancelling }) {
           </div>
           <div style={{ width:1, height:32, background:C.border, flexShrink:0 }}/>
           <div style={{ flex:1, minWidth:0 }}>
-            <p style={{ ...SF, fontSize:10, fontWeight:700, color:C.text,
-              textTransform:"uppercase", letterSpacing:"0.05em",
-              overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
+            <p style={{ ...MONO, fontSize:13, fontWeight:700, color:C.text,
+              overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap",
+              letterSpacing:"0.03em" }}>
               {appt.service_name || appt.service}
             </p>
-            <p style={{ ...MONO, fontSize:11, color:C.sub, marginTop:2 }}>
+            <p style={{ ...MONO, fontSize:11, color:C.sub, marginTop:3 }}>
               {appt.barber_name || appt.barber} · {fmtDate(appt.date)}
             </p>
           </div>
         </div>
         <div style={{ display:"flex", alignItems:"center", gap:8, flexShrink:0 }}>
-          <span style={{ ...MONO, fontSize:8, padding:"3px 8px",
-            background:st.bg, color:st.color, border:`1px solid ${st.color}30` }}>
+          <span style={{ ...MONO, fontSize:10, padding:"4px 10px",
+            background:st.bg, color:st.color, border:`1px solid ${st.color}30`,
+            whiteSpace:"nowrap" }}>
             {st.label}
           </span>
           <span style={{ color:C.muted, fontSize:12, transition:"transform 0.2s",
@@ -760,20 +761,29 @@ function DashboardContent() {
 
         {/* Tabs */}
         <div style={{ display:"flex", gap:0, marginBottom:20,
-          borderBottom:`1px solid ${C.border}` }}>
+          borderBottom:`1px solid ${C.border}`, overflowX:"auto",
+          scrollbarWidth:"none", msOverflowStyle:"none" }}>
           {[
-            { id:"upcoming",  label:`Upcoming (${upcoming.length})` },
-            { id:"past",      label:`Past (${past.length})` },
-            { id:"cancelled", label:`Cancelled (${cancelled.length})` },
-            { id:"account",   label:"Account" },
+            { id:"upcoming",  label:"Upcoming", count:upcoming.length },
+            { id:"past",      label:"Past",     count:past.length },
+            { id:"cancelled", label:"Cancelled",count:cancelled.length },
+            { id:"account",   label:"Account",  count:0 },
           ].map(tab => (
             <button key={tab.id} onClick={() => setActiveTab(tab.id)}
-              style={{ padding:"10px 16px", background:"transparent",
+              style={{ padding:"12px 18px", background:"transparent",
                 border:"none", borderBottom:`2px solid ${activeTab === tab.id ? C.amber : "transparent"}`,
                 color: activeTab === tab.id ? C.amber : C.muted,
-                ...MONO, fontSize:10, letterSpacing:"0.1em", textTransform:"uppercase",
-                cursor:"pointer", transition:"all 0.15s", marginBottom:-1 }}>
+                ...MONO, fontSize:11, letterSpacing:"0.08em", textTransform:"uppercase",
+                cursor:"pointer", transition:"all 0.15s", marginBottom:-1,
+                whiteSpace:"nowrap", display:"flex", alignItems:"center", gap:6 }}>
               {tab.label}
+              {tab.count > 0 && (
+                <span style={{ background: activeTab === tab.id ? C.amber : "rgba(255,255,255,0.08)",
+                  color: activeTab === tab.id ? "black" : C.muted,
+                  borderRadius:10, padding:"1px 7px", fontSize:9, fontWeight:700 }}>
+                  {tab.count}
+                </span>
+              )}
             </button>
           ))}
         </div>
@@ -907,8 +917,8 @@ function DashboardContent() {
             <div style={{ background:C.surface, border:`1px solid ${C.border}`, padding:20 }}>
               <div style={{ display:"flex", justifyContent:"space-between",
                 alignItems:"center", marginBottom: showPwd ? 14 : 0 }}>
-                <p style={{ ...SF, fontSize:9, color:C.amber, textTransform:"uppercase",
-                  letterSpacing:"0.15em" }}>Change Password</p>
+                <p style={{ ...MONO, fontSize:10, color:C.amber, textTransform:"uppercase",
+                  letterSpacing:"0.2em" }}>Change Password</p>
                 <button onClick={() => setShowPwd(o=>!o)}
                   style={{ ...MONO, fontSize:10, color:C.muted, background:"none",
                     border:"none", cursor:"pointer" }}>

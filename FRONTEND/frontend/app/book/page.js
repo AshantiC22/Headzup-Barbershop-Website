@@ -404,47 +404,70 @@ export default function BookPage() {
               </div>
             </div>
 
-            <div style={{ display:"grid", gridTemplateColumns: selectedDate ? "1fr 1fr" : "1fr",
-              gap:20, alignItems:"start" }}>
-              {/* Calendar */}
-              <div style={{ background:C.surface, border:`1px solid ${C.border}`, padding:16 }}>
-                {renderCalendar()}
-              </div>
+            {/* Calendar always full width */}
+            <div style={{ background:C.surface, border:`1px solid ${C.border}`,
+              padding:20, marginBottom:16 }}>
+              {renderCalendar()}
+            </div>
 
-              {/* Time slots */}
-              {selectedDate && (
-                <div style={{ background:C.surface, border:`1px solid ${C.border}`, padding:16 }}>
-                  <p style={{ ...SF, fontSize:8, fontWeight:700, textTransform:"uppercase",
-                    letterSpacing:"0.15em", color:C.amber, marginBottom:4 }}>
-                    {fmtDate(selectedDate)}
-                  </p>
-                  <p style={{ ...MONO, fontSize:10, color:C.muted, marginBottom:12 }}>
-                    {slotsLoading ? "Loading..." : `${slots.length} slots available`}
-                  </p>
-                  {slots.length === 0 && !slotsLoading ? (
-                    <p style={{ ...MONO, fontSize:11, color:C.muted }}>No slots available</p>
-                  ) : (
-                    <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:6 }}>
-                      {slots.map(s => {
-                        const display = fmtSlot(s);
-                        const sel = selectedTime === display;
-                        return (
-                          <button key={s} onClick={() => setSelectedTime(display)}
-                            style={{ padding:"9px 6px",
-                              background: sel ? C.amberDim : C.surfaceB,
-                              border:`1px solid ${sel ? C.amber : C.border}`,
-                              color: sel ? C.amber : C.text,
-                              ...MONO, fontSize:11, cursor:"pointer",
-                              transition:"all 0.15s", textAlign:"center" }}>
-                            {display}
-                          </button>
-                        );
-                      })}
-                    </div>
+            {/* Time slots below calendar once date selected */}
+            {selectedDate && (
+              <div style={{ background:C.surface, border:`1px solid ${selectedTime ? C.amberBorder : C.border}`,
+                padding:20, marginBottom:16 }}>
+                <div style={{ display:"flex", justifyContent:"space-between",
+                  alignItems:"center", marginBottom:14 }}>
+                  <div>
+                    <p style={{ ...SF, fontSize:9, fontWeight:700, textTransform:"uppercase",
+                      letterSpacing:"0.1em", color:C.amber, marginBottom:2 }}>
+                      {fmtDate(selectedDate)}
+                    </p>
+                    <p style={{ ...MONO, fontSize:10, color:C.muted }}>
+                      {slotsLoading ? "Loading available times..." : `${slots.length} time${slots.length !== 1 ? "s" : ""} available`}
+                    </p>
+                  </div>
+                  {selectedTime && (
+                    <span style={{ ...MONO, fontSize:10, color:C.amber,
+                      padding:"4px 12px", background:C.amberDim,
+                      border:`1px solid ${C.amberBorder}` }}>
+                      ✓ {selectedTime}
+                    </span>
                   )}
                 </div>
-              )}
-            </div>
+
+                {slotsLoading ? (
+                  <div style={{ display:"flex", gap:6, flexWrap:"wrap" }}>
+                    {[1,2,3,4,5,6].map(i => (
+                      <div key={i} style={{ padding:"10px 18px", background:C.surfaceB,
+                        border:`1px solid ${C.border}`, opacity:0.4, width:90 }}/>
+                    ))}
+                  </div>
+                ) : slots.length === 0 ? (
+                  <div style={{ padding:"16px 0", textAlign:"center" }}>
+                    <p style={{ ...MONO, fontSize:12, color:C.muted }}>No available times on this date</p>
+                    <p style={{ ...MONO, fontSize:10, color:C.muted, marginTop:4 }}>Try another date</p>
+                  </div>
+                ) : (
+                  <div style={{ display:"flex", flexWrap:"wrap", gap:8 }}>
+                    {slots.map(s => {
+                      const display = fmtSlot(s);
+                      const sel = selectedTime === display;
+                      return (
+                        <button key={s} onClick={() => setSelectedTime(display)}
+                          style={{ padding:"10px 16px",
+                            background: sel ? C.amber : C.surfaceB,
+                            border:`1px solid ${sel ? C.amber : C.border}`,
+                            color: sel ? "black" : C.text,
+                            ...MONO, fontSize:12, cursor:"pointer",
+                            transition:"all 0.15s", fontWeight: sel ? 700 : 400,
+                            minWidth:90, textAlign:"center" }}>
+                          {display}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
 
             {selectedDate && selectedTime && (
               <div style={{ marginTop:20, display:"flex", justifyContent:"flex-end" }}>
