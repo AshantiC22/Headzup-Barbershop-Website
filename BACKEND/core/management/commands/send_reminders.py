@@ -280,7 +280,7 @@ class Command(BaseCommand):
             # Fires once when appointment is 1.5–2.5 hours away
             try:
                 reminder_2hr = getattr(appt, "reminder_2hr_sent", False)
-                if not reminder_2hr and 0.75 <= diff_hours <= 1.5:
+                if not reminder_2hr and 0.5 <= diff_hours <= 2.0:
                     if client_email:
                         subj  = f"✂️ Your appointment is in 1 hour — HEADZ UP"
                         plain = (
@@ -330,7 +330,7 @@ class Command(BaseCommand):
             # Gives barber enough time to prepare for the next client
             try:
                 barber_2hr = getattr(appt, "barber_reminder_2hr", False)
-                if not barber_2hr and 0.75 <= diff_hours <= 1.5:
+                if not barber_2hr and 0.5 <= diff_hours <= 2.0:
                     if barber_email:
                         subj  = f"⚡ Heads up — {client_nm} at {appt_time} (2 hours)"
                         plain = (
