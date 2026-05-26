@@ -307,7 +307,9 @@ class Command(BaseCommand):
                             client_nm, svc_name, barber_nm, "Today", appt_time,
                             "Your appointment is in 2 hours", "#ef4444", "✂️"
                         )
+                        self.stdout.write(f"  Sending email to {client_email}...")
                         _sendgrid_send(client_email, subj, plain, html)
+                        self.stdout.write(f"  Email sent ✓")
                         if client_phone:
                             _twilio_send(client_phone,
                                 f"✂️ HEADZ UP: 1 hour away!\n"
@@ -334,7 +336,9 @@ class Command(BaseCommand):
                         sent += 1
                         logger.info(f"CLIENT 2HR → {client_email} ({appt_time})")
             except Exception as e:
+                import traceback
                 logger.error(f"CLIENT 2HR failed {appt.id}: {e}")
+                self.stdout.write(f"  ERROR CLIENT 2HR: {e}\n{traceback.format_exc()}")
 
             # ── 3. BARBER 2HR REMINDER ───────────────────────────────────────
             # Fires once when appointment is 1.5–2.5 hours away
