@@ -21,11 +21,19 @@ import useBreakpoint from "@/lib/useBreakpoint";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function to24Hour(t) {
-  const [time, mod] = t.split(" ");
-  let [h, m] = time.split(":");
-  if (h === "12") h = "00";
-  if (mod === "PM") h = String(parseInt(h) + 12);
-  return `${h.padStart(2, "0")}:${m}:00`;
+  if (!t) return "00:00:00";
+  // Already HH:MM:SS format
+  if (t.match(/^\d{2}:\d{2}:\d{2}$/)) return t;
+  // Already HH:MM format
+  if (t.match(/^\d{2}:\d{2}$/)) return t + ":00";
+  // 12hr format: "9:30 AM" or "9:30 PM"
+  const parts = t.split(" ");
+  const mod   = parts[1] || "";
+  const [hStr, mStr] = parts[0].split(":");
+  let hr = parseInt(hStr);
+  if (mod === "PM" && hr !== 12) hr += 12;
+  if (mod === "AM" && hr === 12) hr = 0;
+  return `${String(hr).padStart(2,"0")}:${mStr}:00`;
 }
 
 function fmtTime(t) {
