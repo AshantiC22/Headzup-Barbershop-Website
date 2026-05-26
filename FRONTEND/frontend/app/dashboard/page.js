@@ -513,6 +513,14 @@ function DashboardContent() {
     if(searchParams.get("canceled")==="true"){ showToast("Payment cancelled.","error"); window.history.replaceState({},"","/dashboard"); }
     if(searchParams.get("reschedule")==="accepted"){ showToast("✓ Reschedule accepted! Your appointment is updated."); window.history.replaceState({},"","/dashboard"); }
     if(searchParams.get("reschedule")==="rejected"){ showToast("Reschedule request declined. Original time stands.","error"); window.history.replaceState({},"","/dashboard"); }
+    if(searchParams.get("review")==="true"){
+      // Auto-open review modal from push notification tap
+      setActiveTab("upcoming");
+      setTimeout(()=>{
+        setShowReview(true);
+        window.history.replaceState({},"","/dashboard");
+      }, 800);
+    }
   },[searchParams]);
 
   // Load

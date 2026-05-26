@@ -1186,7 +1186,7 @@ def send_review_request_email(appointment):
             title="How was your cut? ⭐",
             body=f"Rate your {_svc} with {_bar} — takes 10 seconds.",
             notif_type=NOTIF_REVIEW_REQUEST,
-            url="/dashboard"
+            url="/dashboard?review=true"
         )
     except Exception: pass
 
