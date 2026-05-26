@@ -31,8 +31,18 @@ class Command(BaseCommand):
         from core.views import _sendgrid_send, _twilio_send, send_cancellation_email, FRONTEND_URL
         import datetime
 
-        now   = timezone.localtime(timezone.now())
+        # Force Central Time — matches Hattiesburg MS regardless of server TZ
+        try:
+            from zoneinfo import ZoneInfo
+            central = ZoneInfo("America/Chicago")
+        except ImportError:
+            import pytz
+            central = pytz.timezone("America/Chicago")
+        
+        now   = timezone.now().astimezone(central)
         today = now.date()
+        
+        self.stdout.write(f"  Local time (Central): {now.strftime('%Y-%m-%d %H:%M:%S %Z')}")
 
         # ── AUTO-CANCEL stale pending_shop bookings ──────────────────────────
         # If a pay-in-shop booking is still pending_shop 1 hour after the
@@ -47,9 +57,9 @@ class Command(BaseCommand):
 
         for appt in stale_pending:
             try:
-                appt_dt = timezone.make_aware(
-                    datetime.datetime.combine(appt.date, appt.time)
-                )
+                appt_dt = datetime.datetime.combine(
+                    appt.date, appt.time
+                ).replace(tzinfo=central)
             except Exception:
                 continue
             # Auto-cancel if appointment time was more than 1 hour ago
@@ -196,13 +206,14 @@ class Command(BaseCommand):
         for appt in appts:
             try:
                 import datetime
-                appt_dt = timezone.make_aware(
-                    datetime.datetime.combine(appt.date, appt.time)
-                )
+                appt_dt = datetime.datetime.combine(
+                    appt.date, appt.time
+                ).replace(tzinfo=central)
             except Exception:
                 continue
 
             diff_hours = (appt_dt - now).total_seconds() / 3600
+            self.stdout.write(f"  Appt {appt.id}: {appt.date} {appt.time} | diff={diff_hours:.2f}hrs | r24={getattr(appt,'reminder_sent',False)} | r1hr={getattr(appt,'reminder_2hr_sent',False)}")
 
             svc_name      = appt.service.name  if appt.service else "Appointment"
             barber_nm     = appt.barber.name   if appt.barber  else "Your barber"
@@ -280,7 +291,7 @@ class Command(BaseCommand):
             # Fires once when appointment is 1.5–2.5 hours away
             try:
                 reminder_2hr = getattr(appt, "reminder_2hr_sent", False)
-                if not reminder_2hr and 0.5 <= diff_hours <= 2.0:
+                if (force or not reminder_2hr) and 0.5 <= diff_hours <= 2.0:
                     if client_email:
                         subj  = f"✂️ Your appointment is in 1 hour — HEADZ UP"
                         plain = (
@@ -330,7 +341,7 @@ class Command(BaseCommand):
             # Gives barber enough time to prepare for the next client
             try:
                 barber_2hr = getattr(appt, "barber_reminder_2hr", False)
-                if not barber_2hr and 0.5 <= diff_hours <= 2.0:
+                if (force or not barber_2hr) and 0.5 <= diff_hours <= 2.0:
                     if barber_email:
                         subj  = f"⚡ Heads up — {client_nm} at {appt_time} (2 hours)"
                         plain = (
