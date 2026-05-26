@@ -26,7 +26,11 @@ logger = logging.getLogger(__name__)
 class Command(BaseCommand):
     help = "Send appointment reminders to clients and barbers"
 
+    def add_arguments(self, parser):
+        parser.add_argument('--force', action='store_true', help='Force resend all reminders')
+
     def handle(self, *args, **kwargs):
+        force = kwargs.get('force', False)
         from core.models import Appointment
         from core.views import _sendgrid_send, _twilio_send, send_cancellation_email, FRONTEND_URL
         import datetime
@@ -240,7 +244,7 @@ class Command(BaseCommand):
             # ── 1. CLIENT 24HR REMINDER ──────────────────────────────────────
             # Fires once when appointment is 23–25 hours away
             try:
-                if not appt.reminder_sent and 23 <= diff_hours <= 25:
+                if (force or not appt.reminder_sent) and 22.0 <= diff_hours <= 26.0:
                     if client_email:
                         subj  = "⏰ Reminder: Your appointment tomorrow at HEADZ UP"
                         plain = (
