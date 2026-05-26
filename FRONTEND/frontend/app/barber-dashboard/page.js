@@ -265,7 +265,8 @@ function ApptCard({ appt, onStatus, onCancel, onStrike, onRemind, isMobile }) {
                   setSaving(true);
                   try { await API.patch(`barber/appointments/${appt.id}/`, { barber_notes: note }); }
                   catch(e) {}
-                  finally { setSaving(false); }}
+                  finally { setSaving(false); }
+                }}
                   style={{ marginTop:6, padding:"6px 14px", background:C.amberDim,
                     border:`1px solid ${C.amberBorder}`, color:C.amber,
                     ...MONO, fontSize:9, cursor:"pointer" }}>
