@@ -515,11 +515,20 @@ function DashboardContent() {
     if(searchParams.get("reschedule")==="rejected"){ showToast("Reschedule request declined. Original time stands.","error"); window.history.replaceState({},"","/dashboard"); }
     if(searchParams.get("review")==="true"){
       // Auto-open review modal from push notification tap
+      // Set to the most recently completed appointment
       setActiveTab("upcoming");
       setTimeout(()=>{
-        setShowReview(true);
+        const lastCompleted = appointments
+          .filter(a=>a.status==="completed")
+          .sort((a,b)=>new Date(`${b.date}T${b.time}`)-new Date(`${a.date}T${a.time}`))[0];
+        if(lastCompleted){
+          setReviewAppt(lastCompleted);
+          setReviewRating(5);
+          setReviewText("");
+          setShowReview(true);
+        }
         window.history.replaceState({},"","/dashboard");
-      }, 800);
+      }, 1000);
     }
   },[searchParams]);
 
@@ -1094,75 +1103,133 @@ function DashboardContent() {
                   {/* ── LEAVE A REVIEW ── */}
                   {appointments.filter(a=>a.status==="completed").length>0&&(
                     <div style={{background:"rgba(255,255,255,0.02)",border:"1px solid rgba(255,255,255,0.07)",clipPath:"polygon(0 0,calc(100% - 10px) 0,100% 10px,100% 100%,10px 100%,0 calc(100% - 10px))"}}>
-                      <div style={{padding:"16px 18px",display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:10}}>
-                        <div style={{display:"flex",alignItems:"center",gap:12}}>
-                          <span style={{fontSize:18}}>⭐</span>
-                          <div>
-                            <p style={{...sf,fontSize:7,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.15em",marginBottom:2}}>Leave a Review</p>
-                            <p style={{...mono,fontSize:11,color:"#52525b"}}>
-                              {reviewDone?"✓ Review submitted — thank you!":"Share your experience with your barber"}
-                            </p>
-                          </div>
-                        </div>
-                        {!reviewDone&&(
-                          <button onClick={()=>{
-                            const last=appointments.find(a=>a.status==="completed");
-                            setReviewAppt(last);
-                            setReviewRating(5);setReviewText("");
-                            setShowReview(s=>!s);
-                          }}
-                            style={{padding:"7px 14px",...sf,fontSize:6,fontWeight:700,letterSpacing:"0.2em",textTransform:"uppercase",
-                              background:showReview?"rgba(245,158,11,0.15)":"transparent",
-                              border:`1px solid ${showReview?"rgba(245,158,11,0.5)":"rgba(255,255,255,0.12)"}`,
-                              color:showReview?"#f59e0b":"#a1a1aa",cursor:"pointer",transition:"all 0.2s"}}
-                            onMouseEnter={e=>{e.currentTarget.style.borderColor="#f59e0b";e.currentTarget.style.color="#f59e0b";}}
-                            onMouseLeave={e=>{if(!showReview){e.currentTarget.style.borderColor="rgba(255,255,255,0.12)";e.currentTarget.style.color="#a1a1aa";}}}>
-                            {showReview?"Close":"Write Review"}
-                          </button>
-                        )}
-                      </div>
 
-                      {showReview&&!reviewDone&&(
-                        <div style={{padding:"0 18px 18px",borderTop:"1px solid rgba(255,255,255,0.06)",paddingTop:16}}>
-                          {reviewAppt&&(
-                            <p style={{...mono,fontSize:10,color:"#71717a",marginBottom:14}}>
-                              Reviewing: <strong style={{color:"white"}}>{reviewAppt.service_name}</strong> with <strong style={{color:"#f59e0b"}}>{reviewAppt.barber_name}</strong>
-                            </p>
-                          )}
-                          {/* Stars */}
-                          <div style={{display:"flex",gap:6,marginBottom:14}}>
-                            {[1,2,3,4,5].map(s=>(
-                              <button key={s} onClick={()=>setReviewRating(s)}
-                                style={{background:"none",border:"none",cursor:"pointer",fontSize:isMobile?26:28,color:s<=reviewRating?"#f59e0b":"rgba(255,255,255,0.12)",transition:"color 0.15s",padding:0,lineHeight:1}}
-                                onMouseEnter={e=>e.currentTarget.style.transform="scale(1.2)"}
-                                onMouseLeave={e=>e.currentTarget.style.transform="scale(1)"}>
-                                ★
-                              </button>
-                            ))}
-                            <span style={{...mono,fontSize:11,color:"#f59e0b",alignSelf:"center",marginLeft:6}}>{["","Awful","Poor","OK","Good","Amazing!"][reviewRating]}</span>
-                          </div>
-                          {/* Text */}
-                          <textarea
-                            value={reviewText}
-                            onChange={e=>setReviewText(e.target.value)}
-                            placeholder="Tell us about your experience — the cut, the vibe, the barber..."
-                            rows={3}
-                            style={{width:"100%",background:"#0a0a0a",border:"1px solid rgba(255,255,255,0.1)",padding:"11px 14px",color:"white",...mono,fontSize:13,outline:"none",resize:"vertical",marginBottom:12,transition:"border-color 0.2s"}}
-                            onFocus={e=>e.target.style.borderColor="rgba(245,158,11,0.4)"}
-                            onBlur={e=>e.target.style.borderColor="rgba(255,255,255,0.1)"}
-                          />
-                          <div style={{display:"flex",gap:8}}>
-                            <button onClick={async()=>{
-                              if(!reviewText.trim()){showToast("Write something first","error");return;}
-                              setReviewBusy(true);
-                              try{
-                                await API.post("review/submit/",{
-                                  appointment: reviewAppt?.id,
-                                  rating:      reviewRating,
-                                  comment:     reviewText.trim(),
-                                });
-                                setReviewDone(true);
-                                setShowReview(false);
+                      {/* Header row - shows most recent completed appointment */}
+                      {(()=>{
+                        // Find the most recently completed appointment that hasn't been reviewed
+                        const completedAppts = appointments
+                          .filter(a=>a.status==="completed")
+                          .sort((a,b)=>new Date(`${b.date}T${b.time}`)- new Date(`${a.date}T${a.time}`));
+                        const pendingReview = completedAppts[0];
+                        if(!pendingReview) return null;
+                        const apptDate = new Date(`${pendingReview.date}T${pendingReview.time}`);
+                        const dateLabel = apptDate.toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric"});
+                        const timeLabel = apptDate.toLocaleTimeString("en-US",{hour:"numeric",minute:"2-digit",hour12:true});
+                        return (
+                          <>
+                            <div style={{padding:"16px 18px",display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:10}}>
+                              <div style={{display:"flex",alignItems:"center",gap:12}}>
+                                <div style={{width:38,height:38,background:"rgba(245,158,11,0.1)",border:"1px solid rgba(245,158,11,0.25)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,clipPath:"polygon(0 0,calc(100% - 5px) 0,100% 5px,100% 100%,5px 100%,0 calc(100% - 5px))"}}>⭐</div>
+                                <div>
+                                  <p style={{...sf,fontSize:7,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.15em",marginBottom:2,color:"white"}}>
+                                    How was your cut?
+                                  </p>
+                                  <p style={{...mono,fontSize:11,color:"#71717a"}}>
+                                    {reviewDone
+                                      ? "✓ Thanks for your feedback!"
+                                      : <>{pendingReview.service_name} w/ <span style={{color:"#f59e0b"}}>{pendingReview.barber_name}</span> · {dateLabel} at {timeLabel}</>
+                                    }
+                                  </p>
+                                </div>
+                              </div>
+                              {!reviewDone&&(
+                                <button onClick={()=>{
+                                  setReviewAppt(pendingReview);
+                                  setReviewRating(5);
+                                  setReviewText("");
+                                  setShowReview(s=>!s);
+                                }}
+                                  style={{padding:"7px 14px",...sf,fontSize:6,fontWeight:700,letterSpacing:"0.2em",textTransform:"uppercase",
+                                    background:showReview?"rgba(245,158,11,0.15)":"transparent",
+                                    border:`1px solid ${showReview?"rgba(245,158,11,0.5)":"rgba(255,255,255,0.12)"}`,
+                                    color:showReview?"#f59e0b":"#a1a1aa",cursor:"pointer",transition:"all 0.2s"}}
+                                  onMouseEnter={e=>{e.currentTarget.style.borderColor="#f59e0b";e.currentTarget.style.color="#f59e0b";}}
+                                  onMouseLeave={e=>{if(!showReview){e.currentTarget.style.borderColor="rgba(255,255,255,0.12)";e.currentTarget.style.color="#a1a1aa";}}}>
+                                  {showReview?"✕ Close":"✦ Write Review"}
+                                </button>
+                              )}
+                            </div>
+
+                            {showReview&&!reviewDone&&(
+                              <div style={{padding:"0 18px 20px",borderTop:"1px solid rgba(255,255,255,0.06)",paddingTop:16}}>
+
+                                {/* Appointment confirmation card */}
+                                <div style={{background:"rgba(245,158,11,0.04)",border:"1px solid rgba(245,158,11,0.12)",padding:"12px 14px",marginBottom:16,
+                                  clipPath:"polygon(0 0,calc(100% - 6px) 0,100% 6px,100% 100%,6px 100%,0 calc(100% - 6px))"}}>
+                                  <p style={{...mono,fontSize:9,color:"rgba(245,158,11,0.5)",letterSpacing:"0.3em",textTransform:"uppercase",marginBottom:6}}>Reviewing</p>
+                                  <div style={{display:"flex",gap:16,flexWrap:"wrap"}}>
+                                    <div>
+                                      <p style={{...mono,fontSize:9,color:"#52525b",marginBottom:2}}>Service</p>
+                                      <p style={{...sf,fontSize:9,fontWeight:700,color:"white",textTransform:"uppercase"}}>{pendingReview.service_name}</p>
+                                    </div>
+                                    <div>
+                                      <p style={{...mono,fontSize:9,color:"#52525b",marginBottom:2}}>Barber</p>
+                                      <p style={{...sf,fontSize:9,fontWeight:700,color:"#f59e0b",textTransform:"uppercase"}}>{pendingReview.barber_name}</p>
+                                    </div>
+                                    <div>
+                                      <p style={{...mono,fontSize:9,color:"#52525b",marginBottom:2}}>Date</p>
+                                      <p style={{...mono,fontSize:11,color:"white"}}>{dateLabel}</p>
+                                    </div>
+                                    <div>
+                                      <p style={{...mono,fontSize:9,color:"#52525b",marginBottom:2}}>Time</p>
+                                      <p style={{...mono,fontSize:11,color:"white"}}>{timeLabel}</p>
+                                    </div>
+                                  </div>
+                                </div>
+
+                                {/* Star rating */}
+                                <div style={{marginBottom:14}}>
+                                  <p style={{...mono,fontSize:9,color:"#71717a",letterSpacing:"0.3em",textTransform:"uppercase",marginBottom:8}}>Your Rating</p>
+                                  <div style={{display:"flex",gap:4,alignItems:"center"}}>
+                                    {[1,2,3,4,5].map(s=>(
+                                      <button key={s} onClick={()=>setReviewRating(s)}
+                                        style={{background:"none",border:"none",cursor:"pointer",fontSize:isMobile?30:32,
+                                          color:s<=reviewRating?"#f59e0b":"rgba(255,255,255,0.1)",
+                                          transition:"all 0.15s",padding:"0 2px",lineHeight:1}}
+                                        onMouseEnter={e=>{e.currentTarget.style.transform="scale(1.25)";e.currentTarget.style.color="#f59e0b";}}
+                                        onMouseLeave={e=>{e.currentTarget.style.transform="scale(1)";e.currentTarget.style.color=s<=reviewRating?"#f59e0b":"rgba(255,255,255,0.1)";}}>
+                                        ★
+                                      </button>
+                                    ))}
+                                    <span style={{...mono,fontSize:13,color:"#f59e0b",marginLeft:8,fontWeight:700}}>
+                                      {["","😤 Awful","😕 Poor","😐 OK","😊 Good","🔥 Amazing!"][reviewRating]}
+                                    </span>
+                                  </div>
+                                </div>
+
+                                {/* Review text */}
+                                <div style={{marginBottom:14}}>
+                                  <p style={{...mono,fontSize:9,color:"#71717a",letterSpacing:"0.3em",textTransform:"uppercase",marginBottom:8}}>Your Comments</p>
+                                  <textarea
+                                    value={reviewText}
+                                    onChange={e=>setReviewText(e.target.value)}
+                                    placeholder="How was the cut? The fade? The vibe? Tell your barber..."
+                                    rows={3}
+                                    style={{width:"100%",background:"#0a0a0a",border:"1px solid rgba(255,255,255,0.1)",
+                                      padding:"11px 14px",color:"white",...mono,fontSize:13,
+                                      outline:"none",resize:"none",transition:"border-color 0.2s"}}
+                                    onFocus={e=>e.target.style.borderColor="rgba(245,158,11,0.4)"}
+                                    onBlur={e=>e.target.style.borderColor="rgba(255,255,255,0.1)"}
+                                  />
+                                  <p style={{...mono,fontSize:9,color:"#3f3f46",marginTop:4}}>
+                                    {reviewText.length}/500 characters
+                                  </p>
+                                </div>
+
+                                <div style={{display:"flex",gap:8}}>
+                                  <button onClick={async()=>{
+                                    if(!reviewText.trim()){showToast("Please write a comment before submitting","error");return;}
+                                    if(reviewText.trim().length < 10){showToast("Please write at least 10 characters","error");return;}
+                                    setReviewBusy(true);
+                                    try{
+                                      await API.post("review/submit/",{
+                                        appointment_id: pendingReview?.id,
+                                        completed:      true,
+                                        rating:         reviewRating,
+                                        comment:        reviewText.trim(),
+                                      });
+                                      setReviewDone(true);
+                                      setShowReview(false);
                                 showToast("⭐ Review submitted — thank you!");
                                 addNotif?.("Review Submitted ⭐","Thanks for sharing your experience!","haircut_review");
                               }catch(e){showToast(e.response?.data?.error||"Could not submit review","error");}
@@ -1179,6 +1246,9 @@ function DashboardContent() {
                           </div>
                         </div>
                       )}
+                          </>
+                        );
+                      })()}
                     </div>
                   )}
 

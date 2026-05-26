@@ -4330,6 +4330,8 @@ class HaircutReviewView(APIView):
         appt_id   = request.data.get("appointment_id")
         completed = request.data.get("completed", True)
         comment   = request.data.get("comment", "")
+        rating    = int(request.data.get("rating", 5))
+        rating    = max(1, min(5, rating))  # clamp 1-5
 
         try:
             appt = Appointment.objects.get(pk=appt_id, user=request.user)
@@ -4347,7 +4349,7 @@ class HaircutReviewView(APIView):
                 "barber":    appt.barber,
                 "client":    request.user,
                 "completed": completed,
-                "rating":    5 if completed else 1,
+                "rating":    rating if completed else 1,
                 "comment":   comment,
             }
         )
