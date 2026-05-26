@@ -760,7 +760,6 @@ function DashboardContent() {
           borderBottom:`1px solid ${C.border}`, overflowX:"auto",
           WebkitOverflowScrolling:"touch",
           scrollbarWidth:"none", msOverflowStyle:"none" }}>
-          <style jsx>{`.tabs-scroll::-webkit-scrollbar{display:none}`}</style>
           {[
             { id:"upcoming",  label:"Upcoming", count:upcoming.length },
             { id:"past",      label:"Past",     count:past.length },
