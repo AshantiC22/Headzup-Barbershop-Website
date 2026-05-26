@@ -544,34 +544,30 @@ function DashboardContent() {
 
       {/* Header */}
       <header style={{ position:"sticky", top:0, zIndex:100, background:C.bg,
-        borderBottom:`1px solid ${C.border}`, padding:"0 20px", height:56,
-        display:"flex", alignItems:"center", justifyContent:"space-between" }}>
-        <div style={{ display:"flex", alignItems:"center", gap:12 }}>
-          <img src="/logo1.jpg" alt="HEADZ UP" style={{ height:32, objectFit:"contain" }}/>
-          <div style={{ width:1, height:20, background:C.border }}/>
-          <p style={{ ...MONO, fontSize:10, color:C.muted, letterSpacing:"0.2em" }}>MY ACCOUNT</p>
-        </div>
-        <div style={{ display:"flex", alignItems:"center", gap:12 }}>
-          {user && (
-            <div style={{ textAlign:"right" }}>
-              <p style={{ ...SF, fontSize:9, color:C.text, fontWeight:700,
-                textTransform:"uppercase" }}>{user.username}</p>
-              <p style={{ ...MONO, fontSize:9, color:C.muted }}>{upcoming.length} upcoming</p>
-            </div>
-          )}
-          <a href="/book" style={{ padding:"7px 14px", background:C.amberDim,
-            border:`1px solid ${C.amberBorder}`, color:C.amber,
-            ...SF, fontSize:7, fontWeight:700, textTransform:"uppercase",
-            letterSpacing:"0.15em", textDecoration:"none", cursor:"pointer" }}>
+        borderBottom:`1px solid ${C.border}`, padding:"0 16px", height:52,
+        display:"flex", alignItems:"center", justifyContent:"space-between", gap:8 }}>
+
+        {/* Left — logo only */}
+        <img src="/logo1.jpg" alt="HEADZ UP"
+          style={{ height:28, objectFit:"contain", flexShrink:0 }}/>
+
+        {/* Right — actions */}
+        <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+          <a href="/book"
+            style={{ padding:"7px 14px", background:C.amberDim,
+              border:`1px solid ${C.amberBorder}`, color:C.amber,
+              ...MONO, fontSize:10, letterSpacing:"0.1em", textTransform:"uppercase",
+              textDecoration:"none", whiteSpace:"nowrap" }}>
             + Book
           </a>
           <button onClick={handleLogout}
             style={{ padding:"7px 12px", background:"transparent",
               border:`1px solid ${C.border}`, color:C.muted,
-              ...MONO, fontSize:9, letterSpacing:"0.2em", cursor:"pointer" }}
+              ...MONO, fontSize:10, letterSpacing:"0.1em", cursor:"pointer",
+              whiteSpace:"nowrap" }}
             onMouseEnter={e => { e.currentTarget.style.borderColor = C.red; e.currentTarget.style.color = C.red; }}
             onMouseLeave={e => { e.currentTarget.style.borderColor = C.border; e.currentTarget.style.color = C.muted; }}>
-            LOGOUT
+            Out
           </button>
         </div>
       </header>
@@ -762,7 +758,9 @@ function DashboardContent() {
         {/* Tabs */}
         <div style={{ display:"flex", gap:0, marginBottom:20,
           borderBottom:`1px solid ${C.border}`, overflowX:"auto",
+          WebkitOverflowScrolling:"touch",
           scrollbarWidth:"none", msOverflowStyle:"none" }}>
+          <style jsx>{`.tabs-scroll::-webkit-scrollbar{display:none}`}</style>
           {[
             { id:"upcoming",  label:"Upcoming", count:upcoming.length },
             { id:"past",      label:"Past",     count:past.length },
@@ -770,12 +768,12 @@ function DashboardContent() {
             { id:"account",   label:"Account",  count:0 },
           ].map(tab => (
             <button key={tab.id} onClick={() => setActiveTab(tab.id)}
-              style={{ padding:"12px 18px", background:"transparent",
+              style={{ padding:"10px 14px", background:"transparent",
                 border:"none", borderBottom:`2px solid ${activeTab === tab.id ? C.amber : "transparent"}`,
                 color: activeTab === tab.id ? C.amber : C.muted,
-                ...MONO, fontSize:11, letterSpacing:"0.08em", textTransform:"uppercase",
+                ...MONO, fontSize:10, letterSpacing:"0.05em", textTransform:"uppercase",
                 cursor:"pointer", transition:"all 0.15s", marginBottom:-1,
-                whiteSpace:"nowrap", display:"flex", alignItems:"center", gap:6 }}>
+                whiteSpace:"nowrap", display:"flex", alignItems:"center", gap:5 }}>
               {tab.label}
               {tab.count > 0 && (
                 <span style={{ background: activeTab === tab.id ? C.amber : "rgba(255,255,255,0.08)",
