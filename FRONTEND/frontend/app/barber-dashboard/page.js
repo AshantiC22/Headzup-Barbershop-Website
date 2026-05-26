@@ -341,6 +341,12 @@ export default function BarberDashboard() {
   const [stripeStatus,  setStripeStatus]  = useState(null);
   const [stripeLoading, setStripeLoading] = useState(false);
 
+  // Profile
+  const [profileSaving, setProfileSaving] = useState(false);
+  const [profileForm,   setProfileForm]   = useState({ bio:"", cashapp_tag:"" });
+  const [photoPreview,  setPhotoPreview]  = useState(null);
+  const photoInputRef = { current: null };
+
   // Service prices
   const [prices, setPrices] = useState([]);
 
@@ -552,6 +558,7 @@ export default function BarberDashboard() {
     { id:"newsletter",   label:"News",        icon:"📣" },
     { id:"reports",      label:"Reports",     icon:"📊" },
     { id:"stripe",       label:"Stripe",      icon:"💳" },
+    { id:"profile",      label:"Profile",     icon:"👤" },
   ];
 
   if (loading) return (
@@ -1507,6 +1514,173 @@ export default function BarberDashboard() {
                 </div>
               </div>
             )}
+
+            {/* ════ PROFILE ════ */}
+            {activeTab === "profile" && (
+              <div>
+                <h1 style={{ ...SF, fontSize:16, fontWeight:700, textTransform:"uppercase",
+                  letterSpacing:"-0.02em", marginBottom:4 }}>Profile</h1>
+                <p style={{ ...MONO, fontSize:11, color:C.muted, marginBottom:24 }}>
+                  Update your photo, bio, and payment info
+                </p>
+
+                <div style={{ maxWidth:520, display:"flex", flexDirection:"column", gap:16 }}>
+
+                  {/* Photo upload */}
+                  <div style={{ background:C.surface, border:`1px solid ${C.border}`, padding:20 }}>
+                    <p style={{ ...MONO, fontSize:10, color:C.amber, textTransform:"uppercase",
+                      letterSpacing:"0.2em", marginBottom:16 }}>Profile Photo</p>
+
+                    <div style={{ display:"flex", alignItems:"center", gap:20, marginBottom:16 }}>
+                      {/* Current / preview photo */}
+                      <div style={{ width:80, height:80, borderRadius:"50%", flexShrink:0,
+                        border:`2px solid ${C.amberBorder}`, overflow:"hidden",
+                        background:C.amberDim, display:"flex", alignItems:"center",
+                        justifyContent:"center" }}>
+                        {photoPreview || barber?.photo_url ? (
+                          <img src={photoPreview || barber?.photo_url}
+                            alt={barber?.name}
+                            style={{ width:"100%", height:"100%", objectFit:"cover" }}/>
+                        ) : (
+                          <span style={{ ...SF, fontSize:28, color:C.amber, fontWeight:700 }}>
+                            {barber?.name?.charAt(0)}
+                          </span>
+                        )}
+                      </div>
+
+                      <div>
+                        <p style={{ ...MONO, fontSize:12, color:C.text, marginBottom:6 }}>
+                          {barber?.photo_url ? "Change your photo" : "Upload a photo"}
+                        </p>
+                        <p style={{ ...MONO, fontSize:10, color:C.muted, marginBottom:12 }}>
+                          JPG or PNG · Max 5MB · Square works best
+                        </p>
+                        <label style={{ padding:"8px 16px", background:C.amberDim,
+                          border:`1px solid ${C.amberBorder}`, color:C.amber,
+                          ...MONO, fontSize:9, letterSpacing:"0.15em", textTransform:"uppercase",
+                          cursor:"pointer", display:"inline-block" }}>
+                          📷 Choose Photo
+                          <input type="file" accept="image/*"
+                            style={{ display:"none" }}
+                            onChange={async e => {
+                              const file = e.target.files?.[0];
+                              if (!file) return;
+                              if (file.size > 5 * 1024 * 1024) {
+                                showToast("Photo must be under 5MB", "error"); return;
+                              }
+                              const reader = new FileReader();
+                              reader.onload = ev => setPhotoPreview(ev.target.result);
+                              reader.readAsDataURL(file);
+                            }}/>
+                        </label>
+                      </div>
+                    </div>
+
+                    {photoPreview && (
+                      <div style={{ display:"flex", gap:8 }}>
+                        <button disabled={profileSaving}
+                          onClick={async () => {
+                            setProfileSaving(true);
+                            try {
+                              await API.patch("barber/me/update/", { photo: photoPreview });
+                              const r = await API.get("barber/me/");
+                              setBarber(r.data);
+                              setPhotoPreview(null);
+                              showToast("Photo updated ✓");
+                            } catch(e) {
+                              showToast("Could not upload photo", "error");
+                            } finally { setProfileSaving(false); }
+                          }}
+                          style={{ padding:"8px 20px", background:C.amber, border:"none",
+                            color:"black", ...SF, fontSize:7, fontWeight:700,
+                            textTransform:"uppercase", letterSpacing:"0.15em",
+                            cursor:"pointer", opacity:profileSaving?0.7:1 }}>
+                          {profileSaving ? "Uploading..." : "Save Photo →"}
+                        </button>
+                        <button onClick={() => setPhotoPreview(null)}
+                          style={{ padding:"8px 14px", background:"transparent",
+                            border:`1px solid ${C.border}`, color:C.muted,
+                            ...MONO, fontSize:10, cursor:"pointer" }}>
+                          Cancel
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Bio */}
+                  <div style={{ background:C.surface, border:`1px solid ${C.border}`, padding:20 }}>
+                    <p style={{ ...MONO, fontSize:10, color:C.amber, textTransform:"uppercase",
+                      letterSpacing:"0.2em", marginBottom:12 }}>Bio</p>
+                    <textarea
+                      defaultValue={barber?.bio || ""}
+                      onChange={e => setProfileForm(p => ({...p, bio:e.target.value}))}
+                      placeholder="Tell clients about yourself — your specialties, style, experience..."
+                      rows={3}
+                      style={{ width:"100%", padding:"10px 12px", background:C.surfaceB,
+                        border:`1px solid ${C.border}`, color:C.text,
+                        ...MONO, fontSize:12, outline:"none", resize:"none", marginBottom:10 }}
+                      onFocus={e => e.target.style.borderColor = C.amberBorder}
+                      onBlur={e => e.target.style.borderColor = C.border}/>
+                    <button disabled={profileSaving}
+                      onClick={async () => {
+                        setProfileSaving(true);
+                        try {
+                          await API.patch("barber/me/update/", { bio: profileForm.bio || barber?.bio });
+                          const r = await API.get("barber/me/");
+                          setBarber(r.data);
+                          showToast("Bio updated ✓");
+                        } catch(e) { showToast("Could not update bio","error"); }
+                        finally { setProfileSaving(false); }
+                      }}
+                      style={{ padding:"8px 18px", background:C.amberDim,
+                        border:`1px solid ${C.amberBorder}`, color:C.amber,
+                        ...MONO, fontSize:9, cursor:"pointer", letterSpacing:"0.1em" }}>
+                      {profileSaving ? "Saving..." : "Save Bio"}
+                    </button>
+                  </div>
+
+                  {/* Cash App tag */}
+                  <div style={{ background:C.surface, border:`1px solid ${C.border}`, padding:20 }}>
+                    <p style={{ ...MONO, fontSize:10, color:C.amber, textTransform:"uppercase",
+                      letterSpacing:"0.2em", marginBottom:12 }}>Cash App Tag</p>
+                    <div style={{ display:"flex", gap:8 }}>
+                      <div style={{ position:"relative", flex:1 }}>
+                        <span style={{ position:"absolute", left:12, top:"50%",
+                          transform:"translateY(-50%)", ...MONO, fontSize:13, color:C.green }}>$</span>
+                        <input
+                          defaultValue={(barber?.cashapp_tag || "").replace("$","")}
+                          onChange={e => setProfileForm(p => ({...p, cashapp_tag:e.target.value}))}
+                          placeholder="yourcashtag"
+                          style={{ width:"100%", paddingLeft:28, paddingRight:12,
+                            paddingTop:10, paddingBottom:10,
+                            background:C.surfaceB, border:`1px solid ${C.border}`,
+                            color:C.text, ...MONO, fontSize:12, outline:"none" }}
+                          onFocus={e => e.target.style.borderColor = C.amberBorder}
+                          onBlur={e => e.target.style.borderColor = C.border}/>
+                      </div>
+                      <button disabled={profileSaving}
+                        onClick={async () => {
+                          setProfileSaving(true);
+                          try {
+                            await API.patch("barber/me/update/", { cashapp_tag: profileForm.cashapp_tag || barber?.cashapp_tag });
+                            const r = await API.get("barber/me/");
+                            setBarber(r.data);
+                            showToast("Cash App tag updated ✓");
+                          } catch(e) { showToast("Could not update","error"); }
+                          finally { setProfileSaving(false); }
+                        }}
+                        style={{ padding:"10px 18px", background:C.amberDim,
+                          border:`1px solid ${C.amberBorder}`, color:C.amber,
+                          ...MONO, fontSize:9, cursor:"pointer" }}>
+                        {profileSaving ? "..." : "Save"}
+                      </button>
+                    </div>
+                  </div>
+
+                </div>
+              </div>
+            )}
+
 
           </div>
         </main>
