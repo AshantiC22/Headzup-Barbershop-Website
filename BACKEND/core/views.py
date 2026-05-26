@@ -2043,6 +2043,27 @@ class AppointmentViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         return Appointment.objects.filter(user=self.request.user).order_by("date", "time")
 
+    def list(self, request, *args, **kwargs):
+        """Override list to add has_review field to each appointment."""
+        queryset = self.get_queryset()
+        serializer = self.get_serializer(queryset, many=True)
+        data = serializer.data
+
+        # Add has_review flag — check if a Review exists for each appointment
+        reviewed_ids = set(
+            Review.objects.filter(
+                appointment__user=request.user
+            ).values_list("appointment_id", flat=True)
+        )
+
+        result = []
+        for appt in data:
+            appt_dict = dict(appt)
+            appt_dict["has_review"] = appt_dict["id"] in reviewed_ids
+            result.append(appt_dict)
+
+        return Response(result)
+
     def perform_create(self, serializer):
         barber_id      = serializer.validated_data.get("barber").id
         date           = serializer.validated_data.get("date")

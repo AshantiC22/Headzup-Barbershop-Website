@@ -515,8 +515,9 @@ function DashboardContent() {
   const past      = appointments.filter(a => a.status === "completed" || a.status === "no_show" || (a.status !== "cancelled" && new Date(`${a.date}T${a.time}`) < new Date() - 86400000)).sort((a,b) => new Date(`${b.date}T${b.time}`) - new Date(`${a.date}T${a.time}`));
   const cancelled = appointments.filter(a => a.status === "cancelled");
 
+  // Only show review prompt for completed appointments that haven't been reviewed yet
   const completedAppts = appointments
-    .filter(a => a.status === "completed")
+    .filter(a => a.status === "completed" && !a.has_review)
     .sort((a,b) => new Date(`${b.date}T${b.time}`) - new Date(`${a.date}T${a.time}`));
 
   if (loading) return (
@@ -639,7 +640,7 @@ function DashboardContent() {
         )}
 
         {/* Review prompt */}
-        {completedAppts.length > 0 && !reviewDone && (
+        {completedAppts.length > 0 && (
           <div style={{ background:C.surface, border:`1px solid ${C.amberBorder}`,
             padding:"14px 16px", marginBottom:16 }}>
             <div style={{ display:"flex", alignItems:"center",
@@ -733,6 +734,10 @@ function DashboardContent() {
                         setShowReview(false);
                         showToast("⭐ Review submitted — thank you!");
                         addNotif?.("Review Submitted ⭐", "Thanks!", "haircut_review");
+                        // Mark appointment as reviewed in state so prompt disappears
+                        setAppointments(prev => prev.map(a =>
+                          a.id === reviewAppt?.id ? {...a, has_review:true} : a
+                        ));
                       } catch(e) {
                         showToast(e.response?.data?.error || "Could not submit", "error");
                       } finally { setReviewBusy(false); }
