@@ -2,7 +2,7 @@
 export const dynamic = "force-dynamic";
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
-import LoadingScreen from "@/lib/LoadingScreen";
+import LoadingScreen from "@/components/LoadingScreen";
 import useBreakpoint from "@/lib/useBreakpoint";
 
 if (typeof window !== "undefined") {
