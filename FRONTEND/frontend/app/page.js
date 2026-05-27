@@ -1,6 +1,6 @@
 "use client";
 export const dynamic = "force-dynamic";
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import LoadingScreen from "@/lib/LoadingScreen";
 import useBreakpoint from "@/lib/useBreakpoint";
@@ -412,6 +412,8 @@ function PersonaSelect({ barbers, book, isMobile }) {
 // ══════════════════════════════════════════════════════════════════════════════
 //  HOME PAGE
 // ══════════════════════════════════════════════════════════════════════════════
+
+
 export default function HomePage() {
   const router   = useRouter();
   const { isMobile } = useBreakpoint();
@@ -700,6 +702,23 @@ export default function HomePage() {
 
           {/* Hero background layers */}
           <div style={{ position:"absolute",inset:0,pointerEvents:"none",overflow:"hidden" }}>
+            {/* Hero background video */}
+            <video
+              autoPlay muted loop playsInline
+              style={{
+                position:"absolute", inset:0,
+                width:"100%", height:"100%",
+                objectFit:"cover",
+                opacity:0.55,
+                zIndex:0,
+              }}>
+              <source src="/hero-bg.mp4" type="video/mp4"/>
+            </video>
+            {/* Dark overlay so text stays readable */}
+            <div style={{
+              position:"absolute", inset:0, zIndex:1,
+              background:"linear-gradient(to bottom, rgba(5,5,5,0.45) 0%, rgba(5,5,5,0.2) 50%, rgba(5,5,5,0.7) 100%)"
+            }}/>
             {/* Diagonal red panel */}
             {!isMobile && (
               <div style={{ position:"absolute",top:0,bottom:0,right:0,width:"38%",
