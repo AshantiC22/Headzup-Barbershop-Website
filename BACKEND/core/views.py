@@ -2607,7 +2607,9 @@ class DepositCheckoutView(APIView):
 
         try:
             account = stripe.Account.retrieve(barber.stripe_account_id)
-            if not account.charges_enabled:
+            # In test mode skip charges_enabled check — test accounts don't fully enable
+            is_test_mode = getattr(settings, "STRIPE_MODE", "test").lower() == "test"
+            if not account.charges_enabled and not is_test_mode:
                 return Response({
                     "error": f"{barber.name}'s Stripe account isn't fully set up yet.",
                     "pay_in_shop": True,
