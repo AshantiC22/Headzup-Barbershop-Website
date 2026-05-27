@@ -382,7 +382,6 @@ export default function LoadingScreen({ onComplete }) {
         </p>
 
       </div>
-      </div>
     </div>
   );
 }
