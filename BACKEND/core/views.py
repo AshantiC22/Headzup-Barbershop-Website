@@ -2635,7 +2635,7 @@ class DepositCheckoutView(APIView):
                     "quantity": 1,
                 }],
                 mode="payment",
-                automatic_tax={"enabled": True},
+                automatic_tax={"enabled": False},
                 payment_intent_data={
                     "transfer_data": {"destination": barber.stripe_account_id},
                     "description":   f"HEADZ UP Deposit — {service.name} with {barber.name}",
@@ -3120,7 +3120,7 @@ class CreateCheckoutSessionView(APIView):
                     "quantity": 1,
                 }],
                 mode="payment",
-                automatic_tax={"enabled": True},
+                automatic_tax={"enabled": False},
                 # This routes the payment directly to the barber's Stripe account
                 payment_intent_data={
                     "application_fee_amount": application_fee_amount,
