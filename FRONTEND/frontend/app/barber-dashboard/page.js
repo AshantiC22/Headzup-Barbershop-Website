@@ -1021,62 +1021,295 @@ export default function BarberDashboard() {
               </div>
             )}
 
-            {/* ════ REPORTS ════ */}
+                        {/* ════ REPORTS ════ */}
             {activeTab==="reports"&&(
               <div>
+                {/* Header */}
                 <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:24,flexWrap:"wrap",gap:12}}>
                   <div>
-                    <h1 style={{...SF,fontSize:18,fontWeight:700,textTransform:"uppercase",letterSpacing:"-0.02em",marginBottom:3}}>Reports</h1>
-                    <p style={{...MONO,fontSize:11,color:C.sub}}>Business analytics</p>
+                    <h1 style={{...SF,fontSize:18,fontWeight:700,textTransform:"uppercase",letterSpacing:"-0.02em",marginBottom:3}}>Analytics</h1>
+                    <p style={{...MONO,fontSize:11,color:C.sub}}>
+                      {reports ? `${fmtDate(reports.start==="all"?"2020-01-01":reports.start)} → Today` : "Loading..."}
+                    </p>
                   </div>
-                  <div style={{display:"flex",gap:6}}>
+                  {/* Period selector */}
+                  <div style={{display:"flex",gap:6,background:"rgba(255,255,255,0.03)",padding:4,borderRadius:12,border:`1px solid ${C.border}`}}>
                     {["week","month","year","all"].map(p=>(
                       <button key={p} onClick={()=>setReportPeriod(p)}
-                        style={{padding:"7px 16px",background:reportPeriod===p?"linear-gradient(135deg,rgba(245,158,11,0.15),rgba(245,158,11,0.05))":C.glass,border:`1px solid ${reportPeriod===p?C.amberBorder:C.border}`,borderRadius:8,color:reportPeriod===p?C.amber:C.muted,...MONO,fontSize:9,textTransform:"uppercase",cursor:"pointer",transition:"all 0.2s"}}>
-                        {p}
+                        style={{padding:"7px 14px",borderRadius:9,
+                          background:reportPeriod===p?"linear-gradient(135deg,rgba(245,158,11,0.18),rgba(245,158,11,0.08))":"transparent",
+                          border:reportPeriod===p?`1px solid ${C.amberBorder}`:"1px solid transparent",
+                          color:reportPeriod===p?C.amber:C.muted,...MONO,fontSize:9,
+                          textTransform:"uppercase",cursor:"pointer",transition:"all 0.2s",
+                          boxShadow:reportPeriod===p?"0 2px 10px rgba(245,158,11,0.12)":"none"}}>
+                        {p==="all"?"All Time":p.charAt(0).toUpperCase()+p.slice(1)}
                       </button>
                     ))}
                   </div>
                 </div>
-                {!reports?(
-                  <p style={{...MONO,fontSize:11,color:C.muted,textAlign:"center",padding:40}}>Loading...</p>
-                ):(
+
+                {!reports ? (
+                  <div style={{display:"flex",flexDirection:"column",gap:12}}>
+                    {[1,2,3].map(i=>(
+                      <div key={i} style={{height:120,...glassCard(),background:"linear-gradient(90deg,rgba(255,255,255,0.04) 25%,rgba(255,255,255,0.07) 50%,rgba(255,255,255,0.04) 75%)",backgroundSize:"200% 100%",animation:"shimmer 1.4s ease-in-out infinite"}}/>
+                    ))}
+                  </div>
+                ) : (
                   <>
-                    <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(130px,1fr))",gap:10,marginBottom:24}}>
-                      <StatCard label="Bookings"   value={reports.summary.total}          icon="📅" color={C.amber}/>
-                      <StatCard label="Completed"  value={reports.summary.completed}      icon="✓"  color={C.green}/>
-                      <StatCard label="Revenue"    value={`$${reports.summary.total_revenue}`} icon="💰" color={C.blue}/>
-                      <StatCard label="No Shows"   value={reports.summary.no_shows}       icon="⚡" color={C.red}/>
-                      <StatCard label="Cancelled"  value={reports.summary.cancelled}      icon="✕"  color={C.muted}/>
-                      <StatCard label="Completion" value={`${reports.summary.completion_rate}%`} icon="📈" color={C.purple}/>
-                    </div>
-                    {reports.services?.length>0&&(
-                      <div style={{...glassCard({padding:20,marginBottom:20})}}>
-                        <p style={{...SF,fontSize:10,color:C.amber,textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:14}}>By Service</p>
-                        <div style={{display:"flex",flexDirection:"column",gap:8}}>
-                          {reports.services.map(s=>(
-                            <div key={s.name} style={{display:"flex",alignItems:"center",gap:14,padding:"10px 14px",background:"rgba(255,255,255,0.03)",borderRadius:10}}>
-                              <div style={{flex:1}}>
-                                <div style={{display:"flex",justifyContent:"space-between",marginBottom:6}}>
-                                  <p style={{...MONO,fontSize:12,color:C.text}}>{s.name}</p>
-                                  <p style={{...SF,fontSize:12,color:C.amber,fontWeight:700}}>${s.revenue}</p>
-                                </div>
-                                <div style={{height:4,background:C.border,borderRadius:4}}>
-                                  <div style={{height:"100%",background:`linear-gradient(to right,#f59e0b,#fbbf24)`,borderRadius:4,width:`${Math.min(100,(s.bookings/(reports.summary.total||1))*100)}%`,transition:"width 0.6s ease"}}/>
-                                </div>
-                              </div>
-                              <p style={{...MONO,fontSize:11,color:C.muted,flexShrink:0}}>{s.bookings} bookings</p>
+                    {/* ── Revenue hero ── */}
+                    <div style={{...glassCard({padding:24,marginBottom:16,borderColor:C.amberBorder,position:"relative",overflow:"hidden"})}}>
+                      <div style={{position:"absolute",top:0,left:0,right:0,height:3,background:"linear-gradient(to right,#ef4444,#f59e0b,#fbbf24)"}}/>
+                      <div style={{position:"absolute",top:"-30%",right:"-5%",width:200,height:200,borderRadius:"50%",background:"radial-gradient(circle,rgba(245,158,11,0.06) 0%,transparent 70%)",pointerEvents:"none"}}/>
+                      <div style={{display:"flex",alignItems:"flex-end",justifyContent:"space-between",flexWrap:"wrap",gap:16}}>
+                        <div>
+                          <p style={{...MONO,fontSize:9,color:C.amberD,letterSpacing:"0.4em",textTransform:"uppercase",marginBottom:6}}>Total Revenue</p>
+                          <p style={{...SF,fontSize:42,fontWeight:700,color:C.amber,lineHeight:1,marginBottom:4}}>
+                            ${parseFloat(reports.summary.total_revenue).toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2})}
+                          </p>
+                          <p style={{...MONO,fontSize:11,color:C.sub}}>
+                            ${reports.summary.online_revenue} online · ${reports.summary.shop_revenue} shop
+                          </p>
+                        </div>
+                        <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
+                          {[
+                            ["Completion",`${reports.summary.completion_rate}%`,C.green],
+                            ["No Show Rate",`${reports.summary.no_show_rate}%`,C.red],
+                            ["Walk-Ins",reports.summary.walk_ins,C.blue],
+                            ["Reschedules",reports.summary.reschedules,C.purple],
+                          ].map(([label,val,color])=>(
+                            <div key={label} style={{textAlign:"center",padding:"12px 16px",background:"rgba(255,255,255,0.04)",borderRadius:12,border:`1px solid rgba(255,255,255,0.08)`}}>
+                              <p style={{...SF,fontSize:18,fontWeight:700,color,marginBottom:3}}>{val}</p>
+                              <p style={{...MONO,fontSize:9,color:C.muted,letterSpacing:"0.15em",textTransform:"uppercase"}}>{label}</p>
                             </div>
                           ))}
                         </div>
                       </div>
-                    )}
+                    </div>
+
+                    {/* ── Stat grid ── */}
+                    <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(130px,1fr))",gap:10,marginBottom:16}}>
+                      {[
+                        {label:"Total Bookings",  value:reports.summary.total,       icon:"📅", color:C.amber},
+                        {label:"Completed",        value:reports.summary.completed,   icon:"✓",  color:C.green},
+                        {label:"Cancelled",        value:reports.summary.cancelled,   icon:"✕",  color:C.muted},
+                        {label:"No Shows",         value:reports.summary.no_shows,    icon:"⚡", color:C.red},
+                        {label:"Online Payments",  value:reports.summary.online_count,icon:"💳", color:C.blue},
+                        {label:"Shop Payments",    value:reports.summary.shop_count,  icon:"✂️", color:C.amber},
+                        {label:"Clients on Strike",value:reports.summary.clients_on_strike,icon:"⚠️",color:C.red},
+                        {label:"Confirmed",        value:reports.summary.confirmed,   icon:"📌", color:C.purple},
+                      ].map(s=>(
+                        <div key={s.label} style={{...glassCard({padding:"16px 14px",position:"relative",overflow:"hidden"})}}>
+                          <div style={{position:"absolute",top:0,left:0,width:"100%",height:2,background:`linear-gradient(to right,${s.color}60,transparent)`}}/>
+                          <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}}>
+                            <p style={{...MONO,fontSize:8,color:C.muted,letterSpacing:"0.25em",textTransform:"uppercase",lineHeight:1.4}}>{s.label}</p>
+                            <span style={{fontSize:14,opacity:0.5}}>{s.icon}</span>
+                          </div>
+                          <p style={{...SF,fontSize:22,fontWeight:700,color:s.color,lineHeight:1}}>{s.value}</p>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* ── Revenue bar chart (last 30 days) ── */}
+                    {reports.daily?.length>0&&(()=>{
+                      const maxRev = Math.max(...reports.daily.map(d=>d.revenue), 1);
+                      const maxBook = Math.max(...reports.daily.map(d=>d.bookings), 1);
+                      // Show last 14 days for readability
+                      const visible = reports.daily.slice(-14);
+                      return (
+                        <div style={{...glassCard({padding:20,marginBottom:16})}}>
+                          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
+                            <p style={{...SF,fontSize:10,color:C.amber,textTransform:"uppercase",letterSpacing:"0.1em"}}>Revenue · Last 14 Days</p>
+                            <div style={{display:"flex",gap:12}}>
+                              <div style={{display:"flex",alignItems:"center",gap:5}}>
+                                <div style={{width:10,height:10,borderRadius:2,background:"linear-gradient(135deg,#f59e0b,#d97706)"}}/>
+                                <span style={{...MONO,fontSize:9,color:C.muted}}>Revenue</span>
+                              </div>
+                              <div style={{display:"flex",alignItems:"center",gap:5}}>
+                                <div style={{width:10,height:10,borderRadius:2,background:C.blue+"80"}}/>
+                                <span style={{...MONO,fontSize:9,color:C.muted}}>Bookings</span>
+                              </div>
+                            </div>
+                          </div>
+                          <div style={{display:"flex",gap:4,alignItems:"flex-end",height:120}}>
+                            {visible.map((d,i)=>(
+                              <div key={i} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:2,height:"100%",justifyContent:"flex-end"}}>
+                                <div style={{position:"relative",width:"100%",display:"flex",flexDirection:"column",gap:2,justifyContent:"flex-end"}}>
+                                  {/* Revenue bar */}
+                                  <div title={`$${d.revenue}`}
+                                    style={{width:"100%",height:`${Math.max(4,(d.revenue/maxRev)*100)}px`,
+                                      background:"linear-gradient(to top,#d97706,#f59e0b,#fbbf24)",
+                                      borderRadius:"3px 3px 0 0",transition:"height 0.5s ease",
+                                      minHeight:d.revenue>0?4:0}}/>
+                                  {/* Bookings overlay */}
+                                  <div title={`${d.bookings} bookings`}
+                                    style={{position:"absolute",bottom:0,left:0,right:0,
+                                      height:`${Math.max(2,(d.bookings/maxBook)*30)}px`,
+                                      background:`${C.blue}50`,borderRadius:"3px 3px 0 0"}}/>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                          {/* X-axis labels */}
+                          <div style={{display:"flex",gap:4,marginTop:6}}>
+                            {visible.map((d,i)=>(
+                              <div key={i} style={{flex:1,textAlign:"center"}}>
+                                <p style={{...MONO,fontSize:7,color:C.muted,
+                                  transform:"rotate(-35deg)",transformOrigin:"center",
+                                  display:"inline-block",whiteSpace:"nowrap"}}>
+                                  {d.label.split(" ")[1]}
+                                </p>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    })()}
+
+                    <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:16,marginBottom:16}}>
+
+                      {/* ── Service breakdown ── */}
+                      {reports.services?.length>0&&(
+                        <div style={{...glassCard({padding:20})}}>
+                          <p style={{...SF,fontSize:10,color:C.amber,textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:16}}>Services</p>
+                          <div style={{display:"flex",flexDirection:"column",gap:8}}>
+                            {reports.services.map((s,i)=>{
+                              const maxBook = Math.max(...reports.services.map(x=>x.bookings),1);
+                              const pct = (s.bookings/maxBook)*100;
+                              return (
+                                <div key={s.name} style={{padding:"10px 12px",background:"rgba(255,255,255,0.03)",borderRadius:10}}>
+                                  <div style={{display:"flex",justifyContent:"space-between",marginBottom:6}}>
+                                    <div>
+                                      <p style={{...MONO,fontSize:12,color:C.text,marginBottom:2}}>{s.name}</p>
+                                      <p style={{...MONO,fontSize:9,color:C.muted}}>{s.bookings} bookings · {s.completed} done</p>
+                                    </div>
+                                    <div style={{textAlign:"right"}}>
+                                      <p style={{...SF,fontSize:13,color:C.amber,fontWeight:700}}>${s.revenue}</p>
+                                      <p style={{...MONO,fontSize:9,color:C.muted}}>${s.price} ea</p>
+                                    </div>
+                                  </div>
+                                  <div style={{height:4,background:"rgba(255,255,255,0.06)",borderRadius:4}}>
+                                    <div style={{height:"100%",borderRadius:4,width:`${pct}%`,
+                                      background:`linear-gradient(to right,#f59e0b,#fbbf24)`,
+                                      transition:"width 0.8s cubic-bezier(0.4,0,0.2,1)"}}/>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* ── Top clients ── */}
+                      {reports.top_clients?.length>0&&(
+                        <div style={{...glassCard({padding:20})}}>
+                          <p style={{...SF,fontSize:10,color:C.amber,textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:16}}>Top Clients</p>
+                          <div style={{display:"flex",flexDirection:"column",gap:8}}>
+                            {reports.top_clients.map((cl,i)=>(
+                              <div key={cl.id} style={{display:"flex",alignItems:"center",gap:12,
+                                padding:"10px 12px",background:"rgba(255,255,255,0.03)",borderRadius:10}}>
+                                <div style={{width:32,height:32,borderRadius:"50%",
+                                  background:i===0?"linear-gradient(135deg,#f59e0b,#d97706)":C.amberDim,
+                                  border:`1px solid ${i===0?C.amber:C.amberBorder}`,
+                                  display:"flex",alignItems:"center",justifyContent:"center",
+                                  ...SF,fontSize:12,color:i===0?"#000":C.amber,fontWeight:700,flexShrink:0}}>
+                                  {i===0?"👑":i+1}
+                                </div>
+                                <div style={{flex:1,minWidth:0}}>
+                                  <p style={{...MONO,fontSize:12,color:C.text,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{cl.name}</p>
+                                  <p style={{...MONO,fontSize:9,color:C.muted}}>{cl.email}</p>
+                                </div>
+                                <div style={{textAlign:"right",flexShrink:0}}>
+                                  <p style={{...SF,fontSize:14,color:C.amber,fontWeight:700}}>{cl.visits}</p>
+                                  <p style={{...MONO,fontSize:8,color:C.muted}}>visits</p>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:16}}>
+
+                      {/* ── Busiest days ── */}
+                      {reports.busiest_days?.length>0&&(
+                        <div style={{...glassCard({padding:20})}}>
+                          <p style={{...SF,fontSize:10,color:C.amber,textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:16}}>Busiest Days</p>
+                          {(()=>{
+                            const maxD = Math.max(...reports.busiest_days.map(d=>d.bookings),1);
+                            return (
+                              <div style={{display:"flex",gap:6,alignItems:"flex-end",height:80}}>
+                                {reports.busiest_days.map(d=>(
+                                  <div key={d.day} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:4}}>
+                                    <div style={{width:"100%",
+                                      height:`${Math.max(4,(d.bookings/maxD)*70)}px`,
+                                      background:d.bookings===maxD?"linear-gradient(to top,#d97706,#f59e0b)":"rgba(255,255,255,0.08)",
+                                      borderRadius:"4px 4px 0 0",transition:"height 0.6s ease"}}/>
+                                    <p style={{...MONO,fontSize:8,color:d.bookings===maxD?C.amber:C.muted}}>{d.day}</p>
+                                    <p style={{...SF,fontSize:10,color:d.bookings===maxD?C.amber:C.sub,fontWeight:700}}>{d.bookings}</p>
+                                  </div>
+                                ))}
+                              </div>
+                            );
+                          })()}
+                        </div>
+                      )}
+
+                      {/* ── Busiest hours ── */}
+                      {reports.busiest_hours?.length>0&&(
+                        <div style={{...glassCard({padding:20})}}>
+                          <p style={{...SF,fontSize:10,color:C.amber,textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:16}}>Busiest Hours</p>
+                          {(()=>{
+                            const maxH = Math.max(...reports.busiest_hours.map(h=>h.bookings),1);
+                            return (
+                              <div style={{display:"flex",flexDirection:"column",gap:6}}>
+                                {[...reports.busiest_hours].sort((a,b)=>b.bookings-a.bookings).slice(0,5).map(h=>(
+                                  <div key={h.hour} style={{display:"flex",alignItems:"center",gap:10}}>
+                                    <p style={{...MONO,fontSize:10,color:C.text,width:48,flexShrink:0}}>{h.label}</p>
+                                    <div style={{flex:1,height:8,background:"rgba(255,255,255,0.06)",borderRadius:4}}>
+                                      <div style={{height:"100%",borderRadius:4,width:`${(h.bookings/maxH)*100}%`,
+                                        background:`linear-gradient(to right,#f59e0b,#fbbf24)`,transition:"width 0.6s ease"}}/>
+                                    </div>
+                                    <p style={{...SF,fontSize:11,color:C.amber,width:20,flexShrink:0,textAlign:"right"}}>{h.bookings}</p>
+                                  </div>
+                                ))}
+                              </div>
+                            );
+                          })()}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* ── Weekly trend ── */}
+                    {reports.weekly?.length>0&&(()=>{
+                      const maxW = Math.max(...reports.weekly.map(w=>w.revenue),1);
+                      return (
+                        <div style={{...glassCard({padding:20,marginTop:16})}}>
+                          <p style={{...SF,fontSize:10,color:C.amber,textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:16}}>Weekly Revenue Trend</p>
+                          <div style={{display:"flex",gap:6,alignItems:"flex-end",height:100}}>
+                            {reports.weekly.map((w,i)=>(
+                              <div key={i} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:4}}>
+                                <p style={{...MONO,fontSize:8,color:C.amber}}>{w.revenue>0?`$${w.revenue}`:""}</p>
+                                <div style={{width:"100%",
+                                  height:`${Math.max(4,(w.revenue/maxW)*80)}px`,
+                                  background:i===reports.weekly.length-1?"linear-gradient(to top,#ef4444,#f59e0b)":"linear-gradient(to top,#d97706,#f59e0b)",
+                                  borderRadius:"4px 4px 0 0",
+                                  opacity:0.4+(i/reports.weekly.length)*0.6,
+                                  transition:"height 0.6s ease",
+                                  border:i===reports.weekly.length-1?`1px solid ${C.amberBorder}`:"none"}}/>
+                                <p style={{...MONO,fontSize:7,color:C.muted,textAlign:"center",lineHeight:1.3}}>{w.week.replace("Wk ","")}</p>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    })()}
                   </>
                 )}
               </div>
             )}
 
-            {/* ════ STRIPE ════ */}
+{/* ════ STRIPE ════ */}
             {activeTab==="stripe"&&(
               <div>
                 <h1 style={{...SF,fontSize:18,fontWeight:700,textTransform:"uppercase",letterSpacing:"-0.02em",marginBottom:4}}>Stripe Payments</h1>
