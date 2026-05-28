@@ -3396,7 +3396,11 @@ class AvailableSlotsView(APIView):
             all_slots.append(slot_dt.time())
             slot_dt += timedelta(minutes=30)
 
-        booked_times = set(Appointment.objects.filter(barber_id=barber_id, date=appt_date).values_list("time", flat=True))
+        booked_times = set(Appointment.objects.filter(
+            barber_id=barber_id, date=appt_date
+        ).exclude(
+            status__in=["cancelled", "no_show"]
+        ).values_list("time", flat=True))
 
         blocked = set()
         for booked_time in booked_times:
@@ -3685,6 +3689,28 @@ class BarberAppointmentUpdateView(APIView):
             # When barber confirms a shop booking arrival, stamp the time
             if new_status == "confirmed" and appt.payment_method == "shop":
                 appt.shop_confirmed_at = tz.now()
+                # Notify client barber is ready
+                try:
+                    appt_full = Appointment.objects.select_related(
+                        "user","barber","barber__user","service"
+                    ).get(pk=appt.pk)
+                    barber_nm = appt_full.barber.name if appt_full.barber else "Your barber"
+                    send_push_notification(
+                        appt_full.user,
+                        title=f"✂️ {barber_nm} is Ready!",
+                        body=f"Your {appt_full.service.name} starts now. Come on in!",
+                        notif_type=NOTIF_BOOKING_CONFIRMED,
+                        url="/dashboard"
+                    )
+                    try:
+                        phone = _get_client_phone(appt_full.user)
+                        if phone:
+                            _twilio_send(phone,
+                                f"✂️ HEADZ UP: {barber_nm} is ready for you! "
+                                f"Your {appt_full.service.name} starts now."
+                            )
+                    except Exception: pass
+                except Exception: pass
 
         if new_date:
             appt.date = new_date
@@ -4366,7 +4392,7 @@ class HaircutReviewView(APIView):
         appt.save()
 
         # Create or update review
-        Review.objects.update_or_create(
+        review, created = Review.objects.update_or_create(
             appointment=appt,
             defaults={
                 "barber":    appt.barber,
@@ -4376,6 +4402,19 @@ class HaircutReviewView(APIView):
                 "comment":   comment,
             }
         )
+
+         # Notify barber of new review
+        try:
+            if appt.barber and appt.barber.user:
+                stars = "★" * rating + "☆" * (5 - rating)
+                send_push_notification(
+                    appt.barber.user,
+                    title=f"⭐ New Review from {request.user.username}!",
+                    body=f"{stars} — {comment[:60]}{'...' if len(comment) > 60 else ''}",
+                    notif_type=NOTIF_REVIEW_REQUEST,
+                    url="/barber-dashboard?tab=reviews"
+                )
+        except Exception: pass
 
         return Response({
             "message":   "Thank you for your feedback!" if completed else "Thanks for letting us know.",
