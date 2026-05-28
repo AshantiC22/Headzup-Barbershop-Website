@@ -239,6 +239,21 @@ function LoginContent() {
 
       <AmbientBg/>
 
+      {/* ── Home button ── */}
+      <div style={{ position:"fixed", top:16, left:16, zIndex:10 }}>
+        <a href="/"
+          style={{ display:"flex", alignItems:"center", gap:8, padding:"8px 14px",
+            background:"rgba(255,255,255,0.04)", backdropFilter:"blur(20px)",
+            WebkitBackdropFilter:"blur(20px)",
+            border:"1px solid rgba(255,255,255,0.08)", borderRadius:10,
+            color:C.muted, ...MONO, fontSize:10, textDecoration:"none",
+            transition:"all 0.2s", letterSpacing:"0.08em" }}
+          onMouseEnter={e=>{e.currentTarget.style.borderColor=C.amberBorder;e.currentTarget.style.color=C.amber;}}
+          onMouseLeave={e=>{e.currentTarget.style.borderColor="rgba(255,255,255,0.08)";e.currentTarget.style.color=C.muted;}}>
+          ← Home
+        </a>
+      </div>
+
       {/* Logo */}
       <div style={{ position:"relative", zIndex:1, textAlign:"center", marginBottom:32 }}>
         <img src="/logo1.jpg" alt="HEADZ UP" style={{ height:48, objectFit:"contain", marginBottom:12 }}/>
@@ -536,16 +551,24 @@ function LoginContent() {
         </div>
       </div>
 
-      {/* Barber login link */}
-      <div style={{ position:"relative", zIndex:1, marginTop:20, textAlign:"center" }}>
+      {/* Bottom links */}
+      <div style={{ position:"relative", zIndex:1, marginTop:16, display:"flex",
+        gap:10, justifyContent:"center", flexWrap:"wrap" }}>
         <a href="/barber-login"
           style={{ ...MONO, fontSize:10, color:C.muted, textDecoration:"none",
-            padding:"8px 16px", borderRadius:8, border:`1px solid rgba(255,255,255,0.06)`,
-            background:"rgba(255,255,255,0.02)", transition:"all 0.2s",
-            display:"inline-block" }}
+            padding:"8px 16px", borderRadius:8, border:"1px solid rgba(255,255,255,0.06)",
+            background:"rgba(255,255,255,0.02)", transition:"all 0.2s", display:"inline-block" }}
           onMouseEnter={e=>{e.currentTarget.style.color=C.amber;e.currentTarget.style.borderColor=C.amberBorder;}}
           onMouseLeave={e=>{e.currentTarget.style.color=C.muted;e.currentTarget.style.borderColor="rgba(255,255,255,0.06)";}}>
           ✂️ Barber login →
+        </a>
+        <a href="/"
+          style={{ ...MONO, fontSize:10, color:C.muted, textDecoration:"none",
+            padding:"8px 16px", borderRadius:8, border:"1px solid rgba(255,255,255,0.06)",
+            background:"rgba(255,255,255,0.02)", transition:"all 0.2s", display:"inline-block" }}
+          onMouseEnter={e=>{e.currentTarget.style.color=C.amber;e.currentTarget.style.borderColor=C.amberBorder;}}
+          onMouseLeave={e=>{e.currentTarget.style.color=C.muted;e.currentTarget.style.borderColor="rgba(255,255,255,0.06)";}}>
+          ← Back to headzupp.com
         </a>
       </div>
     </div>
