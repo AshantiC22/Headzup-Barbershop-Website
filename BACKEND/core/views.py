@@ -3397,14 +3397,31 @@ class AvailableSlotsView(APIView):
         except ValueError:
             return Response({"error": "Invalid date"}, status=400)
 
-        if appt_date < date_type.today():
+        # ── Timezone-aware "now" in Central Time ──────────────────────────────
+        try:
+            from zoneinfo import ZoneInfo
+            central = ZoneInfo("America/Chicago")
+        except ImportError:
+            import pytz
+            central = pytz.timezone("America/Chicago")
+        from django.utils import timezone as tz_util
+        now_central = tz_util.now().astimezone(central)
+        today_central = now_central.date()
+
+        # Reject past dates (using Central Time date)
+        if appt_date < today_central:
             return Response({"error": "Cannot book past dates"}, status=400)
+
+        # Reject Sunday
         if appt_date.weekday() == 6:
-            return Response({"error": "Closed Sundays"}, status=400)
+            return Response({"booked_slots": [], "available_slots": [], "time_off": True, "message": "Closed on Sundays."})
 
+        # Reject time-off dates
         if BarberTimeOff.objects.filter(barber_id=barber_id, date=appt_date).exists():
-            return Response({"booked_slots": [], "available_slots": [], "time_off": True, "message": "Barber not available."})
+            return Response({"booked_slots": [], "available_slots": [], "time_off": True, "message": "Barber not available this day."})
 
+        # Check barber availability for this day of week
+        # weekday(): Mon=0 ... Sat=5, Sun=6  (our BarberAvailability stores 0=Mon)
         day_of_week = appt_date.weekday()
         try:
             avail = BarberAvailability.objects.get(barber_id=barber_id, day_of_week=day_of_week)
@@ -3413,9 +3430,11 @@ class AvailableSlotsView(APIView):
             work_start = avail.start_time
             work_end   = avail.end_time
         except BarberAvailability.DoesNotExist:
+            # Default hours if no availability set
             work_start = datetime.strptime("09:00", "%H:%M").time()
             work_end   = datetime.strptime("18:00", "%H:%M").time()
 
+        # Get service duration
         duration = 30
         if service_id:
             try:
@@ -3424,46 +3443,69 @@ class AvailableSlotsView(APIView):
             except Service.DoesNotExist:
                 pass
 
+        # ── Generate all possible slots within work hours ─────────────────────
         all_slots = []
         slot_dt   = datetime.combine(appt_date, work_start)
         end_dt    = datetime.combine(appt_date, work_end)
+
         while slot_dt + timedelta(minutes=duration) <= end_dt:
             all_slots.append(slot_dt.time())
             slot_dt += timedelta(minutes=30)
 
-        booked_times = set(Appointment.objects.filter(
-            barber_id=barber_id, date=appt_date
-        ).exclude(
-            status__in=["cancelled", "no_show"]
-        ).values_list("time", flat=True))
+        # ── Remove past slots (Central Time aware) ────────────────────────────
+        # If booking for today, hide any slot that has already passed
+        if appt_date == today_central:
+            current_time = now_central.time()
+            all_slots = [
+                s for s in all_slots
+                if s > current_time  # strictly future only
+            ]
 
+        # ── Remove booked slots (excluding cancelled/no_show) ─────────────────
+        booked_times = set(
+            Appointment.objects.filter(
+                barber_id=barber_id,
+                date=appt_date,
+            ).exclude(
+                status__in=["cancelled", "no_show"]
+            ).values_list("time", flat=True)
+        )
+
+        # Block the booked slot AND any slots that would overlap with it
+        # e.g. a 60-min service at 10:00 also blocks 9:30 (since 9:30+60=10:30 overlaps)
         blocked = set()
         for booked_time in booked_times:
             booked_dt = datetime.combine(appt_date, booked_time)
             blocked.add(booked_time)
+            # Block preceding slots that would run into this booking
             slots_back = math.ceil(duration / 30) - 1
             for i in range(1, slots_back + 1):
                 prev = booked_dt - timedelta(minutes=30 * i)
                 blocked.add(prev.time())
 
-        # Barber's custom price for this service (if any)
+        # ── Barber's custom price for this service ────────────────────────────
         service_price = None
         if service_id:
             try:
-                _svc = Service.objects.get(pk=service_id)
-                custom = BarberServicePrice.objects.filter(barber_id=barber_id, service=_svc).first()
+                _svc   = Service.objects.get(pk=service_id)
+                custom = BarberServicePrice.objects.filter(
+                    barber_id=barber_id, service=_svc
+                ).first()
                 service_price = float(custom.price) if custom else float(_svc.price)
             except Service.DoesNotExist:
                 pass
 
+        available = [str(s) for s in all_slots if s not in blocked]
+
         return Response({
-            "booked_slots":     [str(s) for s in booked_times],
-            "available_slots":  [str(s) for s in all_slots if s not in blocked],
-            "work_start":       str(work_start),
-            "work_end":         str(work_end),
-            "duration_minutes": duration,
-            "time_off":         False,
-            "service_price":    service_price,
+            "booked_slots":      [str(s) for s in booked_times],
+            "available_slots":   available,
+            "work_start":        str(work_start),
+            "work_end":          str(work_end),
+            "duration_minutes":  duration,
+            "time_off":          False,
+            "service_price":     service_price,
+            "timezone":          "America/Chicago",
         })
 
 

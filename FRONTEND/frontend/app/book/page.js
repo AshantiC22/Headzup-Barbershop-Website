@@ -241,12 +241,21 @@ export default function BookPage() {
   // Calendar helpers
   const isDisabled = (dateStr) => {
     const d = new Date(dateStr + "T00:00:00");
-    if (d < new Date(new Date().toDateString())) return true;
+    // Past dates
+    const today = new Date(); today.setHours(0,0,0,0);
+    if (d < today) return true;
+    // Sunday always closed
     if (d.getDay() === 0) return true;
+    // Time off
     if (timeOffDates.includes(dateStr)) return true;
+    // Must have a selected barber to check their schedule
+    if (!selectedBarber) return true;
+    // Check barber working days (Mon=0...Sat=5)
     const dow = (d.getDay() + 6) % 7;
     const dayInfo = allDays.find(x => x.day_of_week === dow);
-    return dayInfo && !dayInfo.is_working;
+    // If no availability record OR barber is not working that day → disabled
+    if (!dayInfo || !dayInfo.is_working) return true;
+    return false;
   };
 
   const renderCalendar = () => {
@@ -304,13 +313,37 @@ export default function BookPage() {
                   border:`1px solid ${selected ? C.amber : isToday ? C.amberBorder : C.border}`,
                   color: selected ? "black" : disabled ? C.muted : C.text,
                   ...MONO, fontSize:11, cursor:disabled ? "not-allowed" : "pointer",
-                  opacity:disabled ? 0.35 : 1, transition:"all 0.15s",
-                  fontWeight: selected ? 700 : 400 }}>
+                  opacity:disabled ? 0.25 : 1, transition:"all 0.15s",
+                  fontWeight: selected ? 700 : 400,
+                  textDecoration: disabled && !selected ? "line-through" : "none" }}>
                 {d}
               </button>
             );
           })}
         </div>
+        {selectedBarber && allDays.length > 0 && (
+          <div style={{ marginTop:10, padding:"8px 0",
+            borderTop:`1px solid ${C.border}`, display:"flex",
+            gap:12, flexWrap:"wrap" }}>
+            {["Mon","Tue","Wed","Thu","Fri","Sat"].map((day,i) => {
+              const di = allDays.find(x => x.day_of_week === i);
+              const working = di && di.is_working;
+              return (
+                <div key={day} style={{ display:"flex", alignItems:"center", gap:4 }}>
+                  <div style={{ width:7, height:7, borderRadius:"50%",
+                    background: working ? C.amber : C.muted, opacity: working ? 1 : 0.4 }}/>
+                  <span style={{ ...MONO, fontSize:9,
+                    color: working ? C.text : C.muted }}>{day}</span>
+                  {working && di.start_time && (
+                    <span style={{ ...MONO, fontSize:8, color:C.muted }}>
+                      {di.start_time.slice(0,5)}–{di.end_time.slice(0,5)}
+                    </span>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
     );
   };
