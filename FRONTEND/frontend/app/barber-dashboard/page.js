@@ -187,6 +187,21 @@ export default function BarberDashboard() {
   const { addNotif, showPermitPrompt } = useNotifications() || {};
   useEffect(() => { showPermitPrompt?.(); }, [showPermitPrompt]);
 
+  // Listen for new review push notifications to increment badge
+  useEffect(() => {
+    const handlePush = (e) => {
+      if (e.detail?.type === "review" || e.detail?.notif_type === "haircut_review") {
+        setReviewBadge(p => {
+          const next = p + 1;
+          localStorage.setItem("headzup_review_badge", String(next));
+          return next;
+        });
+      }
+    };
+    window.addEventListener("headzup:push", handlePush);
+    return () => window.removeEventListener("headzup:push", handlePush);
+  }, []);
+
   const [barber,       setBarber]       = useState(null);
   const [loading,      setLoading]      = useState(true);
   const [activeTab,    setActiveTab]    = useState("schedule");
@@ -267,10 +282,16 @@ export default function BarberDashboard() {
         setBarber(me.data);
         const svc = await API.get("services/");
         setServices(svc.data||[]);
-        // Check unread reviews
-        const rev = await API.get("barber/reviews/");
-        const unread = (rev.data.reviews||[]).filter(r=>!r.barber_seen).length;
-        setReviewBadge(unread);
+        // Check unread reviews — count from localStorage to persist across renders
+        const cachedBadge = parseInt(localStorage.getItem("headzup_review_badge")||"0");
+        if (cachedBadge > 0) setReviewBadge(cachedBadge);
+        // Also fetch fresh count
+        try {
+          const rev = await API.get("barber/reviews/", { _noCache: true });
+          const unread = (rev.data.reviews||[]).filter(r=>!r.barber_seen).length;
+          setReviewBadge(unread);
+          localStorage.setItem("headzup_review_badge", String(unread));
+        } catch(e) {}
       }catch(e){
         if(e?.response?.status===401)router.replace("/barber-login");
       }finally{setLoading(false);}
@@ -309,9 +330,10 @@ export default function BarberDashboard() {
         }
         if(activeTab==="clients"){const r=await API.get("barber/clients/");setClients(r.data||[]);}
         if(activeTab==="reviews"){
-          const r=await API.get("barber/reviews/");
+          const r=await API.get("barber/reviews/", { _noCache:true });
           setReviews(r.data.reviews||[]);
-          setReviewBadge(0); // Mark as seen
+          setReviewBadge(0);
+          localStorage.setItem("headzup_review_badge","0");
         }
         if(activeTab==="reschedules"){const r=await API.get("barber/reschedules/");setReschedules(r.data||[]);}
         if(activeTab==="reports"){const r=await API.get(`barber/reports/?period=${reportPeriod}`);setReports(r.data);}
@@ -551,41 +573,59 @@ export default function BarberDashboard() {
                     <h1 style={{...SF,fontSize:18,fontWeight:700,textTransform:"uppercase",letterSpacing:"-0.02em",marginBottom:3}}>Schedule</h1>
                     <p style={{...MONO,fontSize:11,color:C.sub}}>{fmtDate(schedDate)}</p>
                   </div>
-                  <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
-                    {/* Date nav arrows */}
+                  <div style={{display:"flex",gap:0,alignItems:"center",
+                    background:C.glass,backdropFilter:"blur(10px)",WebkitBackdropFilter:"blur(10px)",
+                    border:`1px solid ${C.border}`,borderRadius:12,overflow:"hidden"}}>
+                    {/* Prev day */}
                     <button onClick={()=>{
                       const d=new Date(schedDate+"T00:00:00");
                       d.setDate(d.getDate()-1);
                       setSchedDate(d.toISOString().split("T")[0]);
-                    }} style={{width:36,height:36,background:C.glass,backdropFilter:"blur(10px)",WebkitBackdropFilter:"blur(10px)",border:`1px solid ${C.border}`,borderRadius:10,color:C.sub,cursor:"pointer",fontSize:16,transition:"all 0.2s"}}
-                      onMouseEnter={e=>{e.currentTarget.style.borderColor=C.amberBorder;e.currentTarget.style.color=C.amber;}}
-                      onMouseLeave={e=>{e.currentTarget.style.borderColor=C.border;e.currentTarget.style.color=C.sub;}}>‹</button>
+                    }} style={{width:38,height:38,background:"transparent",border:"none",
+                      borderRight:`1px solid ${C.border}`,color:C.sub,cursor:"pointer",
+                      fontSize:16,transition:"all 0.2s",flexShrink:0}}
+                      onMouseEnter={e=>{e.currentTarget.style.background=C.amberDim;e.currentTarget.style.color=C.amber;}}
+                      onMouseLeave={e=>{e.currentTarget.style.background="transparent";e.currentTarget.style.color=C.sub;}}>‹</button>
+                    {/* Date input */}
                     <input type="date" value={schedDate}
                       onChange={e=>setSchedDate(e.target.value)}
-                      style={{padding:"8px 14px",background:C.glass,backdropFilter:"blur(10px)",WebkitBackdropFilter:"blur(10px)",border:`1px solid ${C.border}`,borderRadius:10,color:C.text,...MONO,fontSize:11,outline:"none",cursor:"pointer"}}/>
+                      style={{padding:"0 12px",height:38,background:"transparent",
+                        border:"none",color:C.text,...MONO,fontSize:11,outline:"none",
+                        cursor:"pointer",minWidth:130}}/>
+                    {/* Next day */}
                     <button onClick={()=>{
                       const d=new Date(schedDate+"T00:00:00");
                       d.setDate(d.getDate()+1);
                       setSchedDate(d.toISOString().split("T")[0]);
-                    }} style={{width:36,height:36,background:C.glass,backdropFilter:"blur(10px)",WebkitBackdropFilter:"blur(10px)",border:`1px solid ${C.border}`,borderRadius:10,color:C.sub,cursor:"pointer",fontSize:16,transition:"all 0.2s"}}
-                      onMouseEnter={e=>{e.currentTarget.style.borderColor=C.amberBorder;e.currentTarget.style.color=C.amber;}}
-                      onMouseLeave={e=>{e.currentTarget.style.borderColor=C.border;e.currentTarget.style.color=C.sub;}}>›</button>
+                    }} style={{width:38,height:38,background:"transparent",border:"none",
+                      borderLeft:`1px solid ${C.border}`,color:C.sub,cursor:"pointer",
+                      fontSize:16,transition:"all 0.2s",flexShrink:0}}
+                      onMouseEnter={e=>{e.currentTarget.style.background=C.amberDim;e.currentTarget.style.color=C.amber;}}
+                      onMouseLeave={e=>{e.currentTarget.style.background="transparent";e.currentTarget.style.color=C.sub;}}>›</button>
+                  </div>
+                  {/* Today + Refresh + Clear */}
+                  <div style={{display:"flex",gap:6,alignItems:"center"}}>
                     {schedDate!==todayStr()&&(
                       <button onClick={()=>setSchedDate(todayStr())}
-                        style={{padding:"8px 16px",background:C.amberDim,border:`1px solid ${C.amberBorder}`,borderRadius:10,color:C.amber,...MONO,fontSize:9,cursor:"pointer",transition:"all 0.2s"}}
+                        style={{padding:"8px 14px",background:C.amberDim,border:`1px solid ${C.amberBorder}`,
+                          borderRadius:10,color:C.amber,...MONO,fontSize:9,cursor:"pointer",
+                          transition:"all 0.2s",whiteSpace:"nowrap"}}
                         onMouseEnter={e=>e.currentTarget.style.background=C.amberGlow}
                         onMouseLeave={e=>e.currentTarget.style.background=C.amberDim}>
-                        Today →
+                        Today
                       </button>
                     )}
                     <button onClick={()=>loadSchedule(schedDate)}
-                      style={{width:36,height:36,background:C.glass,backdropFilter:"blur(10px)",WebkitBackdropFilter:"blur(10px)",border:`1px solid ${C.border}`,borderRadius:10,color:C.sub,cursor:"pointer",fontSize:14,transition:"all 0.2s"}}
+                      style={{width:36,height:36,background:C.glass,backdropFilter:"blur(10px)",
+                        WebkitBackdropFilter:"blur(10px)",border:`1px solid ${C.border}`,
+                        borderRadius:10,color:C.sub,cursor:"pointer",fontSize:14,transition:"all 0.2s"}}
                       onMouseEnter={e=>{e.currentTarget.style.borderColor=C.amberBorder;e.currentTarget.style.color=C.amber;}}
                       onMouseLeave={e=>{e.currentTarget.style.borderColor=C.border;e.currentTarget.style.color=C.sub;}}>↻</button>
                     {schedule.some(a=>["completed","cancelled","no_show"].includes(a.status))&&(
                       <button onClick={()=>setSchedule(p=>p.filter(a=>!["completed","cancelled","no_show"].includes(a.status)))}
-                        style={{padding:"8px 14px",background:C.redDim,border:`1px solid ${C.red}30`,borderRadius:10,color:C.red,...MONO,fontSize:9,cursor:"pointer"}}>
-                        ✕ Clear Done
+                        style={{padding:"8px 12px",background:C.redDim,border:`1px solid ${C.red}30`,
+                          borderRadius:10,color:C.red,...MONO,fontSize:9,cursor:"pointer",whiteSpace:"nowrap"}}>
+                        ✕ Done
                       </button>
                     )}
                   </div>

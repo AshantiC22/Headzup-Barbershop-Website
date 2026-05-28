@@ -244,6 +244,7 @@ class Review(models.Model):
     appointment = models.OneToOneField(Appointment, on_delete=models.CASCADE, related_name="review")
     barber      = models.ForeignKey(Barber, on_delete=models.CASCADE, related_name="reviews")
     client      = models.ForeignKey(User, on_delete=models.CASCADE)
+    barber_seen = models.BooleanField(default=False)  # True once barber opens Reviews tab
     completed   = models.BooleanField(default=True)   # True = yes haircut done, False = no
     rating      = models.PositiveSmallIntegerField(default=5)  # 1-5, auto 5 on yes
     comment      = models.TextField(blank=True, default="")

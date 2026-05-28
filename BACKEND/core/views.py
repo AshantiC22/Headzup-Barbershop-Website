@@ -4440,6 +4440,9 @@ class BarberReviewsView(APIView):
         else:
             return Response({"error": "barber_id required"}, status=400)
 
+        # Mark all unseen reviews as seen when barber opens tab
+        reviews.filter(barber_seen=False).update(barber_seen=True)
+
         data = [{
             "id":           r.id,
             "client":       r.client.first_name or r.client.username,
@@ -4447,6 +4450,7 @@ class BarberReviewsView(APIView):
             "comment":      r.comment,
             "barber_reply": getattr(r, "barber_reply", "") or "",
             "replied_at":   r.replied_at.strftime("%B %d, %Y") if getattr(r, "replied_at", None) else None,
+            "barber_seen":  True,
             "created_at":   r.created_at.strftime("%B %d, %Y"),
         } for r in reviews]
 
@@ -5135,6 +5139,14 @@ class BarberReportsView(APIView):
         if not barber:
             return Response({"error": "Not a barber account"}, status=403)
 
+        # ── Cache reports for 2 min per barber/period ──
+        from django.core.cache import cache
+        period     = request.query_params.get("period", "month")
+        cache_key  = f"reports_{barber.id}_{period}"
+        cached     = cache.get(cache_key)
+        if cached:
+            return Response(cached)
+
         from datetime import date as date_type, timedelta
         from django.db.models import Count, Sum, Q
         from decimal import Decimal
@@ -5155,13 +5167,22 @@ class BarberReportsView(APIView):
         qs = Appointment.objects.filter(barber=barber).select_related("service", "user")
         qs_period = qs.filter(date__gte=start) if start else qs
 
-        # ── Overall summary ──
-        total        = qs_period.count()
-        completed    = qs_period.filter(status="completed").count()
-        cancelled    = qs_period.filter(status="cancelled").count()
-        no_shows     = qs_period.filter(status="no_show").count()
-        confirmed    = qs_period.filter(status="confirmed").count()
-        walk_ins     = qs_period.filter(is_walk_in=True).count()
+        # ── Overall summary — single aggregated query instead of 6 separate counts ──
+        from django.db.models import Count as _Count, Q as _Q
+        agg = qs_period.aggregate(
+            total     = _Count("id"),
+            completed = _Count("id", filter=_Q(status="completed")),
+            cancelled = _Count("id", filter=_Q(status="cancelled")),
+            no_shows  = _Count("id", filter=_Q(status="no_show")),
+            confirmed = _Count("id", filter=_Q(status="confirmed")),
+            walk_ins  = _Count("id", filter=_Q(is_walk_in=True)),
+        )
+        total     = agg["total"]
+        completed = agg["completed"]
+        cancelled = agg["cancelled"]
+        no_shows  = agg["no_shows"]
+        confirmed = agg["confirmed"]
+        walk_ins  = agg["walk_ins"]
 
         from django.db.models import Sum as _Sum
         online_appts   = qs_period.filter(payment_method="online", status="completed")
@@ -5325,7 +5346,7 @@ class BarberReportsView(APIView):
         except Exception:
             pass
 
-        return Response({
+        result = {
             "period": period,
             "start":  str(start) if start else "all",
             "summary": {
@@ -5351,7 +5372,9 @@ class BarberReportsView(APIView):
             "busiest_days": busiest_days,
             "busiest_hours":busiest_hours,
             "top_clients":  top_clients,
-        })
+        }
+        cache.set(cache_key, result, 120)  # cache 2 minutes
+        return Response(result)
 
 
 
