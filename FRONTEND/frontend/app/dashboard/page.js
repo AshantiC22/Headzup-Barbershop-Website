@@ -4,6 +4,7 @@ import { Suspense, useEffect, useState, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useNotifications } from "@/components/NotificationSystem";
 import API from "@/lib/api";
+import { useTheme, ThemeToggle } from "@/components/ThemeProvider";
 
 // ── Design tokens ──────────────────────────────────────────────────────────────
 const C = {
@@ -393,6 +394,7 @@ function DashboardContent() {
   const router       = useRouter();
   const searchParams = useSearchParams();
   const { addNotif, showPermitPrompt } = useNotifications() || {};
+  const { theme: T, isDark } = useTheme();
   useEffect(()=>{ showPermitPrompt?.(); },[showPermitPrompt]);
 
   const [user,         setUser]         = useState(null);
@@ -560,7 +562,7 @@ function DashboardContent() {
       <style jsx global>{`
         @import url('https://fonts.googleapis.com/css2?family=Syncopate:wght@400;700&family=DM+Mono:ital,wght@0,300;0,400;0,500;1,400&display=swap');
         *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
-        body{background:#070709;color:#f1f0ee;}
+        body{background:${T.bg}!important;color:${T.text}!important;}
         ::selection{background:rgba(245,158,11,0.3);}
         ::-webkit-scrollbar{width:4px;height:4px;}
         ::-webkit-scrollbar-track{background:transparent;}
@@ -581,8 +583,8 @@ function DashboardContent() {
 
       {/* ── Header ── */}
       <header style={{position:"sticky",top:0,zIndex:100,
-        background:"rgba(7,7,9,0.88)",backdropFilter:"blur(20px)",
-        WebkitBackdropFilter:"blur(20px)",borderBottom:`1px solid ${C.border}`,
+        background:T.headerBg,backdropFilter:"blur(20px)",
+        WebkitBackdropFilter:"blur(20px)",borderBottom:`1px solid ${T.border}`,
         padding:"0 20px",height:56,display:"flex",alignItems:"center",
         justifyContent:"space-between",gap:12}}>
         <div style={{display:"flex",alignItems:"center",gap:12}}>
@@ -604,13 +606,14 @@ function DashboardContent() {
               boxShadow:"0 3px 14px rgba(245,158,11,0.3)",display:"inline-block"}}>
             + Book
           </a>
+          <ThemeToggle/>
           <button onClick={handleLogout}
-            style={{padding:"7px 12px",background:C.surface,backdropFilter:"blur(10px)",
-              WebkitBackdropFilter:"blur(10px)",border:`1px solid ${C.border}`,
-              borderRadius:10,color:C.muted,...MONO,fontSize:9,letterSpacing:"0.15em",
+            style={{padding:"7px 12px",background:T.surface,backdropFilter:"blur(10px)",
+              WebkitBackdropFilter:"blur(10px)",border:`1px solid ${T.border}`,
+              borderRadius:10,color:T.muted,...MONO,fontSize:9,letterSpacing:"0.15em",
               cursor:"pointer",transition:"all 0.2s"}}
             onMouseEnter={e=>{e.currentTarget.style.borderColor=C.red;e.currentTarget.style.color=C.red;}}
-            onMouseLeave={e=>{e.currentTarget.style.borderColor=C.border;e.currentTarget.style.color=C.muted;}}>
+            onMouseLeave={e=>{e.currentTarget.style.borderColor=T.border;e.currentTarget.style.color=T.muted;}}>
             Out
           </button>
         </div>

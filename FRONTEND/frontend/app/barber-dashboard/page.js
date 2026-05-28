@@ -5,6 +5,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import API from "@/lib/api";
 import { ScheduleSkeleton } from "@/components/Skeleton";
+import { useTheme, ThemeToggle } from "@/components/ThemeProvider";
 
 // ── Design System ──────────────────────────────────────────────────────────────
 const C = {
@@ -185,6 +186,7 @@ function ApptCard({ appt, onStatus, onCancel, onStrike, onRemind }) {
 export default function BarberDashboard() {
   const router = useRouter();
   const { addNotif, showPermitPrompt } = useNotifications() || {};
+  const { theme: T, isDark } = useTheme();
   useEffect(() => { showPermitPrompt?.(); }, [showPermitPrompt]);
 
   // Listen for new review push notifications to increment badge
@@ -458,6 +460,8 @@ export default function BarberDashboard() {
   return (
     <div style={{background:C.bg,minHeight:"100vh",color:C.text}}>
       <style jsx global>{`
+        :root { color-scheme: ${isDark?"dark":"light"}; }
+        body { background:${T.bg} !important; color:${T.text} !important; }
         @import url('https://fonts.googleapis.com/css2?family=Syncopate:wght@400;700&family=DM+Mono:ital,wght@0,300;0,400;0,500;1,400&display=swap');
         *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
         body{background:#070709;color:#f1f0ee;overflow-x:hidden;}
@@ -527,7 +531,7 @@ export default function BarberDashboard() {
 
         {/* ── Sidebar ── */}
         {(!isMobile||sidebarOpen)&&(
-          <aside style={{width:isMobile?"100%":210,flexShrink:0,background:"rgba(7,7,9,0.95)",backdropFilter:"blur(20px)",WebkitBackdropFilter:"blur(20px)",borderRight:`1px solid ${C.border}`,overflowY:"auto",padding:"20px 0",position:isMobile?"fixed":"relative",top:isMobile?58:0,left:0,bottom:0,zIndex:isMobile?90:"auto"}}>
+          <aside style={{width:isMobile?"100%":210,flexShrink:0,background:T.sidebarBg,backdropFilter:"blur(20px)",WebkitBackdropFilter:"blur(20px)",borderRight:`1px solid ${T.border}`,overflowY:"auto",padding:"20px 0",position:isMobile?"fixed":"relative",top:isMobile?58:0,left:0,bottom:0,zIndex:isMobile?90:"auto"}}>
 
             {/* Stats */}
             <div style={{padding:"0 16px 16px",borderBottom:`1px solid ${C.border}`,marginBottom:8}}>

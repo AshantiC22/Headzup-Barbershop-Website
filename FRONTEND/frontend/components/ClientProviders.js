@@ -1,5 +1,6 @@
 "use client";
 import dynamic from "next/dynamic";
+import { ThemeProvider } from "./ThemeProvider";
 
 const NotificationProvider = dynamic(
   () => import("./NotificationSystem"),
@@ -7,5 +8,9 @@ const NotificationProvider = dynamic(
 );
 
 export default function ClientProviders({ children }) {
-  return <NotificationProvider>{children}</NotificationProvider>;
+  return (
+    <ThemeProvider>
+      <NotificationProvider>{children}</NotificationProvider>
+    </ThemeProvider>
+  );
 }
