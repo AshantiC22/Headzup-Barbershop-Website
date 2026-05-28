@@ -108,6 +108,14 @@ const btnSuccess = {
   transition:   "all 0.2s",
 };
 
+const STATUS_CFG = {
+  confirmed:    { label:"Confirmed",  color:"#22c55e", bg:"rgba(34,197,94,0.10)"  },
+  pending_shop: { label:"Pending",    color:"#f59e0b", bg:"rgba(245,158,11,0.10)" },
+  completed:    { label:"Completed",  color:"#60a5fa", bg:"rgba(96,165,250,0.10)" },
+  cancelled:    { label:"Cancelled",  color:"#4b5563", bg:"rgba(75,85,99,0.15)"   },
+  no_show:      { label:"No Show",    color:"#ef4444", bg:"rgba(239,68,68,0.10)"  },
+};
+
 function fmtDate(d) {
   if (!d) return "";
   return new Date(d + "T00:00:00").toLocaleDateString("en-US",
