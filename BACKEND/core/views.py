@@ -148,6 +148,16 @@ def send_booking_confirmation(appointment):
                 notif_type=NOTIF_NEW_BOOKING,
                 url="/barber-dashboard"
             )
+        # Barber SMS
+        try:
+            _bp = _get_barber_phone(appointment.barber)
+            if _bp:
+                _twilio_send(_bp,
+                    f"📅 HEADZ UP: New booking!\n"
+                    f"{_cnm} booked {_svc}\n"
+                    f"{_dt} at {_tm}"
+                )
+        except Exception: pass
     except Exception: pass
 
 
@@ -871,6 +881,14 @@ def send_cancellation_email(appointment, cancelled_by="client"):
                     notif_type=NOTIF_BOOKING_CANCELLED,
                     url="/barber-dashboard"
                 )
+                try:
+                    _cbp2 = _get_barber_phone(appointment.barber)
+                    if _cbp2:
+                        _twilio_send(_cbp2,
+                            f"❌ HEADZ UP: Booking cancelled\n"
+                            f"{_cnm} cancelled {_svc} on {_dt}"
+                        )
+                except Exception: pass
     except Exception: pass
 
 
@@ -1080,6 +1098,14 @@ def send_deposit_paid_email(appointment):
                 notif_type=NOTIF_BOOKING_CONFIRMED,
                 url="/barber-dashboard"
             )
+            try:
+                _pp2 = _get_barber_phone(appointment.barber)
+                if _pp2:
+                    _twilio_send(_pp2,
+                        f"💰 HEADZ UP: Deposit received!\n"
+                        f"{_cnm} paid ${_dep} for {_svc} on {_dt}"
+                    )
+            except Exception: pass
         send_push_notification(
             appointment.user,
             title="Deposit Confirmed ✅",
@@ -1811,6 +1837,15 @@ class UserProfileViewSet(viewsets.ModelViewSet):
                     notif_type=NOTIF_NEW_BOOKING,
                     url="/barber-dashboard"
                 )
+                try:
+                    _dbp3 = _get_barber_phone(appt_full.barber)
+                    if _dbp3:
+                        _twilio_send(_dbp3,
+                            f"📅 HEADZ UP: New online booking!\n"
+                            f"{appt_full.user.username} booked {appt_full.service.name}\n"
+                            f"on {appt_full.date} at {appt_full.time}"
+                        )
+                except Exception: pass
         except IntegrityError:
             raise serializers.ValidationError("This time slot is already booked.")
 
@@ -4414,6 +4449,12 @@ class HaircutReviewView(APIView):
                     notif_type=NOTIF_REVIEW_REQUEST,
                     url="/barber-dashboard?tab=reviews"
                 )
+                _rbp2 = _get_barber_phone(appt.barber)
+                if _rbp2:
+                    _twilio_send(_rbp2,
+                        f"⭐ HEADZ UP: New {rating}-star review from {request.user.username}!\n"
+                        f"{comment[:80]}{'...' if len(comment) > 80 else ''}"
+                    )
         except Exception: pass
 
         return Response({
