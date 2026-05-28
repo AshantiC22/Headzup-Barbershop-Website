@@ -3,16 +3,109 @@ export const dynamic = "force-dynamic";
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import API from "@/lib/api";
+import { BookingSkeleton } from "@/components/Skeleton";
 
-// ── Design tokens ─────────────────────────────────────────────────────────────
+
+// ── Design tokens — Rounded Glass System ─────────────────────────────────────
 const C = {
-  bg:"#080808", surface:"#101010", surfaceB:"#161616",
-  border:"rgba(255,255,255,0.07)", borderB:"rgba(255,255,255,0.12)",
-  amber:"#f59e0b", amberDim:"rgba(245,158,11,0.08)", amberBorder:"rgba(245,158,11,0.25)",
-  red:"#ef4444", green:"#22c55e", muted:"#52525b", sub:"#71717a", text:"#e4e4e7",
+  bg:          "#070709",
+  surface:     "rgba(255,255,255,0.04)",
+  surfaceB:    "rgba(255,255,255,0.06)",
+  surfaceC:    "rgba(255,255,255,0.09)",
+  border:      "rgba(255,255,255,0.08)",
+  borderB:     "rgba(255,255,255,0.14)",
+  amber:       "#f59e0b",
+  amberDim:    "rgba(245,158,11,0.10)",
+  amberBorder: "rgba(245,158,11,0.30)",
+  amberGlow:   "rgba(245,158,11,0.15)",
+  red:         "#ef4444",
+  redDim:      "rgba(239,68,68,0.10)",
+  green:       "#22c55e",
+  greenDim:    "rgba(34,197,94,0.10)",
+  blue:        "#3b82f6",
+  blueDim:     "rgba(59,130,246,0.10)",
+  purple:      "#a78bfa",
+  purpleDim:   "rgba(167,139,250,0.10)",
+  muted:       "#52525b",
+  sub:         "#71717a",
+  text:        "#f4f4f5",
+  textSub:     "#a1a1aa",
 };
 const SF   = { fontFamily:"'Syncopate',sans-serif" };
 const MONO = { fontFamily:"'DM Mono',monospace" };
+
+// Glass card style helper
+const glass = (extra = {}) => ({
+  background:   C.surface,
+  backdropFilter: "blur(20px) saturate(180%)",
+  WebkitBackdropFilter: "blur(20px) saturate(180%)",
+  border:       `1px solid ${C.border}`,
+  borderRadius: 16,
+  ...extra,
+});
+
+// Pill badge style
+const pill = (color = C.amber, bg = C.amberDim) => ({
+  background:   bg,
+  color:        color,
+  border:       `1px solid ${color}30`,
+  borderRadius: 999,
+  padding:      "3px 10px",
+  ...MONO,
+  fontSize:     10,
+  letterSpacing: "0.05em",
+  whiteSpace:   "nowrap",
+});
+
+// Button styles
+const btnPrimary = {
+  background:   C.amber,
+  color:        "#000",
+  border:       "none",
+  borderRadius: 12,
+  padding:      "11px 22px",
+  ...SF,
+  fontSize:     8,
+  fontWeight:   700,
+  textTransform: "uppercase",
+  letterSpacing: "0.15em",
+  cursor:       "pointer",
+  transition:   "all 0.2s",
+  boxShadow:    `0 4px 24px ${C.amberGlow}`,
+};
+const btnGhost = {
+  background:   "transparent",
+  color:        C.textSub,
+  border:       `1px solid ${C.border}`,
+  borderRadius: 12,
+  padding:      "10px 18px",
+  ...MONO,
+  fontSize:     10,
+  cursor:       "pointer",
+  transition:   "all 0.2s",
+};
+const btnDanger = {
+  background:   C.redDim,
+  color:        C.red,
+  border:       `1px solid rgba(239,68,68,0.25)`,
+  borderRadius: 12,
+  padding:      "10px 18px",
+  ...MONO,
+  fontSize:     10,
+  cursor:       "pointer",
+  transition:   "all 0.2s",
+};
+const btnSuccess = {
+  background:   C.greenDim,
+  color:        C.green,
+  border:       `1px solid rgba(34,197,94,0.25)`,
+  borderRadius: 12,
+  padding:      "10px 18px",
+  ...MONO,
+  fontSize:     10,
+  cursor:       "pointer",
+  transition:   "all 0.2s",
+};
 
 function to24Hour(t) {
   if (!t) return "00:00:00";
@@ -98,6 +191,7 @@ export default function BookPage() {
 
   const [submitting,   setSubmitting]   = useState(false);
   const [error,        setError]        = useState("");
+  const [initLoading,  setInitLoading]  = useState(true);
 
   // Load initial data
   useEffect(() => {
@@ -111,7 +205,7 @@ export default function BookPage() {
       setServices(svc.data || []);
       setBarbers(bar.data || []);
       if (strike) setStrikeInfo(strike.data);
-    }).catch(() => {});
+    }).catch(() => {}).finally(() => setInitLoading(false));
   }, [router]);
 
   // Load barber working days when barber selected
@@ -261,6 +355,8 @@ export default function BookPage() {
 
   const STEPS = ["Service", "Barber", "Date & Time", "Confirm"];
 
+  if (initLoading) return <BookingSkeleton/>;
+
   return (
     <div style={{ background:C.bg, minHeight:"100vh", color:C.text }}>
       <style jsx global>{`
@@ -270,6 +366,9 @@ export default function BookPage() {
         ::-webkit-scrollbar{width:4px;}::-webkit-scrollbar-thumb{background:rgba(245,158,11,0.3);}
         input,textarea,select,button{font-family:inherit;}
         @keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+        @keyframes shimmer{0%{background-position:-200% center}100%{background-position:200% center}}
+        * { -webkit-tap-highlight-color: transparent; }
+        button { touch-action: manipulation; }
       `}</style>
 
       {/* Header */}
@@ -405,7 +504,7 @@ export default function BookPage() {
             </div>
 
             {/* Calendar always full width */}
-            <div style={{ background:C.surface, border:`1px solid ${C.border}`,
+            <div style={{ background:C.surface, backdropFilter:"blur(20px)", WebkitBackdropFilter:"blur(20px)", border:`1px solid ${C.border}`, borderRadius:16,
               padding:20, marginBottom:16 }}>
               {renderCalendar()}
             </div>

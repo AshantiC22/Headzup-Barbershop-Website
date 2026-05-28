@@ -4,6 +4,7 @@ import { useNotifications } from "@/components/NotificationSystem";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import API from "@/lib/api";
+import { ScheduleSkeleton } from "@/components/Skeleton";
 
 // ── Design System ──────────────────────────────────────────────────────────────
 const C = {
@@ -417,10 +418,17 @@ export default function BarberDashboard() {
   ];
 
   if(loading) return (
-    <div style={{background:C.bg,minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center"}}>
-      <div style={{textAlign:"center"}}>
-        <p style={{...SF,fontSize:28,color:C.amber,marginBottom:8}}>HEADZ UP</p>
-        <p style={{...MONO,fontSize:10,color:C.muted,letterSpacing:"0.4em"}}>LOADING...</p>
+    <div style={{background:C.bg,minHeight:"100vh"}}>
+      <header style={{height:58,background:"rgba(7,7,9,0.85)",borderBottom:"1px solid rgba(255,255,255,0.08)",
+        display:"flex",alignItems:"center",padding:"0 20px",gap:12}}>
+        <div style={{width:90,height:30,borderRadius:8,
+          background:"linear-gradient(90deg,rgba(255,255,255,0.04) 25%,rgba(255,255,255,0.08) 50%,rgba(255,255,255,0.04) 75%)",
+          backgroundSize:"200% 100%",animation:"shimmer 1.4s ease-in-out infinite"}}/>
+        <style>{`@keyframes shimmer{0%{background-position:-200% center}100%{background-position:200% center}}`}</style>
+      </header>
+      <div style={{display:"flex",height:"calc(100vh - 58px)"}}>
+        <aside style={{width:210,background:"rgba(7,7,9,0.95)",borderRight:"1px solid rgba(255,255,255,0.08)"}}/>
+        <main style={{flex:1,padding:28}}><ScheduleSkeleton/></main>
       </div>
     </div>
   );
@@ -444,7 +452,10 @@ export default function BarberDashboard() {
         @keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
         @keyframes toastIn{from{opacity:0;transform:translateY(12px) scale(0.96)}to{opacity:1;transform:none}}
         .fade-up{animation:fadeUp 0.28s ease both;}
+        @keyframes shimmer{0%{background-position:-200% center}100%{background-position:200% center}}
         .card-hover{transition:all 0.22s cubic-bezier(0.4,0,0.2,1);}
+        * { -webkit-tap-highlight-color: transparent; }
+        a, button { touch-action: manipulation; }
         .card-hover:hover{transform:translateY(-2px);box-shadow:0 12px 40px rgba(0,0,0,0.5)!important;border-color:rgba(255,255,255,0.14)!important;}
         .nav-btn{transition:all 0.15s;}
         .nav-btn:hover{color:#f59e0b!important;background:rgba(245,158,11,0.08)!important;}

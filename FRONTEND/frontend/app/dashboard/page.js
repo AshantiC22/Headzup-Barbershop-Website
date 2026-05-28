@@ -4,24 +4,108 @@ import { Suspense, useEffect, useState, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useNotifications } from "@/components/NotificationSystem";
 import API from "@/lib/api";
+import { DashboardSkeleton } from "@/components/Skeleton";
 
-// ── Design tokens ─────────────────────────────────────────────────────────────
+
+// ── Design tokens — Rounded Glass System ─────────────────────────────────────
 const C = {
-  bg:"#080808", surface:"#101010", surfaceB:"#161616",
-  border:"rgba(255,255,255,0.07)", borderB:"rgba(255,255,255,0.12)",
-  amber:"#f59e0b", amberDim:"rgba(245,158,11,0.08)", amberBorder:"rgba(245,158,11,0.25)",
-  red:"#ef4444", green:"#22c55e", blue:"#3b82f6", purple:"#a78bfa",
-  muted:"#52525b", sub:"#71717a", text:"#e4e4e7",
+  bg:          "#070709",
+  surface:     "rgba(255,255,255,0.04)",
+  surfaceB:    "rgba(255,255,255,0.06)",
+  surfaceC:    "rgba(255,255,255,0.09)",
+  border:      "rgba(255,255,255,0.08)",
+  borderB:     "rgba(255,255,255,0.14)",
+  amber:       "#f59e0b",
+  amberDim:    "rgba(245,158,11,0.10)",
+  amberBorder: "rgba(245,158,11,0.30)",
+  amberGlow:   "rgba(245,158,11,0.15)",
+  red:         "#ef4444",
+  redDim:      "rgba(239,68,68,0.10)",
+  green:       "#22c55e",
+  greenDim:    "rgba(34,197,94,0.10)",
+  blue:        "#3b82f6",
+  blueDim:     "rgba(59,130,246,0.10)",
+  purple:      "#a78bfa",
+  purpleDim:   "rgba(167,139,250,0.10)",
+  muted:       "#52525b",
+  sub:         "#71717a",
+  text:        "#f4f4f5",
+  textSub:     "#a1a1aa",
 };
 const SF   = { fontFamily:"'Syncopate',sans-serif" };
 const MONO = { fontFamily:"'DM Mono',monospace" };
 
-const STATUS_CFG = {
-  confirmed:    { label:"Confirmed",  color:C.green,  bg:"rgba(34,197,94,0.1)"  },
-  pending_shop: { label:"Pending",    color:C.amber,  bg:"rgba(245,158,11,0.1)" },
-  completed:    { label:"Completed",  color:C.blue,   bg:"rgba(59,130,246,0.1)" },
-  cancelled:    { label:"Cancelled",  color:C.muted,  bg:"rgba(82,82,91,0.08)"  },
-  no_show:      { label:"No Show",    color:C.red,    bg:"rgba(239,68,68,0.08)" },
+// Glass card style helper
+const glass = (extra = {}) => ({
+  background:   C.surface,
+  backdropFilter: "blur(20px) saturate(180%)",
+  WebkitBackdropFilter: "blur(20px) saturate(180%)",
+  border:       `1px solid ${C.border}`,
+  borderRadius: 16,
+  ...extra,
+});
+
+// Pill badge style
+const pill = (color = C.amber, bg = C.amberDim) => ({
+  background:   bg,
+  color:        color,
+  border:       `1px solid ${color}30`,
+  borderRadius: 999,
+  padding:      "3px 10px",
+  ...MONO,
+  fontSize:     10,
+  letterSpacing: "0.05em",
+  whiteSpace:   "nowrap",
+});
+
+// Button styles
+const btnPrimary = {
+  background:   C.amber,
+  color:        "#000",
+  border:       "none",
+  borderRadius: 12,
+  padding:      "11px 22px",
+  ...SF,
+  fontSize:     8,
+  fontWeight:   700,
+  textTransform: "uppercase",
+  letterSpacing: "0.15em",
+  cursor:       "pointer",
+  transition:   "all 0.2s",
+  boxShadow:    `0 4px 24px ${C.amberGlow}`,
+};
+const btnGhost = {
+  background:   "transparent",
+  color:        C.textSub,
+  border:       `1px solid ${C.border}`,
+  borderRadius: 12,
+  padding:      "10px 18px",
+  ...MONO,
+  fontSize:     10,
+  cursor:       "pointer",
+  transition:   "all 0.2s",
+};
+const btnDanger = {
+  background:   C.redDim,
+  color:        C.red,
+  border:       `1px solid rgba(239,68,68,0.25)`,
+  borderRadius: 12,
+  padding:      "10px 18px",
+  ...MONO,
+  fontSize:     10,
+  cursor:       "pointer",
+  transition:   "all 0.2s",
+};
+const btnSuccess = {
+  background:   C.greenDim,
+  color:        C.green,
+  border:       `1px solid rgba(34,197,94,0.25)`,
+  borderRadius: 12,
+  padding:      "10px 18px",
+  ...MONO,
+  fontSize:     10,
+  cursor:       "pointer",
+  transition:   "all 0.2s",
 };
 
 function fmtDate(d) {
@@ -48,7 +132,9 @@ function ApptCard({ appt, onCancel, onReschedule, cancelling }) {
 
   return (
     <div style={{ border:`1px solid ${open ? C.amberBorder : C.border}`,
-      background:C.surface, overflow:"hidden", opacity: isCancelled ? 0.6 : 1,
+      background:C.surface, backdropFilter:"blur(20px)", WebkitBackdropFilter:"blur(20px)",
+      overflow:"hidden", borderRadius:16,
+      boxShadow: open ? `0 8px 32px ${C.amberGlow}` : "0 2px 12px rgba(0,0,0,0.3)", opacity: isCancelled ? 0.6 : 1,
       transition:"all 0.2s" }}>
       <div style={{ height:2, background:st.color, opacity: isCancelled ? 0.3 : 0.7 }}/>
 
@@ -79,7 +165,7 @@ function ApptCard({ appt, onCancel, onReschedule, cancelling }) {
         </div>
         <div style={{ display:"flex", alignItems:"center", gap:8, flexShrink:0 }}>
           <span style={{ ...MONO, fontSize:10, padding:"4px 10px",
-            background:st.bg, color:st.color, border:`1px solid ${st.color}30`,
+            background:st.bg, color:st.color, border:`1px solid ${st.color}30`, borderRadius:999,
             whiteSpace:"nowrap" }}>
             {st.label}
           </span>
@@ -100,8 +186,8 @@ function ApptCard({ appt, onCancel, onReschedule, cancelling }) {
               ["Payment",  appt.payment_method === "online" ? "Online Deposit" : "Pay in Shop"],
               ["Status",   st.label],
             ].map(([k,v]) => (
-              <div key={k} style={{ padding:"8px 10px", background:C.surface,
-                border:`1px solid ${C.border}` }}>
+              <div key={k} style={{ padding:"8px 12px", background:C.surface,
+                border:`1px solid ${C.border}`, borderRadius:10 }}>
                 <p style={{ ...MONO, fontSize:8, color:C.muted, letterSpacing:"0.25em",
                   textTransform:"uppercase", marginBottom:3 }}>{k}</p>
                 <p style={{ ...MONO, fontSize:12, color:C.text }}>{v}</p>
@@ -521,12 +607,15 @@ function DashboardContent() {
     .sort((a,b) => new Date(`${b.date}T${b.time}`) - new Date(`${a.date}T${a.time}`));
 
   if (loading) return (
-    <div style={{ background:C.bg, minHeight:"100vh", display:"flex",
-      alignItems:"center", justifyContent:"center" }}>
-      <div style={{ textAlign:"center" }}>
-        <p style={{ ...SF, fontSize:24, fontWeight:700, color:C.amber, marginBottom:8 }}>HEADZ UP</p>
-        <p style={{ ...MONO, fontSize:11, color:C.muted, letterSpacing:"0.3em" }}>LOADING...</p>
-      </div>
+    <div style={{ background:C.bg, minHeight:"100vh" }}>
+      <header style={{ height:52, background:"rgba(7,7,9,0.85)", borderBottom:"1px solid rgba(255,255,255,0.08)", 
+        display:"flex", alignItems:"center", padding:"0 16px" }}>
+        <div style={{ width:80, height:28, borderRadius:6,
+          background:"linear-gradient(90deg,rgba(255,255,255,0.04) 25%,rgba(255,255,255,0.08) 50%,rgba(255,255,255,0.04) 75%)",
+          backgroundSize:"200% 100%", animation:"shimmer 1.4s ease-in-out infinite" }}/>
+        <style>{`@keyframes shimmer{0%{background-position:-200% center}100%{background-position:200% center}}`}</style>
+      </header>
+      <DashboardSkeleton/>
     </div>
   );
 
@@ -773,7 +862,10 @@ function DashboardContent() {
           ].map(tab => (
             <button key={tab.id} onClick={() => setActiveTab(tab.id)}
               style={{ padding:"10px 14px", background:"transparent",
-                border:"none", borderBottom:`2px solid ${activeTab === tab.id ? C.amber : "transparent"}`,
+                border:"none", borderBottom:"none",
+                background: activeTab === tab.id ? C.amberDim : "transparent",
+                borderRadius: 10,
+                outline: activeTab === tab.id ? `1px solid ${C.amberBorder}` : "none",
                 color: activeTab === tab.id ? C.amber : C.muted,
                 ...MONO, fontSize:10, letterSpacing:"0.05em", textTransform:"uppercase",
                 cursor:"pointer", transition:"all 0.15s", marginBottom:-1,
@@ -865,7 +957,7 @@ function DashboardContent() {
             flexDirection:"column", gap:12, maxWidth:480 }}>
 
             {/* Profile card */}
-            <div style={{ background:C.surface, border:`1px solid ${C.border}`, padding:20 }}>
+            <div style={{ background:C.surface, backdropFilter:"blur(20px)", WebkitBackdropFilter:"blur(20px)", border:`1px solid ${C.border}`, borderRadius:16, padding:20 }}>
               <p style={{ ...SF, fontSize:9, color:C.amber, textTransform:"uppercase",
                 letterSpacing:"0.15em", marginBottom:14 }}>Profile</p>
               <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
@@ -886,7 +978,7 @@ function DashboardContent() {
             </div>
 
             {/* Update phone */}
-            <div style={{ background:C.surface, border:`1px solid ${C.border}`, padding:20 }}>
+            <div style={{ background:C.surface, backdropFilter:"blur(20px)", WebkitBackdropFilter:"blur(20px)", border:`1px solid ${C.border}`, borderRadius:16, padding:20 }}>
               <p style={{ ...SF, fontSize:9, color:C.amber, textTransform:"uppercase",
                 letterSpacing:"0.15em", marginBottom:14 }}>Phone Number</p>
               <div style={{ display:"flex", gap:8 }}>
@@ -916,7 +1008,7 @@ function DashboardContent() {
             </div>
 
             {/* Change password */}
-            <div style={{ background:C.surface, border:`1px solid ${C.border}`, padding:20 }}>
+            <div style={{ background:C.surface, backdropFilter:"blur(20px)", WebkitBackdropFilter:"blur(20px)", border:`1px solid ${C.border}`, borderRadius:16, padding:20 }}>
               <div style={{ display:"flex", justifyContent:"space-between",
                 alignItems:"center", marginBottom: showPwd ? 14 : 0 }}>
                 <p style={{ ...MONO, fontSize:10, color:C.amber, textTransform:"uppercase",
@@ -971,7 +1063,7 @@ function DashboardContent() {
             </div>
 
             {/* Notifications */}
-            <div style={{ background:C.surface, border:`1px solid ${C.border}`, padding:20 }}>
+            <div style={{ background:C.surface, backdropFilter:"blur(20px)", WebkitBackdropFilter:"blur(20px)", border:`1px solid ${C.border}`, borderRadius:16, padding:20 }}>
               <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
                 <div>
                   <p style={{ ...SF, fontSize:9, color:C.amber, textTransform:"uppercase",
@@ -1025,7 +1117,8 @@ function DashboardContent() {
         <div style={{ position:"fixed", bottom:24, right:24, zIndex:9999,
           background: toast.type === "error" ? C.red : C.amber,
           color:"black", padding:"12px 20px", ...MONO, fontSize:11,
-          letterSpacing:"0.1em", boxShadow:"0 8px 32px rgba(0,0,0,0.5)",
+          borderRadius:14, letterSpacing:"0.1em",
+          boxShadow:"0 8px 32px rgba(0,0,0,0.5)",
           animation:"toastIn 0.3s ease both", maxWidth:320 }}>
           {toast.msg}
         </div>
