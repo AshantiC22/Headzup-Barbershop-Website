@@ -3,7 +3,6 @@ export const dynamic = "force-dynamic";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import API from "@/lib/api";
-import { useTheme } from "@/components/ThemeProvider";
 import { useTheme, ThemeToggle } from "@/components/ThemeProvider";
 
 // ── Design tokens ──────────────────────────────────────────────────────────────
@@ -74,7 +73,6 @@ function AmbientBg() {
 
 export default function BarberLoginPage() {
   const router = useRouter();
-  const { theme: T, isDark } = useTheme();
   const { theme: T, isDark } = useTheme();
   C = T;
 

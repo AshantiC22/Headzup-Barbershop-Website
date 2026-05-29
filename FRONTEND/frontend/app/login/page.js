@@ -3,7 +3,6 @@ export const dynamic = "force-dynamic";
 import { Suspense, useState, useEffect, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import API from "@/lib/api";
-import { useTheme } from "@/components/ThemeProvider";
 import { useTheme, ThemeToggle } from "@/components/ThemeProvider";
 
 // ── Design tokens ──────────────────────────────────────────────────────────────
@@ -76,7 +75,6 @@ function AmbientBg() {
 function LoginContent() {
   const router       = useRouter();
   const searchParams = useSearchParams();
-  const { theme: T, isDark } = useTheme();
   const { theme: T, isDark } = useTheme();
   // All C.xxx refs use current theme
   C = T;
