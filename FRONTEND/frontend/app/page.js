@@ -958,6 +958,20 @@ export default function HomePage() {
               <SectionStamp left="THE" right="GALLERY" sub="Our work"/>
             </div>
             <GalleryGrid isMobile={isMobile}/>
+            <div style={{ textAlign:"center", marginTop:32 }}>
+              <a href="/gallery"
+                style={{ display:"inline-flex", alignItems:"center", gap:8,
+                  padding:"12px 28px",
+                  background:"linear-gradient(135deg,rgba(245,158,11,0.12),rgba(245,158,11,0.06))",
+                  border:"1px solid rgba(245,158,11,0.35)",
+                  borderRadius:12, color:"#f59e0b",
+                  fontFamily:"'DM Mono',monospace", fontSize:10,
+                  letterSpacing:"0.15em", textTransform:"uppercase",
+                  textDecoration:"none", transition:"all 0.2s",
+                  boxShadow:"0 4px 20px rgba(245,158,11,0.12)" }}>
+                View Full Gallery →
+              </a>
+            </div>
           </div>
         </section>
 
