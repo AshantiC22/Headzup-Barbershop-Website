@@ -18,6 +18,73 @@ from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from rest_framework_simplejwt.views import TokenObtainPairView
 
 # ── Custom JWT — adds is_staff to token payload so frontend can read it instantly
+
+class SMSTestView(APIView):
+    """POST — send a test SMS to the logged-in user's phone number."""
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        import logging
+        logger = logging.getLogger(__name__)
+
+        # Get phone from profile
+        try:
+            profile = UserProfile.objects.get(user=request.user)
+            phone   = profile.phone or ""
+        except UserProfile.DoesNotExist:
+            phone = ""
+
+        # Also check if this is a barber - use barber phone
+        barber = get_barber_for_user(request.user)
+        if barber:
+            barber_phone = _get_barber_phone(barber)
+            if barber_phone:
+                phone = barber_phone
+
+        if not phone:
+            return Response({
+                "error": "No phone number on file. Add your phone number in your profile first.",
+                "phone": None,
+            }, status=400)
+
+        # Twilio credentials
+        account_sid = getattr(settings, "TWILIO_ACCOUNT_SID", "")
+        auth_token  = getattr(settings, "TWILIO_AUTH_TOKEN",  "")
+        from_number = getattr(settings, "TWILIO_FROM_NUMBER", "")
+
+        if not all([account_sid, auth_token, from_number]):
+            return Response({
+                "error": "Twilio not configured on server.",
+                "account_sid_set": bool(account_sid),
+                "auth_token_set":  bool(auth_token),
+                "from_number_set": bool(from_number),
+            }, status=500)
+
+        try:
+            from twilio.rest import Client as TwilioClient
+            twilio_client = TwilioClient(account_sid, auth_token)
+            message = twilio_client.messages.create(
+                body=f"✂️ HEADZ UP TEST: SMS is working! Sent to {phone}.",
+                from_=from_number,
+                to=phone,
+            )
+            return Response({
+                "success":    True,
+                "message":    f"Test SMS sent to {phone}",
+                "sid":        message.sid,
+                "status":     message.status,
+                "to":         phone,
+                "from":       from_number,
+            })
+        except Exception as e:
+            logger.error(f"SMS test failed: {e}")
+            return Response({
+                "error":   str(e),
+                "phone":   phone,
+                "from":    from_number,
+            }, status=500)
+
+
 class HeadzUpTokenSerializer(TokenObtainPairSerializer):
     @classmethod
     def get_token(cls, user):

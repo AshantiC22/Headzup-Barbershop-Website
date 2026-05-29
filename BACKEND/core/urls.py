@@ -168,6 +168,7 @@ urlpatterns = [
     path("push/subscribe/",              PushSubscriptionView.as_view(),             name="push_subscribe"),
     path("push/vapid-key/",              VapidPublicKeyView.as_view(),               name="vapid_key"),
     path("push/test/",                   TestPushView.as_view(),                    name="push_test"),
+    path("sms/test/",                  SMSTestView.as_view(),                  name="sms_test"),
     path("review/trigger/<int:pk>/",     TriggerReviewNotificationView.as_view(),    name="review_trigger"),
     path("review/submit/",               HaircutReviewView.as_view(),                name="review_submit"),
     path("admin/stats/",                 AdminStatsView.as_view(),                   name="admin_stats"),
