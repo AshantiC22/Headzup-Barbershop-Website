@@ -5264,6 +5264,14 @@ class BarberBlastView(APIView):
             # Personalize message
             personal_msg = message.replace("{name}", name).replace("{barber}", barber.name)
 
+            # Ensure every SMS has the shop identity so recipients know who this is
+            # Only add footer if it's not already in the message
+            sms_footer = "\n\nHeadzUP Barbershop · 2509 W 4th St, Hattiesburg MS\nReply STOP to opt out"
+            if "headzupp.com" not in personal_msg.lower() and "HEADZ UP" not in personal_msg:
+                personal_msg += "\n\n✂️ HEADZ UP Barbershop · headzupp.com"
+            if "STOP" not in personal_msg and "stop" not in personal_msg.lower():
+                personal_msg += "\nReply STOP to opt out"
+
             if send_sms and phone:
                 try:
                     digits = "".join(d for d in phone if d.isdigit())

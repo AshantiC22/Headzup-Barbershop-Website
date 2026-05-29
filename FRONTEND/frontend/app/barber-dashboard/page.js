@@ -231,7 +231,7 @@ export default function BarberDashboard() {
   const [clientSearch, setClientSearch] = useState("");
   const [selClient,    setSelClient]    = useState(null);
   const [blastOpen,    setBlastOpen]    = useState(false);
-  const [blastForm,    setBlastForm]    = useState({ subject:"Message from HEADZ UP Barbershop", message:"", send_sms:true, send_email:true });
+  const [blastForm,    setBlastForm]    = useState({ subject:"HEADZ UP Barbershop — Hattiesburg MS", message:"", send_sms:true, send_email:true });
   const [blastSel,     setBlastSel]     = useState([]);
   const [blastBusy,    setBlastBusy]    = useState(false);
   const [extContacts,  setExtContacts]  = useState([]);
@@ -853,9 +853,31 @@ export default function BarberDashboard() {
                     <p style={{...SF,fontSize:10,color:C.amber,textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:14}}>📣 Send Blast</p>
                     <div style={{display:"flex",gap:8,marginBottom:14,flexWrap:"wrap"}}>
                       {[
-                        {label:"🚀 Launch",subject:"HEADZ UP is now booking online!",msg:"✂️ HEADZ UP is now booking online!\n\nBook your next cut at headzupp.com — pick your barber, choose your time, lock in your spot.\n\n→ headzupp.com\n\n2509 W 4th St, Hattiesburg MS"},
-                        {label:"💈 Miss You",subject:"We miss you at HEADZ UP!",msg:"Hey {name}! It's been a while — your next cut is overdue!\n\nBook online anytime at headzupp.com"},
-                        {label:"🎯 Promo",subject:"Special offer from HEADZ UP",msg:"Hey {name}! Special offer this week at HEADZ UP.\n\nheadzupp.com · 2509 W 4th St, Hattiesburg MS"},
+                        {
+                          label:"🚀 Intro",
+                          subject:"HEADZ UP Barbershop — Now Booking Online",
+                          msg:"✂️ HEADZ UP Barbershop\n\nHey {name}, this is AfroSamurai from HEADZ UP Barbershop in Hattiesburg, MS. We're now booking online — pick your time, lock in your spot, and come get a fresh cut.\n\n👉 headzupp.com\n\n📍 2509 W 4th St, Hattiesburg MS 39401\n📞 Reply STOP to opt out"
+                        },
+                        {
+                          label:"💈 Come Back",
+                          subject:"We miss you at HEADZ UP Barbershop!",
+                          msg:"✂️ HEADZ UP Barbershop\n\nHey {name}! AfroSamurai here — it's been a minute. Time for a fresh cut?\n\nBook online anytime:\n👉 headzupp.com\n\n📍 2509 W 4th St, Hattiesburg MS\n📞 Reply STOP to opt out"
+                        },
+                        {
+                          label:"🎯 Special",
+                          subject:"Special offer from HEADZ UP Barbershop",
+                          msg:"✂️ HEADZ UP Barbershop\n\nHey {name}! AfroSamurai here — we've got something special this week. Come see what's good.\n\nBook your spot online:\n👉 headzupp.com\n\n📍 2509 W 4th St, Hattiesburg MS\n📞 Reply STOP to opt out"
+                        },
+                        {
+                          label:"📣 New Hours",
+                          subject:"HEADZ UP Barbershop — Updated Hours",
+                          msg:"✂️ HEADZ UP Barbershop\n\nHey {name}! Just a heads up — we've updated our hours. Check the latest availability and book your cut online:\n\n👉 headzupp.com\n\n📍 2509 W 4th St, Hattiesburg MS\n📞 Reply STOP to opt out"
+                        },
+                        {
+                          label:"🌐 Link Only",
+                          subject:"Book Your Cut Online — HEADZ UP Barbershop",
+                          msg:"✂️ HEADZ UP Barbershop\n\n{name}, book your next cut online anytime — 24/7:\n\n👉 headzupp.com\n\n📍 2509 W 4th St, Hattiesburg MS · Reply STOP to opt out"
+                        },
                       ].map(t=>(
                         <button key={t.label} onClick={()=>setBlastForm(p=>({...p,subject:t.subject,message:t.msg}))}
                           style={{padding:"7px 14px",background:C.amberDim,border:`1px solid ${C.amberBorder}`,borderRadius:8,color:C.amber,...MONO,fontSize:9,cursor:"pointer"}}>
@@ -866,8 +888,38 @@ export default function BarberDashboard() {
                     <input value={blastForm.subject} onChange={e=>setBlastForm(p=>({...p,subject:e.target.value}))}
                       placeholder="Subject..." style={{...inputSt({marginBottom:10})}}/>
                     <textarea value={blastForm.message} rows={4} onChange={e=>setBlastForm(p=>({...p,message:e.target.value}))}
-                      placeholder="Message... use {name} to personalize"
-                      style={{...inputSt({resize:"vertical",marginBottom:12})}}/>
+                      placeholder="Your message... use {name} to personalize. The link headzupp.com is clickable in SMS."
+                      style={{...inputSt({resize:"vertical",marginBottom:8})}}/>
+                    {/* URL copy helper */}
+                    <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:12,
+                      padding:"8px 12px",background:C.amberDim,border:`1px solid ${C.amberBorder}`,
+                      borderRadius:10}}>
+                      <span style={{...MONO,fontSize:10,color:C.amber,flex:1}}>
+                        👉 headzupp.com
+                      </span>
+                      <button onClick={()=>{
+                        navigator.clipboard.writeText("headzupp.com").then(()=>showToast("Link copied ✓")).catch(()=>{});
+                      }} style={{padding:"4px 12px",background:C.amber,border:"none",
+                        borderRadius:6,color:"#000",...MONO,fontSize:9,cursor:"pointer",fontWeight:700}}>
+                        Copy Link
+                      </button>
+                      <button onClick={()=>{
+                        const msg = blastForm.message;
+                        const url = "👉 headzupp.com";
+                        if(!msg.includes("headzupp.com")){
+                          setBlastForm(p=>({...p,message:msg+(msg?"
+
+":"")+url}));
+                          showToast("Link added to message ✓");
+                        } else {
+                          showToast("Link already in message","error");
+                        }
+                      }} style={{padding:"4px 12px",background:C.amberDim,
+                        border:`1px solid ${C.amberBorder}`,borderRadius:6,
+                        color:C.amber,...MONO,fontSize:9,cursor:"pointer"}}>
+                        + Add to Message
+                      </button>
+                    </div>
                     {/* ── External contacts ── */}
                     <div style={{marginBottom:14,padding:"14px 16px",background:"rgba(255,255,255,0.03)",borderRadius:12,border:`1px solid ${C.border}`}}>
                       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:extContacts.length>0||showExtForm?12:0}}>
