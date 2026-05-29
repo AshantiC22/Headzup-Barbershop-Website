@@ -23,10 +23,10 @@ const SF   = { fontFamily:"'Syncopate',sans-serif" };
 const MONO = { fontFamily:"'DM Mono',monospace" };
 
 const glassCard = (x={}) => ({
-  background:"rgba(255,255,255,0.04)", backdropFilter:"blur(20px)",
+  background:C.cardBg||C.surface, backdropFilter:"blur(20px)",
   WebkitBackdropFilter:"blur(20px)", borderRadius:16,
-  border:"1px solid rgba(255,255,255,0.08)",
-  boxShadow:"0 4px 24px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05)",
+  border:`1px solid ${C.cardBorder||C.border}`,
+  boxShadow:C.cardShadow||"0 4px 24px rgba(0,0,0,0.3)",
   ...x,
 });
 
@@ -281,7 +281,7 @@ function RescheduleModal({ appt, onClose, onDone }) {
             <p style={{...MONO,fontSize:9,color:C.muted,letterSpacing:"0.3em",textTransform:"uppercase",marginBottom:8}}>New Date</p>
             <input type="date" value={newDate} min={new Date().toISOString().split("T")[0]}
               onChange={e=>setNewDate(e.target.value)}
-              style={{width:"100%",padding:"11px 14px",background:"rgba(255,255,255,0.04)",
+              style={{width:"100%",padding:"11px 14px",background:C.inputBg,
                 backdropFilter:"blur(10px)",WebkitBackdropFilter:"blur(10px)",
                 border:`1px solid ${C.border}`,borderRadius:10,color:C.text,...MONO,fontSize:13,outline:"none"}}/>
           </div>
@@ -576,6 +576,8 @@ function DashboardContent() {
         select{background:${T.surface};color:${T.text};}
         @keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
         @keyframes shimmer{0%{background-position:-200% center}100%{background-position:200% center}}
+        input::placeholder,textarea::placeholder{color:${C.placeholder||C.muted}!important;opacity:1!important;}
+        input,textarea,select{color:${C.text}!important;background:${C.inputBg}!important;}
         @keyframes toastIn{from{opacity:0;transform:translateY(12px) scale(0.96)}to{opacity:1;transform:none}}
         @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}
         .fade-up{animation:fadeUp 0.28s ease both;}
@@ -895,7 +897,7 @@ function DashboardContent() {
                 <textarea value={reviewText} onChange={e=>setReviewText(e.target.value)}
                   placeholder="How was the cut? The fade? The vibe?" rows={3}
                   style={{width:"100%",padding:"10px 14px",
-                    background:"rgba(255,255,255,0.04)",backdropFilter:"blur(10px)",
+                    background:C.inputBg,backdropFilter:"blur(10px)",
                     WebkitBackdropFilter:"blur(10px)",border:`1px solid ${C.border}`,
                     borderRadius:10,color:C.text,...MONO,fontSize:13,
                     outline:"none",resize:"none",marginBottom:6}}/>
@@ -1066,7 +1068,7 @@ function DashboardContent() {
                   <input value={phoneInput||strikeInfo?.phone||""}
                     onChange={e=>setPhoneInput(e.target.value)}
                     placeholder="(601) 555-0100" type="tel"
-                    style={{flex:1,padding:"11px 14px",background:"rgba(255,255,255,0.04)",
+                    style={{flex:1,padding:"11px 14px",background:C.inputBg,
                       backdropFilter:"blur(10px)",WebkitBackdropFilter:"blur(10px)",
                       border:`1px solid ${C.border}`,borderRadius:10,color:C.text,
                       ...MONO,fontSize:12,outline:"none"}}/>
@@ -1110,7 +1112,7 @@ function DashboardContent() {
                           value={pwdForm[f.key]}
                           onChange={e=>setPwdForm(p=>({...p,[f.key]:e.target.value}))}
                           style={{width:"100%",padding:"11px 14px",
-                            background:"rgba(255,255,255,0.04)",backdropFilter:"blur(10px)",
+                            background:C.inputBg,backdropFilter:"blur(10px)",
                             WebkitBackdropFilter:"blur(10px)",border:`1px solid ${C.border}`,
                             borderRadius:10,color:C.text,...MONO,fontSize:12,outline:"none"}}/>
                       </div>

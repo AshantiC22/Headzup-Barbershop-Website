@@ -667,101 +667,154 @@ button, a, input, textarea, select {
 }
 
 
-/* ── SMOOTH THEME TRANSITION ────────────────────────────────────────────── */
+
+
+/* ══════════════════════════════════════════════════════════════
+   THEME TRANSITIONS
+══════════════════════════════════════════════════════════════ */
 *, *::before, *::after {
   transition:
-    background-color 0.25s ease,
-    border-color 0.22s ease,
-    color 0.22s ease,
-    box-shadow 0.22s ease;
+    background-color 0.22s ease,
+    border-color 0.2s ease,
+    color 0.2s ease,
+    box-shadow 0.2s ease;
 }
-button, a, input, textarea, select {
+button, a {
   transition:
-    background-color 0.25s ease,
-    border-color 0.22s ease,
-    color 0.22s ease,
-    transform 0.2s ease,
+    background-color 0.22s ease,
+    border-color 0.2s ease,
+    color 0.2s ease,
+    transform 0.18s ease,
     box-shadow 0.2s ease,
-    opacity 0.2s ease;
+    opacity 0.18s ease;
+}
+input, textarea, select {
+  transition:
+    background-color 0.22s ease,
+    border-color 0.2s ease,
+    color 0.2s ease,
+    box-shadow 0.2s ease;
 }
 
-/* ── LIGHT MODE ─────────────────────────────────────────────────────────── */
+/* ══════════════════════════════════════════════════════════════
+   LIGHT MODE — full override
+   bg: white/light grey  |  text: near-black  |  amber: deep brown-amber
+══════════════════════════════════════════════════════════════ */
 [data-theme="light"] {
   color-scheme: light;
-
-  /* Backgrounds */
-  --bg:      #f5f3ee;
-  --bg-deep: #ede9e1;
-  --s1:      rgba(255,255,255,0.72);
-  --s2:      rgba(255,255,255,0.85);
-  --s3:      rgba(255,255,255,0.95);
-
-  /* Borders */
-  --border:  rgba(0,0,0,0.10);
-  --border-b:rgba(0,0,0,0.18);
-
-  /* Brand */
-  --amber:   #c2710c;
-  --amber-lo:rgba(194,113,12,0.08);
-  --amber-md:rgba(194,113,12,0.15);
-  --amber-hi:rgba(194,113,12,0.38);
-
-  /* Text */
-  --text:    #1c1917;
-  --sub:     #44403c;
-  --muted:   #a8a29e;
+  background: #ffffff;
+  color: #111111;
 }
 
 [data-theme="light"] body {
-  background: #f5f3ee !important;
-  color: #1c1917 !important;
+  background: #ffffff !important;
+  color: #111111 !important;
 }
 
-/* scrollbar light mode */
-[data-theme="light"] ::-webkit-scrollbar-track { background: #ede9e1; }
-[data-theme="light"] ::-webkit-scrollbar-thumb { background: rgba(194,113,12,0.25); }
+/* ── Scrollbar ── */
+[data-theme="light"] ::-webkit-scrollbar-track { background: #f4f4f5; }
+[data-theme="light"] ::-webkit-scrollbar-thumb { background: rgba(180,83,9,0.25); border-radius: 4px; }
 
-/* selection light mode */
-[data-theme="light"] ::selection { background: rgba(194,113,12,0.25); color: #1c1917; }
+/* ── Text selection ── */
+[data-theme="light"] ::selection { background: rgba(180,83,9,0.2); color: #111; }
 
-/* inputs light mode */
+/* ── ALL inputs, textareas, selects ──────────────────────────────────────── */
+[data-theme="light"] input,
+[data-theme="light"] textarea,
+[data-theme="light"] select {
+  background: #ffffff !important;
+  color: #111111 !important;
+  border-color: rgba(0,0,0,0.15) !important;
+}
+
+[data-theme="light"] input::placeholder,
+[data-theme="light"] textarea::placeholder {
+  color: #71717a !important;
+  opacity: 1 !important;
+}
+
 [data-theme="light"] input:focus,
 [data-theme="light"] textarea:focus,
 [data-theme="light"] select:focus {
-  border-color: rgba(194,113,12,0.5) !important;
-  box-shadow: 0 0 0 3px rgba(194,113,12,0.08) !important;
-  background: rgba(255,255,255,0.95) !important;
+  background: #ffffff !important;
+  color: #111111 !important;
+  border-color: rgba(180,83,9,0.5) !important;
+  box-shadow: 0 0 0 3px rgba(180,83,9,0.10) !important;
+  outline: none !important;
 }
 
-/* ── GLASS CARD LIGHT MODE ──────────────────────────────────────────────── */
-[data-theme="light"] .glass-card,
-[data-theme="light"] [class*="card"] {
-  background: rgba(255,255,255,0.75) !important;
-  border-color: rgba(0,0,0,0.09) !important;
-  box-shadow: 0 2px 16px rgba(0,0,0,0.07), inset 0 1px 0 rgba(255,255,255,0.9) !important;
+[data-theme="light"] select option {
+  background: #ffffff;
+  color: #111111;
 }
 
-/* ── HEADER LIGHT MODE ──────────────────────────────────────────────────── */
-[data-theme="light"] header {
-  background: rgba(245,243,238,0.93) !important;
-  border-bottom-color: rgba(0,0,0,0.09) !important;
-  box-shadow: 0 1px 16px rgba(0,0,0,0.06);
+/* ── Calendar/time pickers ── */
+[data-theme="light"] input[type="date"],
+[data-theme="light"] input[type="time"] {
+  background: #ffffff !important;
+  color: #111111 !important;
 }
-
-/* ── SIDEBAR LIGHT MODE ─────────────────────────────────────────────────── */
-[data-theme="light"] aside {
-  background: rgba(237,233,225,0.99) !important;
-  border-right-color: rgba(0,0,0,0.08) !important;
-}
-
-/* ── CALENDAR LIGHT MODE ─────────────────────────────────────────────────  */
 [data-theme="light"] input[type="date"]::-webkit-calendar-picker-indicator,
 [data-theme="light"] input[type="time"]::-webkit-calendar-picker-indicator {
-  filter: none;
+  filter: none !important;
+  cursor: pointer;
 }
 
-/* ── SELECT LIGHT MODE ───────────────────────────────────────────────────── */
-[data-theme="light"] select {
-  background: rgba(255,255,255,0.9);
-  color: #1c1917;
+/* ── Checkboxes ── */
+[data-theme="light"] input[type="checkbox"] {
+  accent-color: #b45309;
+}
+
+/* ── Header ── */
+[data-theme="light"] header {
+  background: rgba(255,255,255,0.93) !important;
+  border-bottom-color: rgba(0,0,0,0.10) !important;
+  box-shadow: 0 1px 12px rgba(0,0,0,0.06) !important;
+}
+
+/* ── Sidebar ── */
+[data-theme="light"] aside {
+  background: rgba(244,244,245,0.99) !important;
+  border-right-color: rgba(0,0,0,0.09) !important;
+}
+
+/* ── Nav buttons in sidebar ── */
+[data-theme="light"] .nav-btn {
+  color: #3f3f46 !important;
+}
+[data-theme="light"] .nav-btn:hover {
+  color: #b45309 !important;
+  background: rgba(180,83,9,0.06) !important;
+}
+
+/* ── Glass cards on white bg ── */
+[data-theme="light"] .card-hover {
+  box-shadow: 0 2px 12px rgba(0,0,0,0.08) !important;
+}
+[data-theme="light"] .card-hover:hover {
+  box-shadow: 0 6px 24px rgba(0,0,0,0.13) !important;
+  transform: translateY(-2px);
+}
+
+/* ── Toast ── */
+[data-theme="light"] .toast-success {
+  background: linear-gradient(135deg,#d97706,#b45309) !important;
+  color: #ffffff !important;
+}
+
+/* ── Modals ── */
+[data-theme="light"] [role="dialog"],
+[data-theme="light"] .modal-overlay {
+  background: rgba(0,0,0,0.4) !important;
+}
+
+/* ── Tab underlines ── */
+[data-theme="light"] .tab-active {
+  border-bottom-color: #b45309 !important;
+  color: #b45309 !important;
+}
+
+/* ── Progress bars ── */
+[data-theme="light"] .progress-track {
+  background: rgba(0,0,0,0.08) !important;
 }

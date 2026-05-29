@@ -22,8 +22,8 @@ let C = {
 const SF   = { fontFamily:"'Syncopate',sans-serif" };
 const MONO = { fontFamily:"'DM Mono',monospace" };
 
-const glassCard = (x={}) => ({ background:C.glass, backdropFilter:"blur(20px)", WebkitBackdropFilter:"blur(20px)", borderRadius:16, border:`1px solid ${C.border}`, boxShadow:"0 4px 24px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.06)", ...x });
-const inputSt   = (x={}) => ({ width:"100%", padding:"11px 14px", background:C.glass, backdropFilter:"blur(10px)", WebkitBackdropFilter:"blur(10px)", border:`1px solid ${C.border}`, borderRadius:10, color:C.text, ...MONO, fontSize:13, outline:"none", transition:"all 0.2s", ...x });
+const glassCard = (x={}) => ({ background:C.cardBg||C.surface, backdropFilter:"blur(20px)", WebkitBackdropFilter:"blur(20px)", borderRadius:16, border:`1px solid ${C.cardBorder||C.border}`, boxShadow:C.cardShadow||"0 4px 24px rgba(0,0,0,0.4)", ...x });
+const inputSt   = (x={}) => ({ width:"100%", padding:"11px 14px", background:C.inputBg||C.surface, backdropFilter:"blur(10px)", WebkitBackdropFilter:"blur(10px)", border:`1px solid ${C.border}`, borderRadius:10, color:C.text, ...MONO, fontSize:13, outline:"none", transition:"all 0.2s", ...x });
 
 const STATUS_CFG = {
   confirmed:    { label:"Confirmed", color:C.green,  bg:C.greenDim },
@@ -476,7 +476,9 @@ export default function BarberDashboard() {
           box-shadow:0 0 0 3px ${T.amberDim}!important;
           outline:none;
         }
-        select{background:${T.surface};color:${T.text};}
+        select{background:${T.inputBg||T.surface};color:${T.text};}
+        input,textarea{background:${T.inputBg||T.surface}!important;color:${T.text}!important;}
+        input::placeholder,textarea::placeholder{color:${T.placeholder||T.muted}!important;opacity:1!important;}
         @keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
         @keyframes toastIn{from{opacity:0;transform:translateY(12px) scale(0.96)}to{opacity:1;transform:none}}
         .fade-up{animation:fadeUp 0.28s ease both;}

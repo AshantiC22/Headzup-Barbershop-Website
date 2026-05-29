@@ -3,9 +3,11 @@ export const dynamic = "force-dynamic";
 import { Suspense, useState, useEffect, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import API from "@/lib/api";
+import { useTheme } from "@/components/ThemeProvider";
+import { useTheme, ThemeToggle } from "@/components/ThemeProvider";
 
 // ── Design tokens ──────────────────────────────────────────────────────────────
-const C = {
+let C = {
   bg:"#070709", glass:"rgba(255,255,255,0.04)", glassB:"rgba(255,255,255,0.07)",
   border:"rgba(255,255,255,0.08)", borderB:"rgba(255,255,255,0.15)",
   amber:"#f59e0b", amberL:"#fbbf24", amberD:"#d97706",
@@ -31,12 +33,12 @@ function Field({ label, type="text", value, onChange, placeholder, error, autoCo
           placeholder={placeholder} autoComplete={autoComplete}
           onFocus={()=>setFocused(true)} onBlur={()=>setFocused(false)}
           style={{ width:"100%", padding:"12px 16px", paddingRight:right?44:16,
-            background:"rgba(255,255,255,0.04)", backdropFilter:"blur(10px)",
+            background:C.inputBg||"rgba(255,255,255,0.05)", backdropFilter:"blur(10px)",
             WebkitBackdropFilter:"blur(10px)",
             border:`1px solid ${error?C.red:focused?C.amberBorder:C.border}`,
             borderRadius:12, color:C.text, ...MONO, fontSize:13, outline:"none",
             transition:"all 0.2s",
-            boxShadow: focused?`0 0 0 3px rgba(245,158,11,0.08)`:"none" }}/>
+            boxShadow: focused?`0 0 0 3px ${C.amberDim}`:"none" }}/>
         {right && <div style={{ position:"absolute", right:14, top:"50%", transform:"translateY(-50%)" }}>{right}</div>}
       </div>
       {error && <p style={{ ...MONO, fontSize:10, color:C.red, marginTop:5 }}>{error}</p>}
@@ -74,6 +76,10 @@ function AmbientBg() {
 function LoginContent() {
   const router       = useRouter();
   const searchParams = useSearchParams();
+  const { theme: T, isDark } = useTheme();
+  const { theme: T, isDark } = useTheme();
+  // All C.xxx refs use current theme
+  C = T;
 
   const [mode,     setMode]     = useState("login"); // login | register | forgot
   const [loading,  setLoading]  = useState(false);
@@ -221,14 +227,17 @@ function LoginContent() {
   );
 
   return (
-    <div style={{ minHeight:"100vh", background:C.bg, display:"flex", flexDirection:"column",
+    <div style={{ minHeight:"100vh", background:T.bg, display:"flex", flexDirection:"column",
       alignItems:"center", justifyContent:"center", padding:"24px 20px", position:"relative" }}>
       <style jsx global>{`
         @import url('https://fonts.googleapis.com/css2?family=Syncopate:wght@400;700&family=DM+Mono:ital,wght@0,300;0,400;0,500;1,400&display=swap');
         *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
-        body{background:#070709;color:#f1f0ee;}
+        body{background:${T.bg};color:${T.text};}
         input,button,select,textarea{font-family:inherit;}
         @keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
+        input::placeholder{color:${T.placeholder||T.muted}!important;opacity:1!important;}
+        input,textarea,select{background:${T.inputBg||T.surface}!important;color:${T.text}!important;}
+        select option{background:${T.bg};color:${T.text};}
         @keyframes spin{to{transform:rotate(360deg)}}
         @keyframes shimmer{0%{background-position:-200% center}100%{background-position:200% center}}
         .card-enter{animation:fadeUp 0.4s cubic-bezier(0.4,0,0.2,1) both;}
@@ -271,11 +280,14 @@ function LoginContent() {
 
         {/* Gradient border effect */}
         <div style={{ position:"absolute", inset:-1, borderRadius:21,
-          background:"linear-gradient(135deg, rgba(245,158,11,0.3), rgba(239,68,68,0.1), rgba(245,158,11,0.1))",
+          background:isDark
+            ?"linear-gradient(135deg, rgba(245,158,11,0.3), rgba(239,68,68,0.1), rgba(245,158,11,0.1))"
+            :"linear-gradient(135deg, rgba(217,119,6,0.5), rgba(220,38,38,0.2), rgba(217,119,6,0.3))",
           zIndex:-1 }}/>
 
-        <div style={{ background:"rgba(10,10,12,0.85)", backdropFilter:"blur(40px)",
-          WebkitBackdropFilter:"blur(40px)", borderRadius:20, overflow:"hidden" }}>
+        <div style={{ background:isDark?"rgba(10,10,12,0.85)":C.cardBg, backdropFilter:"blur(40px)",
+          WebkitBackdropFilter:"blur(40px)", borderRadius:20, overflow:"hidden",
+          boxShadow:C.cardShadow }}>
 
           {/* Top accent */}
           <div style={{ height:3, background:"linear-gradient(to right, #ef4444, #f59e0b, #fbbf24)" }}/>
@@ -289,7 +301,7 @@ function LoginContent() {
                 {[["login","Sign In"],["register","Sign Up"]].map(([m,label])=>(
                   <button key={m} onClick={()=>switchMode(m)}
                     style={{ flex:1, padding:"9px 0", borderRadius:9,
-                      background:mode===m?"linear-gradient(135deg, rgba(245,158,11,0.18), rgba(245,158,11,0.08))":"transparent",
+                      background:mode===m?C.amberDim:"transparent",
                       border:mode===m?`1px solid ${C.amberBorder}`:"1px solid transparent",
                       color:mode===m?C.amber:C.muted, ...MONO, fontSize:10,
                       letterSpacing:"0.15em", textTransform:"uppercase", cursor:"pointer",
@@ -542,7 +554,8 @@ function LoginContent() {
 
           {/* Bottom bar */}
           <div style={{ padding:"14px 28px", borderTop:`1px solid ${C.border}`,
-            background:"rgba(0,0,0,0.2)", display:"flex", justifyContent:"space-between",
+            background:isDark?"rgba(0,0,0,0.2)":"rgba(0,0,0,0.04)",
+            display:"flex", justifyContent:"space-between",
             alignItems:"center", flexWrap:"wrap", gap:8 }}>
             <p style={{ ...MONO, fontSize:9, color:C.muted }}>✂️ HEADZ UP Barbershop</p>
             <a href="/terms" style={{ ...MONO, fontSize:9, color:C.muted, textDecoration:"none",
