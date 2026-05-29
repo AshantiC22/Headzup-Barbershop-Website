@@ -1,6 +1,7 @@
 "use client";
 export const dynamic = "force-dynamic";
 import { useEffect, useState, useCallback, useRef } from "react";
+import { ThemeToggle } from "@/components/ThemeProvider";
 import { useRouter } from "next/navigation";
 import LoadingScreen from "@/components/LoadingScreen";
 import useBreakpoint from "@/lib/useBreakpoint";
@@ -615,7 +616,7 @@ export default function HomePage() {
         {/* ══════════════════════════════════════════════════════════════
             NAV
         ══════════════════════════════════════════════════════════════ */}
-        <nav style={{ position:"fixed",top:0,left:0,right:0,zIndex:200,height:58,
+        <nav style={{ position:"fixed",top:0,left:0,right:0,zIndex:200,height:"calc(58px + env(safe-area-inset-top, 0px))",
           background:scrollY>50?"rgba(3,3,3,0.97)":"transparent",
           backdropFilter:scrollY>50?"blur(20px)":"none",
           borderBottom:scrollY>50?`1px solid rgba(255,255,255,0.06)`:"none",
@@ -1348,7 +1349,23 @@ export default function HomePage() {
               ))}
             </div>
           </div>
-        </footer>
+        
+
+      {/* Theme Toggle — bottom of page */}
+      <div style={{ textAlign:"center", padding:"24px 0 8px",
+        borderTop:"1px solid rgba(255,255,255,0.06)" }}>
+        <div style={{ display:"inline-flex", alignItems:"center", gap:10,
+          padding:"8px 16px", borderRadius:20,
+          background:"rgba(255,255,255,0.04)", border:"1px solid rgba(255,255,255,0.08)" }}>
+          <span style={{ fontFamily:"'DM Mono',monospace", fontSize:9,
+            color:"rgba(255,255,255,0.3)", letterSpacing:"0.2em", textTransform:"uppercase" }}>
+            Theme
+          </span>
+          <ThemeToggle/>
+        </div>
+      </div>
+
+      </footer>
 
       </div>
     </>

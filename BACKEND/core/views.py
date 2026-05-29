@@ -884,9 +884,13 @@ def send_cancellation_email(appointment, cancelled_by="client"):
                 try:
                     _cbp2 = _get_barber_phone(appointment.barber)
                     if _cbp2:
+                        _cancel_nm = (appointment.user.first_name and appointment.user.last_name and
+                                      f"{appointment.user.first_name} {appointment.user.last_name}") or                                      appointment.user.first_name or appointment.user.username
                         _twilio_send(_cbp2,
                             f"❌ HEADZ UP: Booking cancelled\n"
-                            f"{_cnm} cancelled {_svc} on {_dt}"
+                            f"Client: {_cancel_nm}\n"
+                            f"Service: {appointment.service.name}\n"
+                            f"Was: {appointment.date.strftime('%a %b %-d')} at {str(appointment.time)[:5]}"
                         )
                 except Exception: pass
     except Exception: pass
@@ -1840,10 +1844,16 @@ class UserProfileViewSet(viewsets.ModelViewSet):
                 try:
                     _dbp3 = _get_barber_phone(appt_full.barber)
                     if _dbp3:
+                        _client_nm = (appt_full.user.first_name and appt_full.user.last_name and
+                                      f"{appt_full.user.first_name} {appt_full.user.last_name}") or                                      appt_full.user.first_name or appt_full.user.username
+                        _svc_nm    = appt_full.service.name
+                        _appt_dt   = appt_full.date.strftime("%a %b %-d")
+                        _appt_tm   = appt_full.time.strftime("%-I:%M %p")
                         _twilio_send(_dbp3,
-                            f"📅 HEADZ UP: New online booking!\n"
-                            f"{appt_full.user.username} booked {appt_full.service.name}\n"
-                            f"on {appt_full.date} at {appt_full.time}"
+                            f"📅 HEADZ UP: New booking!\n"
+                            f"Client: {_client_nm}\n"
+                            f"Service: {_svc_nm}\n"
+                            f"When: {_appt_dt} at {_appt_tm}"
                         )
                 except Exception: pass
         except IntegrityError:
@@ -4480,7 +4490,7 @@ class HaircutReviewView(APIView):
             }
         )
 
-         # Notify barber of new review
+        # Notify barber of new review
         try:
             if appt.barber and appt.barber.user:
                 stars = "★" * rating + "☆" * (5 - rating)
@@ -4493,8 +4503,13 @@ class HaircutReviewView(APIView):
                 )
                 _rbp2 = _get_barber_phone(appt.barber)
                 if _rbp2:
+                    _rev_nm = (request.user.first_name or "") +                               (" " + request.user.last_name if request.user.last_name else "") or                               request.user.username
+                    _rev_nm = _rev_nm.strip() or request.user.username
+                    _stars  = "★" * rating + "☆" * (5 - rating)
                     _twilio_send(_rbp2,
-                        f"⭐ HEADZ UP: New {rating}-star review from {request.user.username}!\n"
+                        f"⭐ HEADZ UP: New {rating}-star review!\n"
+                        f"From: {_rev_nm}\n"
+                        f"{_stars}\n"
                         f"{comment[:80]}{'...' if len(comment) > 80 else ''}"
                     )
         except Exception: pass

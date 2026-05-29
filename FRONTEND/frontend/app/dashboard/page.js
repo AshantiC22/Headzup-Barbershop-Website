@@ -592,16 +592,17 @@ function DashboardContent() {
         WebkitBackdropFilter:"blur(20px)",borderBottom:`1px solid ${T.border}`,
         padding:"0 20px",height:56,display:"flex",alignItems:"center",
         justifyContent:"space-between",gap:12}}>
-        <div style={{display:"flex",alignItems:"center",gap:12}}>
-          <img src="/logo1.jpg" alt="HEADZ UP" style={{height:30,objectFit:"contain"}}/>
-          {user&&(
-            <>
-              <div style={{width:1,height:18,background:C.border}}/>
-              <p style={{...MONO,fontSize:10,color:C.muted,letterSpacing:"0.15em"}}>
-                {user.username}
-              </p>
-            </>
-          )}
+        <div style={{display:"flex",alignItems:"center",gap:10}}>
+          <a href="/" style={{display:"flex",alignItems:"center",gap:6,
+            padding:"6px 10px",background:C.surface,backdropFilter:"blur(10px)",
+            WebkitBackdropFilter:"blur(10px)",border:`1px solid ${C.border}`,
+            borderRadius:8,color:C.muted,textDecoration:"none",
+            ...MONO,fontSize:9,letterSpacing:"0.1em",transition:"all 0.2s"}}
+            onMouseEnter={e=>{e.currentTarget.style.borderColor=C.amberBorder;e.currentTarget.style.color=C.amber;}}
+            onMouseLeave={e=>{e.currentTarget.style.borderColor=C.border;e.currentTarget.style.color=C.muted;}}>
+            ← Home
+          </a>
+          <img src="/logo1.jpg" alt="HEADZ UP" style={{height:28,objectFit:"contain"}}/>
         </div>
         <div style={{display:"flex",alignItems:"center",gap:8}}>
           <a href="/book"
