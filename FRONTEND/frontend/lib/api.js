@@ -114,6 +114,7 @@ const PUBLIC_URLS = [
   "token/", "token/refresh/", "register/", "barber/register/",
   "check-username/", "password-reset/", "password-reset/confirm/",
   "barbers/", "services/", "available-slots/",
+  "push/subscribe/", "push/vapid-key/",  // don't redirect on push auth failures
 ];
 const isPublic = (url = "") => PUBLIC_URLS.some((p) => url.includes(p));
 

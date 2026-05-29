@@ -98,6 +98,8 @@ export default function NotificationProvider({ children }) {
   // Show permit prompt
   var showPermitPrompt = useCallback(function() {
     if (typeof window === "undefined") return;
+    // Only show if user is logged in — prevents redirect to login on permit click
+    if (!localStorage.getItem("access")) return;
     // Never show again if already granted
     var perm = typeof Notification !== "undefined" ? Notification.permission : "default";
     if (perm === "granted") { setPushEnabled(true); return; }
@@ -163,15 +165,30 @@ export default function NotificationProvider({ children }) {
       var p256dh = btoa(String.fromCharCode(...new Uint8Array(sub.getKey("p256dh"))));
       var auth   = btoa(String.fromCharCode(...new Uint8Array(sub.getKey("auth"))));
 
-      var saveRes = await API.post("push/subscribe/", {
-        endpoint: sub.endpoint,
-        p256dh:   p256dh,
-        auth:     auth,
-      });
+      // Only save to server if logged in
+      var token = localStorage.getItem("access");
+      if (token) {
+        try {
+          await API.post("push/subscribe/", {
+            endpoint: sub.endpoint,
+            p256dh:   p256dh,
+            auth:     auth,
+          }, { _noAuth: true }); // prevent 401 redirect
+        } catch(saveErr) {
+          // If save fails (e.g. not logged in), still enable locally
+          console.warn("[Push] Could not save subscription to server:", saveErr?.response?.status);
+        }
+      } else {
+        // Store subscription locally — will save on next login
+        try {
+          localStorage.setItem("headzup_pending_push", JSON.stringify({
+            endpoint: sub.endpoint, p256dh, auth
+          }));
+        } catch(e) {}
+      }
 
       setPushEnabled(true);
       setShowPermit(false);
-      // Show success toast - no url so no navigation on tap
       addNotif("Notifications On 🔔", "You will get alerts for bookings, reminders and more.", "general", null);
     } catch(e) {
       console.error("[Push] enablePush error:", e);
@@ -223,6 +240,20 @@ export default function NotificationProvider({ children }) {
 
     return function() { window.removeEventListener("headzup:trigger-permit", handler); };
   }, [router, showPermitPrompt]);
+
+  // Save pending push subscription after login
+  useEffect(function() {
+    var token = localStorage.getItem("access");
+    var pending = localStorage.getItem("headzup_pending_push");
+    if (!token || !pending) return;
+    try {
+      var sub = JSON.parse(pending);
+      API.post("push/subscribe/", sub).then(function() {
+        localStorage.removeItem("headzup_pending_push");
+        console.log("[Push] Saved pending subscription after login");
+      }).catch(function() {});
+    } catch(e) {}
+  }, []);
 
   // Direct mount check - show prompt if not yet subscribed
   useEffect(function() {
