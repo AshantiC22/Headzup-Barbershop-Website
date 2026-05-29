@@ -884,8 +884,9 @@ def send_cancellation_email(appointment, cancelled_by="client"):
                 try:
                     _cbp2 = _get_barber_phone(appointment.barber)
                     if _cbp2:
-                        _cancel_nm = (appointment.user.first_name and appointment.user.last_name and
-                                      f"{appointment.user.first_name} {appointment.user.last_name}") or                                      appointment.user.first_name or appointment.user.username
+                        _cfn = appointment.user.first_name or ""
+                        _cln = appointment.user.last_name or ""
+                        _cancel_nm = f"{_cfn} {_cln}".strip() or appointment.user.username
                         _twilio_send(_cbp2,
                             f"❌ HEADZ UP: Booking cancelled\n"
                             f"Client: {_cancel_nm}\n"
@@ -1844,11 +1845,12 @@ class UserProfileViewSet(viewsets.ModelViewSet):
                 try:
                     _dbp3 = _get_barber_phone(appt_full.barber)
                     if _dbp3:
-                        _client_nm = (appt_full.user.first_name and appt_full.user.last_name and
-                                      f"{appt_full.user.first_name} {appt_full.user.last_name}") or                                      appt_full.user.first_name or appt_full.user.username
+                        _fn = appt_full.user.first_name or ""
+                        _ln = appt_full.user.last_name or ""
+                        _client_nm = f"{_fn} {_ln}".strip() or appt_full.user.username
                         _svc_nm    = appt_full.service.name
-                        _appt_dt   = appt_full.date.strftime("%a %b %-d")
-                        _appt_tm   = appt_full.time.strftime("%-I:%M %p")
+                        _appt_dt   = appt_full.date.strftime("%a %b %d").replace(" 0", " ")
+                        _appt_tm   = appt_full.time.strftime("%I:%M %p").lstrip("0")
                         _twilio_send(_dbp3,
                             f"📅 HEADZ UP: New booking!\n"
                             f"Client: {_client_nm}\n"
@@ -4503,8 +4505,9 @@ class HaircutReviewView(APIView):
                 )
                 _rbp2 = _get_barber_phone(appt.barber)
                 if _rbp2:
-                    _rev_nm = (request.user.first_name or "") +                               (" " + request.user.last_name if request.user.last_name else "") or                               request.user.username
-                    _rev_nm = _rev_nm.strip() or request.user.username
+                    _rfn = request.user.first_name or ""
+                    _rln = request.user.last_name or ""
+                    _rev_nm = f"{_rfn} {_rln}".strip() or request.user.username
                     _stars  = "★" * rating + "☆" * (5 - rating)
                     _twilio_send(_rbp2,
                         f"⭐ HEADZ UP: New {rating}-star review!\n"
@@ -5733,6 +5736,26 @@ class ClientRescheduleRequestView(APIView):
                     notif_type=NOTIF_RESCHEDULE_REQUEST,
                     url="/barber-dashboard"
                 )
+                # Barber SMS for reschedule request
+                try:
+                    _rq_barber = reschedule_req.appointment.barber if hasattr(reschedule_req, 'appointment') else None
+                    if not _rq_barber:
+                        _rq_barber = RescheduleRequest.objects.select_related(
+                            'appointment__barber'
+                        ).get(pk=reschedule_req.pk).appointment.barber
+                    _rbp_rq = _get_barber_phone(_rq_barber)
+                    if _rbp_rq:
+                        _svc_rq = reschedule_req.appointment.service.name
+                        _new_d  = reschedule_req.new_date.strftime("%a %b %d").replace(" 0"," ")
+                        _new_t  = reschedule_req.new_time.strftime("%I:%M %p").lstrip("0")
+                        _twilio_send(_rbp_rq,
+                            f"↻ HEADZ UP: Reschedule request!\n"
+                            f"Client: {client_name}\n"
+                            f"Service: {_svc_rq}\n"
+                            f"Wants: {_new_d} at {_new_t}\n"
+                            f"Check dashboard to approve or decline"
+                        )
+                except Exception: pass
         except Exception as _e:
             logger.error(f"Reschedule request push failed: {_e}")
 
