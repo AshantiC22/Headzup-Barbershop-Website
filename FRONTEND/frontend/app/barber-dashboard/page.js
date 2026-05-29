@@ -218,6 +218,8 @@ export default function BarberDashboard() {
   const [schedDate,    setSchedDate]    = useState(todayStr());
   const [schedLoading, setSchedLoading] = useState(false);
   const [summary,      setSummary]      = useState({ total:0, confirmed:0, online_revenue:"0.00", pay_in_shop:0 });
+  const [clearingDay,  setClearingDay]  = useState(false);
+  const [confirmClear, setConfirmClear] = useState(false);
 
   // Availability
   const [availability, setAvailability] = useState([]);
@@ -447,6 +449,27 @@ export default function BarberDashboard() {
     {id:"profile",     label:"Profile",     icon:"👤"},
   ];
 
+  // ── Clear entire day ─────────────────────────────────────────────────────────
+  const handleClearDay = async () => {
+    setClearingDay(true);
+    setConfirmClear(false);
+    const active = schedule.filter(a => !["completed","cancelled","no_show"].includes(a.status));
+    let cleared = 0;
+    for (const appt of active) {
+      try {
+        await API.delete(`barber/appointments/${appt.id}/`);
+        cleared++;
+      } catch(e) {}
+    }
+    setSchedule(p => p.map(a =>
+      !["completed","cancelled","no_show"].includes(a.status)
+        ? { ...a, status:"cancelled" }
+        : a
+    ));
+    setClearingDay(false);
+    showToast(`${cleared} appointment${cleared!==1?"s":""} cancelled — clients notified`);
+  };
+
   if(loading) return (
     <div style={{background:C.bg,minHeight:"100vh"}}>
       <header style={{height:58,background:"rgba(7,7,9,0.85)",borderBottom:"1px solid rgba(255,255,255,0.08)",
@@ -646,8 +669,22 @@ export default function BarberDashboard() {
                     {schedule.some(a=>["completed","cancelled","no_show"].includes(a.status))&&(
                       <button onClick={()=>setSchedule(p=>p.filter(a=>!["completed","cancelled","no_show"].includes(a.status)))}
                         style={{padding:"8px 12px",background:C.redDim,border:`1px solid ${C.red}30`,
-                          borderRadius:10,color:C.red,...MONO,fontSize:9,cursor:"pointer",whiteSpace:"nowrap"}}>
+                          borderRadius:10,color:C.red,...MONO,fontSize:9,cursor:"pointer",whiteSpace:"nowrap",transition:"all 0.2s"}}
+                        onMouseEnter={e=>e.currentTarget.style.background="rgba(239,68,68,0.18)"}
+                        onMouseLeave={e=>e.currentTarget.style.background=C.redDim}>
                         ✕ Done
+                      </button>
+                    )}
+                    {/* Clear Day — cancel ALL active appointments */}
+                    {schedule.some(a=>!["completed","cancelled","no_show"].includes(a.status))&&(
+                      <button onClick={()=>setConfirmClear(true)}
+                        style={{padding:"8px 12px",background:"rgba(239,68,68,0.06)",
+                          border:`1px solid rgba(239,68,68,0.20)`,
+                          borderRadius:10,color:"rgba(239,68,68,0.6)",...MONO,fontSize:9,
+                          cursor:"pointer",whiteSpace:"nowrap",transition:"all 0.2s"}}
+                        onMouseEnter={e=>{e.currentTarget.style.background=C.redDim;e.currentTarget.style.color=C.red;e.currentTarget.style.borderColor=`${C.red}40`;}}
+                        onMouseLeave={e=>{e.currentTarget.style.background="rgba(239,68,68,0.06)";e.currentTarget.style.color="rgba(239,68,68,0.6)";e.currentTarget.style.borderColor="rgba(239,68,68,0.20)";}}>
+                        🗑 Clear Day
                       </button>
                     )}
                   </div>
@@ -1592,6 +1629,47 @@ export default function BarberDashboard() {
           </div>
         </main>
       </div>
+
+      {/* ── Clear Day Confirmation Modal ── */}
+      {confirmClear&&(
+        <div style={{position:"fixed",inset:0,zIndex:9999,background:"rgba(0,0,0,0.85)",
+          backdropFilter:"blur(10px)",WebkitBackdropFilter:"blur(10px)",
+          display:"flex",alignItems:"center",justifyContent:"center",padding:20}}
+          onClick={()=>setConfirmClear(false)}>
+          <div onClick={e=>e.stopPropagation()}
+            style={{...glassCard({borderColor:"rgba(239,68,68,0.4)",padding:0,overflow:"hidden",maxWidth:400,width:"100%"})}}>
+            <div style={{height:3,background:C.red}}/>
+            <div style={{padding:24}}>
+              <p style={{...SF,fontSize:13,fontWeight:700,textTransform:"uppercase",
+                letterSpacing:"-0.02em",color:C.text,marginBottom:8}}>
+                ⚠️ Clear Entire Day?
+              </p>
+              <p style={{...MONO,fontSize:12,color:C.sub,lineHeight:1.8,marginBottom:20}}>
+                This will cancel <strong style={{color:C.red}}>
+                  {schedule.filter(a=>!["completed","cancelled","no_show"].includes(a.status)).length} active appointment{schedule.filter(a=>!["completed","cancelled","no_show"].includes(a.status)).length!==1?"s":""}
+                </strong> on <strong style={{color:C.text}}>{fmtDate(schedDate)}</strong>.
+                Every client will be notified.
+              </p>
+              <div style={{display:"flex",gap:8}}>
+                <button disabled={clearingDay} onClick={handleClearDay}
+                  style={{flex:1,padding:"12px",background:C.red,border:"none",
+                    borderRadius:10,color:"white",...SF,fontSize:7,fontWeight:700,
+                    textTransform:"uppercase",letterSpacing:"0.15em",cursor:"pointer",
+                    opacity:clearingDay?0.7:1}}>
+                  {clearingDay?"Cancelling...":"Yes, Clear Day"}
+                </button>
+                <button onClick={()=>setConfirmClear(false)}
+                  style={{flex:1,padding:"12px",background:C.glass,
+                    border:`1px solid ${C.border}`,borderRadius:10,color:C.muted,
+                    ...SF,fontSize:7,fontWeight:700,textTransform:"uppercase",
+                    letterSpacing:"0.15em",cursor:"pointer"}}>
+                  Keep Schedule
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── Toast ── */}
       {toast&&(

@@ -1248,38 +1248,41 @@ export default function HomePage() {
                 </a>
               </div>
               <div data-id="l3" className={`rv d2${Rv("l3")?" on":""}`}>
-                <div style={{ background:"#080808",border:`1px solid rgba(255,255,255,0.06)`,
-                  position:"relative",overflow:"hidden",minHeight:340,
-                  display:"flex",alignItems:"center",justifyContent:"center",
-                  clipPath:"polygon(0 0,calc(100% - 22px) 0,100% 22px,100% 100%,22px 100%,0 calc(100% - 22px))" }}>
-                  <div style={{ position:"absolute",inset:0,
-                    backgroundImage:`linear-gradient(rgba(255,255,255,0.022) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,0.022) 1px,transparent 1px)`,
-                    backgroundSize:"34px 34px" }}/>
-                  {/* Barber pole corner */}
-                  <div style={{ position:"absolute",top:0,right:0,width:48,height:48,overflow:"hidden" }}>
-                    <div style={{ position:"absolute",top:0,right:0,width:72,height:72,
-                      background:"repeating-linear-gradient(-45deg,#ef4444 0px,#ef4444 5px,#fff 5px,#fff 10px,#f59e0b 10px,#f59e0b 15px,#000 15px,#000 20px)",
-                      opacity:0.25 }}/>
-                  </div>
-                  {[160,240,320].map((sz,i)=>(
-                    <div key={sz} style={{ position:"absolute",width:sz,height:sz,
-                      border:`1px solid ${A}${Math.round(14-i*4).toString(16).padStart(2,"0")}`,borderRadius:"50%" }}/>
-                  ))}
-                  <div style={{ position:"relative",zIndex:1,textAlign:"center",padding:"40px 24px" }}>
-                    <div style={{ width:52,height:52,background:A,margin:"0 auto 14px",
-                      display:"flex",alignItems:"center",justifyContent:"center",
-                      boxShadow:`0 0 48px ${A}45`,
-                      clipPath:"polygon(0 0,calc(100% - 8px) 0,100% 8px,100% 100%,8px 100%,0 calc(100% - 8px))" }}>
-                      <span style={{ fontSize:22 }}>📍</span>
+                <div style={{ position:"relative", borderRadius:12, overflow:"hidden",
+                  border:"1px solid rgba(255,255,255,0.08)",
+                  boxShadow:"0 8px 40px rgba(0,0,0,0.4)" }}>
+                  <iframe
+                    title="HEADZ UP Barbershop Location"
+                    src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3380.5!2d-89.2921!3d31.3271!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x8629e46b5b5b5b5b%3A0xabcdef1234567890!2s2509%20W%204th%20St%2C%20Hattiesburg%2C%20MS%2039401%2C%20USA!5e0!3m2!1sen!2sus!4v1716000000000!5m2!1sen!2sus"
+                    width="100%"
+                    height="400"
+                    style={{ border:0, display:"block",
+                      filter:"invert(90%) hue-rotate(180deg) saturate(0.8) brightness(0.9)" }}
+                    allowFullScreen=""
+                    loading="lazy"
+                    referrerPolicy="no-referrer-when-downgrade"/>
+                  <div style={{ position:"absolute", bottom:14, left:14,
+                    background:"rgba(7,7,9,0.92)", backdropFilter:"blur(12px)",
+                    WebkitBackdropFilter:"blur(12px)",
+                    border:"1px solid rgba(245,158,11,0.3)", borderRadius:10,
+                    padding:"10px 14px", display:"flex", alignItems:"center", gap:10 }}>
+                    <div style={{ width:32, height:32, background:A, borderRadius:8,
+                      display:"flex", alignItems:"center", justifyContent:"center",
+                      fontSize:14, flexShrink:0 }}>📍</div>
+                    <div>
+                      <p style={{ ...D, fontSize:9, fontWeight:900, color:"white",
+                        textTransform:"uppercase", marginBottom:2 }}>HEADZ UP</p>
+                      <p style={{ ...M, fontSize:10, color:"#a1a1aa" }}>
+                        2509 W 4th St · Hattiesburg MS
+                      </p>
                     </div>
-                    <p style={{ ...D,fontSize:9,fontWeight:900,textTransform:"uppercase",
-                      color:"white",marginBottom:7 }}>HEADZ UP BARBERSHOP</p>
-                    <p style={{ ...M,fontSize:12,color:"#a1a1aa" }}>
-                      2509 W 4th St, Hattiesburg MS 39401
-                    </p>
+                    <a href="https://maps.google.com/?q=2509+W+4th+St+Hattiesburg+MS+39401"
+                      target="_blank" rel="noopener noreferrer"
+                      style={{ ...M, fontSize:9, color:A, textDecoration:"none",
+                        marginLeft:4, whiteSpace:"nowrap", letterSpacing:"0.05em" }}>
+                      Directions →
+                    </a>
                   </div>
-                  <p style={{ position:"absolute",bottom:10,right:14,...M,fontSize:9,
-                    color:"#3f3f46",letterSpacing:"0.2em" }}>31.3271° N · 89.2903° W</p>
                 </div>
               </div>
             </div>
