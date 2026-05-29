@@ -7,7 +7,8 @@ import API from "@/lib/api";
 import { useTheme, ThemeToggle } from "@/components/ThemeProvider";
 
 // ── Design tokens ──────────────────────────────────────────────────────────────
-const C = {
+// C is set dynamically per component from useTheme() — see DashboardContent
+const C_DARK = {
   bg:"#070709", surface:"rgba(255,255,255,0.04)", surfaceB:"rgba(255,255,255,0.07)",
   border:"rgba(255,255,255,0.08)", borderB:"rgba(255,255,255,0.15)",
   amber:"#f59e0b", amberL:"#fbbf24", amberD:"#d97706",
@@ -17,6 +18,7 @@ const C = {
   blue:"#60a5fa", blueDim:"rgba(96,165,250,0.10)",
   purple:"#a78bfa", text:"#f1f0ee", sub:"#9ca3af", muted:"#4b5563",
 };
+let C = C_DARK; // overridden per-render inside component
 const SF   = { fontFamily:"'Syncopate',sans-serif" };
 const MONO = { fontFamily:"'DM Mono',monospace" };
 
@@ -395,6 +397,8 @@ function DashboardContent() {
   const searchParams = useSearchParams();
   const { addNotif, showPermitPrompt } = useNotifications() || {};
   const { theme: T, isDark } = useTheme();
+  // Override module-level C with theme tokens so ALL C.xxx refs use current theme
+  C = T;
   useEffect(()=>{ showPermitPrompt?.(); },[showPermitPrompt]);
 
   const [user,         setUser]         = useState(null);
@@ -568,7 +572,8 @@ function DashboardContent() {
         ::-webkit-scrollbar-track{background:transparent;}
         ::-webkit-scrollbar-thumb{background:rgba(245,158,11,0.2);border-radius:4px;}
         input,textarea,select,button{font-family:inherit;}
-        input:focus,textarea:focus{border-color:rgba(245,158,11,0.5)!important;box-shadow:0 0 0 3px rgba(245,158,11,0.08)!important;outline:none;}
+        input:focus,textarea:focus,select:focus{border-color:${T.amberBorder}!important;box-shadow:0 0 0 3px ${T.amberDim}!important;outline:none;}
+        select{background:${T.surface};color:${T.text};}
         @keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
         @keyframes shimmer{0%{background-position:-200% center}100%{background-position:200% center}}
         @keyframes toastIn{from{opacity:0;transform:translateY(12px) scale(0.96)}to{opacity:1;transform:none}}

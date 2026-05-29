@@ -665,3 +665,103 @@ button, a, input, textarea, select {
   transition: background-color 0.25s ease, border-color 0.2s ease, color 0.2s ease,
     transform 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
 }
+
+
+/* ── SMOOTH THEME TRANSITION ────────────────────────────────────────────── */
+*, *::before, *::after {
+  transition:
+    background-color 0.25s ease,
+    border-color 0.22s ease,
+    color 0.22s ease,
+    box-shadow 0.22s ease;
+}
+button, a, input, textarea, select {
+  transition:
+    background-color 0.25s ease,
+    border-color 0.22s ease,
+    color 0.22s ease,
+    transform 0.2s ease,
+    box-shadow 0.2s ease,
+    opacity 0.2s ease;
+}
+
+/* ── LIGHT MODE ─────────────────────────────────────────────────────────── */
+[data-theme="light"] {
+  color-scheme: light;
+
+  /* Backgrounds */
+  --bg:      #f5f3ee;
+  --bg-deep: #ede9e1;
+  --s1:      rgba(255,255,255,0.72);
+  --s2:      rgba(255,255,255,0.85);
+  --s3:      rgba(255,255,255,0.95);
+
+  /* Borders */
+  --border:  rgba(0,0,0,0.10);
+  --border-b:rgba(0,0,0,0.18);
+
+  /* Brand */
+  --amber:   #c2710c;
+  --amber-lo:rgba(194,113,12,0.08);
+  --amber-md:rgba(194,113,12,0.15);
+  --amber-hi:rgba(194,113,12,0.38);
+
+  /* Text */
+  --text:    #1c1917;
+  --sub:     #44403c;
+  --muted:   #a8a29e;
+}
+
+[data-theme="light"] body {
+  background: #f5f3ee !important;
+  color: #1c1917 !important;
+}
+
+/* scrollbar light mode */
+[data-theme="light"] ::-webkit-scrollbar-track { background: #ede9e1; }
+[data-theme="light"] ::-webkit-scrollbar-thumb { background: rgba(194,113,12,0.25); }
+
+/* selection light mode */
+[data-theme="light"] ::selection { background: rgba(194,113,12,0.25); color: #1c1917; }
+
+/* inputs light mode */
+[data-theme="light"] input:focus,
+[data-theme="light"] textarea:focus,
+[data-theme="light"] select:focus {
+  border-color: rgba(194,113,12,0.5) !important;
+  box-shadow: 0 0 0 3px rgba(194,113,12,0.08) !important;
+  background: rgba(255,255,255,0.95) !important;
+}
+
+/* ── GLASS CARD LIGHT MODE ──────────────────────────────────────────────── */
+[data-theme="light"] .glass-card,
+[data-theme="light"] [class*="card"] {
+  background: rgba(255,255,255,0.75) !important;
+  border-color: rgba(0,0,0,0.09) !important;
+  box-shadow: 0 2px 16px rgba(0,0,0,0.07), inset 0 1px 0 rgba(255,255,255,0.9) !important;
+}
+
+/* ── HEADER LIGHT MODE ──────────────────────────────────────────────────── */
+[data-theme="light"] header {
+  background: rgba(245,243,238,0.93) !important;
+  border-bottom-color: rgba(0,0,0,0.09) !important;
+  box-shadow: 0 1px 16px rgba(0,0,0,0.06);
+}
+
+/* ── SIDEBAR LIGHT MODE ─────────────────────────────────────────────────── */
+[data-theme="light"] aside {
+  background: rgba(237,233,225,0.99) !important;
+  border-right-color: rgba(0,0,0,0.08) !important;
+}
+
+/* ── CALENDAR LIGHT MODE ─────────────────────────────────────────────────  */
+[data-theme="light"] input[type="date"]::-webkit-calendar-picker-indicator,
+[data-theme="light"] input[type="time"]::-webkit-calendar-picker-indicator {
+  filter: none;
+}
+
+/* ── SELECT LIGHT MODE ───────────────────────────────────────────────────── */
+[data-theme="light"] select {
+  background: rgba(255,255,255,0.9);
+  color: #1c1917;
+}

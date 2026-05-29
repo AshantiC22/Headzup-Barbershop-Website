@@ -5,19 +5,19 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import API from "@/lib/api";
 import { ScheduleSkeleton } from "@/components/Skeleton";
-import { useTheme, ThemeToggle } from "@/components/ThemeProvider";
+import { useTheme, ThemeToggle, GLOBAL_THEME_CSS } from "@/components/ThemeProvider";
 
 // ── Design System ──────────────────────────────────────────────────────────────
-const C = {
-  bg:"#070709", bgDeep:"#050507",
-  glass:"rgba(255,255,255,0.04)", glassB:"rgba(255,255,255,0.07)", glassC:"rgba(255,255,255,0.11)",
-  border:"rgba(255,255,255,0.08)", borderB:"rgba(255,255,255,0.15)",
-  amber:"#f59e0b", amberL:"#fbbf24", amberD:"#d97706",
+let C = {
+  bg:"var(--bg)", bgDeep:"#050507",
+  glass:"var(--surface)", glassB:"var(--surface-b)", glassC:"rgba(255,255,255,0.11)",
+  border:"var(--border)", borderB:"rgba(255,255,255,0.15)",
+  amber:"var(--amber)", amberL:"var(--amber-l)", amberD:"var(--amber-d)",
   amberDim:"rgba(245,158,11,0.10)", amberGlow:"rgba(245,158,11,0.20)", amberBorder:"rgba(245,158,11,0.35)",
-  red:"#ef4444", redDim:"rgba(239,68,68,0.10)",
-  green:"#22c55e", greenDim:"rgba(34,197,94,0.10)",
-  blue:"#60a5fa", blueDim:"rgba(96,165,250,0.10)",
-  purple:"#a78bfa", text:"#f1f0ee", sub:"#9ca3af", muted:"#4b5563",
+  red:"var(--red)", redDim:"rgba(239,68,68,0.10)",
+  green:"var(--green)", greenDim:"rgba(34,197,94,0.10)",
+  blue:"var(--blue)", blueDim:"rgba(96,165,250,0.10)",
+  purple:"#a78bfa", text:"var(--text)", sub:"var(--text-sub)", muted:"var(--text-muted)",
 };
 const SF   = { fontFamily:"'Syncopate',sans-serif" };
 const MONO = { fontFamily:"'DM Mono',monospace" };
@@ -154,7 +154,7 @@ function ApptCard({ appt, onStatus, onCancel, onStrike, onRemind }) {
               {/* Details grid */}
               <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:8, marginBottom:14 }}>
                 {[["Price",`$${appt.service_price}`],["Duration",`${appt.service_duration}m`],["Payment",appt.payment_method==="online"?"Online 💳":"Shop 🏪"]].map(([k,v])=>(
-                  <div key={k} style={{ padding:"10px", background:"rgba(255,255,255,0.03)", borderRadius:10, border:`1px solid ${C.border}`, textAlign:"center" }}>
+                  <div key={k} style={{ padding:"10px", background:"var(--surface)", borderRadius:10, border:`1px solid ${C.border}`, textAlign:"center" }}>
                     <p style={{ ...MONO, fontSize:8, color:C.muted, letterSpacing:"0.25em", textTransform:"uppercase", marginBottom:4 }}>{k}</p>
                     <p style={{ ...MONO, fontSize:12, color:C.text }}>{v}</p>
                   </div>
@@ -187,6 +187,7 @@ export default function BarberDashboard() {
   const router = useRouter();
   const { addNotif, showPermitPrompt } = useNotifications() || {};
   const { theme: T, isDark } = useTheme();
+  C = T; // All C.xxx refs now use current theme
   useEffect(() => { showPermitPrompt?.(); }, [showPermitPrompt]);
 
   // Listen for new review push notifications to increment badge
@@ -451,7 +452,7 @@ export default function BarberDashboard() {
         <style>{`@keyframes shimmer{0%{background-position:-200% center}100%{background-position:200% center}}`}</style>
       </header>
       <div style={{display:"flex",height:"calc(100vh - 58px)"}}>
-        <aside style={{width:210,background:"rgba(7,7,9,0.95)",borderRight:"1px solid rgba(255,255,255,0.08)"}}/>
+        <aside style={{width:210,background:"var(--sidebar-bg)",borderRight:"1px solid rgba(255,255,255,0.08)"}}/>
         <main style={{flex:1,padding:28}}><ScheduleSkeleton/></main>
       </div>
     </div>
@@ -464,17 +465,18 @@ export default function BarberDashboard() {
         body { background:${T.bg} !important; color:${T.text} !important; }
         @import url('https://fonts.googleapis.com/css2?family=Syncopate:wght@400;700&family=DM+Mono:ital,wght@0,300;0,400;0,500;1,400&display=swap');
         *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
-        body{background:#070709;color:#f1f0ee;overflow-x:hidden;}
+        body{background:${T.bg};color:${T.text};overflow-x:hidden;}
         ::selection{background:rgba(245,158,11,0.3);}
         ::-webkit-scrollbar{width:4px;height:4px;}
         ::-webkit-scrollbar-track{background:transparent;}
         ::-webkit-scrollbar-thumb{background:rgba(245,158,11,0.2);border-radius:4px;}
         input,textarea,select,button{font-family:inherit;}
         input:focus,textarea:focus,select:focus{
-          border-color:rgba(245,158,11,0.5)!important;
-          box-shadow:0 0 0 3px rgba(245,158,11,0.08)!important;
+          border-color:${T.amberBorder}!important;
+          box-shadow:0 0 0 3px ${T.amberDim}!important;
           outline:none;
         }
+        select{background:${T.surface};color:${T.text};}
         @keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
         @keyframes toastIn{from{opacity:0;transform:translateY(12px) scale(0.96)}to{opacity:1;transform:none}}
         .fade-up{animation:fadeUp 0.28s ease both;}
@@ -759,7 +761,7 @@ export default function BarberDashboard() {
                         </div>
                         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
                           {[["Original Date",rr.original_date],["Original Time",rr.original_time],["New Date",rr.requested_date],["New Time",rr.requested_time]].map(([k,v])=>(
-                            <div key={k} style={{padding:"10px 12px",background:"rgba(255,255,255,0.03)",borderRadius:10,border:`1px solid ${C.border}`}}>
+                            <div key={k} style={{padding:"10px 12px",background:"var(--surface)",borderRadius:10,border:`1px solid ${C.border}`}}>
                               <p style={{...MONO,fontSize:8,color:C.muted,letterSpacing:"0.2em",textTransform:"uppercase",marginBottom:3}}>{k}</p>
                               <p style={{...MONO,fontSize:12,color:k.includes("New")?C.amber:C.text}}>{v}</p>
                             </div>
@@ -862,7 +864,7 @@ export default function BarberDashboard() {
                         <div style={{marginTop:14,paddingTop:14,borderTop:`1px solid ${C.border}`}}>
                           <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8,marginBottom:12}}>
                             {[["Visits",cl.total_visits],["No Shows",cl.no_shows],["Last Visit",cl.last_visit||"—"]].map(([k,v])=>(
-                              <div key={k} style={{padding:"10px",background:"rgba(255,255,255,0.03)",borderRadius:10,textAlign:"center"}}>
+                              <div key={k} style={{padding:"10px",background:"var(--surface)",borderRadius:10,textAlign:"center"}}>
                                 <p style={{...MONO,fontSize:8,color:C.muted,marginBottom:3}}>{k}</p>
                                 <p style={{...MONO,fontSize:12,color:C.text}}>{v}</p>
                               </div>
@@ -959,18 +961,18 @@ export default function BarberDashboard() {
                       {DAYS.map((day,i)=>{
                         const a=availability.find(x=>x.day_of_week===i);
                         return(
-                          <div key={day} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 12px",background:"rgba(255,255,255,0.03)",borderRadius:10,border:`1px solid ${C.border}`}}>
+                          <div key={day} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 12px",background:"var(--surface)",borderRadius:10,border:`1px solid ${C.border}`}}>
                             <span style={{...MONO,fontSize:10,color:a?.is_working?C.text:C.muted,width:32,flexShrink:0}}>{day}</span>
                             <div style={{flex:1}}>
                               {a?.is_working?(
                                 <div style={{display:"flex",gap:8,alignItems:"center"}}>
                                   <input type="time" defaultValue={a.start_time?.slice(0,5)}
                                     onChange={async e=>{try{await API.post("barber/availability/",{day_of_week:i,start_time:e.target.value,end_time:a.end_time,is_working:true});const r=await API.get("barber/availability/");setAvailability(r.data||[]);}catch(e){}}}
-                                    style={{padding:"4px 8px",background:"rgba(255,255,255,0.05)",border:`1px solid ${C.border}`,borderRadius:6,color:C.text,...MONO,fontSize:11,outline:"none"}}/>
+                                    style={{padding:"4px 8px",background:"var(--surface-b)",border:`1px solid ${C.border}`,borderRadius:6,color:C.text,...MONO,fontSize:11,outline:"none"}}/>
                                   <span style={{color:C.muted}}>→</span>
                                   <input type="time" defaultValue={a.end_time?.slice(0,5)}
                                     onChange={async e=>{try{await API.post("barber/availability/",{day_of_week:i,start_time:a.start_time,end_time:e.target.value,is_working:true});const r=await API.get("barber/availability/");setAvailability(r.data||[]);}catch(e){}}}
-                                    style={{padding:"4px 8px",background:"rgba(255,255,255,0.05)",border:`1px solid ${C.border}`,borderRadius:6,color:C.text,...MONO,fontSize:11,outline:"none"}}/>
+                                    style={{padding:"4px 8px",background:"var(--surface-b)",border:`1px solid ${C.border}`,borderRadius:6,color:C.text,...MONO,fontSize:11,outline:"none"}}/>
                                 </div>
                               ):<span style={{...MONO,fontSize:11,color:C.muted}}>Off</span>}
                             </div>
@@ -1003,7 +1005,7 @@ export default function BarberDashboard() {
                       {timeOff.length===0?(
                         <p style={{...MONO,fontSize:11,color:C.muted,textAlign:"center",padding:16}}>No time off scheduled</p>
                       ):timeOff.map(t=>(
-                        <div key={t.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 14px",background:"rgba(255,255,255,0.03)",borderRadius:10,border:`1px solid ${C.border}`}}>
+                        <div key={t.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 14px",background:"var(--surface)",borderRadius:10,border:`1px solid ${C.border}`}}>
                           <div>
                             <p style={{...MONO,fontSize:12,color:C.text}}>{fmtDate(t.date)}</p>
                             {t.reason&&<p style={{...MONO,fontSize:10,color:C.muted}}>{t.reason}</p>}
@@ -1077,7 +1079,7 @@ export default function BarberDashboard() {
                     </p>
                   </div>
                   {/* Period selector */}
-                  <div style={{display:"flex",gap:6,background:"rgba(255,255,255,0.03)",padding:4,borderRadius:12,border:`1px solid ${C.border}`}}>
+                  <div style={{display:"flex",gap:6,background:"var(--surface)",padding:4,borderRadius:12,border:`1px solid ${C.border}`}}>
                     {["week","month","year","all"].map(p=>(
                       <button key={p} onClick={()=>setReportPeriod(p)}
                         style={{padding:"7px 14px",borderRadius:9,
@@ -1121,7 +1123,7 @@ export default function BarberDashboard() {
                             ["Walk-Ins",reports.summary.walk_ins,C.blue],
                             ["Reschedules",reports.summary.reschedules,C.purple],
                           ].map(([label,val,color])=>(
-                            <div key={label} style={{textAlign:"center",padding:"12px 16px",background:"rgba(255,255,255,0.04)",borderRadius:12,border:`1px solid rgba(255,255,255,0.08)`}}>
+                            <div key={label} style={{textAlign:"center",padding:"12px 16px",background:"var(--surface)",borderRadius:12,border:`1px solid rgba(255,255,255,0.08)`}}>
                               <p style={{...SF,fontSize:18,fontWeight:700,color,marginBottom:3}}>{val}</p>
                               <p style={{...MONO,fontSize:9,color:C.muted,letterSpacing:"0.15em",textTransform:"uppercase"}}>{label}</p>
                             </div>
@@ -1220,7 +1222,7 @@ export default function BarberDashboard() {
                               const maxBook = Math.max(...reports.services.map(x=>x.bookings),1);
                               const pct = (s.bookings/maxBook)*100;
                               return (
-                                <div key={s.name} style={{padding:"10px 12px",background:"rgba(255,255,255,0.03)",borderRadius:10}}>
+                                <div key={s.name} style={{padding:"10px 12px",background:"var(--surface)",borderRadius:10}}>
                                   <div style={{display:"flex",justifyContent:"space-between",marginBottom:6}}>
                                     <div>
                                       <p style={{...MONO,fontSize:12,color:C.text,marginBottom:2}}>{s.name}</p>
@@ -1231,7 +1233,7 @@ export default function BarberDashboard() {
                                       <p style={{...MONO,fontSize:9,color:C.muted}}>${s.price} ea</p>
                                     </div>
                                   </div>
-                                  <div style={{height:4,background:"rgba(255,255,255,0.06)",borderRadius:4}}>
+                                  <div style={{height:4,background:"var(--surface-b)",borderRadius:4}}>
                                     <div style={{height:"100%",borderRadius:4,width:`${pct}%`,
                                       background:`linear-gradient(to right,#f59e0b,#fbbf24)`,
                                       transition:"width 0.8s cubic-bezier(0.4,0,0.2,1)"}}/>
@@ -1250,7 +1252,7 @@ export default function BarberDashboard() {
                           <div style={{display:"flex",flexDirection:"column",gap:8}}>
                             {reports.top_clients.map((cl,i)=>(
                               <div key={cl.id} style={{display:"flex",alignItems:"center",gap:12,
-                                padding:"10px 12px",background:"rgba(255,255,255,0.03)",borderRadius:10}}>
+                                padding:"10px 12px",background:"var(--surface)",borderRadius:10}}>
                                 <div style={{width:32,height:32,borderRadius:"50%",
                                   background:i===0?"linear-gradient(135deg,#f59e0b,#d97706)":C.amberDim,
                                   border:`1px solid ${i===0?C.amber:C.amberBorder}`,
@@ -1287,7 +1289,7 @@ export default function BarberDashboard() {
                                   <div key={d.day} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:4}}>
                                     <div style={{width:"100%",
                                       height:`${Math.max(4,(d.bookings/maxD)*70)}px`,
-                                      background:d.bookings===maxD?"linear-gradient(to top,#d97706,#f59e0b)":"rgba(255,255,255,0.08)",
+                                      background:d.bookings===maxD?"linear-gradient(to top,#d97706,#f59e0b)":"var(--border)",
                                       borderRadius:"4px 4px 0 0",transition:"height 0.6s ease"}}/>
                                     <p style={{...MONO,fontSize:8,color:d.bookings===maxD?C.amber:C.muted}}>{d.day}</p>
                                     <p style={{...SF,fontSize:10,color:d.bookings===maxD?C.amber:C.sub,fontWeight:700}}>{d.bookings}</p>
@@ -1310,7 +1312,7 @@ export default function BarberDashboard() {
                                 {[...reports.busiest_hours].sort((a,b)=>b.bookings-a.bookings).slice(0,5).map(h=>(
                                   <div key={h.hour} style={{display:"flex",alignItems:"center",gap:10}}>
                                     <p style={{...MONO,fontSize:10,color:C.text,width:48,flexShrink:0}}>{h.label}</p>
-                                    <div style={{flex:1,height:8,background:"rgba(255,255,255,0.06)",borderRadius:4}}>
+                                    <div style={{flex:1,height:8,background:"var(--surface-b)",borderRadius:4}}>
                                       <div style={{height:"100%",borderRadius:4,width:`${(h.bookings/maxH)*100}%`,
                                         background:`linear-gradient(to right,#f59e0b,#fbbf24)`,transition:"width 0.6s ease"}}/>
                                     </div>
