@@ -1355,12 +1355,8 @@ def _twilio_send(to_phone, body):
         logger.debug(f"Invalid phone number for SMS: {to_phone!r}")
         return
 
-    # ── DEMO MODE — only send to verified number during Twilio trial ──────────
-    DEMO_NUMBER = getattr(settings, "TWILIO_DEMO_NUMBER", "")
-    if DEMO_NUMBER and to_phone != DEMO_NUMBER:
-        logger.debug(f"Demo mode — redirecting SMS from {to_phone} to {DEMO_NUMBER}")
-        to_phone = DEMO_NUMBER
-    # ─────────────────────────────────────────────────────────────────────────
+    # Demo mode disabled — A2P approved, send to real numbers
+    # DEMO_NUMBER = getattr(settings, "TWILIO_DEMO_NUMBER", "")
 
     url  = f"https://api.twilio.com/2010-04-01/Accounts/{account_sid}/Messages.json"
     data = urllib.parse.urlencode({
@@ -1547,11 +1543,31 @@ class TestEmailView(APIView):
             return Response({"success": False, "error": str(e), "config": config}, status=500)
 
 
+def _normalize_phone(phone):
+    """Normalize phone to E.164 format (+1XXXXXXXXXX for US numbers)."""
+    if not phone:
+        return None
+    phone = phone.strip().replace(" ","").replace("-","").replace("(","").replace(")","").replace(".","")
+    if not phone:
+        return None
+    # Already E.164
+    if phone.startswith("+"):
+        return phone
+    # 10-digit US number
+    if len(phone) == 10 and phone.isdigit():
+        return f"+1{phone}"
+    # 11-digit starting with 1
+    if len(phone) == 11 and phone.startswith("1") and phone.isdigit():
+        return f"+{phone}"
+    # Return as-is with + prefix as last resort
+    return f"+{phone}" if phone.isdigit() else None
+
+
 def _get_client_phone(user):
-    """Get client phone from UserProfile. Returns None if not set."""
+    """Get client phone from UserProfile. Returns normalized E.164 or None."""
     try:
         profile = user.profile
-        return profile.phone.strip() if profile.phone else None
+        return _normalize_phone(profile.phone) if profile.phone else None
     except Exception:
         return None
 
