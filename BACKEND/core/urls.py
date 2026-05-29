@@ -74,6 +74,7 @@ from core.views import (
     TestPushView,
     TestSMSView,
     TestEmailView,
+    SMSTestView,
 )
 
 router = DefaultRouter()
