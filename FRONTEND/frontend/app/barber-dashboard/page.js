@@ -232,6 +232,11 @@ export default function BarberDashboard() {
   const [blastForm,    setBlastForm]    = useState({ subject:"Message from HEADZ UP Barbershop", message:"", send_sms:true, send_email:true });
   const [blastSel,     setBlastSel]     = useState([]);
   const [blastBusy,    setBlastBusy]    = useState(false);
+  const [extContacts,  setExtContacts]  = useState([]);
+  const [extName,      setExtName]      = useState("");
+  const [extPhone,     setExtPhone]     = useState("");
+  const [extEmail,     setExtEmail]     = useState("");
+  const [showExtForm,  setShowExtForm]  = useState(false);
 
   // Walk-in
   const [walkIn,       setWalkIn]       = useState({ client_name:"", service_id:"", date:todayStr(), time:"", payment_method:"shop", phone:"", email:"", notes:"" });
@@ -826,6 +831,74 @@ export default function BarberDashboard() {
                     <textarea value={blastForm.message} rows={4} onChange={e=>setBlastForm(p=>({...p,message:e.target.value}))}
                       placeholder="Message... use {name} to personalize"
                       style={{...inputSt({resize:"vertical",marginBottom:12})}}/>
+                    {/* ── External contacts ── */}
+                    <div style={{marginBottom:14,padding:"14px 16px",background:"rgba(255,255,255,0.03)",borderRadius:12,border:`1px solid ${C.border}`}}>
+                      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:extContacts.length>0||showExtForm?12:0}}>
+                        <p style={{...MONO,fontSize:10,color:C.amber,letterSpacing:"0.15em",textTransform:"uppercase"}}>
+                          📱 External Contacts {extContacts.length>0&&`(${extContacts.length})`}
+                        </p>
+                        <button onClick={()=>setShowExtForm(o=>!o)}
+                          style={{padding:"5px 12px",background:C.amberDim,border:`1px solid ${C.amberBorder}`,borderRadius:8,color:C.amber,...MONO,fontSize:9,cursor:"pointer"}}>
+                          {showExtForm?"✕ Close":"+ Add"}
+                        </button>
+                      </div>
+                      <p style={{...MONO,fontSize:9,color:C.muted,marginBottom:showExtForm||extContacts.length>0?10:0}}>
+                        {!showExtForm&&extContacts.length===0?"Add phone numbers or emails for non-registered clients":""}
+                      </p>
+
+                      {showExtForm&&(
+                        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr auto",gap:8,marginBottom:10,alignItems:"end"}}>
+                          <div>
+                            <p style={{...MONO,fontSize:8,color:C.muted,letterSpacing:"0.2em",marginBottom:4}}>NAME</p>
+                            <input value={extName} onChange={e=>setExtName(e.target.value)}
+                              placeholder="John Doe"
+                              style={{width:"100%",padding:"9px 12px",background:C.glass,border:`1px solid ${C.border}`,borderRadius:10,color:C.text,...MONO,fontSize:12,outline:"none"}}/>
+                          </div>
+                          <div>
+                            <p style={{...MONO,fontSize:8,color:C.muted,letterSpacing:"0.2em",marginBottom:4}}>PHONE</p>
+                            <input value={extPhone} onChange={e=>setExtPhone(e.target.value)}
+                              placeholder="(601) 555-0100" type="tel"
+                              style={{width:"100%",padding:"9px 12px",background:C.glass,border:`1px solid ${C.border}`,borderRadius:10,color:C.text,...MONO,fontSize:12,outline:"none"}}/>
+                          </div>
+                          <div>
+                            <p style={{...MONO,fontSize:8,color:C.muted,letterSpacing:"0.2em",marginBottom:4}}>EMAIL</p>
+                            <input value={extEmail} onChange={e=>setExtEmail(e.target.value)}
+                              placeholder="email@gmail.com" type="email"
+                              style={{width:"100%",padding:"9px 12px",background:C.glass,border:`1px solid ${C.border}`,borderRadius:10,color:C.text,...MONO,fontSize:12,outline:"none"}}/>
+                          </div>
+                          <button onClick={()=>{
+                            if(!extPhone.trim()&&!extEmail.trim()){showToast("Add a phone or email","error");return;}
+                            setExtContacts(p=>[...p,{
+                              id:`ext_${Date.now()}`,
+                              name:extName.trim()||"Friend",
+                              phone:extPhone.trim(),
+                              email:extEmail.trim(),
+                              external:true,
+                            }]);
+                            setExtName("");setExtPhone("");setExtEmail("");
+                            showToast("Contact added ✓");
+                          }} style={{padding:"9px 16px",background:"linear-gradient(135deg,#f59e0b,#d97706)",border:"none",borderRadius:10,color:"#000",...SF,fontSize:8,fontWeight:700,textTransform:"uppercase",cursor:"pointer",whiteSpace:"nowrap"}}>
+                            + Add
+                          </button>
+                        </div>
+                      )}
+
+                      {/* Added contacts list */}
+                      {extContacts.length>0&&(
+                        <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
+                          {extContacts.map(ec=>(
+                            <div key={ec.id} style={{display:"flex",alignItems:"center",gap:6,padding:"5px 10px",background:C.amberDim,border:`1px solid ${C.amberBorder}`,borderRadius:20}}>
+                              <span style={{...MONO,fontSize:10,color:C.amber}}>{ec.name}</span>
+                              {ec.phone&&<span style={{...MONO,fontSize:9,color:C.muted}}>{ec.phone}</span>}
+                              {ec.email&&<span style={{...MONO,fontSize:9,color:C.muted}}>{ec.email}</span>}
+                              <button onClick={()=>setExtContacts(p=>p.filter(x=>x.id!==ec.id))}
+                                style={{background:"none",border:"none",color:C.muted,cursor:"pointer",fontSize:12,padding:0,lineHeight:1}}>✕</button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
                     <div style={{display:"flex",gap:10,justifyContent:"space-between",alignItems:"center",flexWrap:"wrap"}}>
                       <div style={{display:"flex",gap:14}}>
                         {[["send_sms","SMS"],["send_email","Email"]].map(([key,label])=>(
@@ -836,11 +909,24 @@ export default function BarberDashboard() {
                         ))}
                       </div>
                       <div style={{display:"flex",gap:8}}>
-                        <button onClick={()=>setBlastOpen(false)}
+                        <button onClick={()=>{setBlastOpen(false);setExtContacts([]);}}
                           style={{padding:"9px 16px",background:C.glass,border:`1px solid ${C.border}`,borderRadius:10,color:C.muted,...MONO,fontSize:10,cursor:"pointer"}}>Cancel</button>
-                        <button disabled={blastBusy} onClick={handleBlast}
+                        <button disabled={blastBusy} onClick={async()=>{
+                          // Combine registered + external contacts
+                          const regRecipients = clients.filter(c=>blastSel.includes(c.id)).map(c=>({name:c.name,phone:c.phone||"",email:c.email||""}));
+                          const allRecipients = [...regRecipients, ...extContacts.map(ec=>({name:ec.name,phone:ec.phone,email:ec.email}))];
+                          if(!blastForm.message.trim()){showToast("Write a message first","error");return;}
+                          if(!allRecipients.length){showToast("Add at least one recipient","error");return;}
+                          setBlastBusy(true);
+                          try{
+                            const r = await API.post("barber/blast/",{...blastForm,recipients:allRecipients});
+                            showToast(`Sent! ${r.data.sms_sent||0} SMS · ${r.data.email_sent||0} emails`);
+                            setBlastOpen(false);setExtContacts([]);setBlastSel([]);
+                          }catch(e){showToast("Blast failed","error");}
+                          finally{setBlastBusy(false);}
+                        }}
                           style={{padding:"9px 20px",background:"linear-gradient(135deg,#f59e0b,#d97706)",border:"none",borderRadius:10,color:"#000",...SF,fontSize:8,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.15em",cursor:"pointer",opacity:blastBusy?0.7:1,boxShadow:"0 4px 16px rgba(245,158,11,0.3)"}}>
-                          {blastBusy?`Sending...`:`Send to ${blastSel.length}`}
+                          {blastBusy?"Sending...":`Send to ${blastSel.length + extContacts.length}`}
                         </button>
                       </div>
                     </div>
