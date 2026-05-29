@@ -907,9 +907,7 @@ export default function BarberDashboard() {
                         const msg = blastForm.message;
                         const url = "👉 headzupp.com";
                         if(!msg.includes("headzupp.com")){
-                          setBlastForm(p=>({...p,message:msg+(msg?"
-
-":"")+url}));
+                          setBlastForm(p=>({...p,message:msg+(msg?"\n\n":"")+url}));
                           showToast("Link added to message ✓");
                         } else {
                           showToast("Link already in message","error");
