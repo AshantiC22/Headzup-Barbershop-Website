@@ -235,11 +235,21 @@ function RescheduleModal({ appt, onClose, onDone }) {
 
   const isDisabled = (dateStr)=>{
     const d = new Date(dateStr+"T00:00:00");
-    if(d < new Date(new Date().toDateString())) return true;
+    // Past dates
+    const today = new Date(); today.setHours(0,0,0,0);
+    if(d < today) return true;
+    // Sunday always closed
+    if(d.getDay()===0) return true;
+    // Time off
     if(timeOff.includes(dateStr)) return true;
+    // No barber days loaded yet — disable everything until loaded
+    if(allDays.length===0) return true;
+    // Check barber working days (Mon=0 ... Sat=5)
     const dow = (d.getDay()+6)%7;
     const di = allDays.find(x=>x.day_of_week===dow);
-    return di && !di.is_working;
+    // If no record for this day OR barber not working → disabled
+    if(!di || !di.is_working) return true;
+    return false;
   };
 
   function fmtSlot(t){
@@ -288,10 +298,10 @@ function RescheduleModal({ appt, onClose, onDone }) {
           {newDate&&(
             <div style={{marginBottom:14}}>
               <p style={{...MONO,fontSize:9,color:C.muted,letterSpacing:"0.3em",textTransform:"uppercase",marginBottom:8}}>
-                {loading?"Loading...":isDisabled(newDate)?"Not available":`${slots.length} times available`}
+                {loading?"Loading...":isDisabled(newDate)?(allDays.length>0?"✕ Barber not available this day":"Loading schedule..."):(slots.length>0?`${slots.length} times available`:"No open slots — try another day")}
               </p>
               {!isDisabled(newDate)&&slots.length===0&&!loading&&(
-                <p style={{...MONO,fontSize:11,color:C.muted}}>No slots on this date</p>
+                <p style={{...MONO,fontSize:11,color:C.muted}}>No open slots — try another day</p>
               )}
               <div style={{display:"flex",flexWrap:"wrap",gap:8}}>
                 {slots.map(s=>{
