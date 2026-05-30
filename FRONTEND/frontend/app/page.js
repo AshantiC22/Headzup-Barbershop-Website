@@ -244,7 +244,7 @@ function PersonaSelect({ barbers, book, isMobile }) {
   const active = list[sel] || list[0] || null;
 
   // Still loading
-  if(isLoadingBarbers) return (
+  if(list.length === 0) return (
     <div style={{ width:"100%", maxWidth:560, aspectRatio:"4/5",
       background:"linear-gradient(90deg,rgba(255,255,255,0.04) 25%,rgba(255,255,255,0.07) 50%,rgba(255,255,255,0.04) 75%)",
       backgroundSize:"200% 100%", animation:"shimmer 1.4s ease-in-out infinite",
