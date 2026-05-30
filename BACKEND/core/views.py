@@ -2133,7 +2133,12 @@ class BarberRegisterView(APIView):
 
 
 class BarberViewSet(viewsets.ModelViewSet):
-    queryset = Barber.objects.all()
+    # Only return barbers with an active user account
+    # Excludes barbers whose user was deleted from admin
+    queryset = Barber.objects.filter(
+        user__isnull=False,
+        user__is_active=True,
+    ).select_related("user")
     serializer_class = BarberSerializer
     permission_classes = [IsAuthenticated]
 
@@ -3512,6 +3517,14 @@ class AvailableSlotsView(APIView):
             return Response({"booked_slots": [], "available_slots": [], "time_off": True, "message": "Closed on Sundays."})
 
         # Reject time-off dates
+        # Make sure barber exists and is active
+        try:
+            _barber_check = Barber.objects.select_related("user").get(pk=barber_id)
+            if not _barber_check.user or not _barber_check.user.is_active:
+                return Response({"error": "Barber not available"}, status=404)
+        except Barber.DoesNotExist:
+            return Response({"error": "Barber not found"}, status=404)
+
         if BarberTimeOff.objects.filter(barber_id=barber_id, date=appt_date).exists():
             return Response({"booked_slots": [], "available_slots": [], "time_off": True, "message": "Barber not available this day."})
 
