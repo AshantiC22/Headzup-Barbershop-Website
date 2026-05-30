@@ -2140,7 +2140,14 @@ class BarberViewSet(viewsets.ModelViewSet):
         user__is_active=True,
     ).select_related("user")
     serializer_class = BarberSerializer
-    permission_classes = [IsAuthenticated]
+    # Public GET so home page can show barbers without login
+    # Write operations still require auth via get_permissions
+    permission_classes = [IsAuthenticatedOrReadOnly]
+
+    def get_permissions(self):
+        if self.request.method in ["POST","PUT","PATCH","DELETE"]:
+            return [IsAuthenticated()]
+        return [AllowAny()]
 
 
 class ServiceViewSet(viewsets.ModelViewSet):

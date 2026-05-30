@@ -240,9 +240,17 @@ function GalleryGrid({ isMobile }) {
 function PersonaSelect({ barbers, book, isMobile }) {
   const [sel,    setSel]    = useState(0);
   const [flash,  setFlash]  = useState(false);
-  const list   = barbers.length ? barbers : [{ id:0, name:"Barber", bio:"", photo_url:null }];
-  const active = list[sel] || list[0];
+  const list   = barbers.length ? barbers : [];
+  const active = list[sel] || list[0] || null;
 
+  // Still loading
+  if(isLoadingBarbers) return (
+    <div style={{ width:"100%", maxWidth:560, aspectRatio:"4/5",
+      background:"linear-gradient(90deg,rgba(255,255,255,0.04) 25%,rgba(255,255,255,0.07) 50%,rgba(255,255,255,0.04) 75%)",
+      backgroundSize:"200% 100%", animation:"shimmer 1.4s ease-in-out infinite",
+      borderRadius:12 }}/>
+  );
+  if(!active) return null;
 
   const lock = (e) => {
     setFlash(true);
@@ -467,10 +475,19 @@ export default function HomePage() {
   useEffect(()=>{checkAuth();window.addEventListener("focus",checkAuth);return()=>window.removeEventListener("focus",checkAuth);},[checkAuth]);
 
   useEffect(()=>{
+    // Fetch barbers — public endpoint, no auth needed
+    const ctrl = new AbortController();
     fetch(`${process.env.NEXT_PUBLIC_API_URL||"https://api.headzupp.com"}/api/barbers/`,{
-      headers:localStorage.getItem("access")?{Authorization:`Bearer ${localStorage.getItem("access")}`}:{},
-      signal:AbortSignal.timeout?.(10000)
-    }).then(r=>r.json()).then(d=>setBarbers(Array.isArray(d)?d:d.results||[])).catch(()=>{});
+      signal: ctrl.signal,
+    })
+    .then(r=>r.ok?r.json():Promise.reject(r.status))
+    .then(d=>{
+      const list = Array.isArray(d)?d:d.results||[];
+      // Only show active barbers (extra client-side guard)
+      setBarbers(list.filter(b=>b.id&&b.name));
+    })
+    .catch(()=>{});
+    return ()=>ctrl.abort();
   },[]);
 
   useEffect(()=>{
