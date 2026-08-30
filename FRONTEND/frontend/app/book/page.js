@@ -382,7 +382,13 @@ export default function BookPage() {
       if (r.data.url) window.location.href = r.data.url;
       else setError(r.data.error || "Could not start checkout");
     } catch(e) {
-      setError(e?.response?.data?.error || "Could not start checkout");
+      const data = e?.response?.data || {};
+      if (data.needs_reconnect) {
+        setError("⚠️ Barber needs to reconnect Stripe for live payments. Please pay in shop for now.");
+        setPaymentMethod("shop");
+      } else {
+        setError(data.error || "Could not start checkout. Try again.");
+      }
     } finally { setSubmitting(false); }
   };
 

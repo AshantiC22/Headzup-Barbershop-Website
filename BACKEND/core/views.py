@@ -2727,12 +2727,18 @@ class DepositCheckoutView(APIView):
         except (Service.DoesNotExist, Barber.DoesNotExist) as e:
             return Response({"error": str(e)}, status=404)
 
-        # Get client's current deposit fee
+        # Get client's current deposit fee — base from barber's settings
         profile, _ = UserProfile.objects.get_or_create(
             user=request.user, defaults={"name": request.user.username}
         )
 
-        deposit = profile.get_deposit_fee()
+        from decimal import Decimal
+        # Use barber's custom deposit amount as the base
+        base_deposit   = Decimal(str(barber.deposit_amount)) if barber.deposit_amount else Decimal("10.00")
+        strike_enabled = barber.strike_enabled if hasattr(barber, "strike_enabled") else True
+        strikes        = profile.strike_count if strike_enabled else 0
+        strike_extra   = Decimal(str(max(0, strikes - 1) * 1.50)) if strikes > 1 else Decimal("0")
+        deposit        = base_deposit + strike_extra
         service_price = Decimal(str(service.price))
 
         # Deposit can't exceed the service price
@@ -2749,12 +2755,21 @@ class DepositCheckoutView(APIView):
 
         try:
             account = stripe.Account.retrieve(barber.stripe_account_id)
-            # In test mode skip charges_enabled check — test accounts don't fully enable
             is_test_mode = getattr(settings, "STRIPE_MODE", "test").lower() == "test"
-            if not account.charges_enabled and not is_test_mode:
+            if not is_test_mode and not account.charges_enabled:
+                # Live mode — barber needs to reconnect with live Stripe account
                 return Response({
-                    "error": f"{barber.name}'s Stripe account isn't fully set up yet.",
+                    "error": f"{barber.name} needs to reconnect Stripe for live payments. Go to barber dashboard → Stripe tab.",
                     "pay_in_shop": True,
+                    "needs_reconnect": True,
+                }, status=400)
+        except stripe.error.InvalidRequestError as sire:
+            # Test account used with live key — needs reconnect
+            if "test mode" in str(sire).lower() or "live mode" in str(sire).lower():
+                return Response({
+                    "error": f"{barber.name} needs to reconnect Stripe. Go to barber dashboard → Stripe tab.",
+                    "pay_in_shop": True,
+                    "needs_reconnect": True,
                 }, status=400)
         except Exception:
             pass
