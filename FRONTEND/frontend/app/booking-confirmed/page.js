@@ -1,418 +1,205 @@
 "use client";
 export const dynamic = "force-dynamic";
+import { useEffect, useState, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
+import { useTheme } from "@/components/ThemeProvider";
 
-import { Suspense, useEffect, useRef, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
-import API from "@/lib/api";
-import useBreakpoint from "@/lib/useBreakpoint";
+const SF   = { fontFamily:"'Syncopate',sans-serif" };
+const MONO = { fontFamily:"'DM Mono',monospace" };
 
-const sf   = { fontFamily: "'Syncopate', sans-serif" };
-const mono = { fontFamily: "'DM Mono', monospace" };
+function ConfirmedContent() {
+  const { theme: T } = useTheme();
+  const params   = useSearchParams();
+  const service  = params.get("service")  || "";
+  const barber   = params.get("barber")   || "";
+  const date     = params.get("date")     || "";
+  const time     = params.get("time")     || "";
+  const deposit  = params.get("deposit")  || "10.00";
+  const remaining= params.get("remaining")|| "0.00";
+  const payment  = params.get("payment")  || "deposit";
+  const hasError = params.get("error")    === "true";
 
-// ── Confetti ──────────────────────────────────────────────────────────────────
-function Confetti({ colors }) {
-  const ref = useRef(null);
-  useEffect(() => {
-    const canvas = ref.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d");
-    const resize = () => { canvas.width = window.innerWidth; canvas.height = window.innerHeight; };
-    resize();
-    window.addEventListener("resize", resize);
+  const [show, setShow] = useState(false);
+  useEffect(() => { setTimeout(() => setShow(true), 80); }, []);
 
-    const particles = Array.from({ length: 120 }, () => ({
-      x:     Math.random() * canvas.width,
-      y:     -20 - Math.random() * 200,
-      w:     3 + Math.random() * 7,
-      h:     6 + Math.random() * 12,
-      color: colors[Math.floor(Math.random() * colors.length)],
-      speed: 1.2 + Math.random() * 3,
-      drift: (Math.random() - 0.5) * 1.5,
-      rot:   Math.random() * Math.PI * 2,
-      rotV:  (Math.random() - 0.5) * 0.1,
-      alpha: 0.5 + Math.random() * 0.5,
-    }));
-
-    let raf;
-    const draw = () => {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      particles.forEach(p => {
-        p.y += p.speed; p.x += p.drift; p.rot += p.rotV;
-        if (p.y > canvas.height + 20) { p.y = -20; p.x = Math.random() * canvas.width; }
-        ctx.save();
-        ctx.globalAlpha = p.alpha;
-        ctx.translate(p.x, p.y);
-        ctx.rotate(p.rot);
-        ctx.fillStyle = p.color;
-        ctx.fillRect(-p.w/2, -p.h/2, p.w, p.h);
-        ctx.restore();
-      });
-      raf = requestAnimationFrame(draw);
-    };
-    draw();
-    return () => { cancelAnimationFrame(raf); window.removeEventListener("resize", resize); };
-  }, []);
-  return <canvas ref={ref} style={{ position:"fixed", inset:0, zIndex:5, pointerEvents:"none" }} />;
-}
-
-// ── Check SVG ─────────────────────────────────────────────────────────────────
-const CheckCircle = ({ color, size = 56 }) => (
-  <svg width={size} height={size} viewBox="0 0 56 56" fill="none">
-    <circle cx="28" cy="28" r="27" stroke={color} strokeWidth="1.5" opacity="0.3"/>
-    <circle cx="28" cy="28" r="20" fill={color} opacity="0.15"/>
-    <circle cx="28" cy="28" r="20" stroke={color} strokeWidth="1"/>
-    <polyline points="18,28 25,35 38,21" stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
-  </svg>
-);
-
-// ── Main inner ────────────────────────────────────────────────────────────────
-function BookingConfirmedInner() {
-  const router       = useRouter();
-  const searchParams = useSearchParams();
-  const { isMobile } = useBreakpoint();
-
-  const [data,       setData]       = useState({ username:"", service:"", barber:"", date:"", time:"", payment:"shop", deposit:"", remaining:"" });
-  const [bookingRef, setBookingRef] = useState("");
-  const [entered,    setEntered]    = useState(false);
-  const [countdown,  setCountdown]  = useState(null);
-  const [hasError,   setHasError]   = useState(false);
-
-  // URL params + API fallback
-  useEffect(() => {
-    setBookingRef(Date.now().toString(36).toUpperCase().slice(-8));
-    const svc      = searchParams.get("service");
-    const brb      = searchParams.get("barber");
-    const dt       = searchParams.get("date");
-    const tm       = searchParams.get("time");
-    const pay      = searchParams.get("payment") || "shop";
-    const deposit  = searchParams.get("deposit")  || "";
-    const remaining= searchParams.get("remaining") || "";
-
-    if (svc) setData(p => ({ ...p, service:svc, barber:brb||"", date:dt||"", time:tm||"", payment:pay, deposit, remaining }));
-
-    const load = async () => {
-      try {
-        const [u, a] = await Promise.all([API.get("dashboard/"), API.get("appointments/")]);
-        const appts = Array.isArray(a.data) ? a.data : a.data.results || [];
-        const latest = appts[appts.length - 1];
-        setData(p => ({
-          username: u.data.user || p.username,
-          service:  svc || latest?.service_name || p.service,
-          barber:   brb || latest?.barber_name  || p.barber,
-          date:     dt  || latest?.date          || p.date,
-          time:     tm  || latest?.time          || p.time,
-          payment:  latest?.payment_method === "online" ? "online" : pay,
-        }));
-      } catch {}
-    };
-    load();
-    setTimeout(() => setEntered(true), 80);
-
-    // Handle error param
-    if (searchParams.get("error") === "true") setHasError(true);
-
-    // Block back
-    window.history.pushState(null, "", window.location.href);
-    const onPop = () => window.history.pushState(null, "", window.location.href);
-    window.addEventListener("popstate", onPop);
-
-    // Auto-redirect countdown after 45s
-    let secs = 45;
-    setCountdown(secs);
-    const cd = setInterval(() => {
-      secs -= 1;
-      setCountdown(secs);
-      if (secs <= 0) { clearInterval(cd); router.push("/dashboard"); }
-    }, 1000);
-    return () => { window.removeEventListener("popstate", onPop); clearInterval(cd); };
-  }, []);
-
-  const isPaid   = data.payment === "online" || data.payment === "deposit";
-  const accent   = isPaid ? "#f59e0b" : "#22c55e";
-  const accentDim = isPaid ? "rgba(245,158,11,0.12)" : "rgba(34,197,94,0.1)";
-  const accentBdr = isPaid ? "rgba(245,158,11,0.3)"  : "rgba(34,197,94,0.25)";
-  const confettiColors = isPaid
-    ? ["#f59e0b","#fbbf24","#ffffff","#d97706","#fef3c7"]
-    : ["#22c55e","#4ade80","#ffffff","#86efac","#dcfce7"];
-
-  const fmtDate = d => {
-    if (!d) return "—";
-    try { return new Date(d+"T00:00:00").toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric",year:"numeric"}); }
-    catch { return d; }
-  };
-  const fmtTime = t => {
-    if (!t) return "—";
-    const [h,m] = t.split(":");
-    const hr = parseInt(h);
-    return `${hr%12||12}:${m} ${hr>=12?"PM":"AM"}`;
-  };
-
-  const isDeposit = data.payment === "deposit";
-  const rows = [
-    { label:"Service",   value: data.service  || "—" },
-    { label:"Barber",    value: data.barber   || "—" },
-    { label:"Date",      value: fmtDate(data.date) },
-    { label:"Time",      value: fmtTime(data.time) },
-    ...(isDeposit ? [
-      { label:"Deposit Paid",   value: `$${data.deposit} — Secured your chair ✓`, highlight: true },
-      { label:"Due at Shop",    value: `$${data.remaining} — Pay when you arrive`, highlight: false },
-    ] : [
-      { label:"Payment",  value: isPaid ? "Paid Online · Stripe" : "Pay In Shop · Cash or Card" },
-    ]),
-    { label:"Location",  value: "2509 W 4th St, Hattiesburg, MS 39401" },
-  ];
+  function fmtDate(d) {
+    if (!d) return "";
+    return new Date(d + "T00:00:00").toLocaleDateString("en-US", {
+      weekday:"long", month:"long", day:"numeric", year:"numeric"
+    });
+  }
+  function fmtTime(t) {
+    if (!t) return "";
+    const [h, m] = t.split(":");
+    const hr = parseInt(h, 10);
+    return `${hr % 12 || 12}:${m} ${hr >= 12 ? "PM" : "AM"}`;
+  }
 
   return (
-    <>
-      <style jsx global>{`
-        /* Noise + barber pole from design system */
-        body::before{content:"";position:fixed;inset:0;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='1'/%3E%3C/svg%3E");opacity:0.018;pointer-events:none;z-index:9999;mix-blend-mode:overlay;}
-        body::after{content:"";position:fixed;left:0;top:0;bottom:0;width:5px;background:repeating-linear-gradient(-45deg,#ef4444 0px,#ef4444 6px,#ffffff 6px,#ffffff 12px,#f59e0b 12px,#f59e0b 18px,#000 18px,#000 24px);opacity:0.5;z-index:9998;pointer-events:none;}
-        @media(max-width:768px){body::after{display:none;}}
-        .btn-primary{position:relative;overflow:hidden;}
-        .btn-primary::after{content:"";position:absolute;top:0;left:0;width:35%;height:100%;background:linear-gradient(to right,transparent,rgba(255,255,255,0.18),transparent);transform:translateX(-100%);}
-        .btn-primary:hover::after{transform:translateX(280%);transition:transform 0.5s ease;}
-        @media(hover:none){button:active,a:active{opacity:0.75;}}
-        @keyframes shimmer{from{transform:translateX(-100%)}to{transform:translateX(280%)}}
-        @keyframes floatUp{from{opacity:0;transform:translateY(32px)}to{opacity:1;transform:none}}
-        @keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+    <div style={{ minHeight:"100vh", background:T.bg, color:T.text,
+      display:"flex", flexDirection:"column", alignItems:"center",
+      justifyContent:"center", padding:"24px 20px" }}>
 
-        *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
-        html,body{background:#040404;color:white;font-family:'DM Mono',monospace;overflow-x:hidden;min-height:100vh;}
-        @keyframes spin     {to{transform:rotate(360deg)}}
-        @keyframes fadeUp   {from{opacity:0;transform:translateY(24px)}to{opacity:1;transform:none}}
-        @keyframes popIn    {from{opacity:0;transform:scale(0.7)}to{opacity:1;transform:scale(1)}}
-        @keyframes scandown {from{top:-1px}to{top:100%}}
-        @keyframes pulse    {0%,100%{opacity:0.4}50%{opacity:1}}
-        @keyframes shimmer  {0%{background-position:-200% center}100%{background-position:200% center}}
-        .row-enter{animation:fadeUp 0.5s cubic-bezier(0.16,1,0.3,1) both;}
-        .row-enter:nth-child(1){animation-delay:0.05s}
-        .row-enter:nth-child(2){animation-delay:0.1s}
-        .row-enter:nth-child(3){animation-delay:0.15s}
-        .row-enter:nth-child(4){animation-delay:0.2s}
-        .row-enter:nth-child(5){animation-delay:0.25s}
-        .row-enter:nth-child(6){animation-delay:0.3s}
-        .tear{border:none;border-top:2px dashed rgba(255,255,255,0.08);position:relative;}
-        .tear::before,.tear::after{content:'';position:absolute;top:50%;transform:translateY(-50%);width:20px;height:20px;background:#040404;border-radius:50%;}
-        .tear::before{left:-10px;}
-        .tear::after{right:-10px;}
+      <style jsx global>{`
+        @import url('https://fonts.googleapis.com/css2?family=Syncopate:wght@400;700&family=DM+Mono:wght@0,400;0,500&display=swap');
+        *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+        body{background:${T.bg};color:${T.text};}
+        @keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
+        @keyframes pop{0%{transform:scale(0.8);opacity:0}60%{transform:scale(1.08)}100%{transform:scale(1);opacity:1}}
+        @keyframes drawCheck{to{stroke-dashoffset:0}}
+        .fade-up{animation:fadeUp 0.4s cubic-bezier(0.4,0,0.2,1) both;}
       `}</style>
 
-      {/* Confetti */}
-      <Confetti colors={confettiColors} />
+      {/* Background glow */}
+      <div style={{ position:"fixed", top:"-20%", right:"-10%", width:500, height:500,
+        borderRadius:"50%", background:"radial-gradient(circle,rgba(245,158,11,0.06),transparent 70%)",
+        pointerEvents:"none" }}/>
 
-      {/* Grid */}
-      <div style={{position:"fixed",inset:0,zIndex:0,pointerEvents:"none",backgroundImage:"linear-gradient(rgba(255,255,255,0.014) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,0.014) 1px,transparent 1px)",backgroundSize:"72px 72px"}}/>
-      {/* Grain */}
-      {/* grain overlay */}
-      {/* Glow */}
-      <div style={{position:"fixed",top:"-10%",left:"50%",transform:"translateX(-50%)",width:700,height:400,background:`radial-gradient(ellipse,${accentDim} 0%,transparent 65%)`,pointerEvents:"none",zIndex:0}}/>
-      {/* Scanline */}
-      <div style={{position:"fixed",inset:0,zIndex:1,pointerEvents:"none",overflow:"hidden"}}>
-        <div style={{position:"absolute",left:0,right:0,height:1,background:`linear-gradient(to right,transparent,${accentBdr},transparent)`,animation:"scandown 8s linear infinite"}}/>
-      </div>
+      <div style={{ width:"100%", maxWidth:480,
+        opacity: show ? 1 : 0,
+        transform: show ? "none" : "translateY(20px)",
+        transition: "opacity 0.4s ease, transform 0.4s ease" }}>
 
-      <div style={{position:"relative",zIndex:10,minHeight:"100vh",minHeight:"100dvh",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:isMobile?"24px 16px 48px":"40px 24px 60px"}}>
-
-        {/* ── TOP LOGO ── */}
-        <div style={{marginBottom:40,opacity:entered?1:0,transform:entered?"none":"translateY(-12px)",transition:"all 0.6s cubic-bezier(0.16,1,0.3,1)"}}>
-          <a href="/" style={{...sf,fontWeight:700,fontSize:18,letterSpacing:"-0.06em",textDecoration:"none",color:"white"}}>
-            HEADZ<span style={{color:"#f59e0b",fontStyle:"italic"}}>UP</span>
-          </a>
-        </div>
-
-        {/* ── CHECK ICON ── */}
-        <div style={{marginBottom:28,opacity:entered?1:0,transform:entered?"scale(1)":"scale(0.6)",transition:"all 0.7s cubic-bezier(0.34,1.56,0.64,1) 0.1s"}}>
-          <CheckCircle color={accent} size={isMobile?52:64}/>
-        </div>
-
-        {/* ── HEADLINE ── */}
-        <div style={{textAlign:"center",marginBottom:12,opacity:entered?1:0,transform:entered?"none":"translateY(20px)",transition:"all 0.7s cubic-bezier(0.16,1,0.3,1) 0.2s"}}>
-          <p style={{...mono,fontSize:9,color:accent,letterSpacing:"0.6em",textTransform:"uppercase",marginBottom:12}}>
-            {isPaid ? "Payment Received" : "Booking Confirmed"}
-          </p>
-          <h1 style={{...sf,fontSize:"clamp(1.6rem,6vw,3.2rem)",fontWeight:900,textTransform:"uppercase",lineHeight:isMobile?1.1:0.88,letterSpacing:"-0.03em"}}>
-            {isPaid ? "You're" : "Slot"}<br/>
-            <span style={{color:accent,fontStyle:"italic"}}>
-              {isPaid ? "All Set_" : "Reserved_"}
-            </span>
-          </h1>
-        </div>
-
-        {/* ── SUB ── */}
-        <p style={{...mono,fontSize:13,color:"#71717a",textAlign:"center",lineHeight:1.8,maxWidth:360,marginBottom:40,opacity:entered?1:0,transition:"all 0.6s cubic-bezier(0.16,1,0.3,1) 0.3s"}}>
-          {data.username ? `Hey ${data.username}, ` : ""}
-          {isPaid
-            ? "Your payment went through and your seat is confirmed. We'll see you soon."
-            : "Your seat is locked in. Show up fresh, we'll handle the rest."
-          }
-        </p>
-
-        {/* Error notice */}
-        {hasError && (
-          <div style={{width:"100%",maxWidth:480,marginBottom:16,padding:"12px 16px",background:"rgba(245,158,11,0.06)",border:"1px solid rgba(245,158,11,0.2)",display:"flex",gap:10,alignItems:"center"}}>
-            <span style={{fontSize:16}}>⚠️</span>
-            <p style={{...mono,fontSize:11,color:"#a1a1aa",lineHeight:1.6}}>
-              There was an issue verifying your payment details — but your booking was received. Check your email or <a href="/dashboard" style={{color:"#f59e0b"}}>your dashboard</a> to confirm.
+        {hasError ? (
+          /* ── Error state ── */
+          <div style={{ textAlign:"center", padding:"48px 32px",
+            background:T.surface, backdropFilter:"blur(20px)",
+            borderRadius:20, border:`1px solid rgba(239,68,68,0.3)` }}>
+            <div style={{ fontSize:48, marginBottom:16 }}>⚠️</div>
+            <p style={{ ...SF, fontSize:14, fontWeight:700, color:T.text,
+              textTransform:"uppercase", letterSpacing:"-0.02em", marginBottom:8 }}>
+              Something went wrong
             </p>
-          </div>
-        )}
-
-        {/* ── TICKET ── */}
-        <div style={{width:"100%",maxWidth:480,opacity:entered?1:0,transform:entered?"none":"translateY(32px)",transition:"all 0.8s cubic-bezier(0.16,1,0.3,1) 0.35s"}}>
-
-          {/* Ticket top */}
-          <div style={{background:"#0a0a0a",border:`1px solid ${accentBdr}`,borderBottom:"none",padding:isMobile?"20px 16px":"28px 28px",position:"relative",overflow:"hidden"}}>
-
-            {/* Top amber shimmer bar */}
-            <div style={{position:"absolute",top:0,left:0,right:0,height:2,background:`linear-gradient(to right,transparent,${accent},transparent)`,opacity:0.6}}/>
-
-            {/* Corner triangle */}
-            <div style={{position:"absolute",top:0,right:0,width:0,height:0,borderStyle:"solid",borderWidth:`0 ${isMobile?56:72}px ${isMobile?56:72}px 0`,borderColor:`transparent ${isPaid?"rgba(245,158,11,0.18)":"rgba(34,197,94,0.15)"} transparent transparent`}}/>
-
-            {/* Header */}
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:20}}>
-              <div>
-                <p style={{...mono,fontSize:8,color:"#3f3f46",letterSpacing:"0.4em",textTransform:"uppercase",marginBottom:6}}>Booking Ticket</p>
-                <p style={{...sf,fontWeight:700,fontSize:18,letterSpacing:"-0.06em"}}>
-                  HEADZ<span style={{color:"#f59e0b",fontStyle:"italic"}}>UP</span>
-                </p>
-              </div>
-              <div style={{textAlign:"right"}}>
-                <p style={{...mono,fontSize:8,color:"#3f3f46",letterSpacing:"0.3em",textTransform:"uppercase",marginBottom:4}}>Ref No.</p>
-                <p style={{...mono,fontSize:13,color:accent,letterSpacing:"0.15em",fontWeight:500}}>#{bookingRef}</p>
-              </div>
-            </div>
-
-            {/* Status badge */}
-            <div style={{display:"inline-flex",alignItems:"center",gap:8,padding:"8px 14px",background:accentDim,border:`1px solid ${accentBdr}`,marginBottom:20}}>
-              <div style={{width:6,height:6,borderRadius:"50%",background:accent}}/>
-              <span style={{...sf,fontSize:6,letterSpacing:"0.3em",textTransform:"uppercase",color:accent}}>
-                {isPaid ? "Paid & Confirmed" : "Confirmed · Pay On Arrival"}
-              </span>
-            </div>
-
-            {/* Rows */}
-            <div>
-              {rows.map(({label, value, highlight}, i) => (
-                <div key={label} className="row-enter"
-                  style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",padding:"13px 0",borderBottom:i<rows.length-1?"1px solid rgba(255,255,255,0.05)":"none",gap:8,flexWrap:"wrap",
-                    background: highlight ? "rgba(245,158,11,0.03)" : "transparent",
-                    margin: highlight ? "0 -4px" : "0",
-                    padding: highlight ? "13px 4px" : "13px 0",
-                  }}>
-                  <p style={{...mono,fontSize:9,color:highlight?"#f59e0b":"#52525b",letterSpacing:"0.2em",textTransform:"uppercase",flexShrink:0,minWidth:"80px"}}>{label}</p>
-                  <p style={{...mono,fontSize:isMobile?11:13,
-                    color: highlight ? "#f59e0b" : label==="Payment"?accent:label==="Location"?"#71717a":label==="Due at Shop"?"#a1a1aa":"white",
-                    fontWeight: highlight ? 700 : 500,
-                    textAlign:"right",lineHeight:1.5,flex:1,minWidth:0,wordBreak:"break-word"}}>
-                    {value}
-                  </p>
-                </div>
-              ))}
+            <p style={{ ...MONO, fontSize:12, color:T.sub, marginBottom:24, lineHeight:1.7 }}>
+              Your payment may have gone through — check your email for confirmation. If you were charged but have no booking, contact us directly.
+            </p>
+            <div style={{ display:"flex", gap:10, justifyContent:"center", flexWrap:"wrap" }}>
+              <a href="/dashboard" style={{ padding:"11px 22px",
+                background:"linear-gradient(135deg,#f59e0b,#d97706)",
+                borderRadius:10, color:"#000", textDecoration:"none",
+                ...SF, fontSize:8, fontWeight:700, letterSpacing:"0.15em",
+                textTransform:"uppercase" }}>
+                My Dashboard →
+              </a>
+              <a href="/" style={{ padding:"11px 22px",
+                background:T.surface, border:`1px solid ${T.border}`,
+                borderRadius:10, color:T.sub, textDecoration:"none",
+                ...MONO, fontSize:11 }}>
+                Go Home
+              </a>
             </div>
           </div>
-
-          {/* Tear line */}
-          <hr className="tear"/>
-
-          {/* Ticket bottom */}
-          <div style={{background:"rgba(255,255,255,0.015)",border:`1px solid ${accentBdr}`,borderTop:"none",padding:isMobile?"16px 16px":"20px 28px",display:"flex",flexDirection:"column",gap:14}}>
-
-            {/* Email notice */}
-            <div style={{display:"flex",alignItems:"center",gap:10}}>
-              <span style={{fontSize:16,flexShrink:0}}>📧</span>
-              <p style={{...mono,fontSize:11,color:"#71717a",lineHeight:1.6}}>
-                A confirmation has been sent to the email on your account.
+        ) : (
+          /* ── Success state ── */
+          <>
+            {/* Check mark */}
+            <div style={{ textAlign:"center", marginBottom:28 }}>
+              <div style={{
+                width: 72, height: 72, borderRadius:"50%", margin:"0 auto 16px",
+                background:"rgba(34,197,94,0.08)",
+                border:"2px solid rgba(34,197,94,0.4)",
+                display:"flex", alignItems:"center", justifyContent:"center",
+                animation:"pop 0.5s cubic-bezier(0.34,1.56,0.64,1) both"
+              }}>
+                <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+                  <path d="M6 16l7 7 13-13"
+                    stroke="#22c55e" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+                    strokeDasharray="32" strokeDashoffset="32"
+                    style={{ animation:"drawCheck 0.4s 0.3s ease forwards" }}/>
+                </svg>
+              </div>
+              <p style={{ ...MONO, fontSize:9, color:"rgba(245,158,11,0.7)",
+                letterSpacing:"0.4em", textTransform:"uppercase", marginBottom:8 }}>
+                ✂️ HEADZ UP Barbershop
+              </p>
+              <h1 style={{ ...SF, fontSize:"clamp(1.4rem,5vw,2rem)", fontWeight:700,
+                color:T.text, textTransform:"uppercase", letterSpacing:"-0.03em",
+                lineHeight:1, marginBottom:8 }}>
+                You're Booked.
+              </h1>
+              <p style={{ ...MONO, fontSize:12, color:T.sub }}>
+                {payment === "deposit"
+                  ? `$${deposit} deposit paid · $${remaining} due at your appointment`
+                  : "Your appointment is confirmed"}
               </p>
             </div>
 
-            {/* Arrive early */}
-            <div style={{display:"flex",alignItems:"center",gap:10}}>
-              <span style={{fontSize:16,flexShrink:0}}>⏰</span>
-              <p style={{...mono,fontSize:11,color:"#71717a",lineHeight:1.6}}>
-                Please arrive <span style={{color:"white"}}>5 minutes early.</span> Slots held for <span style={{color:"white"}}>15 minutes.</span>
+            {/* Appointment card */}
+            <div style={{ background:T.surface, backdropFilter:"blur(20px)",
+              WebkitBackdropFilter:"blur(20px)",
+              borderRadius:16, border:`1px solid ${T.amberBorder}`,
+              overflow:"hidden", marginBottom:20 }}>
+              <div style={{ height:3, background:"linear-gradient(to right,#f59e0b,#fbbf24,#f59e0b)" }}/>
+              <div style={{ padding:24 }}>
+                {[
+                  { label:"Service",  value:service  },
+                  { label:"Barber",   value:barber   },
+                  { label:"Date",     value:fmtDate(date) },
+                  { label:"Time",     value:fmtTime(time) },
+                  { label:"Deposit",  value:`$${deposit} paid online` },
+                  remaining && parseFloat(remaining) > 0
+                    ? { label:"Due at Shop", value:`$${remaining}`, highlight:true }
+                    : null,
+                ].filter(Boolean).map(row => (
+                  <div key={row.label} style={{ display:"flex", justifyContent:"space-between",
+                    alignItems:"center", padding:"10px 0",
+                    borderBottom:`1px solid ${T.border}` }}>
+                    <span style={{ ...MONO, fontSize:10, color:T.sub,
+                      letterSpacing:"0.1em", textTransform:"uppercase" }}>
+                      {row.label}
+                    </span>
+                    <span style={{ ...MONO, fontSize:13, fontWeight:600,
+                      color: row.highlight ? T.amber : T.text }}>
+                      {row.value}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Info */}
+            <div style={{ background:T.amberDim, border:`1px solid ${T.amberBorder}`,
+              borderRadius:12, padding:"14px 16px", marginBottom:24 }}>
+              <p style={{ ...MONO, fontSize:11, color:T.amber, lineHeight:1.7 }}>
+                📍 <strong>2509 W 4th St, Hattiesburg MS 39401</strong><br/>
+                A confirmation email has been sent to you. Show up on time — your spot is locked in.
               </p>
             </div>
 
-            {/* Location */}
-            <div style={{display:"flex",alignItems:"center",gap:10}}>
-              <span style={{fontSize:16,flexShrink:0}}>📍</span>
-              <p style={{...mono,fontSize:11,color:"#71717a"}}>2509 W 4th St, Hattiesburg, MS 39401</p>
+            {/* Actions */}
+            <div style={{ display:"flex", gap:10 }}>
+              <a href="/dashboard" style={{ flex:1, textAlign:"center",
+                padding:"13px", background:"linear-gradient(135deg,#f59e0b,#d97706)",
+                borderRadius:11, color:"#000", textDecoration:"none",
+                ...SF, fontSize:8, fontWeight:700, letterSpacing:"0.15em",
+                textTransform:"uppercase", boxShadow:"0 4px 20px rgba(245,158,11,0.35)" }}>
+                My Dashboard →
+              </a>
+              <a href="/book" style={{ flex:1, textAlign:"center",
+                padding:"13px", background:T.surface,
+                border:`1px solid ${T.border}`, borderRadius:11,
+                color:T.sub, textDecoration:"none", ...MONO, fontSize:11 }}>
+                Book Another
+              </a>
             </div>
-
-            {/* Pay in shop reminder */}
-            {!isPaid && (
-              <div style={{padding:"12px 16px",background:"rgba(245,158,11,0.06)",border:"1px solid rgba(245,158,11,0.2)",marginTop:4}}>
-                <p style={{...sf,fontSize:6,letterSpacing:"0.3em",textTransform:"uppercase",color:"#f59e0b",marginBottom:6}}>Payment Due At Shop</p>
-                <p style={{...mono,fontSize:11,color:"#71717a",lineHeight:1.6}}>We accept <span style={{color:"white"}}>cash or card.</span> Payment is collected when you arrive for your appointment.</p>
-              </div>
-            )}
-
-            {/* Paid confirmation */}
-            {isPaid && (
-              <div style={{padding:"12px 16px",background:"rgba(34,197,94,0.06)",border:"1px solid rgba(34,197,94,0.2)",marginTop:4}}>
-                <p style={{...sf,fontSize:6,letterSpacing:"0.3em",textTransform:"uppercase",color:"#4ade80",marginBottom:6}}>Payment Complete</p>
-                <p style={{...mono,fontSize:11,color:"#71717a",lineHeight:1.6}}>Your payment was processed securely via <span style={{color:"white"}}>Stripe.</span> No further payment required.</p>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* ── ACTIONS ── */}
-        <div style={{display:"flex",gap:isMobile?8:10,marginTop:isMobile?20:28,flexWrap:"wrap",justifyContent:"center",opacity:entered?1:0,transition:"all 0.6s cubic-bezier(0.16,1,0.3,1) 0.6s"}}>
-          <button onClick={()=>router.push("/dashboard")}
-            style={{padding:"15px 28px",background:accent,color:"black",...sf,fontSize:8,fontWeight:700,letterSpacing:"0.2em",textTransform:"uppercase",border:"none",cursor:"pointer",transition:"background 0.2s"}}
-            onMouseEnter={e=>e.currentTarget.style.background="white"}
-            onMouseLeave={e=>e.currentTarget.style.background=accent}>
-            View Dashboard →
-          </button>
-          <button onClick={()=>router.push("/book")}
-            style={{padding:"15px 24px",background:"transparent",color:"#52525b",...sf,fontSize:8,letterSpacing:"0.2em",textTransform:"uppercase",border:"1px solid rgba(255,255,255,0.08)",cursor:"pointer",transition:"all 0.2s"}}
-            onMouseEnter={e=>{e.currentTarget.style.color="white";e.currentTarget.style.borderColor="rgba(255,255,255,0.2)";}}
-            onMouseLeave={e=>{e.currentTarget.style.color="#52525b";e.currentTarget.style.borderColor="rgba(255,255,255,0.08)";}}>
-            Book Again
-          </button>
-          <button onClick={()=>router.push("/")}
-            style={{padding:"15px 24px",background:"transparent",color:"#52525b",...sf,fontSize:8,letterSpacing:"0.2em",textTransform:"uppercase",border:"1px solid rgba(255,255,255,0.08)",cursor:"pointer",transition:"all 0.2s"}}
-            onMouseEnter={e=>{e.currentTarget.style.color="white";e.currentTarget.style.borderColor="rgba(255,255,255,0.2)";}}
-            onMouseLeave={e=>{e.currentTarget.style.color="#52525b";e.currentTarget.style.borderColor="rgba(255,255,255,0.08)";}}>
-            Home
-          </button>
-        </div>
-
-        {/* Countdown */}
-        {countdown !== null && countdown > 0 && (
-          <div style={{marginTop:24,display:"flex",flexDirection:"column",alignItems:"center",gap:8}}>
-            <div style={{width:"100%",maxWidth:320,height:2,background:"rgba(255,255,255,0.06)",borderRadius:1,overflow:"hidden"}}>
-              <div style={{height:"100%",background:"rgba(245,158,11,0.4)",width:`${(countdown/45)*100}%`,transition:"width 1s linear"}}/>
-            </div>
-            <p style={{...mono,fontSize:9,color:"#3f3f46",letterSpacing:"0.3em"}}>
-              Redirecting to dashboard in {countdown}s
-            </p>
-          </div>
+          </>
         )}
-
-        {/* Footer */}
-        <p style={{...mono,fontSize:9,color:"#1a1a1a",letterSpacing:"0.4em",textTransform:"uppercase",marginTop:24,animation:"pulse 3s ease infinite"}}>
-          HEADZ UP · Hattiesburg, MS · 2026
-        </p>
-
       </div>
-    </>
+    </div>
   );
 }
 
 export default function BookingConfirmedPage() {
   return (
     <Suspense fallback={
-      <div style={{minHeight:"100vh",background:"#040404",display:"flex",alignItems:"center",justifyContent:"center",flexDirection:"column",gap:16}}>
-        <p style={{fontFamily:"'Syncopate',sans-serif",fontSize:18,fontWeight:900,letterSpacing:"-0.06em"}}>HEADZ<span style={{color:"#f59e0b",fontStyle:"italic"}}>UP</span></p>
-        <div style={{width:18,height:18,border:"1.5px solid rgba(245,158,11,0.2)",borderTopColor:"#f59e0b",borderRadius:"50%",animation:"spin 0.8s linear infinite"}}/>
-        <style>{`@keyframes spin{to{transform:rotate(360deg)}} body{background:#040404;margin:0}`}</style>
+      <div style={{ minHeight:"100vh", background:"#070709",
+        display:"flex", alignItems:"center", justifyContent:"center" }}>
+        <p style={{ fontFamily:"'DM Mono',monospace", color:"#9ca3af", fontSize:11 }}>
+          Loading...
+        </p>
       </div>
     }>
-      <BookingConfirmedInner />
+      <ConfirmedContent/>
     </Suspense>
   );
 }

@@ -707,35 +707,45 @@ export default function BookPage() {
                   </div>
                 </button>
 
-                {/* Pay Online — Coming Soon */}
-                <div style={{ padding:"16px 18px",
-                  background:"rgba(255,255,255,0.02)",
-                  border:`1px solid ${C.border}`,
-                  borderRadius:12, opacity:0.5,
-                  cursor:"not-allowed", position:"relative", overflow:"hidden",
-                  display:"flex", alignItems:"center", justifyContent:"space-between" }}>
-                  {/* Coming Soon badge */}
-                  <div style={{ position:"absolute", top:10, right:12,
-                    background:C.amberDim, border:`1px solid ${C.amberBorder}`,
-                    borderRadius:6, padding:"2px 10px" }}>
-                    <span style={{ ...MONO, fontSize:8, color:C.amber,
-                      letterSpacing:"0.2em", textTransform:"uppercase" }}>Coming Soon</span>
-                  </div>
+                {/* Pay Deposit Online — Stripe */}
+                <button onClick={() => setPaymentMethod("online")}
+                  style={{ padding:"16px 18px", width:"100%", textAlign:"left",
+                    background: paymentMethod === "online"
+                      ? "rgba(99,91,255,0.06)"
+                      : C.surface,
+                    backdropFilter:"blur(10px)", WebkitBackdropFilter:"blur(10px)",
+                    border:`2px solid ${paymentMethod === "online" ? "#635bff" : C.border}`,
+                    borderRadius:12, cursor:"pointer",
+                    display:"flex", alignItems:"center", justifyContent:"space-between",
+                    transition:"all 0.2s" }}
+                  onMouseEnter={e=>{ if(paymentMethod!=="online") e.currentTarget.style.borderColor="#635bff44"; }}
+                  onMouseLeave={e=>{ if(paymentMethod!=="online") e.currentTarget.style.borderColor=C.border; }}>
                   <div style={{ display:"flex", alignItems:"center", gap:14 }}>
-                    <div style={{ width:44, height:44, background:C.amberDim,
-                      border:`1px solid ${C.amberBorder}`, borderRadius:8,
+                    <div style={{ width:44, height:44, borderRadius:10,
+                      background: paymentMethod==="online" ? "rgba(99,91,255,0.12)" : C.amberDim,
+                      border:`1px solid ${paymentMethod==="online" ? "#635bff40" : C.amberBorder}`,
                       display:"flex", alignItems:"center", justifyContent:"center", fontSize:20 }}>
                       💳
                     </div>
                     <div>
                       <p style={{ ...SF, fontSize:9, textTransform:"uppercase",
-                        color:C.muted, marginBottom:4 }}>Pay Online</p>
+                        color: paymentMethod==="online" ? "#a78bfa" : C.text,
+                        marginBottom:4 }}>
+                        Pay ${strikeInfo?.deposit_fee || "10.00"} Deposit Online
+                      </p>
                       <p style={{ ...MONO, fontSize:11, color:C.muted }}>
-                        Secure deposit · available soon
+                        Secure your seat now · remaining due at shop · powered by Stripe
                       </p>
                     </div>
                   </div>
-                </div>
+                  <div style={{ width:20, height:20, borderRadius:"50%", flexShrink:0,
+                    border:`2px solid ${paymentMethod==="online" ? "#635bff" : C.border}`,
+                    display:"flex", alignItems:"center", justifyContent:"center" }}>
+                    {paymentMethod==="online" && (
+                      <div style={{ width:10, height:10, borderRadius:"50%", background:"#635bff" }}/>
+                    )}
+                  </div>
+                </button>
               </div>
             </div>
 
@@ -758,14 +768,18 @@ export default function BookPage() {
             )}
 
             <button disabled={submitting}
-              onClick={() => handleBookInShop()}
+              onClick={() => paymentMethod === "online" ? handleDeposit() : handleBookInShop()}
               style={{ width:"100%", padding:"14px",
                 background: submitting ? C.amberDim : C.amber,
                 border:"none", color: submitting ? C.amber : "black",
                 ...SF, fontSize:9, fontWeight:700, textTransform:"uppercase",
                 letterSpacing:"0.2em", cursor:submitting ? "not-allowed" : "pointer",
                 transition:"all 0.2s" }}>
-              {submitting ? "Booking..." : "✓ Book It — Pay in Shop"}
+              {submitting
+                ? (paymentMethod==="online" ? "Redirecting to Stripe..." : "Booking...")
+                : paymentMethod==="online"
+                  ? `💳 Pay $${strikeInfo?.deposit_fee||"10.00"} — Secure Your Spot`
+                  : "✓ Book It — Pay in Shop"}
             </button>
           </div>
         )}
