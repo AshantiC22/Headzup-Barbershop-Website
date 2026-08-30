@@ -153,7 +153,9 @@ function ApptCard({ appt, onStatus, onCancel, onStrike, onRemind }) {
 
               {/* Details grid */}
               <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:8, marginBottom:14 }}>
-                {[["Price",`$${appt.service_price}`],["Duration",`${appt.service_duration}m`],["Payment",appt.payment_method==="online"?"Online 💳":"Shop 🏪"]].map(([k,v])=>(
+                {[["Price",`$${appt.service_price}`],["Duration",`${appt.service_duration}m`],["Payment",appt.payment_method==="online"
+                    ?(appt.deposit_paid?`💳 $${appt.deposit_amount||"10.00"} Deposited`:"💳 Online")
+                    :"🏪 Pay in Shop"]].map(([k,v])=>(
                   <div key={k} style={{ padding:"10px", background:"var(--surface)", borderRadius:10, border:`1px solid ${C.border}`, textAlign:"center" }}>
                     <p style={{ ...MONO, fontSize:8, color:C.muted, letterSpacing:"0.25em", textTransform:"uppercase", marginBottom:4 }}>{k}</p>
                     <p style={{ ...MONO, fontSize:12, color:C.text }}>{v}</p>
@@ -264,6 +266,10 @@ export default function BarberDashboard() {
   // Stripe
   const [stripeStatus, setStripeStatus] = useState(null);
   const [stripeLoad,   setStripeLoad]   = useState(false);
+  const [payments,     setPayments]     = useState([]);
+  const [payPeriod,    setPayPeriod]    = useState("month");
+  const [payStats,     setPayStats]     = useState({ total_deposits:0, count:0, stripe_balance:{available:0,pending:0} });
+  const [payLoading,   setPayLoading]   = useState(false);
 
   // Profile
   const [profileSaving,setProfileSaving]= useState(false);
@@ -349,6 +355,18 @@ export default function BarberDashboard() {
         if(activeTab==="reports"){const r=await API.get(`barber/reports/?period=${reportPeriod}`);setReports(r.data);}
         if(activeTab==="newsletter"){const r=await API.get("newsletter/manage/");setPosts(r.data||[]);}
         if(activeTab==="stripe"){const r=await API.get("barber/stripe/status/");setStripeStatus(r.data);}
+        if(activeTab==="payments"){
+          setPayLoading(true);
+          try{
+            const r=await API.get(`barber/payments/?period=${payPeriod}`);
+            setPayments(r.data.payments||[]);
+            setPayStats({
+              total_deposits: r.data.total_deposits||0,
+              count: r.data.count||0,
+              stripe_balance: r.data.stripe_balance||{available:0,pending:0},
+            });
+          }finally{setPayLoading(false);}
+        }
         if(activeTab==="walkin"){const r=await API.get("barber/service-prices/");setPrices(r.data||[]);}
       }catch(e){}
     };
@@ -1252,6 +1270,159 @@ export default function BarberDashboard() {
             )}
 
                         {/* ════ REPORTS ════ */}
+            {activeTab==="payments"&&(
+              <div style={{animation:"fadeUp 0.25s ease both"}}>
+                {/* Header */}
+                <div style={{display:"flex",justifyContent:"space-between",
+                  alignItems:"center",marginBottom:20,flexWrap:"wrap",gap:10}}>
+                  <div>
+                    <p style={{...MONO,fontSize:9,color:C.amber,letterSpacing:"0.4em",
+                      textTransform:"uppercase",marginBottom:4}}>💰 Payment History</p>
+                    <p style={{...SF,fontSize:16,fontWeight:700,color:C.text,
+                      textTransform:"uppercase",letterSpacing:"-0.02em"}}>
+                      Deposits Received
+                    </p>
+                  </div>
+                  {/* Period selector */}
+                  <div style={{display:"flex",gap:6}}>
+                    {[["week","7 Days"],["month","30 Days"],["year","Year"],["all","All Time"]].map(([v,l])=>(
+                      <button key={v} onClick={()=>setPayPeriod(v)}
+                        style={{padding:"7px 14px",borderRadius:20,
+                          background:payPeriod===v?"linear-gradient(135deg,#f59e0b,#d97706)":C.surface,
+                          border:`1px solid ${payPeriod===v?"transparent":C.border}`,
+                          color:payPeriod===v?"#000":C.muted,
+                          ...MONO,fontSize:9,cursor:"pointer",fontWeight:payPeriod===v?700:400,
+                          transition:"all 0.2s"}}>
+                        {l}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Stats cards */}
+                <div style={{display:"flex",gap:10,marginBottom:20,flexWrap:"wrap"}}>
+                  {[
+                    {label:"Total Earned",   value:`$${payStats.total_deposits.toFixed(2)}`, icon:"💰", color:C.green},
+                    {label:"Deposits",        value:payStats.count,                           icon:"🧾", color:C.amber},
+                    {label:"Stripe Available",value:`$${(payStats.stripe_balance.available||0).toFixed(2)}`, icon:"✅", color:C.blue},
+                    {label:"Stripe Pending",  value:`$${(payStats.stripe_balance.pending||0).toFixed(2)}`,   icon:"⏳", color:C.muted},
+                  ].map(s=>(
+                    <div key={s.label} style={{...glassCard({padding:"16px 14px",
+                      position:"relative",overflow:"hidden",flex:1,minWidth:130})}}>
+                      <div style={{position:"absolute",top:0,left:0,right:0,height:2,
+                        background:`linear-gradient(to right,${s.color}60,transparent)`}}/>
+                      <div style={{display:"flex",justifyContent:"space-between",
+                        alignItems:"center",marginBottom:8}}>
+                        <p style={{...MONO,fontSize:8,color:C.muted,letterSpacing:"0.25em",
+                          textTransform:"uppercase"}}>{s.label}</p>
+                        <span style={{fontSize:14,opacity:0.5}}>{s.icon}</span>
+                      </div>
+                      <p style={{...SF,fontSize:20,fontWeight:700,color:s.color,lineHeight:1}}>
+                        {s.value}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Stripe note */}
+                <div style={{...glassCard({padding:"12px 16px",marginBottom:20,
+                  borderColor:"rgba(96,165,250,0.25)"})}}>
+                  <p style={{...MONO,fontSize:11,color:C.blue,lineHeight:1.7}}>
+                    ℹ️ <strong>Available</strong> = ready to pay out to your bank.{" "}
+                    <strong>Pending</strong> = processing (usually 2 business days).{" "}
+                    In test mode all amounts show as $0 — live mode shows real money.
+                  </p>
+                </div>
+
+                {/* Payment list */}
+                {payLoading?(
+                  <div style={{...glassCard({padding:40,textAlign:"center"})}}>
+                    <p style={{...MONO,fontSize:11,color:C.muted}}>Loading payments...</p>
+                  </div>
+                ):payments.length===0?(
+                  <div style={{...glassCard({padding:48,textAlign:"center",
+                    borderStyle:"dashed"})}}>
+                    <p style={{fontSize:36,marginBottom:12}}>💳</p>
+                    <p style={{...SF,fontSize:12,color:C.muted,textTransform:"uppercase",
+                      marginBottom:8}}>No deposits yet</p>
+                    <p style={{...MONO,fontSize:11,color:C.muted}}>
+                      Deposits will appear here when clients pay online
+                    </p>
+                  </div>
+                ):(
+                  <div style={{display:"flex",flexDirection:"column",gap:8}}>
+                    {payments.map(p=>{
+                      const apptDate = new Date(p.date+"T00:00:00");
+                      const fmtD = apptDate.toLocaleDateString("en-US",{
+                        weekday:"short",month:"short",day:"numeric"});
+                      const [h,m] = p.time.split(":");
+                      const hr = parseInt(h,10);
+                      const fmtT = `${hr%12||12}:${m} ${hr>=12?"PM":"AM"}`;
+                      const net = (parseFloat(p.deposit_amount)-0.59).toFixed(2);
+                      return(
+                        <div key={p.id} style={{...glassCard({padding:"14px 18px"}),
+                          display:"flex",alignItems:"center",
+                          justifyContent:"space-between",gap:12,flexWrap:"wrap"}}>
+                          <div style={{display:"flex",alignItems:"center",gap:14}}>
+                            <div style={{width:40,height:40,borderRadius:10,
+                              background:C.greenDim,border:`1px solid ${C.green}30`,
+                              display:"flex",alignItems:"center",justifyContent:"center",
+                              fontSize:18,flexShrink:0}}>
+                              💰
+                            </div>
+                            <div>
+                              <p style={{...SF,fontSize:11,fontWeight:700,
+                                color:C.text,marginBottom:3,textTransform:"uppercase",
+                                letterSpacing:"-0.01em"}}>
+                                {p.client}
+                              </p>
+                              <p style={{...MONO,fontSize:10,color:C.muted}}>
+                                {p.service} · {fmtD} at {fmtT}
+                              </p>
+                            </div>
+                          </div>
+                          <div style={{textAlign:"right"}}>
+                            <p style={{...SF,fontSize:16,fontWeight:700,
+                              color:C.green,lineHeight:1,marginBottom:3}}>
+                              ${p.deposit_amount}
+                            </p>
+                            <p style={{...MONO,fontSize:9,color:C.muted}}>
+                              ≈${net} after fees
+                            </p>
+                            <span style={{...MONO,fontSize:9,padding:"2px 8px",
+                              borderRadius:20,
+                              background:p.status==="confirmed"?C.greenDim:C.amberDim,
+                              color:p.status==="confirmed"?C.green:C.amber,
+                              border:`1px solid ${p.status==="confirmed"?C.green:C.amber}30`}}>
+                              {p.status}
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {/* Connect Stripe CTA if not connected */}
+                {!payStats.stripe_balance&&(
+                  <div style={{...glassCard({padding:24,marginTop:20,
+                    textAlign:"center",borderColor:C.amberBorder})}}>
+                    <p style={{...MONO,fontSize:12,color:C.muted,marginBottom:16}}>
+                      Connect Stripe to receive deposits directly to your bank
+                    </p>
+                    <button onClick={handleStripeConnect}
+                      style={{padding:"12px 28px",
+                        background:"linear-gradient(135deg,#f59e0b,#d97706)",
+                        border:"none",borderRadius:10,color:"#000",
+                        ...SF,fontSize:8,fontWeight:700,textTransform:"uppercase",
+                        letterSpacing:"0.15em",cursor:"pointer"}}>
+                      Connect Stripe →
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+
             {activeTab==="reports"&&(
               <div>
                 {/* Header */}

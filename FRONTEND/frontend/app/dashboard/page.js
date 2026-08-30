@@ -156,7 +156,9 @@ function ApptCard({ appt, onCancel, onReschedule, cancelling }) {
               ["Time",     fmtTime(appt.time)],
               ["Duration", `${appt.service_duration} min`],
               ["Price",    `$${appt.service_price}`],
-              ["Payment",  appt.payment_method==="online"?"💳 Online":"🏪 Shop"],
+              ["Payment",  appt.payment_method==="online"
+                ? (appt.deposit_paid ? `💳 $${appt.deposit_amount||"10.00"} Paid ✓` : "💳 Online")
+                : "🏪 Pay in Shop"],
               ["Status",   st.label],
             ].map(([k,v])=>(
               <div key={k} style={{ padding:"8px 10px",

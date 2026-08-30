@@ -2857,6 +2857,37 @@ class DepositSuccessView(APIView):
                 send_deposit_paid_email(appt_full)
                 sms_booking_confirmation(appt_full)
                 sms_deposit_paid(appt_full)
+                # ── Notify barber that deposit was received ──────────────────
+                try:
+                    _dep_amt  = metadata.get("deposit_amount", "10.00")
+                    _dep_net  = float(_dep_amt) - 0.59  # approx after Stripe fee
+                    _svc_name = metadata.get("service_name", appt_full.service.name)
+                    _clt_name = (appt_full.user.first_name or "") +                                 (" " + appt_full.user.last_name if appt_full.user.last_name else "")
+                    _clt_name = _clt_name.strip() or appt_full.user.username
+                    _appt_dt  = appt_full.date.strftime("%a %b %d").replace(" 0", " ")
+                    _appt_tm  = appt_full.time.strftime("%I:%M %p").lstrip("0")
+                    # Push to barber
+                    if appt_full.barber and appt_full.barber.user:
+                        send_push_notification(
+                            appt_full.barber.user,
+                            title="💰 Deposit Received",
+                            body=f"${_dep_amt} deposit from {_clt_name} for {_svc_name} on {_appt_dt}",
+                            notif_type="deposit_received",
+                            url="/barber-dashboard"
+                        )
+                    # SMS to barber
+                    _barber_phone = _get_barber_phone(appt_full.barber)
+                    if _barber_phone:
+                        _twilio_send(_barber_phone,
+                            f"💰 HEADZ UP: Deposit received!\n"
+                            f"Client: {_clt_name}\n"
+                            f"Service: {_svc_name}\n"
+                            f"Amount: ${_dep_amt} (≈${_dep_net:.2f} after fees)\n"
+                            f"When: {_appt_dt} at {_appt_tm}"
+                        )
+                except Exception as _ne:
+                    import logging
+                    logging.getLogger(__name__).error(f"Deposit barber notify failed: {_ne}")
             elif not created and not appt.deposit_paid:
                 appt_full = Appointment.objects.select_related(
                     "user", "barber", "barber__user", "service"
@@ -3045,6 +3076,88 @@ class BarberClientStrikesView(APIView):
                 continue
 
         return Response(results)
+
+
+class BarberPaymentsView(APIView):
+    """
+    GET /api/barber/payments/
+    Returns all deposits received by this barber,
+    grouped with totals and Stripe balance.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        barber = get_barber_for_user(request.user)
+        if not barber:
+            return Response({"error": "Not a barber account"}, status=403)
+
+        period = request.query_params.get("period", "month")
+        now    = timezone.now()
+
+        # Date range
+        if period == "week":
+            start = now - timedelta(days=7)
+        elif period == "month":
+            start = now - timedelta(days=30)
+        elif period == "year":
+            start = now - timedelta(days=365)
+        else:
+            start = None
+
+        qs = Appointment.objects.select_related(
+            "user", "service"
+        ).filter(
+            barber=barber,
+            deposit_paid=True,
+        ).order_by("-date", "-time")
+
+        if start:
+            qs = qs.filter(date__gte=start.date())
+
+        payments = []
+        for appt in qs:
+            fn = appt.user.first_name or ""
+            ln = appt.user.last_name  or ""
+            client_name = f"{fn} {ln}".strip() or appt.user.username
+            payments.append({
+                "id":             appt.id,
+                "date":           str(appt.date),
+                "time":           str(appt.time),
+                "client":         client_name,
+                "service":        appt.service.name if appt.service else "",
+                "service_price":  str(appt.service.price) if appt.service else "0.00",
+                "deposit_amount": str(appt.deposit_amount) if appt.deposit_amount else "0.00",
+                "status":         appt.status,
+                "session_id":     appt.deposit_session_id or "",
+            })
+
+        total_deposits = sum(float(p["deposit_amount"]) for p in payments)
+        stripe_balance = {"available": 0, "pending": 0}
+
+        # Fetch live Stripe balance if connected
+        if barber.stripe_account_id:
+            try:
+                bal = stripe.Balance.retrieve(
+                    stripe_account=barber.stripe_account_id
+                )
+                stripe_balance["available"] = sum(
+                    b.amount for b in bal.available if b.currency == "usd"
+                ) / 100
+                stripe_balance["pending"] = sum(
+                    b.amount for b in bal.pending if b.currency == "usd"
+                ) / 100
+            except Exception:
+                pass
+
+        return Response({
+            "payments":       payments,
+            "total_deposits": round(total_deposits, 2),
+            "count":          len(payments),
+            "period":         period,
+            "stripe_balance": stripe_balance,
+            "stripe_connected": bool(barber.stripe_account_id),
+        })
+
 
 
 class StripeConnectOnboardView(APIView):
