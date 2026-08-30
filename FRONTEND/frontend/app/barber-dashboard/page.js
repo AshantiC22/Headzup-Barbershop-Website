@@ -1221,91 +1221,88 @@ export default function BarberDashboard() {
                     </div>
                   </div>
                 </div>
+
+              {/* ── Booking Settings ── */}
+              <div style={{marginTop:24,...glassCard({padding:24})}}>
+                <div style={{height:2,background:"linear-gradient(to right,#f59e0b,transparent)",
+                  margin:"-24px -24px 20px",borderRadius:"14px 14px 0 0"}}/>
+                <p style={{...MONO,fontSize:9,color:C.amber,letterSpacing:"0.4em",
+                  textTransform:"uppercase",marginBottom:16}}>⚙️ Booking Settings</p>
+
+                <div style={{marginBottom:20}}>
+                  <p style={{...MONO,fontSize:11,color:C.text,fontWeight:600,marginBottom:4}}>
+                    Deposit Amount
+                  </p>
+                  <p style={{...MONO,fontSize:11,color:C.muted,marginBottom:10,lineHeight:1.6}}>
+                    What clients pay upfront to lock in their online booking.
+                  </p>
+                  <div style={{display:"flex",alignItems:"center",gap:10}}>
+                    <div style={{position:"relative",maxWidth:160}}>
+                      <span style={{position:"absolute",left:12,top:"50%",
+                        transform:"translateY(-50%)",...MONO,fontSize:14,color:C.amber}}>$</span>
+                      <input type="number" min="1" max="500" step="0.50"
+                        value={bkSettings.deposit_amount}
+                        onChange={e=>setBkSettings(p=>({...p,deposit_amount:e.target.value}))}
+                        style={{width:"100%",padding:"10px 12px 10px 28px",
+                          background:"rgba(255,255,255,0.04)",
+                          border:`1px solid ${C.border}`,borderRadius:10,
+                          color:C.text,...MONO,fontSize:14,outline:"none"}}/>
+                    </div>
+                    <p style={{...MONO,fontSize:10,color:C.muted}}>min $1 · max $500</p>
+                  </div>
+                </div>
+
+                {[
+                  {key:"strike_enabled", label:"Strike System",
+                   desc:"No-shows and late cancels add $1.50 to that client's next deposit."},
+                  {key:"require_deposit",label:"Require Deposit",
+                   desc:"Turn off to let clients book online without paying upfront."},
+                ].map(({key,label,desc})=>(
+                  <div key={key} style={{marginBottom:14,padding:"14px 16px",
+                    background:"rgba(255,255,255,0.02)",borderRadius:12,
+                    border:`1px solid ${C.border}`,
+                    display:"flex",justifyContent:"space-between",alignItems:"center",gap:16}}>
+                    <div style={{flex:1}}>
+                      <p style={{...MONO,fontSize:11,color:C.text,fontWeight:600,marginBottom:3}}>{label}</p>
+                      <p style={{...MONO,fontSize:10,color:C.muted,lineHeight:1.5}}>{desc}</p>
+                    </div>
+                    <button onClick={()=>setBkSettings(p=>({...p,[key]:!p[key]}))}
+                      style={{width:48,height:26,borderRadius:13,padding:0,flexShrink:0,
+                        cursor:"pointer",position:"relative",
+                        background:bkSettings[key]?"rgba(245,158,11,0.15)":"rgba(255,255,255,0.05)",
+                        border:`1px solid ${bkSettings[key]?"rgba(245,158,11,0.4)":"rgba(255,255,255,0.12)"}`,
+                        transition:"all 0.3s"}}>
+                      <div style={{position:"absolute",top:3,width:18,height:18,borderRadius:"50%",
+                        left:bkSettings[key]?25:3,
+                        background:bkSettings[key]?"linear-gradient(135deg,#f59e0b,#d97706)":"rgba(255,255,255,0.3)",
+                        boxShadow:"0 1px 4px rgba(0,0,0,0.3)",
+                        transition:"left 0.3s cubic-bezier(0.4,0,0.2,1)"}}/>
+                    </button>
+                  </div>
+                ))}
+
+                <button disabled={bkSaving} onClick={async()=>{
+                  setBkSaving(true);
+                  try{
+                    await API.post("barber/booking-settings/",{
+                      deposit_amount:parseFloat(bkSettings.deposit_amount),
+                      strike_enabled:bkSettings.strike_enabled,
+                      require_deposit:bkSettings.require_deposit,
+                    });
+                    showToast("Booking settings saved ✓");
+                  }catch(e){showToast("Could not save","error");}
+                  finally{setBkSaving(false);}
+                }} style={{width:"100%",padding:"13px",marginTop:8,
+                  background:"linear-gradient(135deg,#f59e0b,#d97706)",
+                  border:"none",borderRadius:12,color:"#000",
+                  ...SF,fontSize:8,fontWeight:700,textTransform:"uppercase",
+                  letterSpacing:"0.15em",cursor:"pointer",opacity:bkSaving?0.7:1,
+                  boxShadow:"0 4px 20px rgba(245,158,11,0.3)",transition:"all 0.2s"}}>
+                  {bkSaving?"Saving...":"Save Booking Settings"}
+                </button>
               </div>
 
-
-                {/* ── Booking Settings ── */}
-                <div style={{marginTop:24,...glassCard({padding:24})}}>
-                  <div style={{height:2,background:"linear-gradient(to right,#f59e0b,transparent)",
-                    margin:"-24px -24px 20px",borderRadius:"14px 14px 0 0"}}/>
-                  <p style={{...MONO,fontSize:9,color:C.amber,letterSpacing:"0.4em",
-                    textTransform:"uppercase",marginBottom:16}}>⚙️ Booking Settings</p>
-
-                  {/* Deposit amount */}
-                  <div style={{marginBottom:20}}>
-                    <p style={{...MONO,fontSize:10,color:C.text,marginBottom:4,fontWeight:600}}>
-                      Deposit Amount
-                    </p>
-                    <p style={{...MONO,fontSize:11,color:C.muted,marginBottom:10,lineHeight:1.6}}>
-                      Amount clients pay upfront to secure their online booking.
-                    </p>
-                    <div style={{display:"flex",alignItems:"center",gap:10}}>
-                      <div style={{position:"relative",maxWidth:160}}>
-                        <span style={{position:"absolute",left:12,top:"50%",
-                          transform:"translateY(-50%)",...MONO,fontSize:14,color:C.amber}}>$</span>
-                        <input type="number" min="1" max="500" step="0.50"
-                          value={bkSettings.deposit_amount}
-                          onChange={e=>setBkSettings(p=>({...p,deposit_amount:e.target.value}))}
-                          style={{width:"100%",padding:"10px 12px 10px 28px",
-                            background:"rgba(255,255,255,0.04)",
-                            border:`1px solid ${C.border}`,borderRadius:10,
-                            color:C.text,...MONO,fontSize:14,outline:"none"}}/>
-                      </div>
-                      <p style={{...MONO,fontSize:10,color:C.muted}}>min $1 · max $500</p>
-                    </div>
-                  </div>
-
-                  {/* Strike system toggle */}
-                  {[
-                    {key:"strike_enabled",  label:"Strike System",
-                     desc:"No-shows and late cancels add $1.50 to the client's next deposit."},
-                    {key:"require_deposit", label:"Require Deposit",
-                     desc:"When off, clients can book online without paying upfront."},
-                  ].map(({key,label,desc})=>(
-                    <div key={key} style={{marginBottom:16,padding:"14px 16px",
-                      background:"rgba(255,255,255,0.02)",borderRadius:12,
-                      border:`1px solid ${C.border}`,
-                      display:"flex",justifyContent:"space-between",
-                      alignItems:"center",gap:16}}>
-                      <div style={{flex:1}}>
-                        <p style={{...MONO,fontSize:11,color:C.text,fontWeight:600,marginBottom:4}}>{label}</p>
-                        <p style={{...MONO,fontSize:10,color:C.muted,lineHeight:1.5}}>{desc}</p>
-                      </div>
-                      <button onClick={()=>setBkSettings(p=>({...p,[key]:!p[key]}))}
-                        style={{width:48,height:26,borderRadius:13,padding:0,flexShrink:0,
-                          cursor:"pointer",position:"relative",
-                          background:bkSettings[key]?"rgba(245,158,11,0.15)":"rgba(255,255,255,0.05)",
-                          border:`1px solid ${bkSettings[key]?"rgba(245,158,11,0.4)":"rgba(255,255,255,0.12)"}`,
-                          transition:"all 0.3s"}}>
-                        <div style={{position:"absolute",top:3,width:18,height:18,borderRadius:"50%",
-                          left:bkSettings[key]?25:3,
-                          background:bkSettings[key]?"linear-gradient(135deg,#f59e0b,#d97706)":"rgba(255,255,255,0.3)",
-                          boxShadow:"0 1px 4px rgba(0,0,0,0.3)",
-                          transition:"left 0.3s cubic-bezier(0.4,0,0.2,1)"}}/>
-                      </button>
-                    </div>
-                  ))}
-
-                  <button disabled={bkSaving} onClick={async()=>{
-                    setBkSaving(true);
-                    try{
-                      await API.post("barber/booking-settings/",{
-                        deposit_amount:parseFloat(bkSettings.deposit_amount),
-                        strike_enabled:bkSettings.strike_enabled,
-                        require_deposit:bkSettings.require_deposit,
-                      });
-                      showToast("Booking settings saved ✓");
-                    }catch(e){showToast("Could not save","error");}
-                    finally{setBkSaving(false);}
-                  }} style={{width:"100%",padding:"13px",marginTop:8,
-                    background:"linear-gradient(135deg,#f59e0b,#d97706)",
-                    border:"none",borderRadius:12,color:"#000",
-                    ...SF,fontSize:8,fontWeight:700,textTransform:"uppercase",
-                    letterSpacing:"0.15em",cursor:"pointer",opacity:bkSaving?0.7:1,
-                    boxShadow:"0 4px 20px rgba(245,158,11,0.3)",transition:"all 0.2s"}}>
-                    {bkSaving?"Saving...":"Save Booking Settings"}
-                  </button>
-                </div>
+              </div>
 
             )}
 
