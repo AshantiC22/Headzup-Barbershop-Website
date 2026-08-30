@@ -15,6 +15,9 @@ ALLOWED_HOSTS = ["*"]
 CSRF_TRUSTED_ORIGINS = [
     "https://headzup-barbershop-website-production.up.railway.app",
     "https://headzup-barbershop-website.vercel.app",
+    "https://api.headzupp.com",
+    "https://headzupp.com",
+    "https://www.headzupp.com",
 ]
 
 INSTALLED_APPS = [
