@@ -41,6 +41,7 @@ from core.views import (
     BarberMeUpdateView,
     StripeConnectOnboardView,
     BarberPaymentsView,
+    BarberBookingSettingsView,
     StripeConnectStatusView,
     StripeConnectDashboardView,
     StripeConnectTestSetupView,
@@ -131,6 +132,7 @@ urlpatterns = [
     # Barber dashboard
     path("barber/me/",                    BarberMeView.as_view(),                  name="barber_me"),
     path("barber/me/update/",             BarberMeUpdateView.as_view(),            name="barber_me_update"),
+    path("barber/booking-settings/", BarberBookingSettingsView.as_view(), name="barber_booking_settings"),
     path("barber/payments/",             BarberPaymentsView.as_view(),        name="barber_payments"),
     path("barber/stripe/connect/",        StripeConnectOnboardView.as_view(),      name="stripe_connect"),
     path("barber/stripe/status/",         StripeConnectStatusView.as_view(),       name="stripe_status"),

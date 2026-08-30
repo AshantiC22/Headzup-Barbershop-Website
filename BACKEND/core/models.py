@@ -74,6 +74,20 @@ class Barber(models.Model):
     stripe_account_id = models.CharField(max_length=100, blank=True, default="",
                                          help_text="Stripe Connect Express account ID — set when barber connects Stripe")
 
+    # ── Booking settings ──────────────────────────────────────────────────────
+    deposit_amount   = models.DecimalField(
+        max_digits=6, decimal_places=2, default=10.00,
+        help_text="Deposit amount required to book online (default $10)"
+    )
+    strike_enabled   = models.BooleanField(
+        default=True,
+        help_text="If True, no-show/late-cancel strikes increase the client's deposit fee"
+    )
+    require_deposit  = models.BooleanField(
+        default=True,
+        help_text="If True, clients must pay a deposit to book online"
+    )
+
     def __str__(self):
         return self.name
 

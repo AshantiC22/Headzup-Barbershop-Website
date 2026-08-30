@@ -3078,6 +3078,62 @@ class BarberClientStrikesView(APIView):
         return Response(results)
 
 
+
+class BarberBookingSettingsView(APIView):
+    """
+    GET  /api/barber/booking-settings/  — get current settings
+    POST /api/barber/booking-settings/  — update settings
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        barber = get_barber_for_user(request.user)
+        if not barber:
+            return Response({"error": "Not a barber account"}, status=403)
+        return Response({
+            "deposit_amount":  str(barber.deposit_amount),
+            "strike_enabled":  barber.strike_enabled,
+            "require_deposit": barber.require_deposit,
+        })
+
+    def post(self, request):
+        barber = get_barber_for_user(request.user)
+        if not barber:
+            return Response({"error": "Not a barber account"}, status=403)
+
+        changed = False
+
+        deposit = request.data.get("deposit_amount")
+        if deposit is not None:
+            try:
+                amt = float(deposit)
+                if amt < 1 or amt > 500:
+                    return Response({"error": "Deposit must be between $1 and $500"}, status=400)
+                from decimal import Decimal
+                barber.deposit_amount = Decimal(str(round(amt, 2)))
+                changed = True
+            except (ValueError, TypeError):
+                return Response({"error": "Invalid deposit amount"}, status=400)
+
+        if "strike_enabled" in request.data:
+            barber.strike_enabled = bool(request.data["strike_enabled"])
+            changed = True
+
+        if "require_deposit" in request.data:
+            barber.require_deposit = bool(request.data["require_deposit"])
+            changed = True
+
+        if changed:
+            barber.save()
+
+        return Response({
+            "success":         True,
+            "deposit_amount":  str(barber.deposit_amount),
+            "strike_enabled":  barber.strike_enabled,
+            "require_deposit": barber.require_deposit,
+        })
+
+
 class BarberPaymentsView(APIView):
     """
     GET /api/barber/payments/
@@ -3727,6 +3783,13 @@ class AvailableSlotsView(APIView):
 
         available = [str(s) for s in all_slots if s not in blocked]
 
+        # Include barber's required deposit so booking page shows correct amount
+        try:
+            _barber_obj = Barber.objects.get(pk=barber_id)
+            barber_deposit = str(_barber_obj.deposit_amount or "10.00")
+        except Exception:
+            barber_deposit = "10.00"
+
         return Response({
             "booked_slots":      [str(s) for s in booked_times],
             "available_slots":   available,
@@ -3736,6 +3799,7 @@ class AvailableSlotsView(APIView):
             "time_off":          False,
             "service_price":     service_price,
             "timezone":          "America/Chicago",
+            "barber_deposit":    barber_deposit,
         })
 
 
@@ -3759,6 +3823,18 @@ class BarberMeUpdateView(APIView):
             if tag and not tag.startswith("$"):
                 tag = f"${tag}"
             barber.cashapp_tag = tag
+
+        if "deposit_amount" in request.data:
+            try:
+                from decimal import Decimal, InvalidOperation
+                dep = Decimal(str(request.data["deposit_amount"]))
+                if dep < Decimal("5.00"):
+                    return Response({"error": "Minimum deposit is $5.00"}, status=400)
+                if dep > Decimal("100.00"):
+                    return Response({"error": "Maximum deposit is $100.00"}, status=400)
+                barber.deposit_amount = dep
+            except (InvalidOperation, ValueError):
+                return Response({"error": "Invalid deposit amount"}, status=400)
 
         if "bio" in request.data:
             barber.bio = request.data["bio"]
