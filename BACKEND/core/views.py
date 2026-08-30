@@ -2768,8 +2768,8 @@ class DepositCheckoutView(APIView):
                         "product_data": {
                             "name":        f"HEADZ UP — Deposit for {service.name}",
                             "description": (
-                                f"${deposit:.2f} deposit to secure your chair with {barber.name}. "
-                                f"Remaining balance ${remaining:.2f} due at appointment."
+                                f"${deposit:.2f} secures your chair with {barber.name}. "
+                                f"Remaining ${remaining:.2f} is due at your appointment."
                             ),
                         },
                         "unit_amount": deposit_cents,
@@ -2779,6 +2779,8 @@ class DepositCheckoutView(APIView):
                 mode="payment",
                 automatic_tax={"enabled": False},
                 payment_intent_data={
+                    # 100% goes to AfroSamurai (minus Stripe's fee)
+                    # No platform fee — Step 1
                     "transfer_data": {"destination": barber.stripe_account_id},
                     "description":   f"HEADZ UP Deposit — {service.name} with {barber.name}",
                 },

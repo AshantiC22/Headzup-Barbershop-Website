@@ -734,7 +734,7 @@ export default function BookPage() {
                         Pay ${strikeInfo?.deposit_fee || "10.00"} Deposit Online
                       </p>
                       <p style={{ ...MONO, fontSize:11, color:C.muted }}>
-                        Secure your seat now · remaining due at shop · powered by Stripe
+                        Locks in your spot · rest paid at the chair · powered by Stripe
                       </p>
                     </div>
                   </div>
@@ -778,8 +778,8 @@ export default function BookPage() {
               {submitting
                 ? (paymentMethod==="online" ? "Redirecting to Stripe..." : "Booking...")
                 : paymentMethod==="online"
-                  ? `💳 Pay $${strikeInfo?.deposit_fee||"10.00"} — Secure Your Spot`
-                  : "✓ Book It — Pay in Shop"}
+                  ? `Secure Your Spot — $${strikeInfo?.deposit_fee||"10.00"} Deposit`
+                  : "Book It — Pay in Shop"}
             </button>
           </div>
         )}
