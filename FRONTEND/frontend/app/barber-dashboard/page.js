@@ -60,7 +60,7 @@ function StatCard({ label, value, icon, color = C.amber }) {
 }
 
 // ── Appointment Card ───────────────────────────────────────────────────────────
-function ApptCard({ appt, onStatus, onCancel, onStrike, onRemind }) {
+function ApptCard({ appt, onStatus, onCancel, onStrike, onRemind, onComplete }) {
   const [open, setOpen] = useState(false);
   const [note, setNote] = useState(appt.barber_notes || "");
   const [saving, setSaving] = useState(false);
@@ -124,8 +124,10 @@ function ApptCard({ appt, onStatus, onCancel, onStrike, onRemind }) {
                   </button>
                 )}
                 {appt.status === "confirmed" && (
-                  <button onClick={() => onStatus(appt.id,"completed")}
-                    style={{ padding:"9px 16px", background:C.blueDim, border:`1px solid ${C.blue}40`, borderRadius:10, color:C.blue, ...MONO, fontSize:10, cursor:"pointer", transition:"all 0.2s" }}
+                  <button onClick={() => onComplete(appt)}
+                    style={{ padding:"9px 16px", background:C.blueDim,
+                      border:`1px solid ${C.blue}40`, borderRadius:8,
+                      color:C.blue,...MONO,fontSize:9,cursor:"pointer",transition:"all 0.2s"}}
                     onMouseEnter={e=>e.currentTarget.style.background="rgba(96,165,250,0.18)"}
                     onMouseLeave={e=>e.currentTarget.style.background=C.blueDim}>
                     ✓ Mark Complete
@@ -222,6 +224,7 @@ export default function BarberDashboard() {
   const [summary,      setSummary]      = useState({ total:0, confirmed:0, online_revenue:"0.00", pay_in_shop:0 });
   const [clearingDay,  setClearingDay]  = useState(false);
   const [confirmClear, setConfirmClear] = useState(false);
+  const [confirmComplete, setConfirmComplete] = useState(null); // appt to complete
 
   // Availability
   const [availability, setAvailability] = useState([]);
@@ -732,7 +735,8 @@ export default function BarberDashboard() {
                     {schedule.map(a=>(
                       <ApptCard key={a.id} appt={a}
                         onStatus={handleStatusChange} onCancel={handleCancel}
-                        onStrike={handleStrike} onRemind={handleRemind}/>
+                        onStrike={handleStrike} onRemind={handleRemind}
+                        onComplete={(a)=>setConfirmComplete(a)}/>
                     ))}
                   </div>
                 )}
@@ -1935,6 +1939,101 @@ export default function BarberDashboard() {
           </div>
         </main>
       </div>
+
+      {/* ── Complete Appointment Modal ── */}
+      {confirmComplete&&(
+        <div style={{position:"fixed",inset:0,zIndex:9999,
+          background:"rgba(0,0,0,0.85)",backdropFilter:"blur(10px)",
+          WebkitBackdropFilter:"blur(10px)",
+          display:"flex",alignItems:"center",justifyContent:"center",padding:20}}
+          onClick={()=>setConfirmComplete(null)}>
+          <div onClick={e=>e.stopPropagation()}
+            style={{...glassCard({borderColor:"rgba(96,165,250,0.4)",
+              padding:0,overflow:"hidden",maxWidth:420,width:"100%"})}}>
+            <div style={{height:3,background:C.blue}}/>
+            <div style={{padding:24}}>
+              <p style={{...SF,fontSize:13,fontWeight:700,textTransform:"uppercase",
+                letterSpacing:"-0.02em",color:C.text,marginBottom:16}}>
+                ✓ Mark as Complete
+              </p>
+
+              {/* Appointment summary */}
+              {[
+                ["Client",   confirmComplete.client_name||confirmComplete.client],
+                ["Service",  confirmComplete.service],
+                ["Price",    `$${confirmComplete.service_price||"0.00"}`],
+              ].map(([k,v])=>(
+                <div key={k} style={{display:"flex",justifyContent:"space-between",
+                  padding:"8px 0",borderBottom:`1px solid ${C.border}`}}>
+                  <span style={{...MONO,fontSize:10,color:C.muted,letterSpacing:"0.1em",
+                    textTransform:"uppercase"}}>{k}</span>
+                  <span style={{...MONO,fontSize:12,color:C.text,fontWeight:600}}>{v}</span>
+                </div>
+              ))}
+
+              {/* Remaining balance */}
+              {confirmComplete.deposit_paid&&(
+                <div style={{margin:"16px 0",padding:"14px 16px",
+                  background:C.amberDim,border:`1px solid ${C.amberBorder}`,
+                  borderRadius:12}}>
+                  <div style={{display:"flex",justifyContent:"space-between",
+                    alignItems:"center",marginBottom:6}}>
+                    <span style={{...MONO,fontSize:10,color:C.amber}}>
+                      💳 Deposit Paid
+                    </span>
+                    <span style={{...MONO,fontSize:13,fontWeight:700,color:C.amber}}>
+                      ${confirmComplete.deposit_amount||"0.00"}
+                    </span>
+                  </div>
+                  <div style={{display:"flex",justifyContent:"space-between",
+                    alignItems:"center"}}>
+                    <span style={{...MONO,fontSize:10,color:C.text,fontWeight:600}}>
+                      💵 Collect Now
+                    </span>
+                    <span style={{...SF,fontSize:18,fontWeight:700,color:C.green}}>
+                      ${(parseFloat(confirmComplete.service_price||0)-parseFloat(confirmComplete.deposit_amount||0)).toFixed(2)}
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              {!confirmComplete.deposit_paid&&(
+                <div style={{margin:"16px 0",padding:"14px 16px",
+                  background:C.greenDim,border:`1px solid ${C.green}30`,
+                  borderRadius:12,display:"flex",justifyContent:"space-between",
+                  alignItems:"center"}}>
+                  <span style={{...MONO,fontSize:10,color:C.green}}>
+                    💵 Collect Full Amount
+                  </span>
+                  <span style={{...SF,fontSize:18,fontWeight:700,color:C.green}}>
+                    ${confirmComplete.service_price||"0.00"}
+                  </span>
+                </div>
+              )}
+
+              <div style={{display:"flex",gap:8,marginTop:4}}>
+                <button onClick={async()=>{
+                  await handleStatusChange(confirmComplete.id,"completed");
+                  setConfirmComplete(null);
+                }} style={{flex:1,padding:"12px",
+                  background:"linear-gradient(135deg,#60a5fa,#2563eb)",
+                  border:"none",borderRadius:10,color:"white",
+                  ...SF,fontSize:7,fontWeight:700,textTransform:"uppercase",
+                  letterSpacing:"0.15em",cursor:"pointer"}}>
+                  ✓ Done — Money Collected
+                </button>
+                <button onClick={()=>setConfirmComplete(null)}
+                  style={{flex:1,padding:"12px",background:C.surface,
+                    border:`1px solid ${C.border}`,borderRadius:10,color:C.muted,
+                    ...SF,fontSize:7,fontWeight:700,textTransform:"uppercase",
+                    letterSpacing:"0.15em",cursor:"pointer"}}>
+                  Not Yet
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── Clear Day Confirmation Modal ── */}
       {confirmClear&&(

@@ -159,8 +159,11 @@ function ApptCard({ appt, onCancel, onReschedule, cancelling }) {
               ["Payment",  appt.payment_method==="online"
                 ? (appt.deposit_paid ? `💳 $${appt.deposit_amount||"10.00"} Paid ✓` : "💳 Online")
                 : "🏪 Pay in Shop"],
+              appt.deposit_paid && parseFloat(appt.service_price||0) > parseFloat(appt.deposit_amount||0)
+                ? ["Bring to Shop", `$${(parseFloat(appt.service_price||0)-parseFloat(appt.deposit_amount||0)).toFixed(2)} remaining`]
+                : null,
               ["Status",   st.label],
-            ].map(([k,v])=>(
+            ].filter(Boolean).map(([k,v])=>(
               <div key={k} style={{ padding:"8px 10px",
                 background:"rgba(255,255,255,0.03)", borderRadius:10,
                 border:`1px solid ${C.border}` }}>
