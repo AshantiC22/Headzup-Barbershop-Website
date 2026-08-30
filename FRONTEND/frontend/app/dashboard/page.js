@@ -31,11 +31,11 @@ const glassCard = (x={}) => ({
 });
 
 const STATUS_CFG = {
-  confirmed:    { label:"Confirmed",  color:C.green,  bg:C.greenDim  },
-  pending_shop: { label:"Pending",    color:C.amber,  bg:C.amberDim  },
-  completed:    { label:"Completed",  color:C.blue,   bg:C.blueDim   },
-  cancelled:    { label:"Cancelled",  color:C.muted,  bg:"rgba(75,85,99,0.15)" },
-  no_show:      { label:"No Show",    color:C.red,    bg:C.redDim    },
+  confirmed:    { label:"Confirmed",  color:"var(--green)",  bg:C.greenDim  },
+  pending_shop: { label:"Pending",    color:"var(--amber)",  bg:C.amberDim  },
+  completed:    { label:"Completed",  color:"var(--blue)",   bg:C.blueDim   },
+  cancelled:    { label:"Cancelled",  color:"var(--text-tertiary)",  bg:"rgba(75,85,99,0.15)" },
+  no_show:      { label:"No Show",    color:"var(--red)",    bg:C.redDim    },
 };
 
 function fmtDate(d) {
@@ -107,12 +107,12 @@ function ApptCard({ appt, onCancel, onReschedule, cancelling }) {
 
           <div style={{ flex:1, minWidth:0 }}>
             <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:3 }}>
-              <p style={{ ...MONO, fontSize:14, fontWeight:700, color:C.text,
+              <p style={{ ...MONO, fontSize:14, fontWeight:700, color:"var(--text-primary)",
                 overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
                 {appt.service_name || appt.service}
               </p>
               {isUrgent && (
-                <span style={{ ...MONO, fontSize:8, color:C.red, padding:"2px 6px",
+                <span style={{ ...MONO, fontSize:8, color:"var(--red)", padding:"2px 6px",
                   background:C.redDim, borderRadius:6, flexShrink:0 }}>SOON</span>
               )}
             </div>
@@ -123,12 +123,21 @@ function ApptCard({ appt, onCancel, onReschedule, cancelling }) {
         </div>
 
         <div style={{ display:"flex", alignItems:"center", gap:8, flexShrink:0 }}>
-          <span style={{ ...MONO, fontSize:10, padding:"4px 10px", borderRadius:20,
-            background:st.bg, color:st.color, border:`1px solid ${st.color}30`,
-            whiteSpace:"nowrap" }}>
+          <span style={{ fontFamily:"'DM Mono',monospace", fontSize:10,
+            padding:"3px 10px", borderRadius:9999,
+            background:st.bg, color:st.color,
+            border:`1px solid ${st.color}25`,
+            whiteSpace:"nowrap", letterSpacing:"0.04em",
+            display:"inline-flex", alignItems:"center", gap:5 }}>
+            <span style={{
+              width:5, height:5, borderRadius:"50%",
+              background:st.color,
+              boxShadow:`0 0 6px ${st.color}`,
+              flexShrink:0,
+            }}/>
             {st.label}
           </span>
-          <span style={{ color:C.muted, fontSize:11, transition:"transform 0.2s",
+          <span style={{ color:"var(--text-tertiary)", fontSize:11, transition:"transform 0.2s",
             display:"inline-block", transform:open?"rotate(180deg)":"none" }}>▾</span>
         </div>
       </div>
@@ -153,7 +162,7 @@ function ApptCard({ appt, onCancel, onReschedule, cancelling }) {
               <div key={k} style={{ padding:"8px 10px",
                 background:"rgba(255,255,255,0.03)", borderRadius:10,
                 border:`1px solid ${C.border}` }}>
-                <p style={{ ...MONO, fontSize:8, color:C.muted,
+                <p style={{ ...MONO, fontSize:8, color:"var(--text-tertiary)",
                   letterSpacing:"0.2em", textTransform:"uppercase", marginBottom:3 }}>{k}</p>
                 <p style={{ ...MONO, fontSize:11, color:C.text }}>{v}</p>
               </div>
@@ -166,7 +175,7 @@ function ApptCard({ appt, onCancel, onReschedule, cancelling }) {
               <button onClick={()=>onReschedule(appt)}
                 style={{ padding:"9px 16px", background:C.amberDim,
                   border:`1px solid ${C.amberBorder}`, borderRadius:10,
-                  color:C.amber, ...MONO, fontSize:10, cursor:"pointer",
+                  color:"var(--amber)", ...MONO, fontSize:10, cursor:"pointer",
                   transition:"all 0.2s" }}
                 onMouseEnter={e=>e.currentTarget.style.background=C.amberGlow}
                 onMouseLeave={e=>e.currentTarget.style.background=C.amberDim}>
@@ -285,19 +294,19 @@ function RescheduleModal({ appt, onClose, onDone }) {
               <p style={{...SF,fontSize:12,fontWeight:700,textTransform:"uppercase",letterSpacing:"-0.02em",marginBottom:2}}>Reschedule</p>
               <p style={{...MONO,fontSize:11,color:C.sub}}>{appt?.service_name} w/ {appt?.barber_name}</p>
             </div>
-            <button onClick={onClose} style={{background:"none",border:"none",color:C.muted,fontSize:20,cursor:"pointer",padding:4}}>✕</button>
+            <button onClick={onClose} style={{background:"none",border:"none",color:"var(--text-tertiary)",fontSize:20,cursor:"pointer",padding:4}}>✕</button>
           </div>
           <div style={{marginBottom:14}}>
-            <p style={{...MONO,fontSize:9,color:C.muted,letterSpacing:"0.3em",textTransform:"uppercase",marginBottom:8}}>New Date</p>
+            <p style={{...MONO,fontSize:9,color:"var(--text-tertiary)",letterSpacing:"0.3em",textTransform:"uppercase",marginBottom:8}}>New Date</p>
             <input type="date" value={newDate} min={new Date().toISOString().split("T")[0]}
               onChange={e=>setNewDate(e.target.value)}
               style={{width:"100%",padding:"11px 14px",background:C.inputBg,
                 backdropFilter:"blur(10px)",WebkitBackdropFilter:"blur(10px)",
-                border:`1px solid ${C.border}`,borderRadius:10,color:C.text,...MONO,fontSize:13,outline:"none"}}/>
+                border:`1px solid ${C.border}`,borderRadius:10,color:"var(--text-primary)",...MONO,fontSize:13,outline:"none"}}/>
           </div>
           {newDate&&(
             <div style={{marginBottom:14}}>
-              <p style={{...MONO,fontSize:9,color:C.muted,letterSpacing:"0.3em",textTransform:"uppercase",marginBottom:8}}>
+              <p style={{...MONO,fontSize:9,color:"var(--text-tertiary)",letterSpacing:"0.3em",textTransform:"uppercase",marginBottom:8}}>
                 {loading?"Loading...":isDisabled(newDate)?(allDays.length>0?"✕ Barber not available this day":"Loading schedule..."):(slots.length>0?`${slots.length} times available`:"No open slots — try another day")}
               </p>
               {!isDisabled(newDate)&&slots.length===0&&!loading&&(
@@ -320,7 +329,7 @@ function RescheduleModal({ appt, onClose, onDone }) {
               </div>
             </div>
           )}
-          {err&&<p style={{...MONO,fontSize:11,color:C.red,marginBottom:12,padding:"8px 12px",background:C.redDim,borderRadius:8}}>{err}</p>}
+          {err&&<p style={{...MONO,fontSize:11,color:"var(--red)",marginBottom:12,padding:"8px 12px",background:C.redDim,borderRadius:8}}>{err}</p>}
           <div style={{display:"flex",gap:8}}>
             <button disabled={busy||!newDate||!newTime} onClick={submit}
               style={{flex:1,padding:"12px",
@@ -333,8 +342,8 @@ function RescheduleModal({ appt, onClose, onDone }) {
               {busy?"Sending...":"Request Reschedule →"}
             </button>
             <button onClick={onClose}
-              style={{padding:"12px 16px",background:C.surface,border:`1px solid ${C.border}`,
-                borderRadius:12,color:C.muted,...MONO,fontSize:10,cursor:"pointer"}}>Cancel</button>
+              style={{padding:"12px 16px",background:"var(--surface)",border:`1px solid ${C.border}`,
+                borderRadius:12,color:"var(--text-tertiary)",...MONO,fontSize:10,cursor:"pointer"}}>Cancel</button>
           </div>
         </div>
       </div>
@@ -360,7 +369,7 @@ function CancelModal({ appt, onConfirm, onClose }) {
             letterSpacing:"-0.02em",marginBottom:12}}>
             {isLate?"⚠️ Late Cancellation":"Cancel Appointment"}
           </p>
-          <p style={{...MONO,fontSize:12,color:C.sub,lineHeight:1.8,marginBottom:16}}>
+          <p style={{...MONO,fontSize:12,color:"var(--text-secondary)",lineHeight:1.8,marginBottom:16}}>
             {isLate
               ? "Cancelling within 2 hours will issue a strike and increase your deposit fee."
               : `Cancel ${appt.service_name} on ${fmtDate(appt.date)} with ${appt.barber_name}?`}
@@ -388,8 +397,8 @@ function CancelModal({ appt, onConfirm, onClose }) {
               {isLate?"Cancel Anyway":"Yes, Cancel"}
             </button>
             <button onClick={onClose}
-              style={{flex:1,padding:"12px",background:C.surface,
-                border:`1px solid ${C.border}`,borderRadius:12,color:C.muted,
+              style={{flex:1,padding:"12px",background:"var(--surface)",
+                border:`1px solid ${C.border}`,borderRadius:12,color:"var(--text-tertiary)",
                 ...SF,fontSize:7,fontWeight:700,textTransform:"uppercase",
                 letterSpacing:"0.15em",cursor:"pointer"}}>
               Keep It
@@ -552,7 +561,7 @@ function DashboardContent() {
   };
 
   if(loading) return (
-    <div style={{background:C.bg,minHeight:"100vh"}}>
+    <div style={{background:"var(--bg)",minHeight:"100vh"}}>
       <header style={{height:52,background:"rgba(7,7,9,0.85)",backdropFilter:"blur(20px)",
         WebkitBackdropFilter:"blur(20px)",borderBottom:`1px solid ${C.border}`,
         display:"flex",alignItems:"center",padding:"0 20px"}}>
@@ -572,7 +581,7 @@ function DashboardContent() {
   );
 
   return (
-    <div style={{background:C.bg,minHeight:"100vh",color:C.text}}>
+    <div style={{background:"var(--bg)",minHeight:"100vh",color:C.text}}>
       <style jsx global>{`
         @import url('https://fonts.googleapis.com/css2?family=Syncopate:wght@400;700&family=DM+Mono:ital,wght@0,300;0,400;0,500;1,400&display=swap');
         *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
@@ -606,9 +615,9 @@ function DashboardContent() {
         justifyContent:"space-between",gap:12}}>
         <div style={{display:"flex",alignItems:"center",gap:10}}>
           <a href="/" style={{display:"flex",alignItems:"center",gap:6,
-            padding:"6px 10px",background:C.surface,backdropFilter:"blur(10px)",
+            padding:"6px 10px",background:"var(--surface)",backdropFilter:"blur(10px)",
             WebkitBackdropFilter:"blur(10px)",border:`1px solid ${C.border}`,
-            borderRadius:8,color:C.muted,textDecoration:"none",
+            borderRadius:8,color:"var(--text-tertiary)",textDecoration:"none",
             ...MONO,fontSize:9,letterSpacing:"0.1em",transition:"all 0.2s"}}
             onMouseEnter={e=>{e.currentTarget.style.borderColor=C.amberBorder;e.currentTarget.style.color=C.amber;}}
             onMouseLeave={e=>{e.currentTarget.style.borderColor=C.border;e.currentTarget.style.color=C.muted;}}>
@@ -659,7 +668,7 @@ function DashboardContent() {
                 <div>
                   <p style={{...MONO,fontSize:9,color:C.amberD,letterSpacing:"0.35em",
                     textTransform:"uppercase",marginBottom:4}}>Next Appointment</p>
-                  <p style={{...SF,fontSize:14,fontWeight:700,color:C.text,
+                  <p style={{...SF,fontSize:14,fontWeight:700,color:"var(--text-primary)",
                     textTransform:"uppercase",letterSpacing:"-0.02em",marginBottom:4}}>
                     {nextAppt.service_name}
                   </p>
@@ -669,21 +678,21 @@ function DashboardContent() {
                 </div>
               </div>
               <div style={{textAlign:"right"}}>
-                <p style={{...SF,fontSize:28,fontWeight:700,color:C.amber,lineHeight:1,marginBottom:4}}>
+                <p style={{...SF,fontSize:28,fontWeight:700,color:"var(--amber)",lineHeight:1,marginBottom:4}}>
                   {daysUntil(nextAppt.date,nextAppt.time)}
                 </p>
-                <p style={{...MONO,fontSize:9,color:C.muted,letterSpacing:"0.2em"}}>AWAY</p>
+                <p style={{...MONO,fontSize:9,color:"var(--text-tertiary)",letterSpacing:"0.2em"}}>AWAY</p>
                 <div style={{display:"flex",gap:6,marginTop:10,justifyContent:"flex-end"}}>
                   <button onClick={()=>setReschedAppt(nextAppt)}
                     style={{padding:"6px 12px",background:C.amberDim,
                       border:`1px solid ${C.amberBorder}`,borderRadius:8,
-                      color:C.amber,...MONO,fontSize:9,cursor:"pointer"}}>
+                      color:"var(--amber)",...MONO,fontSize:9,cursor:"pointer"}}>
                     ↻
                   </button>
                   <button onClick={()=>setCancelAppt(nextAppt)}
-                    style={{padding:"6px 12px",background:C.surface,
+                    style={{padding:"6px 12px",background:"var(--surface)",
                       border:`1px solid ${C.border}`,borderRadius:8,
-                      color:C.muted,...MONO,fontSize:9,cursor:"pointer"}}>
+                      color:"var(--text-tertiary)",...MONO,fontSize:9,cursor:"pointer"}}>
                     ✕
                   </button>
                 </div>
@@ -707,7 +716,7 @@ function DashboardContent() {
                 background:`linear-gradient(to right,${s.color}60,transparent)`}}/>
               <div style={{display:"flex",justifyContent:"space-between",
                 alignItems:"flex-start",marginBottom:8}}>
-                <p style={{...MONO,fontSize:8,color:C.muted,letterSpacing:"0.25em",
+                <p style={{...MONO,fontSize:8,color:"var(--text-tertiary)",letterSpacing:"0.25em",
                   textTransform:"uppercase",lineHeight:1.4}}>{s.label}</p>
                 <span style={{fontSize:14,opacity:0.5}}>{s.icon}</span>
               </div>
@@ -731,7 +740,7 @@ function DashboardContent() {
                   {totalVisits>=20?"👑":totalVisits>=10?"⭐":"💈"}
                 </div>
                 <div>
-                  <p style={{...SF,fontSize:9,fontWeight:700,color:C.amber,
+                  <p style={{...SF,fontSize:9,fontWeight:700,color:"var(--amber)",
                     textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:2}}>
                     {totalVisits>=20?"VIP Client":totalVisits>=10?"Regular":totalVisits>=5?"Rising":"New Client"}
                   </p>
@@ -771,7 +780,7 @@ function DashboardContent() {
             <div style={{display:"flex",alignItems:"center",gap:12,flexWrap:"wrap"}}>
               <span style={{fontSize:18}}>📱</span>
               <div style={{flex:1}}>
-                <p style={{...MONO,fontSize:12,fontWeight:700,color:C.text,marginBottom:2}}>
+                <p style={{...MONO,fontSize:12,fontWeight:700,color:"var(--text-primary)",marginBottom:2}}>
                   Add your phone number
                 </p>
                 <p style={{...MONO,fontSize:10,color:C.muted}}>
@@ -782,7 +791,7 @@ function DashboardContent() {
                 <input value={phoneInput} onChange={e=>setPhoneInput(e.target.value)}
                   placeholder="(601) 555-0100" type="tel"
                   style={{padding:"9px 12px",background:"rgba(255,255,255,0.05)",
-                    border:`1px solid ${C.border}`,borderRadius:10,color:C.text,
+                    border:`1px solid ${C.border}`,borderRadius:10,color:"var(--text-primary)",
                     ...MONO,fontSize:12,outline:"none",width:160}}/>
                 <button disabled={phoneSaving}
                   onClick={async()=>{
@@ -801,7 +810,7 @@ function DashboardContent() {
                   {phoneSaving?"...":"Save"}
                 </button>
                 <button onClick={()=>setShowPhonePrompt(false)}
-                  style={{background:"none",border:"none",color:C.muted,
+                  style={{background:"none",border:"none",color:"var(--text-tertiary)",
                     cursor:"pointer",fontSize:18,padding:4}}>✕</button>
               </div>
             </div>
@@ -817,7 +826,7 @@ function DashboardContent() {
               <div style={{display:"flex",alignItems:"center",gap:10}}>
                 <span style={{fontSize:18}}>⚡</span>
                 <div>
-                  <p style={{...SF,fontSize:8,color:C.red,textTransform:"uppercase",
+                  <p style={{...SF,fontSize:8,color:"var(--red)",textTransform:"uppercase",
                     letterSpacing:"0.1em",marginBottom:2}}>
                     {strikeInfo.strike_count} Strike{strikeInfo.strike_count>1?"s":""} on Account
                   </p>
@@ -826,7 +835,7 @@ function DashboardContent() {
                   </p>
                 </div>
               </div>
-              <a href="/terms" style={{...MONO,fontSize:9,color:C.amber,
+              <a href="/terms" style={{...MONO,fontSize:9,color:"var(--amber)",
                 textDecoration:"none",letterSpacing:"0.1em"}}>Policy →</a>
             </div>
           </div>
@@ -845,7 +854,7 @@ function DashboardContent() {
                   ⭐
                 </div>
                 <div>
-                  <p style={{...MONO,fontSize:13,fontWeight:700,color:C.text,marginBottom:2}}>
+                  <p style={{...MONO,fontSize:13,fontWeight:700,color:"var(--text-primary)",marginBottom:2}}>
                     How was your cut?
                   </p>
                   <p style={{...MONO,fontSize:11,color:C.sub}}>
@@ -877,7 +886,7 @@ function DashboardContent() {
                   {[["Service",reviewAppt?.service_name],["Barber",reviewAppt?.barber_name],
                     ["Date",fmtDate(reviewAppt?.date)],["Time",fmtTime(reviewAppt?.time)]].map(([k,v])=>(
                     <div key={k} style={{minWidth:80}}>
-                      <p style={{...MONO,fontSize:8,color:C.muted,marginBottom:2}}>{k}</p>
+                      <p style={{...MONO,fontSize:8,color:"var(--text-tertiary)",marginBottom:2}}>{k}</p>
                       <p style={{...MONO,fontSize:11,color:k==="Barber"?C.amber:C.text}}>{v}</p>
                     </div>
                   ))}
@@ -885,7 +894,7 @@ function DashboardContent() {
 
                 {/* Stars */}
                 <div style={{marginBottom:12}}>
-                  <p style={{...MONO,fontSize:9,color:C.muted,letterSpacing:"0.25em",
+                  <p style={{...MONO,fontSize:9,color:"var(--text-tertiary)",letterSpacing:"0.25em",
                     textTransform:"uppercase",marginBottom:8}}>Rating</p>
                   <div style={{display:"flex",gap:4,alignItems:"center"}}>
                     {[1,2,3,4,5].map(s=>(
@@ -898,7 +907,7 @@ function DashboardContent() {
                         ★
                       </button>
                     ))}
-                    <span style={{...MONO,fontSize:13,color:C.amber,marginLeft:8}}>
+                    <span style={{...MONO,fontSize:13,color:"var(--amber)",marginLeft:8}}>
                       {["","😤","😕","😐","😊","🔥"][reviewRating]}
                     </span>
                   </div>
@@ -909,9 +918,9 @@ function DashboardContent() {
                   style={{width:"100%",padding:"10px 14px",
                     background:C.inputBg,backdropFilter:"blur(10px)",
                     WebkitBackdropFilter:"blur(10px)",border:`1px solid ${C.border}`,
-                    borderRadius:10,color:C.text,...MONO,fontSize:13,
+                    borderRadius:10,color:"var(--text-primary)",...MONO,fontSize:13,
                     outline:"none",resize:"none",marginBottom:6}}/>
-                <p style={{...MONO,fontSize:9,color:C.muted,marginBottom:12}}>
+                <p style={{...MONO,fontSize:9,color:"var(--text-tertiary)",marginBottom:12}}>
                   {reviewText.length}/500 characters
                 </p>
 
@@ -942,9 +951,9 @@ function DashboardContent() {
                     {reviewBusy?"Submitting...":"Submit →"}
                   </button>
                   <button onClick={()=>setShowReview(false)}
-                    style={{padding:"11px 16px",background:C.surface,
+                    style={{padding:"11px 16px",background:"var(--surface)",
                       border:`1px solid ${C.border}`,borderRadius:12,
-                      color:C.muted,...MONO,fontSize:10,cursor:"pointer"}}>Later</button>
+                      color:"var(--text-tertiary)",...MONO,fontSize:10,cursor:"pointer"}}>Later</button>
                 </div>
               </div>
             )}
@@ -988,10 +997,10 @@ function DashboardContent() {
             upcoming.length===0?(
               <div style={{textAlign:"center",padding:60,...glassCard({borderStyle:"dashed"})}}>
                 <p style={{fontSize:40,marginBottom:12}}>✂️</p>
-                <p style={{...SF,fontSize:12,color:C.muted,textTransform:"uppercase",marginBottom:8}}>
+                <p style={{...SF,fontSize:12,color:"var(--text-tertiary)",textTransform:"uppercase",marginBottom:8}}>
                   No upcoming appointments
                 </p>
-                <p style={{...MONO,fontSize:12,color:C.muted,marginBottom:20}}>Ready for a fresh cut?</p>
+                <p style={{...MONO,fontSize:12,color:"var(--text-tertiary)",marginBottom:20}}>Ready for a fresh cut?</p>
                 <a href="/book" style={{display:"inline-block",padding:"12px 28px",
                   background:"linear-gradient(135deg,#f59e0b,#d97706)",color:"#000",
                   ...SF,fontSize:8,fontWeight:700,textTransform:"uppercase",
@@ -1049,7 +1058,7 @@ function DashboardContent() {
 
               {/* Profile */}
               <div style={{...glassCard({padding:20})}}>
-                <p style={{...MONO,fontSize:10,color:C.amber,textTransform:"uppercase",
+                <p style={{...MONO,fontSize:10,color:"var(--amber)",textTransform:"uppercase",
                   letterSpacing:"0.2em",marginBottom:14}}>Profile</p>
                 <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
                   {[
@@ -1062,7 +1071,7 @@ function DashboardContent() {
                   ].map(([k,v])=>(
                     <div key={k} style={{padding:"10px 12px",background:"rgba(255,255,255,0.03)",
                       borderRadius:10,border:`1px solid ${C.border}`}}>
-                      <p style={{...MONO,fontSize:8,color:C.muted,letterSpacing:"0.25em",
+                      <p style={{...MONO,fontSize:8,color:"var(--text-tertiary)",letterSpacing:"0.25em",
                         textTransform:"uppercase",marginBottom:4}}>{k}</p>
                       <p style={{...MONO,fontSize:13,color:C.text}}>{v}</p>
                     </div>
@@ -1072,7 +1081,7 @@ function DashboardContent() {
 
               {/* Phone */}
               <div style={{...glassCard({padding:20})}}>
-                <p style={{...MONO,fontSize:10,color:C.amber,textTransform:"uppercase",
+                <p style={{...MONO,fontSize:10,color:"var(--amber)",textTransform:"uppercase",
                   letterSpacing:"0.2em",marginBottom:12}}>Phone Number</p>
                 <div style={{display:"flex",gap:8}}>
                   <input value={phoneInput||strikeInfo?.phone||""}
@@ -1080,7 +1089,7 @@ function DashboardContent() {
                     placeholder="(601) 555-0100" type="tel"
                     style={{flex:1,padding:"11px 14px",background:C.inputBg,
                       backdropFilter:"blur(10px)",WebkitBackdropFilter:"blur(10px)",
-                      border:`1px solid ${C.border}`,borderRadius:10,color:C.text,
+                      border:`1px solid ${C.border}`,borderRadius:10,color:"var(--text-primary)",
                       ...MONO,fontSize:12,outline:"none"}}/>
                   <button disabled={phoneSaving}
                     onClick={async()=>{
@@ -1103,10 +1112,10 @@ function DashboardContent() {
               <div style={{...glassCard({padding:20})}}>
                 <div style={{display:"flex",justifyContent:"space-between",
                   alignItems:"center",marginBottom:showPwd?14:0}}>
-                  <p style={{...MONO,fontSize:10,color:C.amber,textTransform:"uppercase",
+                  <p style={{...MONO,fontSize:10,color:"var(--amber)",textTransform:"uppercase",
                     letterSpacing:"0.2em"}}>Change Password</p>
                   <button onClick={()=>setShowPwd(o=>!o)}
-                    style={{...MONO,fontSize:10,color:C.muted,background:"none",
+                    style={{...MONO,fontSize:10,color:"var(--text-tertiary)",background:"none",
                       border:"none",cursor:"pointer"}}>
                     {showPwd?"Cancel":"Update →"}
                   </button>
@@ -1116,7 +1125,7 @@ function DashboardContent() {
                     {[{key:"old_password",label:"Current Password",ph:"••••••••"},
                       {key:"new_password",label:"New Password",ph:"Min 8 characters"}].map(f=>(
                       <div key={f.key} style={{marginBottom:10}}>
-                        <label style={{...MONO,fontSize:9,color:C.muted,letterSpacing:"0.25em",
+                        <label style={{...MONO,fontSize:9,color:"var(--text-tertiary)",letterSpacing:"0.25em",
                           textTransform:"uppercase",display:"block",marginBottom:6}}>{f.label}</label>
                         <input type="password" placeholder={f.ph}
                           value={pwdForm[f.key]}
@@ -1124,11 +1133,11 @@ function DashboardContent() {
                           style={{width:"100%",padding:"11px 14px",
                             background:C.inputBg,backdropFilter:"blur(10px)",
                             WebkitBackdropFilter:"blur(10px)",border:`1px solid ${C.border}`,
-                            borderRadius:10,color:C.text,...MONO,fontSize:12,outline:"none"}}/>
+                            borderRadius:10,color:"var(--text-primary)",...MONO,fontSize:12,outline:"none"}}/>
                       </div>
                     ))}
-                    {pwdErr&&<p style={{...MONO,fontSize:11,color:C.red,marginBottom:8}}>{pwdErr}</p>}
-                    {pwdOk &&<p style={{...MONO,fontSize:11,color:C.green,marginBottom:8}}>✓ Password updated</p>}
+                    {pwdErr&&<p style={{...MONO,fontSize:11,color:"var(--red)",marginBottom:8}}>{pwdErr}</p>}
+                    {pwdOk &&<p style={{...MONO,fontSize:11,color:"var(--green)",marginBottom:8}}>✓ Password updated</p>}
                     <button disabled={pwdBusy} onClick={async()=>{
                       setPwdErr("");setPwdOk(false);setPwdBusy(true);
                       try{
@@ -1153,7 +1162,7 @@ function DashboardContent() {
               <div style={{...glassCard({padding:20})}}>
                 <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
                   <div>
-                    <p style={{...MONO,fontSize:10,color:C.amber,textTransform:"uppercase",
+                    <p style={{...MONO,fontSize:10,color:"var(--amber)",textTransform:"uppercase",
                       letterSpacing:"0.2em",marginBottom:4}}>Push Notifications</p>
                     <p style={{...MONO,fontSize:11,color:C.muted}}>
                       {pushEnabled?"✓ Enabled on this device":"Not enabled on this device"}
@@ -1163,7 +1172,7 @@ function DashboardContent() {
                     <button onClick={()=>window.dispatchEvent(new CustomEvent("headzup:trigger-permit"))}
                       style={{padding:"9px 16px",background:C.amberDim,
                         border:`1px solid ${C.amberBorder}`,borderRadius:10,
-                        color:C.amber,...MONO,fontSize:9,cursor:"pointer"}}>
+                        color:"var(--amber)",...MONO,fontSize:9,cursor:"pointer"}}>
                       Enable →
                     </button>
                   )}
@@ -1180,15 +1189,15 @@ function DashboardContent() {
                   Book a Cut →
                 </a>
                 <a href="/sms-optin" style={{flex:1,padding:"13px",textAlign:"center",
-                  background:C.surface,backdropFilter:"blur(10px)",
-                  WebkitBackdropFilter:"blur(10px)",color:C.muted,
+                  background:"var(--surface)",backdropFilter:"blur(10px)",
+                  WebkitBackdropFilter:"blur(10px)",color:"var(--text-tertiary)",
                   border:`1px solid ${C.border}`,borderRadius:12,...MONO,
                   fontSize:10,letterSpacing:"0.1em",textDecoration:"none"}}>
                   SMS Settings
                 </a>
                 <a href="/terms" style={{flex:1,padding:"13px",textAlign:"center",
-                  background:C.surface,backdropFilter:"blur(10px)",
-                  WebkitBackdropFilter:"blur(10px)",color:C.muted,
+                  background:"var(--surface)",backdropFilter:"blur(10px)",
+                  WebkitBackdropFilter:"blur(10px)",color:"var(--text-tertiary)",
                   border:`1px solid ${C.border}`,borderRadius:12,...MONO,
                   fontSize:10,letterSpacing:"0.1em",textDecoration:"none"}}>
                   Terms
