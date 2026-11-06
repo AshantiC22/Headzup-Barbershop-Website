@@ -1,172 +1,113 @@
 "use client";
-import { createContext, useContext, useState, useEffect } from "react";
+// ─────────────────────────────────────────────────────────────────────────────
+// Two lights for one painting:
+//   Day      — Monet's harbor at sunrise: mist blue, lead white, a low orange sun.
+//   Nocturne — Whistler's blue and gold: deep night water, gilt sparks.
+//
+// The colors themselves live in globals.css as CSS variables. This provider
+// only decides which one is showing, remembers the choice, and tells the
+// canvas painters which palette to use. The <html data-theme> attribute is
+// set before first paint by a tiny script in layout.tsx, so there is no flash.
+// ─────────────────────────────────────────────────────────────────────────────
+import { createContext, useCallback, useContext, useEffect, useState } from "react";
 
-// ── DARK THEME — Deep black, amber fire, glass surfaces ────────────────────────
-const DARK = {
-  name:         "dark",
-  bg:           "#070709",
-  bgDeep:       "#050507",
-  surface:      "rgba(255,255,255,0.04)",
-  surfaceB:     "rgba(255,255,255,0.07)",
-  surfaceC:     "rgba(255,255,255,0.11)",
-  glass:        "rgba(255,255,255,0.04)",
-  glassB:       "rgba(255,255,255,0.07)",
-  border:       "rgba(255,255,255,0.08)",
-  borderB:      "rgba(255,255,255,0.15)",
-  amber:        "#f59e0b",
-  amberL:       "#fbbf24",
-  amberD:       "#d97706",
-  amberDim:     "rgba(245,158,11,0.10)",
-  amberGlow:    "rgba(245,158,11,0.18)",
-  amberBorder:  "rgba(245,158,11,0.35)",
-  red:          "#ef4444",
-  redDim:       "rgba(239,68,68,0.10)",
-  green:        "#22c55e",
-  greenDim:     "rgba(34,197,94,0.10)",
-  blue:         "#60a5fa",
-  blueDim:      "rgba(96,165,250,0.10)",
-  purple:       "#a78bfa",
-  text:         "#f1f0ee",
-  sub:          "#9ca3af",
-  muted:        "#4b5563",
-  inputBg:      "rgba(255,255,255,0.05)",
-  inputText:    "#f1f0ee",
-  placeholder:  "#6b7280",
-  headerBg:     "rgba(7,7,9,0.88)",
-  sidebarBg:    "rgba(7,7,9,0.97)",
+const STORAGE_KEY = "headzup_theme"; // values: "light" | "dark" (kept from v1)
+
+// Hex values for code that can't read CSS variables (canvas, meta theme-color).
+export const TOKENS = {
+  light: {
+    name: "light", bg: "#E9EEF1", surface: "#F8FAFB", ink: "#18213A", ink2: "#4A5470",
+    ink3: "#5B6582", accent: "#EE7434", onAccent: "#18213A", cobalt: "#2B4F8F",
+    gilt: "#B8893A", ok: "#2F7A5F", bad: "#B4283A",
+  },
+  dark: {
+    name: "dark", bg: "#0F1A2E", surface: "#16233D", ink: "#ECE7DA", ink2: "#A9B2C7",
+    ink3: "#8C96AE", accent: "#E7B04B", onAccent: "#0F1A2E", cobalt: "#8FB0E8",
+    gilt: "#D9A945", ok: "#5FC29B", bad: "#F07A84",
+  },
 };
 
-// ── LIGHT THEME — True opposite: white/light bg, dark text, everything visible ─
-// Philosophy: flip every dark token to its bright equivalent.
-// Dark bg → white bg. Dark glass → crisp white card.
-// Light text → dark text. Amber stays amber (deepened for contrast).
-const LIGHT = {
-  name:         "light",
-  // Pure white page background
-  bg:           "#ffffff",
-  bgDeep:       "#f4f4f5",
-  // Card surfaces — solid white with slight depth
-  surface:      "rgba(0,0,0,0.03)",
-  surfaceB:     "rgba(0,0,0,0.055)",
-  surfaceC:     "rgba(0,0,0,0.08)",
-  glass:        "rgba(0,0,0,0.03)",
-  glassB:       "rgba(0,0,0,0.055)",
-  // Visible dark borders
-  border:       "rgba(0,0,0,0.11)",
-  borderB:      "rgba(0,0,0,0.20)",
-  // Amber — deeper for contrast on white
-  amber:        "#b45309",
-  amberL:       "#d97706",
-  amberD:       "#92400e",
-  amberDim:     "rgba(180,83,9,0.09)",
-  amberGlow:    "rgba(180,83,9,0.16)",
-  amberBorder:  "rgba(180,83,9,0.38)",
-  // Status — deep saturated for white bg readability
-  red:          "#dc2626",
-  redDim:       "rgba(220,38,38,0.08)",
-  green:        "#16a34a",
-  greenDim:     "rgba(22,163,74,0.08)",
-  blue:         "#2563eb",
-  blueDim:      "rgba(37,99,235,0.08)",
-  purple:       "#7c3aed",
-  // TEXT — near-black, high contrast on white
-  text:         "#111111",
-  sub:          "#3f3f46",
-  muted:        "#71717a",
-  // INPUTS — solid white with dark text/placeholder
-  inputBg:      "#ffffff",
-  inputText:    "#111111",
-  placeholder:  "#71717a",
-  // Structural
-  headerBg:     "rgba(255,255,255,0.92)",
-  sidebarBg:    "rgba(244,244,245,0.99)",
-};
+const ThemeContext = createContext({
+  mode: "light", isDark: false, theme: TOKENS.light, palette: "day",
+  toggle: () => {}, setMode: () => {},
+});
 
-export const THEMES = { dark: DARK, light: LIGHT };
-const ThemeContext = createContext({ theme: DARK, isDark: true, toggle: () => {} });
+function readInitial() {
+  if (typeof document === "undefined") return "light";
+  return document.documentElement.getAttribute("data-theme") === "dark" ? "dark" : "light";
+}
 
 export function ThemeProvider({ children }) {
-  const [isDark, setIsDark] = useState(true);
+  const [mode, setModeState] = useState("light");
 
-  useEffect(() => {
-    try {
-      const saved = localStorage.getItem("headzup_theme");
-      if (saved === "light") setIsDark(false);
-    } catch(e) {}
+  const apply = useCallback((next, persist = true) => {
+    setModeState(next);
+    const root = document.documentElement;
+    root.setAttribute("data-theme", next);
+    root.style.colorScheme = next;
+    const metas = document.querySelectorAll('meta[name="theme-color"]');
+    if (metas.length) metas.forEach((m) => m.setAttribute("content", TOKENS[next].bg));
+    else {
+      const m = document.createElement("meta");
+      m.name = "theme-color"; m.content = TOKENS[next].bg;
+      document.head.appendChild(m);
+    }
+    if (persist) { try { localStorage.setItem(STORAGE_KEY, next); } catch {} }
   }, []);
 
-  const toggle = () => {
-    setIsDark(prev => {
-      const next = !prev;
-      try { localStorage.setItem("headzup_theme", next ? "dark" : "light"); } catch(e) {}
-      return next;
-    });
-  };
+  // Sync with what the pre-paint script decided.
+  useEffect(() => { apply(readInitial(), false); }, [apply]);
 
-  const theme = isDark ? DARK : LIGHT;
-
+  // Follow the OS setting until the visitor picks one themselves.
   useEffect(() => {
-    const root = document.documentElement;
-    root.setAttribute("data-theme", theme.name);
-    document.body.style.background = theme.bg;
-    document.body.style.color      = theme.text;
-    root.style.setProperty("--bg",           theme.bg);
-    root.style.setProperty("--surface",      theme.surface);
-    root.style.setProperty("--border",       theme.border);
-    root.style.setProperty("--text",         theme.text);
-    root.style.setProperty("--sub",          theme.sub);
-    root.style.setProperty("--muted",        theme.muted);
-    root.style.setProperty("--amber",        theme.amber);
-    root.style.setProperty("--amber-dim",    theme.amberDim);
-    root.style.setProperty("--amber-border", theme.amberBorder);
-    root.style.setProperty("--input-bg",     theme.inputBg);
-    root.style.setProperty("--input-text",   theme.inputText);
-    root.style.setProperty("--placeholder",  theme.placeholder);
-    root.style.setProperty("--header-bg",    theme.headerBg);
-    root.style.setProperty("--sidebar-bg",   theme.sidebarBg);
-  }, [theme]);
+    let saved = null;
+    try { saved = localStorage.getItem(STORAGE_KEY); } catch {}
+    if (saved) return;
+    const mq = window.matchMedia?.("(prefers-color-scheme: dark)");
+    if (!mq) return;
+    const onChange = (e) => apply(e.matches ? "dark" : "light", false);
+    mq.addEventListener?.("change", onChange);
+    return () => mq.removeEventListener?.("change", onChange);
+  }, [apply]);
 
-  return (
-    <ThemeContext.Provider value={{ theme, isDark, toggle }}>
-      {children}
-    </ThemeContext.Provider>
-  );
+  const toggle = useCallback(() => apply(mode === "dark" ? "light" : "dark"), [mode, apply]);
+
+  const value = {
+    mode,
+    isDark: mode === "dark",
+    theme: TOKENS[mode],
+    palette: mode === "dark" ? "night" : "day",
+    toggle,
+    setMode: apply,
+  };
+  return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
 }
 
 export function useTheme() { return useContext(ThemeContext); }
 
-export function ThemeToggle({ style = {} }) {
-  const { isDark, toggle } = useTheme();
+/** Day / Nocturne switch. A real two-option control, not a mystery toggle. */
+export function ThemeToggle({ className = "" }) {
+  const { mode, setMode } = useTheme();
   return (
-    <button onClick={toggle}
-      title={isDark ? "Switch to light" : "Switch to dark"}
-      style={{
-        width: 46, height: 26, borderRadius: 13, padding: 0, cursor: "pointer",
-        position: "relative", flexShrink: 0,
-        background: isDark
-          ? "rgba(245,158,11,0.15)"
-          : "rgba(180,83,9,0.10)",
-        border: `1px solid ${isDark ? "rgba(245,158,11,0.4)" : "rgba(180,83,9,0.4)"}`,
-        transition: "all 0.3s cubic-bezier(0.4,0,0.2,1)",
-        ...style,
-      }}>
-      <span style={{ position:"absolute", left:5, top:"50%",
-        transform:"translateY(-50%)", fontSize:11,
-        opacity: isDark ? 1 : 0, transition:"opacity 0.2s",
-        pointerEvents:"none" }}>🌙</span>
-      <span style={{ position:"absolute", right:5, top:"50%",
-        transform:"translateY(-50%)", fontSize:11,
-        opacity: isDark ? 0 : 1, transition:"opacity 0.2s",
-        pointerEvents:"none" }}>☀️</span>
-      <div style={{
-        position:"absolute", top:3, width:18, height:18, borderRadius:"50%",
-        left: isDark ? 3 : 23,
-        background: isDark
-          ? "linear-gradient(135deg,#f59e0b,#d97706)"
-          : "linear-gradient(135deg,#d97706,#b45309)",
-        boxShadow: "0 1px 4px rgba(0,0,0,0.35)",
-        transition: "left 0.3s cubic-bezier(0.4,0,0.2,1)",
-      }}/>
-    </button>
+    <div className={`hu-theme-switch ${className}`} role="radiogroup" aria-label="Color scheme">
+      <button type="button" role="radio" aria-checked={mode === "light"}
+        className={mode === "light" ? "is-on" : ""} onClick={() => setMode("light")}>
+        <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+          <circle cx="12" cy="12" r="4.2" fill="currentColor" />
+          {[0, 45, 90, 135, 180, 225, 270, 315].map((a) => (
+            <rect key={a} x="11.2" y="1.8" width="1.6" height="3.6" rx=".8" fill="currentColor"
+              transform={`rotate(${a} 12 12)`} />
+          ))}
+        </svg>
+        Day
+      </button>
+      <button type="button" role="radio" aria-checked={mode === "dark"}
+        className={mode === "dark" ? "is-on" : ""} onClick={() => setMode("dark")}>
+        <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+          <path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5Z" fill="currentColor" />
+        </svg>
+        Nocturne
+      </button>
+    </div>
   );
 }

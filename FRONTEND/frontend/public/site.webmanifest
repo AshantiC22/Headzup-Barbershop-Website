@@ -1,13 +1,13 @@
 {
   "name": "HEADZ UP Barbershop",
   "short_name": "HEADZ UP",
-  "description": "Book your haircut at HEADZ UP Barbershop in Hattiesburg, MS",
+  "description": "Book your cut at HEADZ UP Barbershop on West 4th Street, Hattiesburg, MS",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#040404",
-  "theme_color": "#040404",
+  "background_color": "#0F1A2E",
+  "theme_color": "#0F1A2E",
   "categories": [
     "lifestyle",
     "health",
@@ -73,12 +73,5 @@
       ]
     }
   ],
-  "screenshots": [
-    {
-      "src": "/og-image.jpg",
-      "sizes": "1200x630",
-      "type": "image/jpeg",
-      "form_factor": "wide"
-    }
-  ]
+  "screenshots": []
 }

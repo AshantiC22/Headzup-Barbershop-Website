@@ -5,7 +5,7 @@
 //   • API calls             → Network only (never cache)
 //   • Push notifications    → unchanged
 
-const CACHE_VERSION = "headzup-v4";
+const CACHE_VERSION = "headzup-v5"; // v5: Salon des Rêves redesign
 const STATIC_CACHE  = `${CACHE_VERSION}-static`;
 const PAGE_CACHE    = `${CACHE_VERSION}-pages`;
 

@@ -3,10 +3,6 @@ import { createContext, useContext, useState, useEffect, useCallback, useRef } f
 import { useRouter } from "next/navigation";
 import API from "@/lib/api";
 
-// ── Style constants ───────────────────────────────────────────────────────────
-var SF   = { fontFamily:"'Syncopate',sans-serif" };
-var MONO = { fontFamily:"'DM Mono',monospace" };
-
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function fmtTime(date) {
   var diff = Math.floor((Date.now() - date.getTime()) / 1000);
@@ -14,10 +10,6 @@ function fmtTime(date) {
   if (diff < 60)   return diff + "s ago";
   if (diff < 3600) return Math.floor(diff / 60) + "m ago";
   return date.toLocaleTimeString([], { hour:"2-digit", minute:"2-digit" });
-}
-
-function isMobile() {
-  return typeof window !== "undefined" && window.innerWidth < 768;
 }
 
 function isStandalone() {
@@ -48,20 +40,20 @@ function supportsPush() {
 // ── Notification config ───────────────────────────────────────────────────────
 function getConfig(type) {
   var configs = {
-    booking_confirmed:   { icon:"✅", color:"#4ade80", label:"Booking Confirmed"   },
-    booking_cancelled:   { icon:"❌", color:"#f87171", label:"Cancelled"           },
-    booking_reminder:    { icon:"📅", color:"#f59e0b", label:"Reminder"            },
-    reschedule_request:  { icon:"↻",  color:"#f59e0b", label:"Reschedule Request"  },
-    reschedule_response: { icon:"📅", color:"#4ade80", label:"Reschedule Update"   },
-    walk_in:             { icon:"✂️", color:"#f59e0b", label:"Walk-In"             },
-    strike:              { icon:"⚠️", color:"#ef4444", label:"Strike Notice"       },
-    haircut_review:      { icon:"⭐", color:"#f59e0b", label:"Review Request"      },
-    new_booking:         { icon:"📅", color:"#4ade80", label:"New Booking"         },
-    signup_client:       { icon:"✂️", color:"#f59e0b", label:"Welcome"             },
-    signup_barber:       { icon:"✂️", color:"#f59e0b", label:"Welcome"             },
-    blast:               { icon:"📣", color:"#a78bfa", label:"News from your barber"},
+    booking_confirmed:   { tone: "ok",   label: "Booking confirmed" },
+    booking_cancelled:   { tone: "bad",  label: "Cancelled" },
+    booking_reminder:    { tone: "warn", label: "Reminder" },
+    reschedule_request:  { tone: "warn", label: "Reschedule request" },
+    reschedule_response: { tone: "ok",   label: "Reschedule update" },
+    walk_in:             { tone: "info", label: "Walk-in" },
+    strike:              { tone: "bad",  label: "Strike" },
+    haircut_review:      { tone: "warn", label: "Review" },
+    new_booking:         { tone: "ok",   label: "New booking" },
+    signup_client:       { tone: "info", label: "Welcome" },
+    signup_barber:       { tone: "info", label: "Welcome" },
+    blast:               { tone: "info", label: "From your barber" },
   };
-  return configs[type] || { icon:"🔔", color:"#f59e0b", label:"HEADZ UP" };
+  return configs[type] || { tone: "info", label: "Headz Up" };
 }
 
 // ── Context ───────────────────────────────────────────────────────────────────
@@ -128,14 +120,14 @@ export default function NotificationProvider({ children }) {
       }
       if (!supportsPush()) {
         setShowPermit(false);
-        addNotif("Not Supported", "Use Chrome on Android or add to home screen on iPhone.", "general");
+        addNotif("Alerts aren't available here", "Use Chrome on Android, or add Headz Up to your iPhone home screen.", "general");
         return;
       }
       var perm = await Notification.requestPermission();
       if (perm !== "granted") {
         setShowPermit(false);
         localStorage.setItem("headzup_push_dismissed", "1");
-        addNotif("Notifications Blocked", "You can enable them in your browser settings.", "general");
+        addNotif("Alerts are blocked", "Turn them on for headzupp.com in your browser settings.", "general");
         return;
       }
       var reg    = await navigator.serviceWorker.ready;
@@ -146,7 +138,7 @@ export default function NotificationProvider({ children }) {
         vapidKey = keyRes.data.public_key;
       }
       if (!vapidKey) {
-        addNotif("Setup Required", "Push notifications not configured yet.", "general");
+        addNotif("Alerts aren't set up yet", "The shop hasn't finished setting up alerts.", "general");
         setShowPermit(false);
         return;
       }
@@ -189,11 +181,11 @@ export default function NotificationProvider({ children }) {
 
       setPushEnabled(true);
       setShowPermit(false);
-      addNotif("Notifications On 🔔", "You will get alerts for bookings, reminders and more.", "general", null);
+      addNotif("Alerts are on", "You'll get booking confirmations and reminders here.", "general", null);
     } catch(e) {
       console.error("[Push] enablePush error:", e);
       setShowPermit(false);
-      addNotif("Setup Issue", "Could not enable notifications. Try again.", "general", null);
+      addNotif("Alerts didn't turn on", "Try again in a moment.", "general", null);
     }
   }, [addNotif]);
 
@@ -227,7 +219,11 @@ export default function NotificationProvider({ children }) {
     // Delay slightly so page loads first
     var t = setTimeout(checkPush, 3000);
 
-    var handler = function() { showPermitPrompt(); };
+    var handler = function(e) {
+      // "Turn on" in account settings always opens the card.
+      if (e && e.detail && e.detail.force) { setShowPermit(true); return; }
+      showPermitPrompt();
+    };
     window.addEventListener("headzup:trigger-permit", handler);
 
     if ("serviceWorker" in navigator) {
@@ -260,6 +256,7 @@ export default function NotificationProvider({ children }) {
     var timer = setTimeout(async function() {
       if (typeof window === "undefined") return;
       if (typeof Notification === "undefined") return;
+      if (!localStorage.getItem("access")) return; // don't ask visitors who aren't signed in
       if (Notification.permission === "denied") return;
       if (localStorage.getItem("headzup_push_dismissed")) return;
 
@@ -290,237 +287,71 @@ export default function NotificationProvider({ children }) {
     <NotifContext.Provider value={{ addNotif, dismissNotif, showPermitPrompt, pushEnabled, setPushEnabled }}>
       {children}
 
-      {/* ── RUBBER HOSE PERMISSION PROMPT ── */}
+      {/* Permission request: a plain card, sentence case, one clear action */}
       {showPermit && (
-        <div style={{
-          position:"fixed", bottom:0, left:0, right:0, zIndex:99999,
-          display:"flex", justifyContent:"center", alignItems:"flex-end",
-          padding:"0 16px 16px",
-          animation:"npSlideUp 0.5s cubic-bezier(0.34,1.56,0.64,1) both",
-        }}>
-          <style>{`
-            @keyframes npSlideUp { from{opacity:0;transform:translateY(100%)} to{opacity:1;transform:translateY(0)} }
-            @keyframes npSlideIn { from{opacity:0;transform:translateX(24px)} to{opacity:1;transform:translateX(0)} }
-            @keyframes npWiggle  { 0%,100%{transform:rotate(0deg)} 20%{transform:rotate(-8deg)} 40%{transform:rotate(8deg)} 60%{transform:rotate(-4deg)} 80%{transform:rotate(4deg)} }
-            @keyframes npPulse   { 0%,100%{box-shadow:0 0 0 0 rgba(245,158,11,0.4)} 50%{box-shadow:0 0 0 12px rgba(245,158,11,0)} }
-            @keyframes npFloat   { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-4px)} }
-            @keyframes npBounce  { 0%,100%{transform:scale(1)} 50%{transform:scale(1.08)} }
-            .np-allow { transition:all 0.2s; }
-            .np-allow:hover { transform:scale(1.04) translateY(-2px); box-shadow:0 8px 32px rgba(245,158,11,0.4) !important; }
-            .np-allow:active { transform:scale(0.96); }
-            .np-dismiss { transition:all 0.2s; }
-            .np-dismiss:hover { color:#a1a1aa !important; border-color:rgba(255,255,255,0.2) !important; }
-            .np-dismiss:active { transform:scale(0.96); }
-            .np-bell { animation: npFloat 2.5s ease-in-out infinite; display:inline-block; }
-            .np-scissors { animation: npWiggle 3s ease-in-out infinite; display:inline-block; transform-origin:center; }
-          `}</style>
-
-          <div style={{
-            width:"100%", maxWidth:480,
-            background:"#0a0a0a",
-            border:"1.5px solid rgba(245,158,11,0.35)",
-            boxShadow:"0 -4px 0 #f59e0b, 0 24px 80px rgba(0,0,0,0.9), inset 0 1px 0 rgba(255,255,255,0.04)",
-            overflow:"hidden",
-            borderRadius:0,
-            clipPath:"polygon(0 0,calc(100% - 16px) 0,100% 16px,100% 100%,16px 100%,0 calc(100% - 16px))",
-          }}>
-
-            {/* Barber pole top stripe */}
-            <div style={{ height:5, background:"repeating-linear-gradient(90deg,#ef4444 0px,#ef4444 10px,#fff 10px,#fff 20px,#f59e0b 20px,#f59e0b 30px,#000 30px,#000 40px)", opacity:0.8 }}/>
-
-            <div style={{ padding:"20px 20px 18px" }}>
-
-              {/* Header row */}
-              <div style={{ display:"flex", alignItems:"flex-start", gap:14, marginBottom:16 }}>
-
-                {/* Animated bell icon */}
-                <div style={{
-                  width:52, height:52, flexShrink:0,
-                  background:"linear-gradient(135deg,rgba(245,158,11,0.15),rgba(245,158,11,0.05))",
-                  border:"1.5px solid rgba(245,158,11,0.4)",
-                  display:"flex", alignItems:"center", justifyContent:"center",
-                  clipPath:"polygon(0 0,calc(100% - 8px) 0,100% 8px,100% 100%,8px 100%,0 calc(100% - 8px))",
-                  animation:"npPulse 2s ease-in-out infinite",
-                }}>
-                  <span className="np-bell" style={{ fontSize:24 }}>🔔</span>
-                </div>
-
-                <div style={{ flex:1 }}>
-                  {/* Eyebrow label */}
-                  <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:6 }}>
-                    <div style={{ background:"#ef4444", padding:"2px 8px 2px 6px",
-                      clipPath:"polygon(0 0,100% 0,calc(100% - 5px) 100%,0 100%)" }}>
-                      <span style={{ ...SF, fontSize:6, fontWeight:900, color:"white",
-                        letterSpacing:"0.35em", textTransform:"uppercase" }}>HEADZ</span>
-                    </div>
-                    <div style={{ background:"#f59e0b", padding:"2px 8px 2px 7px",
-                      clipPath:"polygon(5px 0,100% 0,calc(100% - 5px) 100%,0 100%)" }}>
-                      <span style={{ ...SF, fontSize:6, fontWeight:900, color:"black",
-                        letterSpacing:"0.35em", textTransform:"uppercase" }}>UP</span>
-                    </div>
-                    <span className="np-scissors" style={{ fontSize:13, opacity:0.7 }}>✂️</span>
-                  </div>
-
-                  {/* Main message */}
-                  <p style={{ ...SF, fontSize:isMobile()?9:10, fontWeight:700,
-                    textTransform:"uppercase", letterSpacing:"0.1em",
-                    color:"white", lineHeight:1.3, marginBottom:4 }}>
-                    {isIOS() && !isStandalone()
-                      ? "Add to Home Screen First"
-                      : "Stay in the loop_"
-                    }
-                  </p>
-                  <p style={{ ...MONO, fontSize:11, color:"#71717a", lineHeight:1.7 }}>
-                    {isIOS() && !isStandalone()
-                      ? "iPhone requires the app on your home screen for notifications."
-                      : "Booking updates, reminders & messages — right on your device."
-                    }
-                  </p>
-                </div>
+        <div className="np-sheet" role="dialog" aria-modal="false" aria-labelledby="np-title">
+          <div className="np-card">
+            <div className="row" style={{ alignItems: "flex-start", gap: 14 }}>
+              <span className="np-icon" aria-hidden="true">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 16V11a6 6 0 1 1 12 0v5l1.5 2h-15z" /><path d="M10 20.5a2 2 0 0 0 4 0" /></svg>
+              </span>
+              <div className="grow">
+                <p id="np-title" className="h4">
+                  {isIOS() && !isStandalone() ? "Add Headz Up to your home screen" : "Get alerts on this device?"}
+                </p>
+                <p className="small muted" style={{ marginTop: 4 }}>
+                  {isIOS() && !isStandalone()
+                    ? "iPhones only show alerts from apps on the home screen. It takes three taps."
+                    : "Booking confirmations, reminders and reschedule answers. Nothing else, and you can turn it off any time."}
+                </p>
               </div>
-
-              {/* Notification preview pills — what they'll get */}
-              {!isIOS() && (
-                <div style={{ display:"flex", gap:6, flexWrap:"wrap", marginBottom:16 }}>
-                  {["📅 Booking confirmed","⏰ 1hr reminder","↻ Reschedule updates","✅ Cancellations"].map((t,i)=>(
-                    <span key={i} style={{ ...MONO, fontSize:9, color:"#a1a1aa",
-                      background:"rgba(255,255,255,0.04)", border:"1px solid rgba(255,255,255,0.07)",
-                      padding:"3px 10px", letterSpacing:"0.05em",
-                      clipPath:"polygon(0 0,calc(100% - 4px) 0,100% 4px,100% 100%,4px 100%,0 calc(100% - 4px))",
-                      animation:`npBounce ${1.5+i*0.2}s ease-in-out infinite ${i*0.15}s`,
-                    }}>{t}</span>
-                  ))}
-                </div>
-              )}
-
-              {/* Action buttons */}
-              <div style={{ display:"flex", gap:8 }}>
-                <button className="np-allow" onClick={function(e){ 
-                  e.preventDefault(); 
-                  e.stopPropagation(); 
-                  e.nativeEvent && e.nativeEvent.stopImmediatePropagation && e.nativeEvent.stopImmediatePropagation();
-                  enablePush(); 
-                }} style={{
-                  flex:1, padding:"13px 18px",
-                  background:"linear-gradient(135deg,#f59e0b,#ef4444)",
-                  border:"none", color:"black",
-                  ...SF, fontSize:8, fontWeight:700,
-                  letterSpacing:"0.2em", textTransform:"uppercase",
-                  cursor:"pointer",
-                  clipPath:"polygon(0 0,calc(100% - 8px) 0,100% 8px,100% 100%,8px 100%,0 calc(100% - 8px))",
-                  boxShadow:"0 4px 20px rgba(245,158,11,0.3)",
-                }}>
-                  {isIOS() && !isStandalone() ? "📲 How to Install" : "🔔 Allow Notifications"}
-                </button>
-                <button className="np-dismiss" onClick={dismissPermit} style={{
-                  padding:"13px 16px",
-                  background:"transparent",
-                  border:"1px solid rgba(255,255,255,0.08)",
-                  color:"#52525b",
-                  ...MONO, fontSize:10,
-                  letterSpacing:"0.15em",
-                  cursor:"pointer",
-                  clipPath:"polygon(0 0,calc(100% - 6px) 0,100% 6px,100% 100%,6px 100%,0 calc(100% - 6px))",
-                }}>
-                  Later
-                </button>
-              </div>
-
-              {/* Fine print */}
-              <p style={{ ...MONO, fontSize:9, color:"#3f3f46",
-                textAlign:"center", marginTop:10, letterSpacing:"0.1em" }}>
-                We never spam · Booking alerts only · Turn off anytime · Stay on this page
-              </p>
+            </div>
+            <div className="row" style={{ marginTop: 16 }}>
+              <button className="btn btn-primary grow" onClick={function (e) { e.preventDefault(); e.stopPropagation(); enablePush(); }}>
+                {isIOS() && !isStandalone() ? "Show me how" : "Turn on alerts"}
+              </button>
+              <button className="btn btn-ghost" onClick={dismissPermit}>Not now</button>
             </div>
           </div>
         </div>
       )}
 
-      {/* iOS install prompt */}
       {showIOSInstall && (
-        <div style={{ position:"fixed", bottom:0, left:0, right:0, zIndex:99999,
-          background:"#0a0a0a", borderTop:"2px solid #f59e0b",
-          padding:"20px 18px", animation:"npSlideUp 0.4s cubic-bezier(0.16,1,0.3,1) both" }}>
-          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:10 }}>
-            <div style={{ display:"flex", alignItems:"center", gap:10 }}>
-              <span style={{ fontSize:22 }}>📲</span>
-              <div>
-                <p style={{ ...SF, fontSize:8, fontWeight:700, color:"#f59e0b",
-                  textTransform:"uppercase", letterSpacing:"0.15em", marginBottom:3 }}>
-                  Add to Home Screen
-                </p>
-                <p style={{ ...MONO, fontSize:11, color:"#71717a", lineHeight:1.7 }}>
-                  To enable notifications on iPhone, install the app first.
-                </p>
-              </div>
+        <div className="np-sheet" role="dialog" aria-modal="false" aria-labelledby="np-ios-title">
+          <div className="np-card">
+            <div className="spread" style={{ alignItems: "flex-start" }}>
+              <p id="np-ios-title" className="h4">Add to your home screen</p>
+              <button className="icon-btn" aria-label="Close" onClick={function () { setShowIOSInstall(false); localStorage.setItem("headzup_push_dismissed", "1"); }}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M6 6l12 12M18 6L6 18" /></svg>
+              </button>
             </div>
-            <button onClick={function(){ setShowIOSInstall(false); localStorage.setItem("headzup_push_dismissed","1"); }}
-              style={{ background:"none", border:"none", color:"#52525b", fontSize:18, cursor:"pointer", padding:0 }}>✕</button>
-          </div>
-          <div style={{ background:"rgba(245,158,11,0.06)", border:"1px solid rgba(245,158,11,0.15)",
-            padding:"12px 14px", borderRadius:4 }}>
-            <p style={{ ...MONO, fontSize:11, color:"#a1a1aa", lineHeight:1.9 }}>
-              1. Tap the <strong style={{color:"#f59e0b"}}>Share button</strong> at the bottom of Safari<br/>
-              2. Scroll down and tap <strong style={{color:"#f59e0b"}}>"Add to Home Screen"</strong><br/>
-              3. Open the app from your home screen<br/>
-              4. Log in and allow notifications when prompted
-            </p>
+            <ol className="np-steps">
+              <li>Tap the <strong>Share</strong> button in Safari&apos;s toolbar.</li>
+              <li>Scroll and tap <strong>Add to Home Screen</strong>.</li>
+              <li>Open Headz Up from your home screen.</li>
+              <li>Sign in and tap <strong>Turn on alerts</strong>.</li>
+            </ol>
           </div>
         </div>
       )}
 
-      {/* In-app toasts */}
-      <div style={{ position:"fixed", top:72, right:16, zIndex:99998,
-        display:"flex", flexDirection:"column", gap:8,
-        width:"min(360px,calc(100vw - 32px))", pointerEvents:"none" }}>
-        {notifs.map(function(n) {
+      {/* In-app alerts */}
+      <div className="np-stack" aria-live="polite">
+        {notifs.map(function (n) {
           var cfg = getConfig(n.type);
+          var go = function () { dismissNotif(n.id); if (n.url) router.push(n.url); };
           return (
-            <div key={n.id} style={{ pointerEvents:"auto",
-              animation:"npSlideIn 0.35s cubic-bezier(0.16,1,0.3,1) both",
-              cursor: n.url ? "pointer" : "default" }}
-              onClick={function() { 
-                if(n.url && n.url !== null && n.url !== "") { 
-                  dismissNotif(n.id); 
-                  router.push(n.url); 
-                } else {
-                  dismissNotif(n.id);
-                }
-              }}>
-              <div style={{ background:"#0a0a0a",
-                border:"1px solid " + cfg.color + "33",
-                boxShadow:"0 4px 24px rgba(0,0,0,0.6)",
-                clipPath:"polygon(0 0,calc(100% - 10px) 0,100% 10px,100% 100%,10px 100%,0 calc(100% - 10px))",
-                overflow:"hidden" }}>
-                <div style={{ height:2, background:"linear-gradient(to right," + cfg.color + ",transparent)" }}/>
-                <div style={{ padding:"12px 14px", display:"flex", gap:10, alignItems:"flex-start" }}>
-                  <div style={{ width:30, height:30, background:cfg.color + "15",
-                    border:"1px solid " + cfg.color + "30",
-                    display:"flex", alignItems:"center", justifyContent:"center",
-                    flexShrink:0, fontSize:13,
-                    clipPath:"polygon(0 0,calc(100% - 4px) 0,100% 4px,100% 100%,4px 100%,0 calc(100% - 4px))" }}>
-                    {cfg.icon}
-                  </div>
-                  <div style={{ flex:1, minWidth:0 }}>
-                    <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:3 }}>
-                      <p style={{ ...SF, fontSize:6.5, fontWeight:700, textTransform:"uppercase",
-                        letterSpacing:"0.15em", color:cfg.color }}>{cfg.label}</p>
-                      <div style={{ display:"flex", alignItems:"center", gap:6 }}>
-                        <p style={{ ...MONO, fontSize:9, color:"#3f3f46" }}>{fmtTime(n.time)}</p>
-                        <button onClick={function(e){ e.stopPropagation(); dismissNotif(n.id); }}
-                          style={{ background:"none", border:"none", color:"#3f3f46",
-                            cursor:"pointer", fontSize:12, padding:0, lineHeight:1 }}>✕</button>
-                      </div>
-                    </div>
-                    <p style={{ ...MONO, fontSize:11, color:"white", fontWeight:500,
-                      marginBottom:2, lineHeight:1.4 }}>{n.title}</p>
-                    <p style={{ ...MONO, fontSize:10, color:"#71717a", lineHeight:1.6 }}>{n.body}</p>
-                    <div style={{ display:"flex", justifyContent:"flex-end", marginTop:4 }}>
-                      <span style={{ ...MONO, fontSize:9, color:cfg.color, opacity:0.6 }}>✓✓</span>
-                    </div>
-                  </div>
-                </div>
+            <div key={n.id} className={"np-toast np-" + cfg.tone} role={n.url ? "button" : undefined} tabIndex={n.url ? 0 : undefined}
+              onClick={go} onKeyDown={function (e) { if (n.url && (e.key === "Enter" || e.key === " ")) go(); }}>
+              <div className="grow">
+                <p className="np-label">{cfg.label}<span className="faint"> {fmtTime(n.time)}</span></p>
+                <p className="np-title">{n.title}</p>
+                {n.body && <p className="small muted">{n.body}</p>}
               </div>
+              <button className="icon-btn" aria-label="Dismiss" style={{ width: 32, height: 32 }}
+                onClick={function (e) { e.stopPropagation(); dismissNotif(n.id); }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M6 6l12 12M18 6L6 18" /></svg>
+              </button>
             </div>
           );
         })}
