@@ -1,15 +1,16 @@
 "use client";
 // The salon: every photo hung in a gilt frame, shown first as a painting.
 // Open one and the photograph comes through, with a placard and a way to book.
-import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Impression from "@/components/art/Impression";
 import SiteNav from "@/components/site/SiteNav";
 import SiteFooter from "@/components/site/SiteFooter";
 import { IconChevronLeft, IconChevronRight, IconClose } from "@/components/ui/Feedback";
+import { arrowSelect, rovingIndex } from "@/components/ui/roving";
 import { GALLERY, GALLERY_FILTERS } from "@/lib/shop";
 import s from "./gallery.module.css";
 
+const VIEWS = ["photo", "paint"];
 const CROPS = ["3 / 4", "1 / 1", "4 / 5", "3 / 4", "4 / 3", "4 / 5"];
 
 function Lightbox({ items, index, onClose, onMove }) {
@@ -42,9 +43,14 @@ function Lightbox({ items, index, onClose, onMove }) {
         touch.current = null;
       }}>
       <div className={s.lbTop}>
-        <div className="hu-theme-switch" role="radiogroup" aria-label="How to show this piece">
-          <button type="button" role="radio" aria-checked={view === "photo"} className={view === "photo" ? "is-on" : ""} onClick={() => setView("photo")}>Photograph</button>
-          <button type="button" role="radio" aria-checked={view === "paint"} className={view === "paint" ? "is-on" : ""} onClick={() => setView("paint")}>Painting</button>
+        <div className="hu-theme-switch" role="radiogroup" aria-label="How to show this piece"
+          onKeyDown={(e) => { e.stopPropagation(); arrowSelect(e, VIEWS, view, setView); }}>
+          {VIEWS.map((v) => (
+            <button key={v} type="button" role="radio" aria-checked={view === v} tabIndex={rovingIndex(v, view, VIEWS)}
+              className={view === v ? "is-on" : ""} onClick={() => setView(v)}>
+              {v === "photo" ? "Photograph" : "Painting"}
+            </button>
+          ))}
         </div>
         <button ref={closeRef} className={`icon-btn ${s.lbClose}`} onClick={onClose} aria-label="Close">
           <IconClose size={24} />
@@ -71,7 +77,7 @@ function Lightbox({ items, index, onClose, onMove }) {
       <div className={`placard ${s.lbPlacard}`}>
         <p className="placard-title">{piece.title}</p>
         <p className="placard-medium">{piece.medium}. Headz Up, Hattiesburg.</p>
-        <div className="row-wrap" style={{ marginTop: 12 }}>
+        <div className="row-wrap mt-3">
           <a href="/book" className="btn btn-primary btn-sm">Book a cut</a>
           <span className="small faint">{index + 1} of {items.length}</span>
         </div>
@@ -80,25 +86,28 @@ function Lightbox({ items, index, onClose, onMove }) {
   );
 }
 
-function GalleryContent() {
-  const params = useSearchParams();
-  const router = useRouter();
+export default function GalleryPage() {
   const [filter, setFilter] = useState("all");
   const items = useMemo(() => GALLERY.filter((g) => filter === "all" || g.tag === filter), [filter]);
   const [open, setOpen] = useState(null);
 
+  // ?piece=3 opens straight to that piece, and the URL follows the lightbox
+  // so a piece can be shared. Read once on mount; replaceState keeps Back sane.
   useEffect(() => {
-    const id = Number(params.get("piece"));
-    if (id) {
-      const i = GALLERY.findIndex((g) => g.id === id);
-      if (i >= 0) { setFilter("all"); setOpen(i); }
-    }
-  }, [params]);
+    const id = Number(new URLSearchParams(window.location.search).get("piece"));
+    const i = GALLERY.findIndex((g) => g.id === id);
+    if (i >= 0) setOpen(i); // eslint-disable-line react-hooks/set-state-in-effect -- one-time read of the URL
+  }, []);
+  useEffect(() => {
+    const piece = open == null ? null : items[open]?.id;
+    const url = new URL(window.location.href);
+    if (String(piece ?? "") === (url.searchParams.get("piece") ?? "")) return;
+    if (piece) url.searchParams.set("piece", piece);
+    else url.searchParams.delete("piece");
+    window.history.replaceState(null, "", url);
+  }, [open, items]);
 
-  const close = useCallback(() => {
-    setOpen(null);
-    if (params.get("piece")) router.replace("/gallery", { scroll: false });
-  }, [params, router]);
+  const close = useCallback(() => setOpen(null), []);
   const move = useCallback((d) => setOpen((i) => (i == null ? i : (i + d + items.length) % items.length)), [items.length]);
 
   return (
@@ -122,9 +131,9 @@ function GalleryContent() {
           </header>
 
           {items.length === 0 ? (
-            <div className="panel panel-pad" style={{ maxWidth: 520 }}>
+            <div className="panel panel-pad w-m">
               <p className="h4">Nothing hung under that label yet.</p>
-              <button className="btn btn-ghost" style={{ marginTop: 14 }} onClick={() => setFilter("all")}>Show everything</button>
+              <button className="btn btn-ghost mt-4" onClick={() => setFilter("all")}>Show everything</button>
             </div>
           ) : (
             <ul className={s.wall} role="list">
@@ -150,7 +159,7 @@ function GalleryContent() {
           <section className={`panel panel-pad ${s.cta}`} aria-label="Book">
             <div>
               <h2 className="h3">Want to hang on this wall?</h2>
-              <p className="muted" style={{ marginTop: 6 }}>Book your chair and ask your barber for a photo on the way out.</p>
+              <p className="muted mt-2">Book your chair and ask your barber for a photo on the way out.</p>
             </div>
             <a href="/book" className="btn btn-primary btn-lg">Book a cut</a>
           </section>
@@ -159,13 +168,5 @@ function GalleryContent() {
       <SiteFooter />
       {open != null && <Lightbox items={items} index={open} onClose={close} onMove={move} />}
     </>
-  );
-}
-
-export default function GalleryPage() {
-  return (
-    <Suspense fallback={null}>
-      <GalleryContent />
-    </Suspense>
   );
 }

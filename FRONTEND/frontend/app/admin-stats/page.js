@@ -48,12 +48,12 @@ export default function AdminStatsPage() {
       </AppHeader>
       <main id="main" className="wrap dash" style={{ maxWidth: 1180 }}>
         <h1 className="h1">The whole shop</h1>
-        <p className="lede" style={{ marginTop: 8 }}>Every barber&apos;s book, added up. Revenue here counts online deposits only.</p>
-        {error && <Notice tone="bad" style={{ marginTop: 20 }}>{error}</Notice>}
+        <p className="lede mt-2">Every barber&apos;s book, added up. Revenue here counts online deposits only.</p>
+        {error && <Notice tone="bad" className="mt-5">{error}</Notice>}
         {!data && !error ? (
-          <div className="stack" style={{ "--stack": "14px", marginTop: 24 }}><Skeleton h={100} /><Skeleton h={220} /><Skeleton h={220} /></div>
+          <div className="stack mt-6" style={{ "--stack": "14px" }}><Skeleton h={100} /><Skeleton h={220} /><Skeleton h={220} /></div>
         ) : data && (
-          <div className="stack" style={{ "--stack": "20px", marginTop: 24 }}>
+          <div className="stack mt-6" style={{ "--stack": "20px" }}>
             <div className="stat-row">
               {[["Today", o.today_bookings], ["This week", o.week_bookings], ["Last 30 days", o.month_bookings], ["All time", o.total_bookings],
                 ["Waiting to check in", o.pending_shop], ["On waitlists", o.waitlist], ["Cancelled, 30 days", o.cancelled_30d], ["No-shows, 30 days", o.no_shows_30d]]
@@ -101,7 +101,7 @@ export default function AdminStatsPage() {
               {data.top_clients?.length > 0 && (
                 <section className="panel panel-pad">
                   <h2 className="h4">Regulars</h2>
-                  <ol className="stack" style={{ "--stack": "8px", marginTop: 12, paddingLeft: "1.3em" }}>
+                  <ol className="stack mt-3" style={{ "--stack": "8px", paddingLeft: "1.3em" }}>
                     {data.top_clients.map((c) => <li key={c.id}><span className="spread"><span>{c.name}</span><span className="small muted">{c.visits} visits</span></span></li>)}
                   </ol>
                 </section>
@@ -109,7 +109,7 @@ export default function AdminStatsPage() {
               {data.recent_reviews?.length > 0 && (
                 <section className="panel panel-pad">
                   <h2 className="h4">Latest reviews</h2>
-                  <ul className="stack" style={{ listStyle: "none", "--stack": "14px", marginTop: 12 }}>
+                  <ul className="stack mt-3" style={{ "--stack": "14px" }}>
                     {data.recent_reviews.slice(0, 8).map((r) => (
                       <li key={r.id}>
                         <p className="small"><strong>{r.client}</strong> for {r.barber}, {r.rating} star{r.rating === 1 ? "" : "s"} <span className="faint">{r.created_at}</span></p>

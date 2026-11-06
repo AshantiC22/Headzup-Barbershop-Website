@@ -1,15 +1,11 @@
 "use client";
-// ─────────────────────────────────────────────────────────────────────────────
-// The barber's studio. Every tab from the old dashboard is here, each in its
-// own component under components/barber/, and the payments tab (which the old
-// sidebar never linked to) is now reachable. The current tab lives in the URL
-// (?tab=clients), so a refresh keeps your place.
-// ─────────────────────────────────────────────────────────────────────────────
+// The barber's studio. Each tab is its own component under components/barber/.
+// The current tab lives in the URL (?tab=clients) so a refresh keeps your place.
 import { Suspense, useCallback, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import API from "@/lib/api";
 import { todayStr } from "@/lib/time";
-import { useNotifications } from "@/components/NotificationSystem";
+import { useAlerts } from "@/components/Alerts";
 import { ThemeToggle } from "@/components/ThemeProvider";
 import AppHeader from "@/components/site/AppHeader";
 import ScheduleTab from "@/components/barber/ScheduleTab";
@@ -40,7 +36,7 @@ const money = (n) => { const v = parseFloat(n || 0); return `$${v.toFixed(v % 1 
 function Studio() {
   const router = useRouter();
   const params = useSearchParams();
-  const { showPermitPrompt } = useNotifications() || {};
+  const { offerPush } = useAlerts();
   const [toastHost, toast] = useToasts();
   const [barber, setBarber] = useState(null);
   const [services, setServices] = useState([]);
@@ -50,7 +46,7 @@ function Studio() {
   const initial = ALIASES[params.get("tab")] || params.get("tab");
   const [tab, setTab] = useState(TABS.some((t) => t.id === initial) ? initial : "schedule");
 
-  useEffect(() => { showPermitPrompt?.(); }, [showPermitPrompt]);
+  useEffect(() => offerPush(), [offerPush]);
 
   useEffect(() => {
     let token = null;
@@ -110,8 +106,8 @@ function Studio() {
       <>
         <AppHeader title="Barber dashboard" signOutTo="/barber-login" />
         <div className="studio" aria-busy="true">
-          <aside className="studio-side"><Skeleton h={120} /><Skeleton h={360} style={{ marginTop: 16 }} /></aside>
-          <main className="studio-main"><Skeleton h={50} w="40%" /><Skeleton h={90} style={{ marginTop: 20 }} /><Skeleton h={300} style={{ marginTop: 16 }} /></main>
+          <aside className="studio-side"><Skeleton h={120} /><Skeleton h={360} className="mt-4" /></aside>
+          <main className="studio-main"><Skeleton h={50} w="40%" /><Skeleton h={90} className="mt-5" /><Skeleton h={300} className="mt-4" /></main>
         </div>
       </>
     );
@@ -148,8 +144,8 @@ function Studio() {
               </button>
             ))}
           </nav>
-          <a href="/admin-stats" className="side-link" style={{ marginTop: 6 }}><IconChart size={18} /> <span className="grow">Whole-shop overview</span></a>
-          <div style={{ marginTop: 18 }}><ThemeToggle /></div>
+          <a href="/admin-stats" className="side-link mt-2"><IconChart size={18} /> <span className="grow">Whole-shop overview</span></a>
+          <div className="mt-5"><ThemeToggle /></div>
         </aside>
 
         <main id="main" className="studio-main fade-in" key={tab}>

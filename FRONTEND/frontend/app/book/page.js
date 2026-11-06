@@ -1,12 +1,7 @@
 "use client";
-// ─────────────────────────────────────────────────────────────────────────────
 // Booking: service → barber → time → confirm.
-// Same API calls as before (services/, barbers/, working-days, available-slots,
-// appointments/, deposit/checkout/), with the flow made forgiving: links from
-// the home page pre-fill choices, a cancelled Stripe checkout brings you back
-// to the confirm step with everything still filled in, and "today" is the
-// shop's today, not UTC's.
-// ─────────────────────────────────────────────────────────────────────────────
+// Links from the home page pre-fill choices (?service=Haircut&barber=2), and a
+// cancelled Stripe checkout returns to the confirm step with everything kept.
 import { Suspense, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import API from "@/lib/api";
@@ -14,10 +9,12 @@ import FlowHeader from "@/components/site/FlowHeader";
 import Impression from "@/components/art/Impression";
 import { Calendar, SlotPicker, WorkWeek, makeDayRule } from "@/components/booking/Calendar";
 import { IconArrowLeft, Notice, Skeleton, Spinner } from "@/components/ui/Feedback";
+import { arrowSelect, rovingIndex } from "@/components/ui/roving";
 import { SERVICE_GROUPS, describeService, groupForService } from "@/lib/shop";
 import { fmtDate, fmtTime, to24Hour } from "@/lib/time";
 import s from "./book.module.css";
 
+const PAY_OPTIONS = ["shop", "online"];
 const STEPS = ["Service", "Barber", "Time", "Confirm"];
 const DRAFT_KEY = "hu_booking_draft";
 const money = (n) => `$${Number(n || 0).toFixed(Number(n) % 1 ? 2 : 0)}`;
@@ -87,7 +84,7 @@ function BookContent() {
 
   const go = (n) => { setStep(n); setMaxStep((m) => Math.max(m, n)); setError(""); window.scrollTo({ top: 0, behavior: "smooth" }); };
 
-  // ── Load services, barbers, strike status ────────────────────────────────
+  // Load services, barbers, strike status
   useEffect(() => {
     let token = null;
     try { token = localStorage.getItem("access"); } catch {}
@@ -131,10 +128,10 @@ function BookContent() {
     }).catch(() => {
       setLoadError("The booking list didn't load. Check your connection and try again.");
     }).finally(() => setInitLoading(false));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- once, at mount: reads the URL and any saved draft
   }, []);
 
-  // ── Barber chosen: working days + their price for this service ───────────
+  // Barber chosen: working days + their price for this service
   useEffect(() => {
     if (!barber) return;
     setDays((d) => ({ ...d, loading: true }));
@@ -148,10 +145,10 @@ function BookContent() {
         if (hit) setService(hit);
       }).catch(() => {});
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only when the barber changes, not when the price lookup updates service
   }, [barber?.id]);
 
-  // ── Date chosen: open slots ──────────────────────────────────────────────
+  // Date chosen: open slots
   useEffect(() => {
     if (!date || !barber || !service) return;
     setSlots((x) => ({ ...x, loading: true, list: [], message: "" }));
@@ -185,7 +182,6 @@ function BookContent() {
     return g;
   }, [services]);
 
-  // ── Submit ───────────────────────────────────────────────────────────────
   const confirmUrl = (extra) =>
     `/booking-confirmed?service=${encodeURIComponent(service.name)}&barber=${encodeURIComponent(barber.name)}&date=${date}&time=${encodeURIComponent(to24Hour(time))}&price=${price}${extra}`;
 
@@ -228,15 +224,14 @@ function BookContent() {
     setSubmitting(false);
   };
 
-  // ── Render ───────────────────────────────────────────────────────────────
   if (initLoading) {
     return (
       <>
         <FlowHeader title="Book a cut" />
         <main id="main" className={`wrap-narrow ${s.page}`} aria-busy="true">
-          <Skeleton h={34} style={{ marginBottom: 32 }} />
-          <Skeleton h={44} w="60%" style={{ marginBottom: 20 }} />
-          {[0, 1, 2, 3, 4].map((i) => <Skeleton key={i} h={64} style={{ marginBottom: 10 }} />)}
+          <Skeleton h={34} className="mb-7" />
+          <Skeleton h={44} w="60%" className="mb-5" />
+          {[0, 1, 2, 3, 4].map((i) => <Skeleton key={i} h={64} className="mb-3" />)}
         </main>
       </>
     );
@@ -248,18 +243,18 @@ function BookContent() {
       <main id="main" className={`wrap-narrow ${s.page}`}>
         <Progress step={step} maxStep={maxStep} onGo={go} />
 
-        {loadError && <Notice tone="bad" style={{ marginTop: 24 }}>{loadError}</Notice>}
-        {notice && <Notice tone="warn" style={{ marginTop: 24 }}>{notice}</Notice>}
+        {loadError && <Notice tone="bad" className="mt-6">{loadError}</Notice>}
+        {notice && <Notice tone="warn" className="mt-6">{notice}</Notice>}
 
         {step > 1 && <SittingPlacard service={service} barber={step > 2 ? barber : null} date={step > 3 ? date : null} time={step > 3 ? time : null} price={price} />}
 
-        {/* ── 1. Service ── */}
+        {/* 1. Service */}
         {step === 1 && (
           <section className={`${s.step} fade-in`} aria-labelledby="step-title">
             <h1 id="step-title" className="h2">What are we doing today?</h1>
-            {services.length === 0 && !loadError && <p className="muted" style={{ marginTop: 12 }}>No services are listed right now. Call the shop to book.</p>}
+            {services.length === 0 && !loadError && <p className="muted mt-3">No services are listed right now. Call the shop to book.</p>}
             {SERVICE_GROUPS.filter((g) => grouped[g.id]?.length).map((g) => (
-              <div key={g.id} className="board-group" style={{ marginTop: 28 }}>
+              <div key={g.id} className="board-group mt-7">
                 <h2 className="h4">{g.title}</h2>
                 {grouped[g.id].map((x) => (
                   <button key={x.id} className={`board-row ${service?.id === x.id ? "is-selected" : ""}`}
@@ -277,11 +272,11 @@ function BookContent() {
           </section>
         )}
 
-        {/* ── 2. Barber ── */}
+        {/* 2. Barber */}
         {step === 2 && (
           <section className={`${s.step} fade-in`} aria-labelledby="step-title">
             <h1 id="step-title" className="h2">Who&apos;s cutting?</h1>
-            <p className="muted" style={{ marginTop: 8 }}>Each barber keeps their own hours. You&apos;ll see their open days next.</p>
+            <p className="muted mt-2">Each barber keeps their own hours. You&apos;ll see their open days next.</p>
             <div className={s.barbers}>
               {barbers.map((b, i) => {
                 const photo = photoOk(b.photo_url) ? b.photo_url : null;
@@ -296,8 +291,8 @@ function BookContent() {
                       </span>
                     </span>
                     <span className="grow">
-                      <span className="h4" style={{ display: "block" }}>{b.name}</span>
-                      <span className="muted small" style={{ display: "block", marginTop: 4 }}>
+                      <span className="h4">{b.name}</span>
+                      <span className="muted small mt-1">
                         {b.bio || "Clean fades, sharp lines and an easy chair."}
                       </span>
                     </span>
@@ -309,7 +304,7 @@ function BookContent() {
           </section>
         )}
 
-        {/* ── 3. Time ── */}
+        {/* 3. Time */}
         {step === 3 && (
           <section className={`${s.step} fade-in`} aria-labelledby="step-title">
             <h1 id="step-title" className="h2">Pick a time</h1>
@@ -326,7 +321,7 @@ function BookContent() {
             {date && (
               <div className={s.timeBlock}>
                 <h2 className="h3">{fmtDate(date, "long")}</h2>
-                <p className="small muted" style={{ margin: "4px 0 16px" }} aria-live="polite">
+                <p className="small muted mt-1 mb-4" aria-live="polite">
                   {slots.loading ? "Finding open times…" : slots.list.length
                     ? `${slots.list.length} open time${slots.list.length === 1 ? "" : "s"}`
                     : slots.message || "No open times that day."}
@@ -353,7 +348,7 @@ function BookContent() {
           </section>
         )}
 
-        {/* ── 4. Confirm ── */}
+        {/* 4. Confirm */}
         {step === 4 && service && barber && (
           <section className={`${s.step} fade-in`} aria-labelledby="step-title">
             <h1 id="step-title" className="h2">Look it over</h1>
@@ -366,26 +361,27 @@ function BookContent() {
               <div className="sum-row sum-total"><dt>Price</dt><dd className="price" style={{ fontSize: "1.3rem" }}>{money(price)}</dd></div>
             </dl>
 
-            <div className="field" style={{ marginTop: 24 }}>
+            <div className="field mt-6">
               <label className="label" htmlFor="notes">Notes for {barber.name.split(" ")[0]} <span className="label-note">(optional)</span></label>
               <textarea id="notes" className="textarea" rows={3} value={notes} onChange={(e) => setNotes(e.target.value)}
                 placeholder="Low taper, keep the length on top, beard lined…" maxLength={500} />
             </div>
 
             <fieldset className={s.payment}>
-              <legend className="label" style={{ marginBottom: 10 }}>How do you want to pay?</legend>
-              <div className="stack" style={{ "--stack": "10px" }} role="radiogroup">
-                <button type="button" role="radio" aria-checked={pay === "shop"} className="choice" onClick={() => setPay("shop")}>
+              <legend className="label mb-3">How do you want to pay?</legend>
+              <div className="stack" style={{ "--stack": "10px" }} role="radiogroup" aria-label="How to pay"
+                onKeyDown={(e) => arrowSelect(e, PAY_OPTIONS, pay, setPay)}>
+                <button type="button" role="radio" aria-checked={pay === "shop"} tabIndex={rovingIndex("shop", pay, PAY_OPTIONS)} className="choice" onClick={() => setPay("shop")}>
                   <span className="radio-dot" aria-hidden="true" />
                   <span className="grow">
-                    <span className="h4" style={{ display: "block" }}>Pay at the shop</span>
+                    <span className="h4">Pay at the shop</span>
                     <span className="muted small">Pay the full {money(price)} in the chair, cash or card.</span>
                   </span>
                 </button>
-                <button type="button" role="radio" aria-checked={pay === "online"} className="choice" onClick={() => setPay("online")}>
+                <button type="button" role="radio" aria-checked={pay === "online"} tabIndex={rovingIndex("online", pay, PAY_OPTIONS)} className="choice" onClick={() => setPay("online")}>
                   <span className="radio-dot" aria-hidden="true" />
                   <span className="grow">
-                    <span className="h4" style={{ display: "block" }}>Hold it with a {money(deposit)} deposit</span>
+                    <span className="h4">Hold it with a {money(deposit)} deposit</span>
                     <span className="muted small">
                       Pay {money(deposit)} now by card through Stripe. The other {money(remaining)} is due in the chair.
                     </span>
@@ -395,12 +391,12 @@ function BookContent() {
             </fieldset>
 
             {strikes > 0 && (
-              <Notice tone="warn" style={{ marginTop: 16 }}>
+              <Notice tone="warn" className="mt-4">
                 You have {strikes} missed-appointment strike{strikes === 1 ? "" : "s"} on your account
                 {strikes > 1 ? ", so your deposit is a little higher" : ""}. Arriving on time clears the way.
               </Notice>
             )}
-            {error && <Notice tone="bad" style={{ marginTop: 16 }}>{error}</Notice>}
+            {error && <Notice tone="bad" className="mt-4">{error}</Notice>}
 
             <div className="action-bar">
               <button className="btn btn-primary btn-lg btn-block" disabled={submitting}
@@ -411,7 +407,7 @@ function BookContent() {
                     ? `Pay ${money(deposit)} and book`
                     : `Book ${fmtDate(date)} at ${fmtTime(time)}`}
               </button>
-              <p className="small faint center" style={{ marginTop: 10 }}>
+              <p className="small faint center mt-3">
                 Need to change plans later? Reschedule or cancel from My appointments.{" "}
                 {pay === "online" && <>Deposits are non-refundable. <a className="link" href="/terms">Terms</a></>}
               </p>

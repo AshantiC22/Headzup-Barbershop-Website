@@ -105,13 +105,13 @@ export default function BarberLoginPage() {
     <AuthShell seed={11}>
       <Segmented label="Barber account" value={mode} onChange={switchMode}
         options={[["login", "Sign in"], ["join", "Join the shop"]]} />
-      {success && <Notice tone="ok" style={{ marginBottom: 18 }}>{success}</Notice>}
-      {error && <Notice tone="bad" style={{ marginBottom: 18 }}>{error}</Notice>}
+      {success && <Notice tone="ok" className="mb-5">{success}</Notice>}
+      {error && <Notice tone="bad" className="mb-5">{error}</Notice>}
 
       {mode === "login" ? (
         <form onSubmit={signIn} noValidate>
-          <h1 className="h2" style={{ marginBottom: 6 }}>Barber sign-in</h1>
-          <p className="muted" style={{ marginBottom: 20 }}>Your chair, your book, your clients.</p>
+          <h1 className="h2 mb-2">Barber sign-in</h1>
+          <p className="muted mb-5">Your chair, your book, your clients.</p>
           <Field id="b-user" label="Username" error={errs.user}>
             <TextInput id="b-user" error={errs.user} value={user} onChange={(e) => setUser(e.target.value)}
               autoComplete="username" autoCapitalize="none" autoCorrect="off" />
@@ -126,8 +126,8 @@ export default function BarberLoginPage() {
         </form>
       ) : (
         <form onSubmit={join} noValidate>
-          <h1 className="h2" style={{ marginBottom: 6 }}>Join the shop</h1>
-          <p className="muted" style={{ marginBottom: 20 }}>You&apos;ll need the invite code from the owner.</p>
+          <h1 className="h2 mb-2">Join the shop</h1>
+          <p className="muted mb-5">You&apos;ll need the invite code from the owner.</p>
           <Field id="j-name" label="Name clients will see" error={errs.name}>
             <TextInput id="j-name" error={errs.name} value={f.name} onChange={set("name")} autoComplete="name" />
           </Field>

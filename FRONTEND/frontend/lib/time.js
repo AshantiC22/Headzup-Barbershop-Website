@@ -1,9 +1,7 @@
-// ─────────────────────────────────────────────────────────────────────────────
 // Date and time helpers.
 // Every date string in the API is a plain "YYYY-MM-DD" (shop-local), and every
-// time is "HH:MM" or "HH:MM:SS". These helpers never go through UTC, which is
-// what made "today" flip to tomorrow after 6 PM in the old pages.
-// ─────────────────────────────────────────────────────────────────────────────
+// time is "HH:MM" or "HH:MM:SS". Nothing here goes through UTC: toISOString()
+// turns this evening into tomorrow anywhere west of Greenwich.
 import { HOURS, SHOP } from "./shop";
 
 const pad = (n) => String(n).padStart(2, "0");
@@ -97,7 +95,7 @@ export function partOfDay(t) {
   return "Evening";
 }
 
-// ── Shop open/closed, computed in Central time wherever the visitor is ──────
+// Shop open/closed, computed in Central time wherever the visitor is
 function shopNowParts() {
   try {
     const fmt = new Intl.DateTimeFormat("en-US", {

@@ -18,25 +18,27 @@ const COPY = {
 
 function Inner() {
   const p = useSearchParams();
-  const [status, setStatus] = useState("loading");
+  const token = p.get("token");
+  const action = p.get("action");
+  const valid = !!token && (action === "accept" || action === "reject");
+  const [result, setResult] = useState("loading");
   useEffect(() => {
-    const token = p.get("token");
-    const action = p.get("action");
-    if (!token || !["accept", "reject"].includes(action)) { setStatus("invalid"); return; }
+    if (!valid) return;
     fetch(`${API_ROOT}/api/reschedule/respond/?token=${encodeURIComponent(token)}&action=${action}`)
       .then((r) => r.json())
-      .then((d) => setStatus(
+      .then((d) => setResult(
         d.status === "accepted" ? "accepted" : d.status === "rejected" ? "rejected" : d.status === "already_handled" ? "already" : "error",
       ))
-      .catch(() => setStatus("error"));
-  }, [p]);
+      .catch(() => setResult("error"));
+  }, [valid, token, action]);
+  const status = valid ? result : "invalid";
   const c = COPY[status];
   return (
     <AuthShell seed={17}>
       <h1 className="h1" aria-live="polite">{status === "loading" ? <Spinner label={c.title} /> : c.title}</h1>
-      <p className="lede" style={{ marginTop: 12 }}>{c.body}</p>
+      <p className="lede mt-3">{c.body}</p>
       {status !== "loading" && (
-        <a href="/barber-dashboard" className="btn btn-primary btn-lg btn-block" style={{ marginTop: 22 }}>Open the barber dashboard</a>
+        <a href="/barber-dashboard" className="btn btn-primary btn-lg btn-block mt-6">Open the barber dashboard</a>
       )}
     </AuthShell>
   );

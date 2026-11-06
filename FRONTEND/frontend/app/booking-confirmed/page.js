@@ -66,7 +66,7 @@ function ConfirmedContent() {
     return (
       <AuthShell seed={21}>
         <h1 className="h2">The booking didn&apos;t confirm</h1>
-        <p className="muted" style={{ margin: "10px 0 20px" }}>
+        <p className="muted mt-3 mb-5">
           Your card may still have been charged. Check My appointments first; if the booking isn&apos;t there,
           call the shop and we&apos;ll sort it out.
         </p>
@@ -82,13 +82,13 @@ function ConfirmedContent() {
   return (
     <AuthShell seed={21}>
       <div className={`confirm-stamp ${stamp ? "is-on" : ""}`} aria-hidden="true"><IconCheck size={30} /></div>
-      <h1 className="h1" style={{ marginTop: 14 }}>You&apos;re booked.</h1>
-      <p className="lede" style={{ marginTop: 10 }}>
+      <h1 className="h1 mt-4">You&apos;re booked.</h1>
+      <p className="lede mt-3">
         {service && barber ? <>{service} with {barber}</> : "Your appointment is set"}
         {date && <>, {fmtDate(date, "long")}</>}{time && <> at {fmtTime(time)}</>}.
       </p>
 
-      <div className="placard" style={{ marginTop: 22 }}>
+      <div className="placard mt-6">
         <dl className="sum-rows">
           {service && <div className="sum-row"><dt>Service</dt><dd>{service}</dd></div>}
           {barber && <div className="sum-row"><dt>Barber</dt><dd>{barber}</dd></div>}
@@ -103,12 +103,12 @@ function ConfirmedContent() {
         </dl>
       </div>
 
-      <Notice tone="info" style={{ marginTop: 18 }}>
+      <Notice tone="info" className="mt-5">
         {ADDRESS_LINE}. Get there five minutes early; your chair is held for 15 minutes past your time.
         A confirmation text is on its way.
       </Notice>
 
-      <div className="stack" style={{ "--stack": "10px", marginTop: 22 }}>
+      <div className="stack mt-6" style={{ "--stack": "10px" }}>
         <a href="/dashboard" className="btn btn-primary btn-lg btn-block">See my appointments</a>
         <div className="row" style={{ gap: 10 }}>
           {date && time && (

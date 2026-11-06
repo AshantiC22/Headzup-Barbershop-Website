@@ -1,8 +1,11 @@
 "use client";
-// Session helpers. The API issues JWTs; the payload carries is_staff.
-import { useCallback, useEffect, useState } from "react";
+// Session helpers. The API issues JWTs and the access token's payload carries
+// is_staff, which is all the nav needs to know.
+import { useEffect, useMemo, useSyncExternalStore } from "react";
 
-const API_ROOT = process.env.NEXT_PUBLIC_API_URL || "https://api.headzupp.com";
+export const API_ROOT = process.env.NEXT_PUBLIC_API_URL || "https://api.headzupp.com";
+
+const SESSION_EVENT = "headzup:session";
 
 export function decodeToken(token) {
   try {
@@ -13,18 +16,22 @@ export function decodeToken(token) {
   }
 }
 
-export function clearSession() {
-  try {
-    localStorage.removeItem("access");
-    localStorage.removeItem("refresh");
-  } catch {}
-}
+const announce = () => window.dispatchEvent(new Event(SESSION_EVENT));
 
 export function saveSession({ access, refresh }) {
   try {
     if (access) localStorage.setItem("access", access);
     if (refresh) localStorage.setItem("refresh", refresh);
   } catch {}
+  announce();
+}
+
+export function clearSession() {
+  try {
+    localStorage.removeItem("access");
+    localStorage.removeItem("refresh");
+  } catch {}
+  announce();
 }
 
 /** Only follow ?next= links that stay on this site. */
@@ -33,51 +40,48 @@ export function safeNext(next, fallback = "/dashboard") {
   return fallback;
 }
 
-/**
- * Who is looking at the page? Returns { ready, loggedIn, isStaff }.
- * Refreshes an expired access token quietly when a refresh token exists.
- */
-export function useSession() {
-  const [state, setState] = useState({ ready: false, loggedIn: false, isStaff: false });
+// The access token is the store. Other tabs signing in or out arrive through
+// "storage"; this tab's own changes through SESSION_EVENT.
+function subscribe(onChange) {
+  window.addEventListener("storage", onChange);
+  window.addEventListener("focus", onChange);
+  window.addEventListener(SESSION_EVENT, onChange);
+  return () => {
+    window.removeEventListener("storage", onChange);
+    window.removeEventListener("focus", onChange);
+    window.removeEventListener(SESSION_EVENT, onChange);
+  };
+}
+const readAccess = () => { try { return localStorage.getItem("access"); } catch { return null; } };
+const NOT_YET = undefined; // server render and hydration: we don't know yet
 
-  const check = useCallback(() => {
-    let access = null;
-    try { access = localStorage.getItem("access"); } catch {}
-    if (!access) { setState({ ready: true, loggedIn: false, isStaff: false }); return; }
-    const p = decodeToken(access);
-    if (p && p.exp && p.exp * 1000 > Date.now()) {
-      setState({ ready: true, loggedIn: true, isStaff: !!p.is_staff });
-      return;
-    }
+/** Who is looking at the page? { ready, loggedIn, isStaff } */
+export function useSession() {
+  const access = useSyncExternalStore(subscribe, readAccess, () => NOT_YET);
+  const claims = useMemo(() => (access ? decodeToken(access) : null), [access]);
+
+  // An expired access token gets one quiet refresh; if that fails, sign out.
+  useEffect(() => {
+    if (!claims?.exp || claims.exp * 1000 > Date.now()) return;
     let refresh = null;
     try { refresh = localStorage.getItem("refresh"); } catch {}
-    if (!refresh) { clearSession(); setState({ ready: true, loggedIn: false, isStaff: false }); return; }
+    if (!refresh) { clearSession(); return; }
+    const ctrl = new AbortController();
     fetch(`${API_ROOT}/api/token/refresh/`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ refresh }),
+      signal: ctrl.signal,
     })
       .then((r) => (r.ok ? r.json() : null))
-      .then((d) => {
-        if (d?.access) {
-          saveSession(d);
-          const np = decodeToken(d.access);
-          setState({ ready: true, loggedIn: true, isStaff: !!np?.is_staff });
-        } else {
-          clearSession();
-          setState({ ready: true, loggedIn: false, isStaff: false });
-        }
-      })
-      .catch(() => setState({ ready: true, loggedIn: false, isStaff: false }));
-  }, []);
+      .then((d) => (d?.access ? saveSession(d) : clearSession()))
+      .catch(() => {}); // offline: keep the tokens; the API client refreshes on its next 401
+    return () => ctrl.abort();
+  }, [claims]);
 
-  useEffect(() => {
-    check();
-    window.addEventListener("focus", check);
-    return () => window.removeEventListener("focus", check);
-  }, [check]);
-
-  return state;
+  return {
+    ready: access !== NOT_YET,
+    loggedIn: !!claims,
+    isStaff: !!claims?.is_staff,
+  };
 }
-
-export { API_ROOT };

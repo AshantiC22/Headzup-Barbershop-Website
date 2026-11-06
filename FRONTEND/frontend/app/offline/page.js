@@ -16,15 +16,15 @@ export default function OfflinePage() {
       <PaintedSky seed={88} />
       <main id="main" className="sky-content nf-wrap">
         <ShopSign />
-        <div className="panel panel-pad" style={{ marginTop: 40, maxWidth: 440, textAlign: "center" }}>
+        <div className="panel panel-pad mt-8" style={{ maxWidth: 440, textAlign: "center" }}>
           <h1 className="h2">You&apos;re offline.</h1>
-          <p className="muted" style={{ marginTop: 10 }}>
+          <p className="muted mt-3">
             The shop&apos;s book needs a connection. This page reloads by itself when you&apos;re back online.
           </p>
-          <button className="btn btn-primary btn-lg btn-block" style={{ marginTop: 20 }} onClick={() => window.location.reload()}>
+          <button className="btn btn-primary btn-lg btn-block mt-5" onClick={() => window.location.reload()}>
             Try again
           </button>
-          <a className="btn btn-quiet btn-block" style={{ marginTop: 8 }} href={`tel:${SHOP.phone}`}>Call {SHOP.phoneDisplay}</a>
+          <a className="btn btn-quiet btn-block mt-2" href={`tel:${SHOP.phone}`}>Call {SHOP.phoneDisplay}</a>
         </div>
       </main>
     </div>

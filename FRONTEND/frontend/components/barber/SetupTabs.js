@@ -9,12 +9,10 @@ import { fmtDate, fmtTime, todayStr } from "@/lib/time";
 const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 const hhmm = (t) => (t ? String(t).slice(0, 5) : "");
 
-// ── Hours ───────────────────────────────────────────────────────────────────
 function DayRow({ i, info, onSave }) {
   const on = !!info?.is_working;
   const [start, setStart] = useState(hhmm(info?.start_time) || "09:00");
   const [end, setEnd] = useState(hhmm(info?.end_time) || "18:00");
-  useEffect(() => { setStart(hhmm(info?.start_time) || "09:00"); setEnd(hhmm(info?.end_time) || "18:00"); }, [info]);
   const commit = (s = start, e = end, working = on) => {
     if (working && s >= e) return;
     onSave(i, { is_working: working, start_time: s, end_time: e });
@@ -95,24 +93,28 @@ export function HoursTab({ toast }) {
       <div className="setup-grid">
         <section className="panel panel-pad">
           <h2 className="h4">Weekly hours</h2>
-          <p className="small muted" style={{ marginTop: 4 }}>Changes save when you leave a field. The shop is closed Sundays.</p>
-          {!avail ? <Skeleton h={300} style={{ marginTop: 14 }} /> : (
+          <p className="small muted mt-1">Changes save when you leave a field. The shop is closed Sundays.</p>
+          {!avail ? <Skeleton h={300} className="mt-4" /> : (
             <ul className="day-list">
-              {DAYS.map((d, i) => <DayRow key={d} i={i} info={avail.find((x) => x.day_of_week === i)} onSave={saveDay} />)}
+              {DAYS.map((d, i) => {
+                const info = avail.find((x) => x.day_of_week === i);
+                // Keyed on the saved hours so the inputs reset when the server's copy changes.
+                return <DayRow key={`${d}-${info?.is_working}-${info?.start_time}-${info?.end_time}`} i={i} info={info} onSave={saveDay} />;
+              })}
             </ul>
           )}
         </section>
 
         <section className="panel panel-pad">
           <h2 className="h4">Days off</h2>
-          <form className="row-wrap" style={{ marginTop: 12 }} onSubmit={addOff}>
+          <form className="row-wrap mt-3" onSubmit={addOff}>
             <input type="date" className="input" min={todayStr()} aria-label="Day off" value={newOff.date}
               onChange={(e) => setNewOff((p) => ({ ...p, date: e.target.value }))} style={{ flex: "1 1 160px" }} />
             <input className="input" placeholder="Reason (optional)" aria-label="Reason" value={newOff.reason}
               onChange={(e) => setNewOff((p) => ({ ...p, reason: e.target.value }))} style={{ flex: "2 1 200px" }} />
             <button className="btn btn-primary" disabled={!newOff.date}>Block day</button>
           </form>
-          <ul className="stack" style={{ listStyle: "none", "--stack": "8px", marginTop: 14 }}>
+          <ul className="stack mt-4" style={{ "--stack": "8px" }}>
             {off.length === 0 && <li className="small faint">No days off coming up.</li>}
             {off.map((t) => (
               <li key={t.id} className="spread placard" style={{ padding: "10px 14px" }}>
@@ -125,9 +127,9 @@ export function HoursTab({ toast }) {
 
         <form className="panel panel-pad span-all" onSubmit={saveSettings}>
           <h2 className="h4">Online booking rules</h2>
-          {!settings ? <Skeleton h={160} style={{ marginTop: 12 }} /> : (
+          {!settings ? <Skeleton h={160} className="mt-3" /> : (
             <>
-              <div className="field" style={{ marginTop: 14, maxWidth: 260 }}>
+              <div className="field mt-4" style={{ maxWidth: 260 }}>
                 <label className="label" htmlFor="dep">Deposit amount</label>
                 <div className="input-wrap">
                   <span className="input-prefix" aria-hidden="true">$</span>
@@ -146,7 +148,7 @@ export function HoursTab({ toast }) {
                     onClick={() => setSettings((p) => ({ ...p, [k]: !p[k] }))} />
                 </div>
               ))}
-              <button className="btn btn-primary" style={{ marginTop: 16 }} disabled={saving}>{saving ? <Spinner label="Saving" /> : "Save booking rules"}</button>
+              <button className="btn btn-primary mt-4" disabled={saving}>{saving ? <Spinner label="Saving" /> : "Save booking rules"}</button>
             </>
           )}
         </form>
@@ -155,7 +157,6 @@ export function HoursTab({ toast }) {
   );
 }
 
-// ── News ────────────────────────────────────────────────────────────────────
 const CATS = [["general", "General"], ["deal", "Deal"], ["promo", "Promo"], ["update", "Update"], ["event", "Event"]];
 
 export function NewsTab({ toast }) {
@@ -183,7 +184,7 @@ export function NewsTab({ toast }) {
   return (
     <div>
       <div className="tab-head"><div><h1 className="h2">News</h1><p className="muted">Posts show on the News page and ping clients who have alerts on.</p></div></div>
-      <form className="panel panel-pad" onSubmit={publish} style={{ maxWidth: 680 }}>
+      <form className="panel panel-pad w-l" onSubmit={publish}>
         <div className="form-grid news-form">
           <div className="field">
             <label className="label" htmlFor="n-emoji">Icon</label>
@@ -198,7 +199,7 @@ export function NewsTab({ toast }) {
           <label className="label" htmlFor="n-body">Message</label>
           <textarea id="n-body" className="textarea" rows={4} value={f.body} onChange={(e) => setF((p) => ({ ...p, body: e.target.value }))} />
         </div>
-        <div className="row-wrap" style={{ marginTop: 14, justifyContent: "space-between" }}>
+        <div className="row-wrap mt-4" style={{ justifyContent: "space-between" }}>
           <div className="row-wrap">
             <select className="select" aria-label="Kind of post" value={f.category} onChange={(e) => setF((p) => ({ ...p, category: e.target.value }))} style={{ width: "auto" }}>
               {CATS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
@@ -208,9 +209,9 @@ export function NewsTab({ toast }) {
           <button className="btn btn-primary" disabled={busy}>{busy ? <Spinner label="Publishing" /> : "Publish"}</button>
         </div>
       </form>
-      <h2 className="h4" style={{ margin: "28px 0 12px" }}>Posted</h2>
+      <h2 className="h4 mt-7 mb-3">Posted</h2>
       {!posts ? <Skeleton h={120} /> : posts.length === 0 ? <p className="muted">Nothing posted yet.</p> : (
-        <ul className="stack" style={{ listStyle: "none", "--stack": "10px", maxWidth: 680 }}>
+        <ul className="stack" style={{ "--stack": "10px", maxWidth: 680 }}>
           {posts.map((p) => (
             <li key={p.id} className="placard">
               <div className="spread" style={{ alignItems: "flex-start" }}>
@@ -220,14 +221,14 @@ export function NewsTab({ toast }) {
                 </div>
                 <button className="icon-btn" aria-label={`Delete ${p.title}`} onClick={() => setDel(p)}><IconTrash size={18} /></button>
               </div>
-              <p className="muted" style={{ marginTop: 8, whiteSpace: "pre-line" }}>{p.body}</p>
+              <p className="muted mt-2 pre-line">{p.body}</p>
             </li>
           ))}
         </ul>
       )}
       <Modal open={!!del} onClose={() => setDel(null)} title="Take this post down?">
         <p className="muted">&ldquo;{del?.title}&rdquo; comes off the News page. This can&apos;t be undone.</p>
-        <div className="row-wrap" style={{ marginTop: 18 }}>
+        <div className="row-wrap mt-5">
           <button className="btn btn-danger grow" onClick={remove}>Delete post</button>
           <button className="btn btn-ghost grow" onClick={() => setDel(null)}>Keep it</button>
         </div>
@@ -236,7 +237,6 @@ export function NewsTab({ toast }) {
   );
 }
 
-// ── Profile ─────────────────────────────────────────────────────────────────
 export function ProfileTab({ barber, setBarber, toast }) {
   const [preview, setPreview] = useState(null);
   const [bio, setBio] = useState(barber?.bio || "");
@@ -275,9 +275,9 @@ export function ProfileTab({ barber, setBarber, toast }) {
                 : <div className="monogram-sm" aria-hidden="true">{barber?.name?.charAt(0)}</div>}
             </div>
           </div>
-          <p className="h3" style={{ marginTop: 18 }}>{barber?.name}</p>
-          <p className="small muted" style={{ marginTop: 4 }}>Clients see your photo painted, like this.</p>
-          <div className="row-wrap" style={{ justifyContent: "center", marginTop: 14 }}>
+          <p className="h3 mt-5">{barber?.name}</p>
+          <p className="small muted mt-1">Clients see your photo painted, like this.</p>
+          <div className="row-wrap mt-4" style={{ justifyContent: "center" }}>
             <label className="btn btn-ghost btn-sm">
               <IconCamera size={16} /> {barber?.photo_url ? "Change photo" : "Add a photo"}
               <input type="file" accept="image/*" className="sr-only" onChange={pick} />
@@ -291,21 +291,21 @@ export function ProfileTab({ barber, setBarber, toast }) {
               </>
             )}
           </div>
-          <p className="field-hint" style={{ marginTop: 8 }}>JPG or PNG under 5 MB. A square, well-lit face works best.</p>
+          <p className="field-hint mt-2">JPG or PNG under 5 MB. A square, well-lit face works best.</p>
         </section>
 
         <div className="stack" style={{ "--stack": "16px" }}>
           <form className="panel panel-pad" onSubmit={(e) => { e.preventDefault(); save("bio", { bio: bio.trim() }); }}>
-            <label className="h4" htmlFor="bio" style={{ display: "block" }}>Bio</label>
-            <textarea id="bio" className="textarea" rows={4} maxLength={300} value={bio} onChange={(e) => setBio(e.target.value)}
-              placeholder="Twenty years behind the chair. Fades, beard work, and patience for kids." style={{ marginTop: 10 }} />
+            <label className="h4" htmlFor="bio">Bio</label>
+            <textarea id="bio" className="textarea mt-3" rows={4} maxLength={300} value={bio} onChange={(e) => setBio(e.target.value)}
+              placeholder="Twenty years behind the chair. Fades, beard work, and patience for kids." />
             <p className="field-hint">{bio.length}/300</p>
-            <button className="btn btn-ghost btn-sm" style={{ marginTop: 10 }} disabled={busy === "bio"}>{busy === "bio" ? <Spinner label="Saving" /> : "Save bio"}</button>
+            <button className="btn btn-ghost btn-sm mt-3" disabled={busy === "bio"}>{busy === "bio" ? <Spinner label="Saving" /> : "Save bio"}</button>
           </form>
           <form className="panel panel-pad" onSubmit={(e) => { e.preventDefault(); save("cash", { cashapp_tag: cash.trim() ? `$${cash.trim().replace(/^\$/, "")}` : "" }); }}>
-            <label className="h4" htmlFor="cash" style={{ display: "block" }}>Cash App</label>
-            <p className="small muted" style={{ marginTop: 4 }}>For clients who want to pay you that way in the shop.</p>
-            <div className="row" style={{ marginTop: 10 }}>
+            <label className="h4" htmlFor="cash">Cash App</label>
+            <p className="small muted mt-1">For clients who want to pay you that way in the shop.</p>
+            <div className="row mt-3">
               <div className="input-wrap grow">
                 <span className="input-prefix" aria-hidden="true">$</span>
                 <input id="cash" className="input" style={{ paddingLeft: 28 }} value={cash} onChange={(e) => setCash(e.target.value)} placeholder="yourcashtag" autoCapitalize="none" />

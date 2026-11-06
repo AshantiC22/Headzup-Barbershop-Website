@@ -1,10 +1,6 @@
 "use client";
-// ─────────────────────────────────────────────────────────────────────────────
-// Home. The whole site is framed as a small salon of paintings: the hero is
-// the big canvas, services hang as a painted price board, barbers are oval
-// portraits, the work is a salon hang, and every piece of information comes
-// with a museum placard.
-// ─────────────────────────────────────────────────────────────────────────────
+// Home, hung like a small salon: the hero is the big canvas, prices are a
+// painted board, barbers are oval portraits, and the work hangs with placards.
 import { useEffect, useState } from "react";
 import HarborScene from "@/components/art/HarborScene";
 import Impression from "@/components/art/Impression";
@@ -47,7 +43,6 @@ function useBarbers() {
   return state;
 }
 
-// ── Sections ────────────────────────────────────────────────────────────────
 function Hero({ status }) {
   return (
     <section className={s.hero} aria-labelledby="hero-title">
@@ -96,7 +91,7 @@ function PriceBoard() {
             return (
               <div key={g.id} className={`board-group ${s[`group_${g.id}`] || ""}`}>
                 <h3 className="h3">{g.title}</h3>
-                <p className="caption" style={{ marginTop: 4, marginBottom: 6 }}>{g.note}</p>
+                <p className="caption mt-1 mb-2">{g.note}</p>
                 {rows.map((svc) => (
                   <a key={svc.name} className="board-row" href={`/book?service=${encodeURIComponent(svc.name)}`}>
                     <span className="board-name">{svc.name}</span>
@@ -137,12 +132,12 @@ function Barbers({ barbers }) {
             ))}
           </div>
         ) : list.length === 0 ? (
-          <div className="panel panel-pad" style={{ maxWidth: 560 }}>
+          <div className="panel panel-pad w-m">
             <p className="h4">{failed ? "Barber profiles didn't load." : "No barbers listed yet."}</p>
-            <p className="muted" style={{ marginTop: 6 }}>
+            <p className="muted mt-2">
               You can still book. The booking page shows everyone taking appointments today.
             </p>
-            <a href="/book" className="btn btn-primary" style={{ marginTop: 16 }}>Book a cut</a>
+            <a href="/book" className="btn btn-primary mt-4">Book a cut</a>
           </div>
         ) : (
           <ul className={s.portraits} role="list">
@@ -160,11 +155,11 @@ function Barbers({ barbers }) {
                       )}
                     </div>
                   </div>
-                  <h3 className="h3" style={{ marginTop: 22 }}>{b.name}</h3>
-                  <p className="muted" style={{ marginTop: 6, maxWidth: "32ch", marginInline: "auto" }}>
+                  <h3 className="h3 mt-6">{b.name}</h3>
+                  <p className="muted mt-2" style={{ maxWidth: "32ch", marginInline: "auto" }}>
                     {b.bio || "Clean fades, sharp lines and an easy chair."}
                   </p>
-                  <a href={`/book?barber=${b.id}`} className="btn btn-ghost" style={{ marginTop: 16 }}>
+                  <a href={`/book?barber=${b.id}`} className="btn btn-ghost mt-4">
                     Book with {first}
                   </a>
                 </li>
@@ -215,7 +210,7 @@ function Reviews() {
   return (
     <section id="reviews" className={`section mist ${s.reviews}`} aria-labelledby="reviews-title">
       <div className="wrap">
-        <h2 id="reviews-title" className="h2" style={{ marginBottom: 36 }}>What clients say</h2>
+        <h2 id="reviews-title" className="h2 mb-8">What clients say</h2>
         <div className={s.reviewGrid}>
           <figure className={s.leadQuote}>
             <blockquote>

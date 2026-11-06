@@ -1,17 +1,16 @@
 "use client";
-// ─────────────────────────────────────────────────────────────────────────────
-// Two lights for one painting:
-//   Day      — Monet's harbor at sunrise: mist blue, lead white, a low orange sun.
-//   Nocturne — Whistler's blue and gold: deep night water, gilt sparks.
+// Two lights for one painting: Day (Monet's harbor at sunrise) and Nocturne
+// (Whistler's blue and gold). The colors live in globals.css; this file only
+// decides which one is on.
 //
-// The colors themselves live in globals.css as CSS variables. This provider
-// only decides which one is showing, remembers the choice, and tells the
-// canvas painters which palette to use. The <html data-theme> attribute is
-// set before first paint by a tiny script in layout.tsx, so there is no flash.
-// ─────────────────────────────────────────────────────────────────────────────
-import { createContext, useCallback, useContext, useEffect, useState } from "react";
+// <html data-theme> is the source of truth. The inline script in layout.tsx
+// sets it before first paint, and everything here reads it back through
+// useSyncExternalStore, so React never disagrees with what's on screen.
+import { createContext, useCallback, useContext, useEffect, useMemo, useSyncExternalStore } from "react";
+import { arrowSelect, rovingIndex } from "@/components/ui/roving";
 
-const STORAGE_KEY = "headzup_theme"; // values: "light" | "dark" (kept from v1)
+const STORAGE_KEY = "headzup_theme";
+const MODES = ["light", "dark"];
 
 // Hex values for code that can't read CSS variables (canvas, meta theme-color).
 export const TOKENS = {
@@ -27,70 +26,62 @@ export const TOKENS = {
   },
 };
 
-const ThemeContext = createContext({
-  mode: "light", isDark: false, theme: TOKENS.light, palette: "day",
-  toggle: () => {}, setMode: () => {},
-});
+function subscribe(onChange) {
+  const observer = new MutationObserver(onChange);
+  observer.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+  return () => observer.disconnect();
+}
+const readMode = () => (document.documentElement.dataset.theme === "dark" ? "dark" : "light");
 
-function readInitial() {
-  if (typeof document === "undefined") return "light";
-  return document.documentElement.getAttribute("data-theme") === "dark" ? "dark" : "light";
+function applyMode(mode, { remember }) {
+  const root = document.documentElement;
+  root.dataset.theme = mode;
+  root.style.colorScheme = mode;
+  // Browser chrome follows the page, not the OS, once a theme is on.
+  document.querySelectorAll('meta[name="theme-color"]').forEach((m) => m.setAttribute("content", TOKENS[mode].bg));
+  if (remember) { try { localStorage.setItem(STORAGE_KEY, mode); } catch {} }
 }
 
-export function ThemeProvider({ children }) {
-  const [mode, setModeState] = useState("light");
+const ThemeContext = createContext({
+  mode: "light", isDark: false, theme: TOKENS.light, palette: "day", setMode: () => {},
+});
 
-  const apply = useCallback((next, persist = true) => {
-    setModeState(next);
-    const root = document.documentElement;
-    root.setAttribute("data-theme", next);
-    root.style.colorScheme = next;
-    const metas = document.querySelectorAll('meta[name="theme-color"]');
-    if (metas.length) metas.forEach((m) => m.setAttribute("content", TOKENS[next].bg));
-    else {
-      const m = document.createElement("meta");
-      m.name = "theme-color"; m.content = TOKENS[next].bg;
-      document.head.appendChild(m);
-    }
-    if (persist) { try { localStorage.setItem(STORAGE_KEY, next); } catch {} }
+export function ThemeProvider({ children }) {
+  const mode = useSyncExternalStore(subscribe, readMode, () => "light");
+
+  // Follow the OS until the visitor picks a theme themselves.
+  useEffect(() => {
+    let chosen = null;
+    try { chosen = localStorage.getItem(STORAGE_KEY); } catch {}
+    if (chosen) return;
+    const mq = window.matchMedia("(prefers-color-scheme: dark)");
+    const onChange = (e) => applyMode(e.matches ? "dark" : "light", { remember: false });
+    mq.addEventListener("change", onChange);
+    return () => mq.removeEventListener("change", onChange);
   }, []);
 
-  // Sync with what the pre-paint script decided.
-  useEffect(() => { apply(readInitial(), false); }, [apply]);
+  const setMode = useCallback((next) => applyMode(next, { remember: true }), []);
 
-  // Follow the OS setting until the visitor picks one themselves.
-  useEffect(() => {
-    let saved = null;
-    try { saved = localStorage.getItem(STORAGE_KEY); } catch {}
-    if (saved) return;
-    const mq = window.matchMedia?.("(prefers-color-scheme: dark)");
-    if (!mq) return;
-    const onChange = (e) => apply(e.matches ? "dark" : "light", false);
-    mq.addEventListener?.("change", onChange);
-    return () => mq.removeEventListener?.("change", onChange);
-  }, [apply]);
-
-  const toggle = useCallback(() => apply(mode === "dark" ? "light" : "dark"), [mode, apply]);
-
-  const value = {
+  const value = useMemo(() => ({
     mode,
     isDark: mode === "dark",
     theme: TOKENS[mode],
     palette: mode === "dark" ? "night" : "day",
-    toggle,
-    setMode: apply,
-  };
+    setMode,
+  }), [mode, setMode]);
+
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
 }
 
-export function useTheme() { return useContext(ThemeContext); }
+export const useTheme = () => useContext(ThemeContext);
 
-/** Day / Nocturne switch. A real two-option control, not a mystery toggle. */
+/** Day / Nocturne switch: two labelled options rather than a mystery toggle. */
 export function ThemeToggle({ className = "" }) {
   const { mode, setMode } = useTheme();
   return (
-    <div className={`hu-theme-switch ${className}`} role="radiogroup" aria-label="Color scheme">
-      <button type="button" role="radio" aria-checked={mode === "light"}
+    <div className={`hu-theme-switch ${className}`} role="radiogroup" aria-label="Color scheme"
+      onKeyDown={(e) => arrowSelect(e, MODES, mode, setMode)}>
+      <button type="button" role="radio" aria-checked={mode === "light"} tabIndex={rovingIndex("light", mode, MODES)}
         className={mode === "light" ? "is-on" : ""} onClick={() => setMode("light")}>
         <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
           <circle cx="12" cy="12" r="4.2" fill="currentColor" />
@@ -101,7 +92,7 @@ export function ThemeToggle({ className = "" }) {
         </svg>
         Day
       </button>
-      <button type="button" role="radio" aria-checked={mode === "dark"}
+      <button type="button" role="radio" aria-checked={mode === "dark"} tabIndex={rovingIndex("dark", mode, MODES)}
         className={mode === "dark" ? "is-on" : ""} onClick={() => setMode("dark")}>
         <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
           <path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5Z" fill="currentColor" />

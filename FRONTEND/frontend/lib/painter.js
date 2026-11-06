@@ -1,4 +1,3 @@
-// ─────────────────────────────────────────────────────────────────────────────
 // The painter.
 //
 // Every painted surface on the site comes out of this file: the harbor at
@@ -9,9 +8,8 @@
 // of short broken-color strokes whose direction follows a flow field, with
 // complementary flecks near the light source. Strokes are seeded, so the same
 // scene paints the same way every visit.
-// ─────────────────────────────────────────────────────────────────────────────
 
-// ── Randomness ──────────────────────────────────────────────────────────────
+// Randomness
 export function seeded(seed = 1) {
   let a = seed >>> 0;
   return function rand() {
@@ -62,7 +60,7 @@ export function createNoise(rand) {
   return { noise, fbm };
 }
 
-// ── Color ───────────────────────────────────────────────────────────────────
+// Color
 export function hexToRgb(hex) {
   const h = hex.replace("#", "");
   const n = parseInt(h.length === 3 ? h.split("").map((c) => c + c).join("") : h, 16);
@@ -111,7 +109,7 @@ function gradientSampler(stops) {
   };
 }
 
-// ── Palettes ────────────────────────────────────────────────────────────────
+// Palettes
 // Day is Monet's harbor at sunrise; Nocturne is Whistler's blue and gold.
 export const PALETTES = {
   day: {
@@ -140,7 +138,7 @@ export const PALETTES = {
   },
 };
 
-// ── Scene layout (shared by the painting and the live pole layer) ──────────
+// Scene layout (shared by the painting and the live pole layer)
 export function harborLayout(w, h) {
   const narrow = w < 720;
   const horizon = Math.round(h * (narrow ? 0.76 : 0.72));
@@ -160,7 +158,7 @@ export function harborLayout(w, h) {
   };
 }
 
-// ── Stroke primitives ───────────────────────────────────────────────────────
+// Stroke primitives
 function makeStroke(x, y, angle, len, width, color, alpha, bend, highlight) {
   return { x, y, angle, len, width, color, alpha, bend, highlight };
 }
@@ -189,7 +187,7 @@ function drawStroke(ctx, s) {
   }
 }
 
-// ── The harbor (hero) ───────────────────────────────────────────────────────
+// The harbor (hero)
 /**
  * Builds the stroke list for the hero painting. Returns
  * { underpaint(ctx), strokes[] } so the caller can paint progressively.
@@ -412,7 +410,7 @@ export function composeForegroundClouds({ w, h, mode = "day", seed = 7 }) {
   return strokes;
 }
 
-// ── Plain sky (backdrops for auth, confirmation, 404 …) ─────────────────────
+// Plain sky (backdrops for auth, confirmation, 404 …)
 export function composeSky({ w, h, mode = "day", seed = 3, light = true }) {
   const P = PALETTES[mode] || PALETTES.day;
   const rand = seeded(seed + (mode === "night" ? 13 : 0));
@@ -472,7 +470,16 @@ export function composeSky({ w, h, mode = "day", seed = 3, light = true }) {
   return { underpaint, strokes };
 }
 
-// ── Painting runner ─────────────────────────────────────────────────────────
+// Painting runner
+// paint() also runs inside a worker (see paint.worker.js). Not every browser
+// gives workers requestAnimationFrame, so fall back to a 60 Hz timer there.
+function frames() {
+  if (typeof requestAnimationFrame === "function") {
+    return { requestFrame: (cb) => requestAnimationFrame(cb), cancelFrame: (id) => cancelAnimationFrame(id) };
+  }
+  return { requestFrame: (cb) => setTimeout(() => cb(performance.now()), 16), cancelFrame: clearTimeout };
+}
+
 /**
  * Paints a composition onto a canvas. If animate is true, strokes go down in
  * batches over `duration` ms. Returns a cancel function.
@@ -495,6 +502,7 @@ export function paint(canvas, { width, height, dpr, compose, animate = false, du
     return () => {};
   }
   let raf = 0, i = 0, cancelled = false;
+  const { requestFrame, cancelFrame } = frames();
   const start = performance.now();
   const step = (now) => {
     if (cancelled) return;
@@ -502,15 +510,15 @@ export function paint(canvas, { width, height, dpr, compose, animate = false, du
     // ease-out: lots of paint early, finishing touches at the end
     const target = Math.floor(strokes.length * (1 - Math.pow(1 - t, 2.2)));
     for (; i < target; i++) drawStroke(ctx, strokes[i]);
-    if (t < 1) raf = requestAnimationFrame(step);
+    if (t < 1) raf = requestFrame(step);
     else {
       for (; i < strokes.length; i++) drawStroke(ctx, strokes[i]);
       ctx.globalAlpha = 1;
       onDone?.();
     }
   };
-  raf = requestAnimationFrame(step);
-  return () => { cancelled = true; cancelAnimationFrame(raf); };
+  raf = requestFrame(step);
+  return () => { cancelled = true; cancelFrame(raf); };
 }
 
 export function drawStrokes(ctx, strokes) {
@@ -519,7 +527,7 @@ export function drawStrokes(ctx, strokes) {
   ctx.globalAlpha = 1;
 }
 
-// ── The barber pole ─────────────────────────────────────────────────────────
+// The barber pole
 /**
  * Paints one seamless repeat of the pole's stripes, with strokes laid along
  * the stripe direction. The live layer scrolls this tile to make it turn.
@@ -630,7 +638,7 @@ export function poleEdges(width, height, seed = 5) {
   return edges;
 }
 
-// ── Impression of a photo ───────────────────────────────────────────────────
+// Impression of a photo
 /**
  * Re-paints an image as brushwork. Strokes follow the image's edges, so faces
  * and fades stay readable. Returns false if pixels can't be read (CORS).

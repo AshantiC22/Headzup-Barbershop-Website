@@ -35,10 +35,10 @@ export default function SMSOptInPage() {
     return (
       <AuthShell seed={9}>
         <h1 className="h1">You&apos;re on the list.</h1>
-        <p className="lede" style={{ marginTop: 10 }}>
+        <p className="lede mt-3">
           Confirmations, reminders and updates will text to that number. Reply STOP any time to unsubscribe.
         </p>
-        <a href="/dashboard" className="btn btn-primary btn-lg btn-block" style={{ marginTop: 22 }}>Go to My appointments</a>
+        <a href="/dashboard" className="btn btn-primary btn-lg btn-block mt-6">Go to My appointments</a>
       </AuthShell>
     );
   }
@@ -47,7 +47,7 @@ export default function SMSOptInPage() {
     <AuthShell seed={9}>
       <form onSubmit={submit} noValidate>
         <h1 className="h2">Text message updates</h1>
-        <p className="muted" style={{ margin: "10px 0 16px" }}>
+        <p className="muted mt-3 mb-4">
           Get appointment confirmations, reminders and updates from HEADZ UP Barbershop by SMS.
         </p>
         <ul className="sms-list">
@@ -60,7 +60,7 @@ export default function SMSOptInPage() {
           <TextInput id="sms-phone" type="tel" inputMode="tel" value={phone} onChange={(e) => setPhone(e.target.value)}
             placeholder="(601) 555-0100" autoComplete="tel" />
         </Field>
-        <label className="check" style={{ marginTop: 16 }}>
+        <label className="check mt-4">
           <input type="checkbox" checked={agreed} onChange={(e) => setAgreed(e.target.checked)} />
           <span>
             I agree to receive SMS text messages from HEADZ UP Barbershop at the phone number provided.
@@ -68,16 +68,16 @@ export default function SMSOptInPage() {
             unsubscribe at any time. Reply <strong>HELP</strong> for help.
           </span>
         </label>
-        {error && <Notice tone="bad" style={{ marginTop: 14 }}>{error}</Notice>}
-        <button className="btn btn-primary btn-lg btn-block" style={{ marginTop: 18 }} disabled={busy}>
+        {error && <Notice tone="bad" className="mt-4">{error}</Notice>}
+        <button className="btn btn-primary btn-lg btn-block mt-5" disabled={busy}>
           {busy ? <Spinner label="Saving" /> : "Subscribe to text updates"}
         </button>
-        <p className="small faint" style={{ marginTop: 16 }}>
+        <p className="small faint mt-4">
           By subscribing you consent to receive recurring automated transactional SMS messages from HEADZ UP
           Barbershop ({SHOP.street}, {SHOP.city} {SHOP.region} {SHOP.zip}) to the number provided. Consent is not a
           condition of any purchase. View our <a className="link" href="/terms">Terms &amp; Privacy Policy</a>.
         </p>
-        <p className="small faint" style={{ marginTop: 8 }}>
+        <p className="small faint mt-2">
           STOP to unsubscribe. HELP for help. <a className="link" href={`mailto:${SHOP.email}`}>{SHOP.email}</a>
         </p>
       </form>

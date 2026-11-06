@@ -37,15 +37,15 @@ export default function NewsletterPage() {
     <>
       <SiteNav />
       <main id="main" className="wrap page-pad">
-        <div style={{ maxWidth: 720 }}>
+        <div className="w-l">
           <h1 className="h1">News from the shop</h1>
-          <p className="lede" style={{ marginTop: 12 }}>
+          <p className="lede mt-3">
             Deals, hours changes and anything else worth knowing before you sit down.
           </p>
         </div>
 
         {present.length > 1 && (
-          <div className="pills" role="group" aria-label="Filter news" style={{ marginTop: 26 }}>
+          <div className="pills mt-6" role="group" aria-label="Filter news">
             <button className="pill" aria-pressed={filter === "all"} onClick={() => setFilter("all")}>Everything</button>
             {present.map((c) => (
               <button key={c} className="pill" aria-pressed={filter === c} onClick={() => setFilter(c)}>{CATS[c].label}</button>
@@ -59,7 +59,7 @@ export default function NewsletterPage() {
           {!loading && !failed && shown.length === 0 && (
             <div className="panel panel-pad">
               <p className="h4">Nothing posted yet.</p>
-              <p className="muted" style={{ marginTop: 6 }}>Deals and hours changes show up here first.</p>
+              <p className="muted mt-2">Deals and hours changes show up here first.</p>
             </div>
           )}
           {shown.map((p, i) => {
@@ -67,13 +67,13 @@ export default function NewsletterPage() {
             return (
               <article key={p.id} className={`news-post ${p.pinned ? "is-pinned" : ""}`}
                 style={{ transform: `rotate(${[-0.5, 0.4, -0.2, 0.6][i % 4]}deg)` }}>
-                <div className="row-wrap" style={{ gap: 8, marginBottom: 12 }}>
+                <div className="row-wrap mb-3" style={{ gap: 8 }}>
                   {p.pinned && <span className="chip chip-warn">Pinned</span>}
                   <span className={`chip ${CATS[cat]?.chip || "chip-quiet"} chip-plain`}>{single[cat] || "News"}</span>
                 </div>
                 <h2 className="h3">{p.emoji && <span aria-hidden="true">{p.emoji} </span>}{p.title}</h2>
-                <p style={{ marginTop: 10, whiteSpace: "pre-line" }}>{p.body}</p>
-                <p className="small faint" style={{ marginTop: 14 }}>
+                <p className="mt-3 pre-line">{p.body}</p>
+                <p className="small faint mt-4">
                   {p.barber_name ? `Posted by ${p.barber_name}` : "Posted by the shop"}{p.created_at ? `, ${p.created_at}` : ""}
                 </p>
               </article>
@@ -81,10 +81,10 @@ export default function NewsletterPage() {
           })}
         </div>
 
-        <div className="panel panel-pad spread" style={{ marginTop: 40, flexWrap: "wrap" }}>
+        <div className="panel panel-pad spread mt-8" style={{ flexWrap: "wrap" }}>
           <div>
             <h2 className="h4">Want these as texts?</h2>
-            <p className="muted small" style={{ marginTop: 4 }}>Clients with a phone on file get big announcements by text.</p>
+            <p className="muted small mt-1">Clients with a phone on file get big announcements by text.</p>
           </div>
           <a href="/sms-optin" className="btn btn-ghost">Text message settings</a>
         </div>

@@ -1,13 +1,21 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
-  <rect width="32" height="32" fill="#040404"/>
-  <!-- H -->
-  <rect x="3" y="7" width="2.5" height="18" fill="#ffffff"/>
-  <rect x="3" y="14.5" width="7" height="2.5" fill="#ffffff"/>
-  <rect x="7.5" y="7" width="2.5" height="18" fill="#ffffff"/>
-  <!-- U with amber -->
-  <rect x="12.5" y="7" width="2.5" height="14" fill="#f59e0b"/>
-  <rect x="12.5" y="21" width="7" height="2.5" fill="#f59e0b"/>
-  <rect x="17" y="7" width="2.5" height="14" fill="#f59e0b"/>
-  <!-- dot accent -->
-  <circle cx="27" cy="8" r="2.5" fill="#f59e0b"/>
+  <defs>
+    <clipPath id="pole"><rect x="11" y="0" width="10" height="23"/></clipPath>
+    <linearGradient id="round" x1="0" x2="1">
+      <stop offset="0" stop-color="#0F1A2E" stop-opacity=".45"/>
+      <stop offset=".35" stop-color="#fff" stop-opacity=".25"/>
+      <stop offset=".55" stop-color="#fff" stop-opacity="0"/>
+      <stop offset="1" stop-color="#0F1A2E" stop-opacity=".55"/>
+    </linearGradient>
+  </defs>
+  <rect width="32" height="32" rx="7" fill="#0F1A2E"/>
+  <circle cx="25" cy="7" r="2.6" fill="#F1D795"/>
+  <g clip-path="url(#pole)">
+    <rect x="11" y="0" width="10" height="23" fill="#ECE7DA"/>
+    <path fill="#C8352B" d="M11-3 21-8v3.5L11 .5ZM11 9 21 4v3.5L11 12.5ZM11 21 21 16v3.5L11 24.5Z"/>
+    <path fill="#2B4F8F" d="M11 3 21-2v3.5L11 6.5ZM11 15 21 10v3.5L11 18.5Z"/>
+    <rect x="11" y="0" width="10" height="23" fill="url(#round)"/>
+  </g>
+  <rect x="10" y="22.5" width="12" height="5.5" rx="1.2" fill="#D9A945"/>
+  <rect x="10" y="25" width="12" height="1" fill="#8A6424" opacity=".6"/>
 </svg>

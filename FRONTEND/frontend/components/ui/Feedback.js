@@ -2,7 +2,6 @@
 // Small shared pieces of feedback UI: toasts, modals, notices, skeletons.
 import { useCallback, useEffect, useRef, useState } from "react";
 
-// ── Toasts ──────────────────────────────────────────────────────────────────
 /** const [toasts, toast] = useToasts();  toast("Saved");  toast("Failed", "bad") */
 export function useToasts() {
   const [items, setItems] = useState([]);
@@ -24,7 +23,6 @@ export function useToasts() {
   return [host, show];
 }
 
-// ── Modal ───────────────────────────────────────────────────────────────────
 /** Accessible dialog: Esc closes, focus moves in and returns, backdrop click closes. */
 export function Modal({ open, onClose, title, children, wide = false, labelledBy }) {
   const ref = useRef(null);
@@ -61,7 +59,7 @@ export function Modal({ open, onClose, title, children, wide = false, labelledBy
       <div ref={ref} className={`modal ${wide ? "modal-wide" : ""}`} role="dialog" aria-modal="true"
         aria-labelledby={title ? titleId : undefined} tabIndex={-1}>
         {title && (
-          <div className="spread" style={{ marginBottom: 16, alignItems: "flex-start" }}>
+          <div className="spread mb-4" style={{ alignItems: "flex-start" }}>
             <h2 id={titleId} className="h3">{title}</h2>
             <button className="icon-btn" onClick={onClose} aria-label="Close" style={{ marginTop: -8, marginRight: -8 }}>
               <IconClose />
@@ -74,19 +72,18 @@ export function Modal({ open, onClose, title, children, wide = false, labelledBy
   );
 }
 
-// ── Notice ──────────────────────────────────────────────────────────────────
-export function Notice({ tone = "info", children, style }) {
+export function Notice({ tone = "info", children, className = "", style }) {
   const Icon = tone === "ok" ? IconCheck : tone === "bad" || tone === "warn" ? IconAlert : IconInfo;
   return (
-    <div className={`notice notice-${tone}`} role={tone === "bad" ? "alert" : undefined} style={style}>
+    <div className={`notice notice-${tone} ${className}`} role={tone === "bad" ? "alert" : undefined} style={style}>
       <span className="notice-icon" aria-hidden="true"><Icon /></span>
       <div>{children}</div>
     </div>
   );
 }
 
-export function Skeleton({ h = 18, w = "100%", style }) {
-  return <div className="wet" style={{ height: h, width: w, ...style }} aria-hidden="true" />;
+export function Skeleton({ h = 18, w = "100%", className = "", style }) {
+  return <div className={`wet ${className}`} style={{ height: h, width: w, ...style }} aria-hidden="true" />;
 }
 
 export function Spinner({ label }) {
@@ -98,7 +95,7 @@ export function Spinner({ label }) {
   );
 }
 
-// ── Icons (hand-drawn, stroke-based) ────────────────────────────────────────
+// Icons (hand-drawn, stroke-based)
 const I = ({ children, size = 18, ...p }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
     strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" {...p}>{children}</svg>

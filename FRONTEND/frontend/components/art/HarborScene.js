@@ -1,16 +1,12 @@
 "use client";
-// ─────────────────────────────────────────────────────────────────────────────
 // The hero painting: a harbor at sunrise (or under a gold-flecked night), and
 // out of the water an impossibly tall barber pole that disappears into the
 // clouds. The pole turns only while the shop is open — the real-world rule
 // for barber poles, kept as a working signal on the site.
-// ─────────────────────────────────────────────────────────────────────────────
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useTheme } from "@/components/ThemeProvider";
-import {
-  composeHarbor, composeForegroundClouds, drawPole, drawStrokes, harborLayout,
-  paint, paintPoleTile, poleEdges,
-} from "@/lib/painter";
+import { drawPole, harborLayout, paintPoleTile, poleEdges } from "@/lib/painter";
+import { useScenePainter } from "./useScenePainter";
 
 const POLE_SPEED = 24; // px per second of stripe travel
 
@@ -21,11 +17,20 @@ function prefersReducedMotion() {
 export default function HarborScene({ turning = false, onLayout }) {
   const { palette } = useTheme();
   const boxRef = useRef(null);
-  const paintRef = useRef(null);
+  const paintSlot = useRef(null);
   const poleRef = useRef(null);
-  const foreRef = useRef(null);
+  const foreSlot = useRef(null);
   const [size, setSize] = useState(null);
-  const [painted, setPainted] = useState(false);
+  // Which painting (size + palette) has finished going down. The foreground
+  // wisps fade in only once the painting under them is complete.
+  const [paintedFor, setPaintedFor] = useState(null);
+  const paintKey = size ? `${size.w}x${size.h}:${palette}` : null;
+  const painted = paintedFor === paintKey;
+  const onPainted = useCallback((key) => {
+    setPaintedFor(key);
+    try { sessionStorage.setItem("hu_painted", "1"); } catch {}
+  }, []);
+  const requestPaint = useScenePainter({ paint: paintSlot, fore: foreSlot }, onPainted);
   const lastPalette = useRef(null);
   const poleState = useRef(null);
   const visible = useRef(true);
@@ -53,38 +58,20 @@ export default function HarborScene({ turning = false, onLayout }) {
 
   // Paint the scene.
   useEffect(() => {
-    if (!size || !paintRef.current) return;
+    if (!size) return;
     const { w, h } = size;
-    const dpr = Math.min(window.devicePixelRatio || 1, 2);
-    const compose = composeHarbor({ w, h, mode: palette, seed: 7 });
-    onLayoutRef.current?.(compose.layout);
-
+    onLayoutRef.current?.(harborLayout(w, h));
     let firstThisSession = false;
     try { firstThisSession = !sessionStorage.getItem("hu_painted"); } catch {}
     const themeChanged = lastPalette.current && lastPalette.current !== palette;
-    const animate = !prefersReducedMotion() && (firstThisSession || themeChanged);
     lastPalette.current = palette;
-    setPainted(false);
-
-    const cancel = paint(paintRef.current, {
-      width: w, height: h, dpr, compose, animate, duration: themeChanged ? 900 : 1300,
-      onDone: () => {
-        setPainted(true);
-        try { sessionStorage.setItem("hu_painted", "1"); } catch {}
-      },
+    requestPaint.current?.({
+      scene: "harbor", key: `${w}x${h}:${palette}`, w, h, mode: palette, seed: 7,
+      dpr: Math.min(window.devicePixelRatio || 1, 2),
+      animate: !prefersReducedMotion() && (firstThisSession || themeChanged),
+      duration: themeChanged ? 900 : 1300,
     });
-
-    // Foreground wisps in front of the pole.
-    const fore = foreRef.current;
-    if (fore) {
-      fore.width = Math.round(w * dpr); fore.height = Math.round(h * dpr);
-      const fctx = fore.getContext("2d");
-      fctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      fctx.clearRect(0, 0, w, h);
-      drawStrokes(fctx, composeForegroundClouds({ w, h, mode: palette, seed: 7 }));
-    }
-    return cancel;
-  }, [size, palette]);
+  }, [size, palette, requestPaint]);
 
   // Build the pole's stripe tile and geometry.
   useEffect(() => {
@@ -146,9 +133,9 @@ export default function HarborScene({ turning = false, onLayout }) {
 
   return (
     <div ref={boxRef} className="harbor" aria-hidden="true">
-      <canvas ref={paintRef} className="harbor-paint" />
+      <div ref={paintSlot} className="harbor-paint" />
       <canvas ref={poleRef} className="harbor-pole" />
-      <canvas ref={foreRef} className={`harbor-fore ${painted ? "is-on" : ""}`} />
+      <div ref={foreSlot} className={`harbor-fore ${painted ? "is-on" : ""}`} />
     </div>
   );
 }

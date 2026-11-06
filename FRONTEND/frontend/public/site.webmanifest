@@ -1,16 +1,14 @@
 {
   "name": "HEADZ UP Barbershop",
   "short_name": "HEADZ UP",
-  "description": "Book your cut at HEADZ UP Barbershop on West 4th Street, Hattiesburg, MS",
+  "description": "Book a cut at HEADZ UP Barbershop on West 4th Street in Hattiesburg, MS.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
-  "orientation": "portrait",
   "background_color": "#0F1A2E",
   "theme_color": "#0F1A2E",
   "categories": [
     "lifestyle",
-    "health",
     "beauty"
   ],
   "lang": "en-US",
@@ -20,26 +18,25 @@
       "src": "/icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
     },
     {
       "src": "/icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
     },
     {
-      "src": "/apple-touch-icon.png",
-      "sizes": "180x180",
+      "src": "/icon-512.png",
+      "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any"
+      "purpose": "maskable"
     }
   ],
   "shortcuts": [
     {
-      "name": "Book Appointment",
+      "name": "Book a cut",
       "short_name": "Book",
-      "description": "Book your next haircut",
       "url": "/book",
       "icons": [
         {
@@ -49,9 +46,8 @@
       ]
     },
     {
-      "name": "My Dashboard",
-      "short_name": "Dashboard",
-      "description": "View your appointments",
+      "name": "My appointments",
+      "short_name": "Appointments",
       "url": "/dashboard",
       "icons": [
         {
@@ -61,9 +57,8 @@
       ]
     },
     {
-      "name": "Barber Portal",
-      "short_name": "Portal",
-      "description": "Barber dashboard",
+      "name": "Barber dashboard",
+      "short_name": "Dashboard",
       "url": "/barber-dashboard",
       "icons": [
         {
@@ -73,5 +68,5 @@
       ]
     }
   ],
-  "screenshots": []
+  "id": "/"
 }

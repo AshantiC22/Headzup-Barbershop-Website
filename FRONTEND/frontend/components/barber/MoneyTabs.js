@@ -24,14 +24,17 @@ const net = (amt) => Math.max(0, parseFloat(amt || 0) - (parseFloat(amt || 0) * 
 
 export function PaymentsTab({ goStripe }) {
   const [period, setPeriod] = useState("month");
-  const [data, setData] = useState(null);
-  const [failed, setFailed] = useState(false);
+  // Results are tagged with the period they're for, so switching periods shows
+  // the skeleton without having to clear anything first.
+  const [res, setRes] = useState({ period: null });
   useEffect(() => {
-    setData(null); setFailed(false);
     API.get(`barber/payments/?period=${period}`, { _noCache: true })
-      .then((r) => setData(r.data))
-      .catch(() => setFailed(true));
+      .then((r) => setRes({ period, data: r.data }))
+      .catch(() => setRes({ period, failed: true }));
   }, [period]);
+  const current = res.period === period;
+  const data = current ? res.data : null;
+  const failed = current && !!res.failed;
   const list = data?.payments || [];
   const bal = data?.stripe_balance || { available: 0, pending: 0 };
 
@@ -41,20 +44,20 @@ export function PaymentsTab({ goStripe }) {
         <div><h1 className="h2">Deposits</h1><p className="muted">Money clients paid online to hold their time.</p></div>
         <PeriodPills value={period} onChange={setPeriod} />
       </div>
-      {failed && <Notice tone="bad" style={{ marginBottom: 16 }}>Deposits didn&apos;t load. If Stripe isn&apos;t connected yet, <button className="link" onClick={goStripe}>connect it</button>.</Notice>}
-      <div className="stat-row" style={{ marginBottom: 20 }}>
+      {failed && <Notice tone="bad" className="mb-4">Deposits didn&apos;t load. If Stripe isn&apos;t connected yet, <button className="link" onClick={goStripe}>connect it</button>.</Notice>}
+      <div className="stat-row mb-5">
         <div className="stat"><span className="stat-n">{data ? money(data.total_deposits) : "–"}</span><span className="stat-l">Collected</span></div>
         <div className="stat"><span className="stat-n">{data ? data.count || 0 : "–"}</span><span className="stat-l">Deposits</span></div>
         <div className="stat"><span className="stat-n">{data ? money(bal.available) : "–"}</span><span className="stat-l">Ready to pay out</span></div>
         <div className="stat"><span className="stat-n">{data ? money(bal.pending) : "–"}</span><span className="stat-l">On the way</span></div>
       </div>
-      <p className="small muted" style={{ marginBottom: 18 }}>
+      <p className="small muted mb-5">
         &ldquo;On the way&rdquo; usually reaches your bank in about two business days. Stripe keeps about 2.9% plus 30¢ per deposit.
       </p>
       {!data && !failed ? <Skeleton h={160} /> : list.length === 0 ? (
         <div className="empty"><p className="h4">No deposits in this period.</p></div>
       ) : (
-        <ul className="stack" style={{ listStyle: "none", "--stack": "8px" }}>
+        <ul className="stack" style={{ "--stack": "8px" }}>
           {list.map((p) => (
             <li key={p.id} className="panel pay-row">
               <div className="grow">
@@ -94,11 +97,13 @@ function Bars({ items, valueKey, labelKey, format = (v) => v, highlightMax = tru
 
 export function ReportsTab() {
   const [period, setPeriod] = useState("month");
-  const [r, setR] = useState(null);
+  const [res, setRes] = useState({ period: null });
   useEffect(() => {
-    setR(null);
-    API.get(`barber/reports/?period=${period}`, { _noCache: true }).then((x) => setR(x.data)).catch(() => setR({ failed: true }));
+    API.get(`barber/reports/?period=${period}`, { _noCache: true })
+      .then((x) => setRes({ period, data: x.data }))
+      .catch(() => setRes({ period, data: { failed: true } }));
   }, [period]);
+  const r = res.period === period ? res.data : null;
   const s = r?.summary || {};
 
   return (
@@ -149,7 +154,7 @@ export function ReportsTab() {
             {r.busiest_hours?.length > 0 && (
               <section className="panel panel-pad">
                 <h2 className="h4">Busiest hours</h2>
-                <ul className="stack" style={{ listStyle: "none", "--stack": "8px", marginTop: 14 }}>
+                <ul className="stack mt-4" style={{ "--stack": "8px" }}>
                   {[...r.busiest_hours].sort((a, b) => b.bookings - a.bookings).slice(0, 5).map((h) => {
                     const max = Math.max(1, ...r.busiest_hours.map((x) => x.bookings));
                     return (
@@ -166,7 +171,7 @@ export function ReportsTab() {
             {r.services?.length > 0 && (
               <section className="panel panel-pad">
                 <h2 className="h4">By service</h2>
-                <ul className="stack" style={{ listStyle: "none", "--stack": "10px", marginTop: 14 }}>
+                <ul className="stack mt-4" style={{ "--stack": "10px" }}>
                   {r.services.map((x) => (
                     <li key={x.name} className="spread">
                       <span><strong>{x.name}</strong><span className="small muted"> {x.bookings} booked, {x.completed} done</span></span>
@@ -179,7 +184,7 @@ export function ReportsTab() {
             {r.top_clients?.length > 0 && (
               <section className="panel panel-pad">
                 <h2 className="h4">Regulars</h2>
-                <ol className="stack" style={{ "--stack": "10px", marginTop: 14, paddingLeft: "1.3em" }}>
+                <ol className="stack mt-4" style={{ "--stack": "10px", paddingLeft: "1.3em" }}>
                   {r.top_clients.map((c) => (
                     <li key={c.id}><span className="spread"><span>{c.name}</span><span className="small muted">{c.visits} visits</span></span></li>
                   ))}
@@ -220,7 +225,7 @@ export function StripeTab({ toast }) {
   return (
     <div>
       <div className="tab-head"><div><h1 className="h2">Getting paid</h1><p className="muted">Online deposits go straight to your bank through Stripe.</p></div></div>
-      <section className="panel panel-pad" style={{ maxWidth: 560 }}>
+      <section className="panel panel-pad w-m">
         {!status ? <Skeleton h={120} /> : status.connected ? (
           <>
             <span className="chip chip-ok">Stripe connected</span>
@@ -229,17 +234,17 @@ export function StripeTab({ toast }) {
               <div><dt>Paying out to your bank</dt><dd>{status.payouts_enabled ? "Yes" : "Waiting on Stripe"}</dd></div>
             </dl>
             {(!status.charges_enabled || !status.payouts_enabled) && (
-              <Notice tone="warn" style={{ marginBottom: 14 }}>Stripe still needs something from you, usually ID verification. Open Stripe to finish.</Notice>
+              <Notice tone="warn" className="mb-4">Stripe still needs something from you, usually ID verification. Open Stripe to finish.</Notice>
             )}
             <button className="btn btn-primary" onClick={open}><IconExternal size={16} /> Open Stripe</button>
           </>
         ) : (
           <>
             <h2 className="h4">Connect your bank</h2>
-            <p className="muted" style={{ marginTop: 6 }}>
+            <p className="muted mt-2">
               Until you connect, clients can only pay at the shop. The shop takes nothing from deposits; Stripe keeps about 2.9% plus 30¢ each.
             </p>
-            <button className="btn btn-primary btn-lg" style={{ marginTop: 18 }} onClick={connect} disabled={busy}>
+            <button className="btn btn-primary btn-lg mt-5" onClick={connect} disabled={busy}>
               {busy ? <Spinner label="Opening Stripe" /> : "Connect with Stripe"}
             </button>
           </>

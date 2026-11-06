@@ -1,6 +1,5 @@
 import axios from "axios";
 
-// ── Base URL ───────────────────────────────────────────────────────────────────
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL
   ? `${process.env.NEXT_PUBLIC_API_URL}/api/`
   : "https://api.headzupp.com/api/";
@@ -11,14 +10,14 @@ const API = axios.create({
   headers: { "Content-Type": "application/json" },
 });
 
-// ── Simple memory cache ────────────────────────────────────────────────────────
-// Caches GET responses for a short TTL so navigating back feels instant.
+// GET responses for these paths are kept in memory briefly, so moving between
+// tabs and pages doesn't refetch what was just loaded.
 const _cache = new Map();
 const CACHE_TTL = {
-  "services/":          60_000,   // 1 min — services rarely change
-  "barbers/":           30_000,   // 30s
+  "services/":          60_000,
+  "barbers/":           30_000,
   "barber/me/":         30_000,
-  "dashboard/":         10_000,   // 10s — user info
+  "dashboard/":         10_000,
   "barber/reviews/":    15_000,
   "barber/clients/":    15_000,
   "barber/reports/":    30_000,
@@ -41,7 +40,7 @@ function setCached(key, data, ttl) {
   _cache.set(key, { data, ts: Date.now(), ttl });
 }
 
-// Public invalidation — call this after mutations
+// Drop cached entries whose key contains any of the patterns (all if none).
 API.invalidate = (...patterns) => {
   for (const key of _cache.keys()) {
     if (!patterns.length || patterns.some(p => key.includes(p))) {
@@ -50,7 +49,6 @@ API.invalidate = (...patterns) => {
   }
 };
 
-// ── Attach access token ────────────────────────────────────────────────────────
 API.interceptors.request.use((config) => {
   if (typeof window !== "undefined") {
     const token = localStorage.getItem("access");
@@ -59,7 +57,6 @@ API.interceptors.request.use((config) => {
   return config;
 });
 
-// ── Cache interceptor for GET requests ────────────────────────────────────────
 const _originalGet = API.get.bind(API);
 API.get = async (url, config = {}) => {
   const { _noCache, params, ...rest } = config;
@@ -80,14 +77,13 @@ API.get = async (url, config = {}) => {
   return _originalGet(url, { params, ...rest });
 };
 
-// Invalidate cache on mutations
+// Writes invalidate whatever they could have changed.
 const _originalPost   = API.post.bind(API);
 const _originalPatch  = API.patch.bind(API);
 const _originalDelete = API.delete.bind(API);
 
 API.post = async (url, ...args) => {
   const res = await _originalPost(url, ...args);
-  // Invalidate related cache after mutations
   if (url.includes("appointments"))   API.invalidate("appointments", "schedule", "dashboard");
   if (url.includes("walk-in"))        API.invalidate("schedule", "dashboard");
   if (url.includes("availability"))   API.invalidate("availability");
@@ -109,16 +105,16 @@ API.delete = async (url, ...args) => {
   return res;
 };
 
-// ── Public endpoints — skip refresh logic ─────────────────────────────────────
+// Endpoints that never need a token, so a 401 there isn't a reason to refresh.
 const PUBLIC_URLS = [
   "token/", "token/refresh/", "register/", "barber/register/",
   "check-username/", "password-reset/", "password-reset/confirm/",
   "barbers/", "services/", "available-slots/",
-  "push/subscribe/", "push/vapid-key/",  // don't redirect on push auth failures
+  "push/subscribe/", "push/vapid-key/",
 ];
 const isPublic = (url = "") => PUBLIC_URLS.some((p) => url.includes(p));
 
-// ── Auto-refresh on 401 ───────────────────────────────────────────────────────
+// On a 401, refresh the access token once and replay the request.
 API.interceptors.response.use(
   (res) => res,
   async (error) => {

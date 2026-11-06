@@ -1,11 +1,9 @@
 "use client";
-// ─────────────────────────────────────────────────────────────────────────────
 // A photo, re-painted as brushwork once it scrolls into view.
 //   reveal="hover"  — the real photo shows through on hover/focus (gallery)
 //   reveal="never"  — always the painting (portraits)
 // The <img> underneath is always there for screen readers, slow phones and
 // images the painter can't read (cross-origin without CORS).
-// ─────────────────────────────────────────────────────────────────────────────
 import { useEffect, useRef, useState } from "react";
 import { paintImage } from "@/lib/painter";
 

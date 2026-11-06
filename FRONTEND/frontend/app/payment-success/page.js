@@ -28,23 +28,23 @@ function Content() {
     <AuthShell seed={21}>
       <h1 className="h1">Payment received.</h1>
       {state.loading ? (
-        <div style={{ marginTop: 18 }}><Skeleton h={22} w="80%" /><Skeleton h={120} style={{ marginTop: 16 }} /></div>
+        <div className="mt-5"><Skeleton h={22} w="80%" /><Skeleton h={120} className="mt-4" /></div>
       ) : a ? (
         <>
-          <p className="lede" style={{ marginTop: 10 }}>
+          <p className="lede mt-3">
             {a.service_name} with {a.barber_name}, {fmtDate(a.date, "long")} at {fmtTime(a.time)}.
           </p>
-          <Notice tone="info" style={{ marginTop: 18 }}>
+          <Notice tone="info" className="mt-5">
             {ADDRESS_LINE}. Get there five minutes early; your chair is held for 15 minutes past your time.
           </Notice>
         </>
       ) : (
-        <p className="lede" style={{ marginTop: 10 }}>
+        <p className="lede mt-3">
           Your booking will show up in My appointments in a moment. If it doesn&apos;t, call the shop.
         </p>
       )}
-      <a href="/dashboard" className="btn btn-primary btn-lg btn-block" style={{ marginTop: 22 }}>See my appointments</a>
-      <Link href="/" className="btn btn-quiet btn-block" style={{ marginTop: 8 }}>Back to the home page</Link>
+      <a href="/dashboard" className="btn btn-primary btn-lg btn-block mt-6">See my appointments</a>
+      <Link href="/" className="btn btn-quiet btn-block mt-2">Back to the home page</Link>
     </AuthShell>
   );
 }

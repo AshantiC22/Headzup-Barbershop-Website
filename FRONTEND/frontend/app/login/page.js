@@ -1,8 +1,7 @@
 "use client";
-// Client sign-in and sign-up. Same endpoints as before (token/, register/,
-// dashboard/, security-question/set/), and it now honors ?next= so people
-// who started booking land back in the booking flow.
-import { Suspense, useEffect, useState } from "react";
+// Client sign-in and sign-up. Honors ?next= so someone who started booking
+// lands back in the booking flow after signing in.
+import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import API from "@/lib/api";
 import { safeNext, saveSession, clearSession } from "@/lib/auth";
@@ -36,7 +35,7 @@ function LoginContent() {
   const [secQ, setSecQ] = useState("");
   const [secA, setSecA] = useState("");
 
-  useEffect(() => { setError(""); setErrs({}); }, [mode]);
+  const switchMode = (next) => { setMode(next); setError(""); setErrs({}); };
 
   const landing = (isStaff) => (isStaff ? "/barber-dashboard" : safeNext(next, "/dashboard"));
 
@@ -98,29 +97,29 @@ function LoginContent() {
   if (mode === "forgot") {
     return (
       <AuthShell>
-        <RecoveryFlow onBack={() => setMode("login")}
-          onDone={(u) => { setMode("login"); setUser(u); setPass(""); setSuccess("Password saved. Sign in with the new one."); }} />
+        <RecoveryFlow onBack={() => switchMode("login")}
+          onDone={(u) => { switchMode("login"); setUser(u); setPass(""); setSuccess("Password saved. Sign in with the new one."); }} />
       </AuthShell>
     );
   }
 
   return (
     <AuthShell>
-      <Segmented label="Account" value={mode} onChange={setMode}
+      <Segmented label="Account" value={mode} onChange={switchMode}
         options={[["login", "Sign in"], ["register", "Create account"]]} />
 
       {reason === "book" && mode === "login" && (
-        <Notice tone="info" style={{ marginBottom: 18 }}>Sign in to book. New here? Creating an account takes about a minute.</Notice>
+        <Notice tone="info" className="mb-5">Sign in to book. New here? Creating an account takes about a minute.</Notice>
       )}
       {params.get("expired") === "true" && (
-        <Notice tone="warn" style={{ marginBottom: 18 }}>You were signed out. Sign in again to pick up where you left off.</Notice>
+        <Notice tone="warn" className="mb-5">You were signed out. Sign in again to pick up where you left off.</Notice>
       )}
-      {success && <Notice tone="ok" style={{ marginBottom: 18 }}>{success}</Notice>}
-      {error && <Notice tone="bad" style={{ marginBottom: 18 }}>{error}</Notice>}
+      {success && <Notice tone="ok" className="mb-5">{success}</Notice>}
+      {error && <Notice tone="bad" className="mb-5">{error}</Notice>}
 
       {mode === "login" ? (
         <form onSubmit={signIn} noValidate>
-          <h1 className="h2" style={{ marginBottom: 20 }}>Welcome back</h1>
+          <h1 className="h2 mb-5">Welcome back</h1>
           <Field id="user" label="Username" error={errs.user}>
             <TextInput id="user" error={errs.user} value={user} onChange={(e) => setUser(e.target.value)}
               autoComplete="username" autoCapitalize="none" autoCorrect="off" />
@@ -130,13 +129,13 @@ function LoginContent() {
           </Field>
           <SubmitButton busy={busy} busyLabel="Signing in">Sign in</SubmitButton>
           <div className="auth-foot">
-            <button type="button" className="link" onClick={() => setMode("forgot")}>Forgot your password?</button>
+            <button type="button" className="link" onClick={() => switchMode("forgot")}>Forgot your password?</button>
           </div>
         </form>
       ) : (
         <form onSubmit={register} noValidate>
-          <h1 className="h2" style={{ marginBottom: 8 }}>Make an account</h1>
-          <p className="muted" style={{ marginBottom: 20 }}>So your barber knows who&apos;s coming, and you get reminders before your cut.</p>
+          <h1 className="h2 mb-2">Make an account</h1>
+          <p className="muted mb-5">So your barber knows who&apos;s coming, and you get reminders before your cut.</p>
           <Field id="r-user" label="Username" error={errs.rUser}>
             <TextInput id="r-user" error={errs.rUser} value={rUser} onChange={(e) => setRUser(e.target.value)}
               autoComplete="username" autoCapitalize="none" autoCorrect="off" />
@@ -157,12 +156,12 @@ function LoginContent() {
           </Field>
           <SecurityQuestionFields questions={questions} q={secQ} setQ={setSecQ} a={secA} setA={setSecA} />
           {errs.secA && <p className="field-error">{errs.secA}</p>}
-          <p className="small muted" style={{ marginTop: 18 }}>
+          <p className="small muted mt-5">
             We&apos;ll text booking confirmations and reminders to this number. Message and data rates may apply.
             Reply STOP to opt out. <a className="link" href="/sms-optin">Text message details</a>
           </p>
           <SubmitButton busy={busy} busyLabel="Creating your account">Create account</SubmitButton>
-          <p className="small faint center" style={{ marginTop: 12 }}>
+          <p className="small faint center mt-3">
             By creating an account you agree to the <a className="link" href="/terms">terms and privacy policy</a>.
           </p>
         </form>

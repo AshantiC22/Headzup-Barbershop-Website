@@ -48,13 +48,13 @@ function ReviewContent() {
     } finally { setBusy(false); }
   };
 
-  if (loading) return <AuthShell seed={5}><Skeleton h={40} w="70%" /><Skeleton h={160} style={{ marginTop: 18 }} /></AuthShell>;
+  if (loading) return <AuthShell seed={5}><Skeleton h={40} w="70%" /><Skeleton h={160} className="mt-5" /></AuthShell>;
 
   if (!apptId) {
     return (
       <AuthShell seed={5}>
         <h1 className="h2">Which cut are we reviewing?</h1>
-        <p className="muted" style={{ margin: "10px 0 20px" }}>This link is missing its appointment. Open My appointments to review a past cut.</p>
+        <p className="muted mt-3 mb-5">This link is missing its appointment. Open My appointments to review a past cut.</p>
         <a href="/dashboard" className="btn btn-primary btn-lg btn-block">Open My appointments</a>
       </AuthShell>
     );
@@ -64,13 +64,13 @@ function ReviewContent() {
     return (
       <AuthShell seed={5}>
         <h1 className="h1">{done ? "Thank you." : "Already reviewed."}</h1>
-        <p className="lede" style={{ marginTop: 10 }}>
+        <p className="lede mt-3">
           {done
             ? `Your ${rating}-star review went to ${appt?.barber_name || "your barber"}. Reviews are how a barber's book fills up.`
             : "You've already left a review for this cut. Thanks for that."}
         </p>
-        <a href="/book" className="btn btn-primary btn-lg btn-block" style={{ marginTop: 22 }}>Book the next one</a>
-        <a href="/dashboard" className="btn btn-quiet btn-block" style={{ marginTop: 8 }}>My appointments</a>
+        <a href="/book" className="btn btn-primary btn-lg btn-block mt-6">Book the next one</a>
+        <a href="/dashboard" className="btn btn-quiet btn-block mt-2">My appointments</a>
       </AuthShell>
     );
   }
@@ -80,20 +80,20 @@ function ReviewContent() {
       <form onSubmit={submit}>
         <h1 className="h2">How was the cut?</h1>
         {appt && (
-          <div className="placard" style={{ margin: "16px 0 22px" }}>
+          <div className="placard mt-4 mb-6">
             <p className="placard-title">{appt.service_name}</p>
             <p className="placard-medium">with {appt.barber_name}, {fmtDate(appt.date, "long")}</p>
           </div>
         )}
         <StarRating value={rating} onChange={setRating} label="Your rating" />
-        <div className="field" style={{ marginTop: 16 }}>
+        <div className="field mt-4">
           <label className="label" htmlFor="comment">Tell them about it <span className="label-note">(optional)</span></label>
           <textarea id="comment" className="textarea" rows={4} maxLength={500} value={comment}
             onChange={(e) => setComment(e.target.value)} placeholder="The fade, the lineup, the conversation…" />
           <p className="field-hint">{comment.length}/500</p>
         </div>
-        {error && <Notice tone="bad" style={{ marginTop: 12 }}>{error}</Notice>}
-        <button className="btn btn-primary btn-lg btn-block" style={{ marginTop: 18 }} disabled={busy}>
+        {error && <Notice tone="bad" className="mt-3">{error}</Notice>}
+        <button className="btn btn-primary btn-lg btn-block mt-5" disabled={busy}>
           {busy ? <Spinner label="Sending" /> : `Send ${rating}-star review`}
         </button>
       </form>

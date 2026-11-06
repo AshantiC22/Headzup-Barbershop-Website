@@ -1,25 +1,26 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useSyncExternalStore } from "react";
 import { ThemeToggle } from "@/components/ThemeProvider";
 import { ADDRESS_LINE, HOURS, SHOP } from "@/lib/shop";
 import { fmtTime, shopStatus } from "@/lib/time";
 import { ShopSign } from "./SiteNav";
 
+// Monday first, the way people read a week.
+const WEEK = [1, 2, 3, 4, 5, 6, 0];
+const noSubscription = () => () => {};
+const shopDay = () => shopStatus().today;
+
 export function HoursList({ compact = false }) {
-  const [today, setToday] = useState(null);
-  useEffect(() => { setToday(shopStatus().today); }, []);
-  // Monday first, the way people read a week
-  const order = [1, 2, 3, 4, 5, 6, 0];
+  // Today in shop time. Unknown on the server, so nothing is highlighted
+  // until the page hydrates.
+  const today = useSyncExternalStore(noSubscription, shopDay, () => null);
   return (
-    <dl className="hours" style={{ display: "grid", gap: compact ? 4 : 8 }}>
-      {order.map((d) => {
+    <dl className={`hours ${compact ? "hours-compact" : ""}`}>
+      {WEEK.map((d) => {
         const h = HOURS[d];
-        const isToday = today === d;
         return (
-          <div key={d} className="spread" style={{
-            fontWeight: isToday ? 750 : 450, color: isToday ? "var(--ink)" : "var(--ink-2)",
-          }}>
-            <dt>{h.label}{isToday && <span className="sr-only"> (today)</span>}</dt>
+          <div key={d} className={`spread ${today === d ? "is-today" : ""}`}>
+            <dt>{h.label}{today === d && <span className="sr-only"> (today)</span>}</dt>
             <dd className="num">{h.open ? `${fmtTime(h.open)} – ${fmtTime(h.close)}` : "Closed"}</dd>
           </div>
         );
@@ -35,7 +36,7 @@ export default function SiteFooter({ showTheme = false, showHours = true }) {
         <div className={`footer-grid ${showHours ? "" : "footer-grid-2"}`}>
           <div className="stack" style={{ "--stack": "16px" }}>
             <ShopSign />
-            <p className="muted" style={{ maxWidth: 34 + "ch" }}>
+            <p className="muted footer-blurb">
               Fades, lineups, beard work and hot shaves on West 4th Street. Walk-ins welcome when the chair is free.
             </p>
             <p>
@@ -45,12 +46,12 @@ export default function SiteFooter({ showTheme = false, showHours = true }) {
           </div>
           {showHours && (
             <div>
-              <h2 className="h4" style={{ marginBottom: 14 }}>Hours</h2>
+              <h2 className="h4 mb-4">Hours</h2>
               <HoursList compact />
             </div>
           )}
           <div>
-            <h2 className="h4" style={{ marginBottom: 14 }}>Around the shop</h2>
+            <h2 className="h4 mb-4">Around the shop</h2>
             <ul className="footer-list">
               <li><a href="/book">Book a cut</a></li>
               <li><a href="/gallery">Recent work</a></li>

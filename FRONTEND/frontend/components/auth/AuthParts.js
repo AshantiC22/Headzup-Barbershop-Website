@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import API from "@/lib/api";
+import { arrowSelect, rovingIndex } from "@/components/ui/roving";
 import PaintedSky from "@/components/art/PaintedSky";
 import { ShopSign } from "@/components/site/SiteNav";
 import { IconArrowLeft, IconEye, Notice, Spinner } from "@/components/ui/Feedback";
@@ -13,10 +14,10 @@ export function AuthShell({ children, seed = 3 }) {
     <div className="sky-page">
       <PaintedSky seed={seed} />
       <div className="sky-content auth-wrap">
-        <div className="auth-top">
+        <header className="auth-top">
           <ShopSign />
           <Link href="/" className="btn btn-quiet btn-sm auth-home"><IconArrowLeft size={16} /> Home</Link>
-        </div>
+        </header>
         <main id="main" className="auth-card panel">{children}</main>
       </div>
     </div>
@@ -56,7 +57,7 @@ export function PasswordInput({ id, error, ...rest }) {
 
 export function SubmitButton({ busy, children, busyLabel }) {
   return (
-    <button type="submit" className="btn btn-primary btn-lg btn-block" disabled={busy} style={{ marginTop: 22 }}>
+    <button type="submit" className="btn btn-primary btn-lg btn-block mt-6" disabled={busy}>
       {busy ? <Spinner label={busyLabel || "One moment"} /> : children}
     </button>
   );
@@ -64,9 +65,11 @@ export function SubmitButton({ busy, children, busyLabel }) {
 
 export function Segmented({ value, options, onChange, label }) {
   return (
-    <div className="hu-theme-switch auth-seg" role="tablist" aria-label={label}>
+    <div className="hu-theme-switch auth-seg" role="tablist" aria-label={label}
+      onKeyDown={(e) => arrowSelect(e, options.map(([v]) => v), value, onChange)}>
       {options.map(([v, l]) => (
         <button key={v} type="button" role="tab" aria-selected={value === v}
+          tabIndex={rovingIndex(v, value, options.map(([o]) => o))}
           className={value === v ? "is-on" : ""} onClick={() => onChange(v)}>{l}</button>
       ))}
     </div>
@@ -106,7 +109,7 @@ export function SecurityQuestionFields({ questions, q, setQ, a, setA }) {
       </button>
       {!open && <p className="field-hint">It&apos;s how you get back in if you forget your password.</p>}
       {open && (
-        <div style={{ marginTop: 10 }}>
+        <div className="mt-3">
           <Field id="secq" label="Security question">
             <select id="secq" className="select" value={q} onChange={(e) => setQ(e.target.value)}>
               <option value="">Choose one</option>
@@ -175,14 +178,14 @@ export function RecoveryFlow({ onDone, onBack }) {
 
   return (
     <form onSubmit={submit} noValidate>
-      <button type="button" className="btn btn-quiet btn-sm" onClick={onBack} style={{ paddingLeft: 0, marginBottom: 6 }}>
+      <button type="button" className="btn btn-quiet btn-sm mb-2" onClick={onBack} style={{ paddingLeft: 0 }}>
         <IconArrowLeft size={16} /> Back to sign in
       </button>
       <h1 className="h2">Reset your password</h1>
-      <p className="muted" style={{ margin: "8px 0 20px" }}>Step {step} of 3</p>
+      <p className="muted mt-2 mb-5">Step {step} of 3</p>
 
       {error && (
-        <Notice tone="bad" style={{ marginBottom: 16 }}>
+        <Notice tone="bad" className="mb-4">
           {error}
           {noQuestion && <> Call the shop at <a className="link" href={`tel:${SHOP.phone}`}>{SHOP.phoneDisplay}</a> and we&apos;ll reset it for you.</>}
         </Notice>
@@ -196,7 +199,7 @@ export function RecoveryFlow({ onDone, onBack }) {
       )}
       {step === 2 && account && (
         <>
-          <p className="placard-medium" style={{ marginBottom: 14 }}>
+          <p className="placard-medium mb-4">
             Signed up as <strong>{account.username}</strong>. {account.security_question}
           </p>
           <Field id="rec-a" label="Your answer">

@@ -5,7 +5,7 @@ import API from "@/lib/api";
 import { IconPlus, IconStar, Modal, Skeleton, Spinner } from "@/components/ui/Feedback";
 import { fmtTime, todayStr } from "@/lib/time";
 
-// ── Walk-in ─────────────────────────────────────────────────────────────────
+// Walk-in
 const EMPTY_WALKIN = () => ({ client_name: "", service_id: "", date: todayStr(), time: "", payment_method: "shop", phone: "", email: "", notes: "" });
 
 export function WalkInTab({ services, toast }) {
@@ -37,7 +37,7 @@ export function WalkInTab({ services, toast }) {
   return (
     <div>
       <div className="tab-head"><div><h1 className="h2">Walk-in</h1><p className="muted">Put someone on the books on the spot.</p></div></div>
-      <form className="panel panel-pad form-grid" onSubmit={submit} noValidate style={{ maxWidth: 640 }}>
+      <form className="panel panel-pad form-grid w-l" onSubmit={submit} noValidate>
         <div className="field span-2">
           <label className="label" htmlFor="wi-name">Client name</label>
           <input id="wi-name" className="input" value={f.client_name} onChange={set("client_name")} aria-invalid={!!errs.client_name} autoComplete="off" />
@@ -85,7 +85,6 @@ export function WalkInTab({ services, toast }) {
   );
 }
 
-// ── Reschedules ─────────────────────────────────────────────────────────────
 export function ReschedulesTab({ toast, onCount }) {
   const [list, setList] = useState(null);
   const [busy, setBusy] = useState(null);
@@ -109,9 +108,9 @@ export function ReschedulesTab({ toast, onCount }) {
     <div>
       <div className="tab-head"><div><h1 className="h2">Reschedule requests</h1><p className="muted">{pending.length ? `${pending.length} waiting on you` : "You're all caught up."}</p></div></div>
       {!list ? <Skeleton h={140} /> : list.length === 0 ? (
-        <div className="empty"><p className="h4">No requests.</p><p className="small muted" style={{ marginTop: 6 }}>When a client asks for a new time, it shows up here.</p></div>
+        <div className="empty"><p className="h4">No requests.</p><p className="small muted mt-2">When a client asks for a new time, it shows up here.</p></div>
       ) : (
-        <ul className="stack" style={{ listStyle: "none", "--stack": "12px" }}>
+        <ul className="stack" style={{ "--stack": "12px" }}>
           {list.map((r) => (
             <li key={r.id} className="panel panel-pad">
               <div className="spread" style={{ alignItems: "flex-start", flexWrap: "wrap" }}>
@@ -129,7 +128,7 @@ export function ReschedulesTab({ toast, onCount }) {
                 <div><p className="small faint">Wants</p><p style={{ fontWeight: 650, color: "var(--accent-ink)" }}>{r.requested_date}, {fmtTime(r.requested_time)}</p></div>
               </div>
               {r.status === "pending" && (
-                <div className="row-wrap" style={{ marginTop: 14 }}>
+                <div className="row-wrap mt-4">
                   <button className="btn btn-primary btn-sm" disabled={busy === r.id} onClick={() => act(r.id, "accept")}>Approve new time</button>
                   <button className="btn btn-ghost btn-sm" disabled={busy === r.id} onClick={() => act(r.id, "reject")}>Keep original</button>
                 </div>
@@ -142,7 +141,7 @@ export function ReschedulesTab({ toast, onCount }) {
   );
 }
 
-// ── Clients + blast ─────────────────────────────────────────────────────────
+// Clients + blast
 const TEMPLATES = [
   { label: "Now booking online", subject: "HEADZ UP Barbershop is booking online",
     msg: "Hey {name}, it's HEADZ UP Barbershop on West 4th. You can book your next cut online now: pick your barber and a time at headzupp.com\n\n2509 W 4th St, Hattiesburg\nReply STOP to opt out" },
@@ -188,8 +187,8 @@ function Blast({ clients, preselect, onClose, toast }) {
 
   return (
     <Modal open onClose={onClose} wide title="Message clients">
-      <p className="label" style={{ marginBottom: 8 }}>Start from</p>
-      <div className="pills" style={{ marginBottom: 16 }}>
+      <p className="label mb-2">Start from</p>
+      <div className="pills mb-4">
         {TEMPLATES.map((t) => (
           <button key={t.label} type="button" className="pill" onClick={() => setForm((p) => ({ ...p, subject: t.subject, message: t.msg }))}>{t.label}</button>
         ))}
@@ -208,12 +207,12 @@ function Blast({ clients, preselect, onClose, toast }) {
           )}
         </p>
       </div>
-      <div className="row-wrap" style={{ margin: "14px 0" }}>
+      <div className="row-wrap mt-4 mb-4">
         <label className="check"><input type="checkbox" checked={form.send_sms} onChange={(e) => setForm((p) => ({ ...p, send_sms: e.target.checked }))} /> Text</label>
         <label className="check"><input type="checkbox" checked={form.send_email} onChange={(e) => setForm((p) => ({ ...p, send_email: e.target.checked }))} /> Email</label>
       </div>
 
-      <div className="spread" style={{ marginTop: 6 }}>
+      <div className="spread mt-2">
         <p className="label">Send to {total}</p>
         <div className="row">
           <button type="button" className="btn btn-quiet btn-xs" onClick={() => setSel(clients.map((c) => c.id))}>Everyone</button>
@@ -235,14 +234,14 @@ function Blast({ clients, preselect, onClose, toast }) {
       </div>
       <details className="ext-add">
         <summary>Add someone who isn&apos;t a client yet</summary>
-        <div className="form-grid" style={{ marginTop: 10 }}>
+        <div className="form-grid mt-3">
           <input className="input" placeholder="Name" aria-label="Name" value={extForm.name} onChange={(e) => setExtForm((p) => ({ ...p, name: e.target.value }))} />
           <input className="input" placeholder="Phone" aria-label="Phone" type="tel" value={extForm.phone} onChange={(e) => setExtForm((p) => ({ ...p, phone: e.target.value }))} />
           <input className="input span-2" placeholder="Email" aria-label="Email" type="email" value={extForm.email} onChange={(e) => setExtForm((p) => ({ ...p, email: e.target.value }))} />
           <button type="button" className="btn btn-ghost span-2" onClick={addExt}><IconPlus size={16} /> Add to this message</button>
         </div>
       </details>
-      <button className="btn btn-primary btn-lg btn-block" style={{ marginTop: 18 }} disabled={busy} onClick={send}>
+      <button className="btn btn-primary btn-lg btn-block mt-5" disabled={busy} onClick={send}>
         {busy ? <Spinner label="Sending" /> : `Send to ${total} ${total === 1 ? "person" : "people"}`}
       </button>
     </Modal>
@@ -269,24 +268,24 @@ export function ClientsTab({ toast }) {
         <div><h1 className="h2">Clients</h1><p className="muted">{clients ? `${clients.length} people have sat in your chair` : "Loading"}</p></div>
         <button className="btn btn-primary btn-sm" disabled={!clients?.length} onClick={() => setBlast(clients.map((c) => c.id))}>Message clients</button>
       </div>
-      <input className="input" type="search" placeholder="Search by name or email" aria-label="Search clients" value={q} onChange={(e) => setQ(e.target.value)} style={{ maxWidth: 420, marginBottom: 18 }} />
+      <input className="input mb-5 w-s" type="search" placeholder="Search by name or email" aria-label="Search clients" value={q} onChange={(e) => setQ(e.target.value)} />
       {!clients ? <Skeleton h={200} /> : shown.length === 0 ? (
         <div className="empty"><p className="h4">{q ? "No one by that name." : "No clients yet."}</p></div>
       ) : (
-        <ul className="stack" style={{ listStyle: "none", "--stack": "8px" }}>
+        <ul className="stack" style={{ "--stack": "8px" }}>
           {shown.map((c) => (
             <li key={c.id} className="appt">
               <button className="appt-head" aria-expanded={open === c.id} onClick={() => setOpen(open === c.id ? null : c.id)}>
                 <span className="avatar" aria-hidden="true">{(c.name || "?").charAt(0).toUpperCase()}</span>
                 <span className="grow">
-                  <span className="h4" style={{ display: "block" }}>{c.name}{c.is_vip && <span className="chip chip-warn chip-plain" style={{ marginLeft: 8, verticalAlign: "middle" }}>VIP</span>}</span>
+                  <span className="h4">{c.name}{c.is_vip && <span className="chip chip-warn chip-plain chip-after">VIP</span>}</span>
                   <span className="small muted">{c.total_visits} visit{c.total_visits === 1 ? "" : "s"}{c.last_visit ? `, last ${c.last_visit}` : ""}</span>
                 </span>
               </button>
               {open === c.id && (
                 <div className="appt-body">
                   <dl className="kv">
-                    <div><dt>Email</dt><dd style={{ wordBreak: "break-all" }}>{c.email || "None"}</dd></div>
+                    <div><dt>Email</dt><dd className="break-anywhere">{c.email || "None"}</dd></div>
                     <div><dt>Finished cuts</dt><dd>{c.completed ?? c.total_visits}</dd></div>
                     <div><dt>No-shows</dt><dd>{c.no_shows || 0}</dd></div>
                     {c.last_service && <div><dt>Last service</dt><dd>{c.last_service}</dd></div>}
@@ -306,7 +305,6 @@ export function ClientsTab({ toast }) {
   );
 }
 
-// ── Reviews ─────────────────────────────────────────────────────────────────
 export function ReviewsTab({ toast, onSeen }) {
   const [data, setData] = useState(null);
   const [reply, setReply] = useState({});
@@ -333,9 +331,9 @@ export function ReviewsTab({ toast, onSeen }) {
         </div>
       </div>
       {!data ? <Skeleton h={180} /> : list.length === 0 ? (
-        <div className="empty"><p className="h4">No reviews yet.</p><p className="small muted" style={{ marginTop: 6 }}>Marking a cut done sends the client a review request.</p></div>
+        <div className="empty"><p className="h4">No reviews yet.</p><p className="small muted mt-2">Marking a cut done sends the client a review request.</p></div>
       ) : (
-        <ul className="stack" style={{ listStyle: "none", "--stack": "12px" }}>
+        <ul className="stack" style={{ "--stack": "12px" }}>
           {list.map((r) => (
             <li key={r.id} className="panel panel-pad">
               <div className="spread" style={{ flexWrap: "wrap" }}>
@@ -345,15 +343,15 @@ export function ReviewsTab({ toast, onSeen }) {
                 </span>
               </div>
               <p className="small faint">{r.created_at}</p>
-              {r.comment && <p className="placard-medium" style={{ marginTop: 10, fontSize: "1.05rem" }}>&ldquo;{r.comment}&rdquo;</p>}
+              {r.comment && <p className="placard-medium mt-3" style={{ fontSize: "1.05rem" }}>&ldquo;{r.comment}&rdquo;</p>}
               {r.barber_reply ? (
-                <div className="notice" style={{ marginTop: 14 }}><div><strong>Your reply</strong><p>{r.barber_reply}</p></div></div>
+                <div className="notice mt-4"><div><strong>Your reply</strong><p>{r.barber_reply}</p></div></div>
               ) : (
-                <div style={{ marginTop: 14 }}>
+                <div className="mt-4">
                   <label className="sr-only" htmlFor={`rp-${r.id}`}>Reply to {r.client}</label>
                   <textarea id={`rp-${r.id}`} className="textarea" rows={2} placeholder={`Say thanks to ${r.client}`}
                     value={reply[r.id] || ""} onChange={(e) => setReply((p) => ({ ...p, [r.id]: e.target.value }))} />
-                  <button className="btn btn-ghost btn-sm" style={{ marginTop: 8 }} disabled={busy === r.id || !reply[r.id]?.trim()} onClick={() => post(r.id)}>
+                  <button className="btn btn-ghost btn-sm mt-2" disabled={busy === r.id || !reply[r.id]?.trim()} onClick={() => post(r.id)}>
                     {busy === r.id ? <Spinner label="Posting" /> : "Post reply"}
                   </button>
                 </div>

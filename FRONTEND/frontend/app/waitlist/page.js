@@ -74,18 +74,18 @@ function WaitlistContent() {
       <SiteNav />
       <main id="main" className="wrap-narrow page-pad">
         <h1 className="h1">Waitlist</h1>
-        <p className="lede" style={{ marginTop: 12 }}>
+        <p className="lede mt-3">
           Day already full? Put your name down and we&apos;ll text you the moment a chair opens with that barber.
         </p>
 
-        {msg.text && <Notice tone={msg.tone} style={{ marginTop: 22 }}>{msg.text}</Notice>}
+        {msg.text && <Notice tone={msg.tone} className="mt-6">{msg.text}</Notice>}
 
         {loading ? (
-          <div className="panel panel-pad" style={{ marginTop: 28 }}>
-            {[0, 1, 2].map((i) => <Skeleton key={i} h={50} style={{ marginBottom: 14 }} />)}
+          <div className="panel panel-pad mt-7">
+            {[0, 1, 2].map((i) => <Skeleton key={i} h={50} className="mb-4" />)}
           </div>
         ) : (
-          <form className="panel panel-pad" style={{ marginTop: 28 }} onSubmit={join} noValidate>
+          <form className="panel panel-pad mt-7" onSubmit={join} noValidate>
             <div className="field">
               <label className="label" htmlFor="w-barber">Barber</label>
               <select id="w-barber" className="select" value={form.barber} onChange={set("barber")}>
@@ -109,22 +109,22 @@ function WaitlistContent() {
               <textarea id="w-notes" className="textarea" rows={2} value={form.notes} onChange={set("notes")}
                 placeholder="Any time after 3 works for me" />
             </div>
-            <button className="btn btn-primary btn-lg btn-block" style={{ marginTop: 22 }} disabled={busy}>
+            <button className="btn btn-primary btn-lg btn-block mt-6" disabled={busy}>
               {busy ? <Spinner label="Adding you" /> : "Join the waitlist"}
             </button>
           </form>
         )}
 
         {mine.length > 0 && (
-          <section style={{ marginTop: 40 }} aria-labelledby="mine-title">
+          <section className="mt-8" aria-labelledby="mine-title">
             <h2 id="mine-title" className="h3">You&apos;re waiting on</h2>
-            <ul className="stack" style={{ listStyle: "none", "--stack": "10px", marginTop: 14 }}>
+            <ul className="stack mt-4" style={{ "--stack": "10px" }}>
               {mine.map((w) => (
                 <li key={w.id} className="placard spread">
                   <div>
                     <p className="placard-title">{fmtDate(w.date, "long")}</p>
                     <p className="placard-medium">with {w.barber_name}{w.service_name ? `, ${w.service_name}` : ""}</p>
-                    {w.notified && <span className="chip chip-ok" style={{ marginTop: 8 }}>We texted you</span>}
+                    {w.notified && <span className="chip chip-ok mt-2">We texted you</span>}
                   </div>
                   <button className="btn btn-quiet btn-sm" disabled={removing === w.id} onClick={() => remove(w.id)}
                     aria-label={`Leave the waitlist for ${fmtDate(w.date)}`}>

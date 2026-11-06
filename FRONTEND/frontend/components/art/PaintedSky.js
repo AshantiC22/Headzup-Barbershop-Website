@@ -3,12 +3,13 @@
 // It paints once per size/theme and never animates after that.
 import { useEffect, useRef, useState } from "react";
 import { useTheme } from "@/components/ThemeProvider";
-import { composeSky, paint } from "@/lib/painter";
+import { useScenePainter } from "./useScenePainter";
 
 export default function PaintedSky({ seed = 3, light = true, fixed = true, className = "" }) {
   const { palette } = useTheme();
   const ref = useRef(null);
   const [size, setSize] = useState(null);
+  const requestPaint = useScenePainter({ paint: ref });
 
   useEffect(() => {
     let t;
@@ -25,14 +26,15 @@ export default function PaintedSky({ seed = 3, light = true, fixed = true, class
   }, [fixed]);
 
   useEffect(() => {
-    if (!size || !ref.current) return;
-    const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
-    const compose = composeSky({ w: size.w, h: size.h, mode: palette, seed, light });
-    return paint(ref.current, { width: size.w, height: size.h, dpr, compose, animate: false });
-  }, [size, palette, seed, light]);
+    if (!size) return;
+    requestPaint.current?.({
+      scene: "sky", key: `${size.w}x${size.h}:${palette}`, w: size.w, h: size.h,
+      dpr: Math.min(window.devicePixelRatio || 1, 1.5), mode: palette, seed, light, animate: false,
+    });
+  }, [size, palette, seed, light, requestPaint]);
 
   return (
-    <canvas
+    <div
       ref={ref}
       aria-hidden="true"
       className={`painted-sky ${fixed ? "is-fixed" : ""} ${className}`}

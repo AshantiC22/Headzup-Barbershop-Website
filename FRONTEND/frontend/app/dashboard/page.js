@@ -1,13 +1,12 @@
 "use client";
-// ─────────────────────────────────────────────────────────────────────────────
 // My appointments (client). Same API as before: dashboard/, appointments/,
 // client/strike-status/, appointments/:id/ (cancel), appointments/:id/reschedule/,
 // review/submit/, client/update-phone/, change-password/.
-// ─────────────────────────────────────────────────────────────────────────────
 import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import API from "@/lib/api";
-import { useNotifications } from "@/components/NotificationSystem";
+import { arrowSelect } from "@/components/ui/roving";
+import { useAlerts } from "@/components/Alerts";
 import { ThemeToggle } from "@/components/ThemeProvider";
 import AppHeader from "@/components/site/AppHeader";
 import { Calendar, SlotPicker, WorkWeek, makeDayRule } from "@/components/booking/Calendar";
@@ -61,11 +60,11 @@ function ApptRow({ a, onCancel, onReschedule, onReview }) {
       <button className="appt-head" aria-expanded={open} aria-controls={id} onClick={() => setOpen((v) => !v)}>
         <Leaf date={a.date} />
         <span className="grow">
-          <span className="h4" style={{ display: "block" }}>{a.service_name || "Appointment"}</span>
-          <span className="muted small" style={{ display: "block" }}>{fmtTime(a.time)} with {a.barber_name}</span>
-          <span className={`chip ${st.chip}`} style={{ marginTop: 8 }}>{st.label}</span>
+          <span className="h4">{a.service_name || "Appointment"}</span>
+          <span className="muted small">{fmtTime(a.time)} with {a.barber_name}</span>
+          <span className={`chip ${st.chip} mt-2`}>{st.label}</span>
         </span>
-        <IconChevronDown style={{ transform: open ? "rotate(180deg)" : "none", transition: "transform .2s", flexShrink: 0 }} />
+        <IconChevronDown />
       </button>
       {open && (
         <div className="appt-body" id={id}>
@@ -102,14 +101,14 @@ function CancelDialog({ appt, onClose, onConfirm, busy }) {
         {appt.service_name} with {appt.barber_name}, {fmtDate(appt.date, "long")} at {fmtTime(appt.time)}.
       </p>
       {late ? (
-        <Notice tone="warn" style={{ marginTop: 14 }}>
+        <Notice tone="warn" className="mt-4">
           It&apos;s less than 2 hours away. Cancelling now can add a strike, which raises future deposits.
           Calling the shop at <a className="link" href={`tel:${SHOP.phone}`}>{SHOP.phoneDisplay}</a> is the kinder move.
         </Notice>
       ) : paid ? (
-        <Notice tone="warn" style={{ marginTop: 14 }}>Your {money(appt.deposit_amount || 10)} deposit isn&apos;t refunded when you cancel.</Notice>
+        <Notice tone="warn" className="mt-4">Your {money(appt.deposit_amount || 10)} deposit isn&apos;t refunded when you cancel.</Notice>
       ) : null}
-      <div className="row-wrap" style={{ marginTop: 20 }}>
+      <div className="row-wrap mt-5">
         <button className="btn btn-danger grow" disabled={busy} onClick={onConfirm}>
           {busy ? <Spinner label="Cancelling" /> : "Cancel appointment"}
         </button>
@@ -156,7 +155,7 @@ function RescheduleDialog({ appt, onClose, onDone }) {
 
   return (
     <Modal open onClose={onClose} wide title="Ask for a new time">
-      <p className="muted" style={{ marginBottom: 16 }}>
+      <p className="muted mb-4">
         {appt.barber_name} gets your request and approves it. Until then you keep {fmtDate(appt.date)} at {fmtTime(appt.time)}.
       </p>
       {days.loading ? <Skeleton h={280} /> : (
@@ -166,15 +165,15 @@ function RescheduleDialog({ appt, onClose, onDone }) {
         </>
       )}
       {date && (
-        <div style={{ marginTop: 20 }}>
-          <p className="label" style={{ marginBottom: 10 }}>{fmtDate(date, "long")}</p>
+        <div className="mt-5">
+          <p className="label mb-3">{fmtDate(date, "long")}</p>
           {!slots.loading && slots.list.length === 0
             ? <p className="muted small">No open times that day. Try another.</p>
             : <SlotPicker slots={slots.list} value={time} onChange={setTime} loading={slots.loading} />}
         </div>
       )}
-      {err && <Notice tone="bad" style={{ marginTop: 14 }}>{err}</Notice>}
-      <button className="btn btn-primary btn-lg btn-block" style={{ marginTop: 20 }} disabled={!date || !time || busy} onClick={submit}>
+      {err && <Notice tone="bad" className="mt-4">{err}</Notice>}
+      <button className="btn btn-primary btn-lg btn-block mt-5" disabled={!date || !time || busy} onClick={submit}>
         {busy ? <Spinner label="Sending" /> : time ? `Request ${fmtDate(date)} at ${fmtTime(time)}` : "Pick a day and time"}
       </button>
     </Modal>
@@ -196,15 +195,15 @@ function ReviewDialog({ appt, onClose, onDone }) {
   };
   return (
     <Modal open onClose={onClose} title="How was the cut?">
-      <p className="muted" style={{ marginBottom: 14 }}>{appt.service_name} with {appt.barber_name}, {fmtDate(appt.date, "long")}.</p>
+      <p className="muted mb-4">{appt.service_name} with {appt.barber_name}, {fmtDate(appt.date, "long")}.</p>
       <StarRating value={rating} onChange={setRating} />
-      <div className="field" style={{ marginTop: 12 }}>
+      <div className="field mt-3">
         <label className="label" htmlFor="rv">Say a little more <span className="label-note">(optional)</span></label>
         <textarea id="rv" className="textarea" rows={3} maxLength={500} value={text} onChange={(e) => setText(e.target.value)}
           placeholder="The fade, the lineup, the vibe…" />
       </div>
-      {err && <Notice tone="bad" style={{ marginTop: 12 }}>{err}</Notice>}
-      <button className="btn btn-primary btn-lg btn-block" style={{ marginTop: 18 }} disabled={busy} onClick={submit}>
+      {err && <Notice tone="bad" className="mt-3">{err}</Notice>}
+      <button className="btn btn-primary btn-lg btn-block mt-5" disabled={busy} onClick={submit}>
         {busy ? <Spinner label="Sending" /> : `Send ${rating}-star review`}
       </button>
     </Modal>
@@ -212,7 +211,7 @@ function ReviewDialog({ appt, onClose, onDone }) {
 }
 
 function AccountTab({ user, strike, visits, spent, toast }) {
-  const { pushEnabled } = useNotifications() || {};
+  const { pushOn, askForPush } = useAlerts();
   const [phone, setPhone] = useState(strike?.phone || "");
   const [phoneBusy, setPhoneBusy] = useState(false);
   const [pw, setPw] = useState({ old_password: "", new_password: "" });
@@ -246,18 +245,18 @@ function AccountTab({ user, strike, visits, spent, toast }) {
     <div className="account-grid">
       <section className="panel panel-pad">
         <h2 className="h3">{tier?.[1] || "New client"}</h2>
-        <p className="muted" style={{ marginTop: 4 }}>
+        <p className="muted mt-1">
           {visits} visit{visits === 1 ? "" : "s"}, {money(spent)} all told.
           {nextTier ? ` ${nextTier[0] - visits} more to ${nextTier[1]}.` : " Top of the list."}
         </p>
         {nextTier && (
-          <div className="meter" style={{ marginTop: 14 }} role="progressbar" aria-valuemin={0} aria-valuemax={nextTier[0]} aria-valuenow={visits}>
+          <div className="meter mt-4" role="progressbar" aria-valuemin={0} aria-valuemax={nextTier[0]} aria-valuenow={visits}>
             <span style={{ width: `${Math.min(100, (visits / nextTier[0]) * 100)}%` }} />
           </div>
         )}
-        <dl className="kv" style={{ marginBottom: 0 }}>
+        <dl className="kv mb-0">
           <div><dt>Username</dt><dd>{user?.user || user?.username}</dd></div>
-          <div><dt>Email</dt><dd style={{ wordBreak: "break-all" }}>{user?.email || "None on file"}</dd></div>
+          <div><dt>Email</dt><dd className="break-anywhere">{user?.email || "None on file"}</dd></div>
           <div><dt>Strikes</dt><dd>{strike?.strike_count ?? 0}</dd></div>
           <div><dt>Next deposit</dt><dd>{money(strike?.deposit_fee || 10)}</dd></div>
         </dl>
@@ -265,8 +264,8 @@ function AccountTab({ user, strike, visits, spent, toast }) {
 
       <form className="panel panel-pad" onSubmit={savePhone}>
         <h2 className="h4">Mobile number</h2>
-        <p className="small muted" style={{ marginTop: 4 }}>Booking texts and reminders go here.</p>
-        <div className="row" style={{ marginTop: 12 }}>
+        <p className="small muted mt-1">Booking texts and reminders go here.</p>
+        <div className="row mt-3">
           <input className="input" type="tel" inputMode="tel" aria-label="Mobile number" value={phone}
             onChange={(e) => setPhone(e.target.value)} placeholder="(601) 555-0100" autoComplete="tel" />
           <button className="btn btn-primary" disabled={phoneBusy}>{phoneBusy ? <Spinner /> : "Save"}</button>
@@ -275,7 +274,7 @@ function AccountTab({ user, strike, visits, spent, toast }) {
 
       <form className="panel panel-pad" onSubmit={savePw}>
         <h2 className="h4">Change password</h2>
-        <div className="field" style={{ marginTop: 12 }}>
+        <div className="field mt-3">
           <label className="label" htmlFor="pw-old">Current password</label>
           <input id="pw-old" className="input" type="password" autoComplete="current-password" value={pw.old_password}
             onChange={(e) => setPw((p) => ({ ...p, old_password: e.target.value }))} />
@@ -286,24 +285,24 @@ function AccountTab({ user, strike, visits, spent, toast }) {
             onChange={(e) => setPw((p) => ({ ...p, new_password: e.target.value }))} />
           <p className="field-hint">At least 8 characters.</p>
         </div>
-        {pwErr && <p className="field-error" style={{ marginTop: 8 }}>{pwErr}</p>}
-        <button className="btn btn-ghost" style={{ marginTop: 14 }} disabled={pwBusy || !pw.old_password || !pw.new_password}>
+        {pwErr && <p className="field-error mt-2">{pwErr}</p>}
+        <button className="btn btn-ghost mt-4" disabled={pwBusy || !pw.old_password || !pw.new_password}>
           {pwBusy ? <Spinner label="Saving" /> : "Change password"}
         </button>
       </form>
 
       <section className="panel panel-pad">
         <h2 className="h4">Notifications and look</h2>
-        <div className="spread" style={{ marginTop: 12 }}>
-          <span className="row small"><IconBell /> {pushEnabled ? "Alerts are on for this device" : "Alerts are off on this device"}</span>
-          {!pushEnabled && (
-            <button className="btn btn-ghost btn-sm" onClick={() => window.dispatchEvent(new CustomEvent("headzup:trigger-permit", { detail: { force: true } }))}>
+        <div className="spread mt-3">
+          <span className="row small"><IconBell /> {pushOn ? "Alerts are on for this device" : "Alerts are off on this device"}</span>
+          {!pushOn && (
+            <button className="btn btn-ghost btn-sm" onClick={askForPush}>
               Turn on
             </button>
           )}
         </div>
-        <div style={{ marginTop: 16 }}><ThemeToggle /></div>
-        <div className="row-wrap small" style={{ marginTop: 18 }}>
+        <div className="mt-4"><ThemeToggle /></div>
+        <div className="row-wrap small mt-5">
           <a className="link" href="/sms-optin">Text message settings</a>
           <a className="link" href="/waitlist">Waitlist</a>
           <a className="link" href="/terms">Terms</a>
@@ -316,7 +315,7 @@ function AccountTab({ user, strike, visits, spent, toast }) {
 function DashboardContent() {
   const router = useRouter();
   const params = useSearchParams();
-  const { addNotif, showPermitPrompt } = useNotifications() || {};
+  const { notify, offerPush } = useAlerts();
   const [toastHost, toast] = useToasts();
   const [user, setUser] = useState(null);
   const [appts, setAppts] = useState([]);
@@ -331,7 +330,7 @@ function DashboardContent() {
   const [phoneBusy, setPhoneBusy] = useState(false);
   const [hidePhone, setHidePhone] = useState(false);
 
-  useEffect(() => { showPermitPrompt?.(); }, [showPermitPrompt]);
+  useEffect(() => offerPush(), [offerPush]);
 
   useEffect(() => {
     let token = null;
@@ -407,8 +406,8 @@ function DashboardContent() {
         <AppHeader title="My appointments" />
         <main className="wrap dash" style={{ maxWidth: 960 }} aria-busy="true">
           <Skeleton h={44} w="50%" />
-          <Skeleton h={150} style={{ marginTop: 24 }} />
-          {[0, 1, 2].map((i) => <Skeleton key={i} h={76} style={{ marginTop: 12 }} />)}
+          <Skeleton h={150} className="mt-6" />
+          {[0, 1, 2].map((i) => <Skeleton key={i} h={76} className="mt-3" />)}
         </main>
       </>
     );
@@ -436,12 +435,12 @@ function DashboardContent() {
             <Leaf date={next.date} />
             <div className="grow">
               <p className="small muted">Next up, {timeUntil(next.date, next.time) || "now"}</p>
-              <h2 id="next-title" className="h2" style={{ marginTop: 4 }}>{next.service_name}</h2>
-              <p className="lede" style={{ marginTop: 6 }}>
+              <h2 id="next-title" className="h2 mt-1">{next.service_name}</h2>
+              <p className="lede mt-2">
                 {fmtDate(next.date, "long")} at {fmtTime(next.time)} with {next.barber_name}.
               </p>
-              <p className="small muted" style={{ marginTop: 6 }}>{payLine(next)}</p>
-              <div className="row-wrap" style={{ marginTop: 16 }}>
+              <p className="small muted mt-2">{payLine(next)}</p>
+              <div className="row-wrap mt-4">
                 <button className="btn btn-ghost btn-sm" onClick={() => setResched(next)}>Reschedule</button>
                 <button className="btn btn-ghost btn-sm" onClick={() => addToCal(next)}><IconCalendar size={16} /> Calendar</button>
                 <a className="btn btn-ghost btn-sm" href={SHOP.mapsLink} target="_blank" rel="noopener noreferrer"><IconPin size={16} /> Directions</a>
@@ -453,13 +452,13 @@ function DashboardContent() {
           <section className="next-card is-empty">
             <div className="grow">
               <h2 className="h3">Nothing on the books.</h2>
-              <p className="muted" style={{ marginTop: 4 }}>Pick a barber and a time; it takes about a minute.</p>
+              <p className="muted mt-1">Pick a barber and a time; it takes about a minute.</p>
             </div>
             <a href="/book" className="btn btn-primary btn-lg">Book a cut</a>
           </section>
         )}
 
-        <div className="stack" style={{ "--stack": "12px", marginTop: 20 }}>
+        <div className="stack mt-5" style={{ "--stack": "12px" }}>
           {strike && !strike.phone && !hidePhone && (
             <form className="notice notice-info" onSubmit={savePhone} style={{ flexWrap: "wrap", alignItems: "center" }}>
               <div className="grow" style={{ minWidth: 200 }}>
@@ -492,10 +491,11 @@ function DashboardContent() {
           )}
         </div>
 
-        <div className="tabs" role="tablist" aria-label="Appointments" style={{ marginTop: 32 }}>
+        <div className="tabs mt-7" role="tablist" aria-label="Appointments"
+          onKeyDown={(e) => arrowSelect(e, tabs.map(([id]) => id), tab, setTab)}>
           {tabs.map(([id, label, n]) => (
             <button key={id} role="tab" className="tab" aria-selected={tab === id} aria-controls={`panel-${id}`} id={`tab-${id}`}
-              onClick={() => setTab(id)}>
+              tabIndex={tab === id ? 0 : -1} onClick={() => setTab(id)}>
               {label}{n > 0 && <span className="count">{n}</span>}
             </button>
           ))}
@@ -507,10 +507,10 @@ function DashboardContent() {
           ) : listFor.length === 0 ? (
             <div className="empty">
               <p className="h4">{tab === "upcoming" ? "No appointments coming up." : tab === "past" ? "No past cuts yet." : "Nothing cancelled."}</p>
-              {tab === "upcoming" && <a href="/book" className="btn btn-primary" style={{ marginTop: 14 }}>Book a cut</a>}
+              {tab === "upcoming" && <a href="/book" className="btn btn-primary mt-4">Book a cut</a>}
             </div>
           ) : (
-            <ul className="stack" style={{ listStyle: "none", "--stack": "10px" }}>
+            <ul className="stack" style={{ "--stack": "10px" }}>
               {listFor.map((a) => (
                 <ApptRow key={a.id} a={a} onCancel={setCancelling} onReschedule={setResched} onReview={setReview} />
               ))}
@@ -530,7 +530,7 @@ function DashboardContent() {
             setAppts((p) => p.map((a) => (a.id === review.id ? { ...a, has_review: true } : a)));
             setReview(null);
             toast(`Thanks. Your ${r}-star review is in.`);
-            addNotif?.("Review sent", "Thanks for the feedback.", "haircut_review");
+            notify("Review sent", "Thanks for the feedback.", "haircut_review");
           }} />
       )}
       {toastHost}

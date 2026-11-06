@@ -1,4 +1,4 @@
-/* ── Hero ───────────────────────────────────────────────────────────────── */
+/* Hero */
 .hero {
   position: relative;
   height: 100vh;
@@ -65,14 +65,14 @@
   .lede { display: none; }
 }
 
-/* ── Section heads ──────────────────────────────────────────────────────── */
+/* Section heads */
 .sectionHead { display: grid; gap: 14px; margin-bottom: clamp(32px, 5vw, 56px); max-width: 760px; }
 .sectionHeadRow {
   max-width: none; display: flex; align-items: flex-end; justify-content: space-between; gap: 20px; flex-wrap: wrap;
 }
 .sectionHeadRow > div { display: grid; gap: 14px; max-width: 640px; }
 
-/* ── Price board ────────────────────────────────────────────────────────── */
+/* Price board */
 .boardGrid {
   display: grid; gap: 40px 64px;
   grid-template-columns: 1fr 1fr;
@@ -87,7 +87,7 @@
   .boardGrid { grid-template-columns: 1fr; grid-template-areas: "cuts" "lines" "beard"; }
 }
 
-/* ── Barbers ────────────────────────────────────────────────────────────── */
+/* Barbers */
 .portraits {
   list-style: none;
   display: grid; gap: 48px 32px;
@@ -109,7 +109,7 @@
     var(--surface-2);
 }
 
-/* ── Salon hang ─────────────────────────────────────────────────────────── */
+/* Salon hang */
 .hang {
   list-style: none;
   display: grid;
@@ -141,7 +141,7 @@
   .hang5 .hangImg { aspect-ratio: 4 / 3; }
 }
 
-/* ── Reviews ────────────────────────────────────────────────────────────── */
+/* Reviews */
 .reviewGrid { display: grid; grid-template-columns: 1.25fr 1fr; gap: clamp(32px, 6vw, 80px); align-items: start; }
 .leadQuote blockquote p {
   font-family: var(--font-display); font-style: italic; font-weight: 420;
@@ -158,7 +158,7 @@
 .quote figcaption { margin-top: 8px; }
 @media (max-width: 860px) { .reviewGrid { grid-template-columns: 1fr; } }
 
-/* ── Visit ──────────────────────────────────────────────────────────────── */
+/* Visit */
 .visitGrid { display: grid; grid-template-columns: 1fr 1.1fr; gap: clamp(32px, 5vw, 72px); align-items: center; }
 .mapFrame { transform: rotate(0.8deg); }
 .map { display: block; width: 100%; height: clamp(300px, 42vw, 460px); border: 0; }

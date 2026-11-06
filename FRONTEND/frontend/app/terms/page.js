@@ -88,10 +88,10 @@ export default function TermsPage() {
       <SiteNav />
       <main id="main" className="wrap-narrow page-pad legal">
         <h1 className="h1">Terms and privacy</h1>
-        <p className="lede" style={{ marginTop: 12 }}>
+        <p className="lede mt-3">
           The rules for booking with HEADZ UP Barbershop, and what we do with your information. Last updated November 2026.
         </p>
-        <nav className="panel panel-pad" style={{ marginTop: 28 }} aria-label="On this page">
+        <nav className="panel panel-pad mt-7" aria-label="On this page">
           <p className="label">On this page</p>
           <ul className="toc">
             {[...TERMS, ...PRIVACY].map((s) => <li key={s.id}><a className="link" href={`#${s.id}`}>{s.title}</a></li>)}
@@ -105,7 +105,7 @@ export default function TermsPage() {
         <Block sections={PRIVACY} />
 
         <h2 className="h3">Questions</h2>
-        <p style={{ marginTop: 10 }}>
+        <p className="mt-3">
           HEADZ UP Barbershop, {ADDRESS_LINE}. Call <a className="link" href={`tel:${SHOP.phone}`}>{SHOP.phoneDisplay}</a> or
           email <a className="link" href={`mailto:${SHOP.email}`}>{SHOP.email}</a>. We may update these terms; big changes
           are sent to the email on your account, and using the site after a change means you accept it.

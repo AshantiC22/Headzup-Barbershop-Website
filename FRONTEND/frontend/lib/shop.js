@@ -1,7 +1,5 @@
-// ─────────────────────────────────────────────────────────────────────────────
 // Shop facts — one place for everything the site says about HEADZ UP.
 // Change an hour, a price or a phone number here and every page follows.
-// ─────────────────────────────────────────────────────────────────────────────
 
 export const SHOP = {
   name: "Headz Up",

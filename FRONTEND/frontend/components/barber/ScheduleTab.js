@@ -45,26 +45,26 @@ function Row({ a, onStatus, onAsk, onRemind }) {
       <div className="appt grow">
         <button className="appt-head" aria-expanded={open} onClick={() => setOpen((v) => !v)}>
           <span className="grow">
-            <span className="h4" style={{ display: "block" }}>
+            <span className="h4">
               <span className="sr-only">{fmtTime(a.time)}, </span>{a.client}
-              {a.is_walk_in && <span className="chip chip-plain chip-quiet" style={{ marginLeft: 8, verticalAlign: "middle" }}>Walk-in</span>}
+              {a.is_walk_in && <span className="chip chip-plain chip-quiet chip-after">Walk-in</span>}
             </span>
-            <span className="muted small" style={{ display: "block" }}>{a.service}, {a.service_duration || 30} min, {money(a.service_price)}</span>
-            <span className={`chip ${st.chip}`} style={{ marginTop: 8 }}>{st.label}</span>
+            <span className="muted small">{a.service}, {a.service_duration || 30} min, {money(a.service_price)}</span>
+            <span className={`chip ${st.chip} mt-2`}>{st.label}</span>
           </span>
-          <IconChevronDown style={{ transform: open ? "rotate(180deg)" : "none", transition: "transform .2s", flexShrink: 0 }} />
+          <IconChevronDown />
         </button>
         {open && (
           <div className="appt-body">
             <dl className="kv">
               <div><dt>Payment</dt><dd>{payText(a)}</dd></div>
-              {a.client_email && <div><dt>Email</dt><dd style={{ wordBreak: "break-all" }}>{a.client_email}</dd></div>}
+              {a.client_email && <div><dt>Email</dt><dd className="break-anywhere">{a.client_email}</dd></div>}
             </dl>
             {a.client_notes && (
-              <p className="placard-medium" style={{ marginBottom: 14 }}>&ldquo;{a.client_notes}&rdquo; — {a.client}</p>
+              <p className="placard-medium mb-4">&ldquo;{a.client_notes}&rdquo; — {a.client}</p>
             )}
             {!closed && (
-              <div className="row-wrap" style={{ marginBottom: 16 }}>
+              <div className="row-wrap mb-4">
                 {a.status === "pending_shop" && <button className="btn btn-ok btn-sm" onClick={() => onStatus(a.id, "confirmed")}>Check in</button>}
                 {a.status === "confirmed" && <button className="btn btn-primary btn-sm" onClick={() => onAsk("complete", a)}>Mark done</button>}
                 <button className="btn btn-ghost btn-sm" onClick={() => onRemind(a.id)}>Send reminder</button>
@@ -77,7 +77,7 @@ function Row({ a, onStatus, onAsk, onRemind }) {
               <textarea id={`note-${a.id}`} className="textarea" rows={2} value={note} onChange={(e) => setNote(e.target.value)}
                 placeholder="#2 on the sides, likes the beard squared off" />
             </div>
-            <button className="btn btn-ghost btn-sm" style={{ marginTop: 10 }} onClick={saveNote} disabled={saving}>
+            <button className="btn btn-ghost btn-sm mt-3" onClick={saveNote} disabled={saving}>
               {saving ? <Spinner label="Saving" /> : saved ? "Saved" : "Save note"}
             </button>
           </div>
@@ -175,7 +175,7 @@ export default function ScheduleTab({ toast, onSummary }) {
         </div>
       </div>
 
-      <div className="stat-row" style={{ marginBottom: 24 }}>
+      <div className="stat-row mb-6">
         <div className="stat"><span className="stat-n">{summary.total || 0}</span><span className="stat-l">Booked</span></div>
         <div className="stat"><span className="stat-n">{summary.paid_online || 0}</span><span className="stat-l">Paid online</span></div>
         <div className="stat"><span className="stat-n">{summary.pay_in_shop || 0}</span><span className="stat-l">Paying at the shop</span></div>
@@ -186,18 +186,18 @@ export default function ScheduleTab({ toast, onSummary }) {
       ) : list.length === 0 ? (
         <div className="empty">
           <p className="h4">Nothing booked {isToday ? "today" : "this day"}.</p>
-          <p className="muted small" style={{ marginTop: 6 }}>Walk-ins can be added from the Walk-in tab.</p>
+          <p className="muted small mt-2">Walk-ins can be added from the Walk-in tab.</p>
         </div>
       ) : (
-        <ul className="stack" style={{ listStyle: "none", "--stack": "10px" }}>
+        <ul className="stack" style={{ "--stack": "10px" }}>
           {list.map((x) => <Row key={x.id} a={x} onStatus={setStatus} onRemind={remind} onAsk={(kind, appt) => setAsk({ kind, appt })} />)}
         </ul>
       )}
 
       {active.length > 0 && (
-        <div style={{ marginTop: 28, paddingTop: 18, borderTop: "1px dashed var(--line-2)" }}>
+        <div className="mt-7" style={{ paddingTop: 18, borderTop: "1px dashed var(--line-2)" }}>
           <button className="btn btn-danger btn-sm" onClick={() => setAsk({ kind: "clear" })}>Cancel the whole day</button>
-          <p className="small faint" style={{ marginTop: 6 }}>For sick days and emergencies. Every client gets told.</p>
+          <p className="small faint mt-2">For sick days and emergencies. Every client gets told.</p>
         </div>
       )}
 
@@ -212,7 +212,7 @@ export default function ScheduleTab({ toast, onSummary }) {
               {a.deposit_paid && <div className="sum-row"><dt>Deposit already paid</dt><dd>{money(a.deposit_amount)}</dd></div>}
               <div className="sum-row sum-total"><dt><strong>Collect now</strong></dt><dd className="price" style={{ fontSize: "1.6rem" }}>{money(collect)}</dd></div>
             </dl>
-            <p className="small muted" style={{ marginTop: 10 }}>{a.client} gets a thank-you and a review request.</p>
+            <p className="small muted mt-3">{a.client} gets a thank-you and a review request.</p>
           </>
         )}
         {ask?.kind === "cancel" && a && <p className="muted">{a.client}, {a.service} at {fmtTime(a.time)}. They&apos;ll get a text and email.</p>}
@@ -220,7 +220,7 @@ export default function ScheduleTab({ toast, onSummary }) {
         {ask?.kind === "clear" && (
           <Notice tone="bad">This cancels {active.length} appointment{active.length === 1 ? "" : "s"} on {fmtDate(date, "long")}. Every client is told.</Notice>
         )}
-        <div className="row-wrap" style={{ marginTop: 20 }}>
+        <div className="row-wrap mt-5">
           <button className={`btn grow ${ask?.kind === "complete" ? "btn-primary" : "btn-danger"}`} disabled={busy} onClick={doAsk}>
             {busy ? <Spinner label="Working" /> : ask?.kind === "complete" ? "Done, money collected" : ask?.kind === "cancel" ? "Cancel appointment" : ask?.kind === "noshow" ? "Add strike" : "Cancel the day"}
           </button>
