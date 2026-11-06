@@ -1,36 +1,79 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# headzup-web
 
-## Getting Started
-
-First, run the development server:
+The public site, booking flow, client account and barber dashboard for
+HEADZ UP Barbershop (2509 W 4th St, Hattiesburg). Next.js App Router talking
+to the Django API in `../../BACKEND`.
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
+npm run dev        # http://localhost:3000
+npm test           # vitest: date/time rules, shop data, painter determinism
+npm run lint
+npm run build
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+| Variable | Default | |
+| --- | --- | --- |
+| `NEXT_PUBLIC_API_URL` | `https://api.headzupp.com` | API origin, no trailing slash |
+| `NEXT_PUBLIC_VAPID_PUBLIC_KEY` | none | Web push key; when unset it's fetched from `push/vapid-key/` |
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Layout
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```
+app/                  one folder per route; page-level CSS modules sit beside the page
+components/
+  art/                HarborScene (home hero), PaintedSky, Impression (photo → painting)
+  site/               nav, footer, flow and app headers
+  booking/            calendar, slot picker, work-week editor
+  barber/             dashboard tabs, grouped by job (schedule, people, setup, money)
+  auth/               shared form pieces and the password recovery flow
+  ui/                 modal, toasts, notices, icons
+lib/
+  api.js              axios client: token refresh, short GET cache
+  auth.js             session helpers, safe ?next= redirects
+  time.js             all date/time handling (shop runs on America/Chicago)
+  shop.js             address, hours, services, gallery: the facts that rarely change
+  painter.js          the generative painting engine
+```
 
-## Learn More
+## The look
 
-To learn more about Next.js, take a look at the following resources:
+Impressionist light with a surrealist hang: the home hero is a harbor at
+sunrise (night, in the dark theme) painted stroke by stroke into a canvas, with
+a barber pole standing in the water that turns while the shop is open. Prices
+hang as a painted board, barbers as oval portraits, haircuts as a salon wall
+with museum placards.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Everything visual is drawn in `lib/painter.js`; there are no image assets for
+the art. A scene function (`composeHarbor`, `composeSky`) returns a list of
+strokes and `paint()` lays them down. Seeds are fixed, so the same viewport
+always gets the same painting (the tests check this). The paint-in animation
+runs once per session and never with `prefers-reduced-motion`.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+A full-screen painting is tens of thousands of strokes, which is over a second
+of main-thread work on a mid-range phone. `components/art/useScenePainter.js`
+hands the canvas to `lib/paint.worker.js` with `transferControlToOffscreen()`
+so that work happens off the main thread, and falls back to painting in place
+on browsers that can't transfer a canvas.
 
-## Deploy on Vercel
+Colors and type are CSS variables in `app/globals.css`, switched by
+`<html data-theme>`. Spacing between blocks uses one scale (4, 8, 12, 16, 20,
+24, 32, 40 px) through the `mt-*`/`mb-*` classes at the end of that file. A small inline script in `app/layout.tsx` sets that
+attribute before first paint from `localStorage.headzup_theme` or the OS
+setting. Canvas code reads the palette through `useTheme()`.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Type is Fraunces (display, with its SOFT and WONK axes) and Figtree (UI), both
+self-hosted through Fontsource.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Things that are easy to get wrong
+
+- **Dates.** Use `lib/time.js`. `new Date().toISOString()` gives tomorrow's
+  date after 6 or 7 pm in Mississippi. Open/closed is computed in shop time,
+  not the visitor's.
+- **Times from the API** come as `HH:MM:SS` or `h:mm AM`. `fmtTime` and
+  `toMinutes` handle both.
+- **Deposit return URL.** The API's deposit-success redirect doesn't encode
+  the service name, so `Haircut & Shave` arrives split at the `&`.
+  `booking-confirmed` reads the raw query string to put it back together.
+- **Service worker.** `public/sw.js` caches by `CACHE_VERSION`. Bump it when
+  shipping changes to cached routes or the offline page.

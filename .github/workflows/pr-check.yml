@@ -58,6 +58,12 @@ jobs:
 
       - run: npm ci
 
+      - name: Lint
+        run: npm run lint
+
+      - name: Unit tests
+        run: npm test
+
       - name: Build
         env:
           NEXT_PUBLIC_API_URL: https://headzup-barbershop-website-production.up.railway.app/api
@@ -84,7 +90,8 @@ jobs:
           )
           FAILED=0
           for PATTERN in "${PATTERNS[@]}"; do
-            if git diff origin/main...HEAD | grep -iE "$PATTERN"; then
+            # Only added lines: deleting a leaked key is the fix, not a new leak.
+            if git diff origin/main...HEAD | grep -E '^\+' | grep -iE "$PATTERN"; then
               echo "❌ Possible secret found matching pattern: $PATTERN"
               FAILED=1
             fi

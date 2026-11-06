@@ -72,6 +72,12 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Lint
+        run: npm run lint
+
+      - name: Unit tests
+        run: npm test
+
       - name: Next.js build check
         env:
           NEXT_PUBLIC_API_URL: https://headzup-barbershop-website-production.up.railway.app/api
