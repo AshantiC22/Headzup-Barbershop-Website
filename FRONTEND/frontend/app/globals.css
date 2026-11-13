@@ -1162,6 +1162,11 @@ a.side-link { text-decoration: none; }
 .news-form { grid-template-columns: 76px 1fr; }
 .swap { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; margin-top: 14px; padding: 12px 14px; border-radius: var(--r-panel); background: var(--surface-2); }
 .swap-arrow { flex-shrink: 0; color: var(--ink-3); }
+@media (max-width: 560px) {
+  /* stacked, so the arrow points down at the new time */
+  .swap { flex-direction: column; align-items: flex-start; gap: 6px; }
+  .swap-arrow { transform: rotate(90deg); }
+}
 .avatar {
   width: 42px; height: 42px; flex-shrink: 0; display: grid; place-items: center; border-radius: 2px;
   font-family: var(--font-display); font-weight: 780; font-size: 1.35rem; color: var(--accent-ink);

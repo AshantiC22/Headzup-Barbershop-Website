@@ -82,12 +82,15 @@ jobs:
       - name: Lint
         run: npm run lint
 
+      - name: Formatting
+        run: npm run format:check
+
       - name: Unit tests
         run: npm test
 
       - name: Next.js build check
         env:
-          NEXT_PUBLIC_API_URL: https://headzup-barbershop-website-production.up.railway.app/api
+          NEXT_PUBLIC_API_URL: https://headzup-barbershop-website-production.up.railway.app
         run: npm run build
 
   # ── 3. DEPLOY (main branch only) ─────────────────────────────────────────────

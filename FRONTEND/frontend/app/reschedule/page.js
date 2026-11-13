@@ -6,7 +6,7 @@ import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { AuthShell } from "@/components/auth/AuthParts";
 import { Spinner } from "@/components/ui/Feedback";
-import { API_ROOT } from "@/lib/auth";
+import { API_ROOT } from "@/lib/config";
 
 const COPY = {
   loading:  { title: "Working on it", body: "Sending your answer to the shop." },

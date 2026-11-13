@@ -350,10 +350,13 @@ function DashboardContent() {
     })();
   }, [router]);
 
-  const now = new Date();
-  const upcoming = useMemo(() => appts
-    .filter((a) => !["cancelled", "no_show", "completed"].includes(a.status) && apptDate(a.date, a.time) >= new Date(now - 3600e3))
-    .sort((a, b) => apptDate(a.date, a.time) - apptDate(b.date, b.time)), [appts]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Still "coming up" until an hour after the start time.
+  const upcoming = useMemo(() => {
+    const cutoff = new Date(Date.now() - 3600e3);
+    return appts
+      .filter((a) => !["cancelled", "no_show", "completed"].includes(a.status) && apptDate(a.date, a.time) >= cutoff)
+      .sort((a, b) => apptDate(a.date, a.time) - apptDate(b.date, b.time));
+  }, [appts]);
   const past = useMemo(() => appts
     .filter((a) => a.status !== "cancelled" && !upcoming.includes(a))
     .sort((a, b) => apptDate(b.date, b.time) - apptDate(a.date, a.time)), [appts, upcoming]);

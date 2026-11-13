@@ -2,8 +2,7 @@
 // Session helpers. The API issues JWTs and the access token's payload carries
 // is_staff, which is all the nav needs to know.
 import { useEffect, useMemo, useSyncExternalStore } from "react";
-
-export const API_ROOT = process.env.NEXT_PUBLIC_API_URL || "https://api.headzupp.com";
+import { API_ROOT } from "./config";
 
 const SESSION_EVENT = "headzup:session";
 

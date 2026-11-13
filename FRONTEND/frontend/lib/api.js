@@ -1,8 +1,7 @@
 import axios from "axios";
+import { API_ROOT } from "./config";
 
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL
-  ? `${process.env.NEXT_PUBLIC_API_URL}/api/`
-  : "https://api.headzupp.com/api/";
+const BASE_URL = `${API_ROOT}/api/`;
 
 const API = axios.create({
   baseURL: BASE_URL,

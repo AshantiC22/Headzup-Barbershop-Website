@@ -9,12 +9,13 @@ npm install
 npm run dev        # http://localhost:3000
 npm test           # vitest: date/time rules, shop data, painter determinism
 npm run lint
+npm run format     # Prettier; CI runs format:check
 npm run build
 ```
 
 | Variable | Default | |
 | --- | --- | --- |
-| `NEXT_PUBLIC_API_URL` | `https://api.headzupp.com` | API origin, no trailing slash |
+| `NEXT_PUBLIC_API_URL` | `https://api.headzupp.com` | API origin. A trailing `/api` or slash is stripped (`lib/config.js`) |
 | `NEXT_PUBLIC_VAPID_PUBLIC_KEY` | none | Web push key; when unset it's fetched from `push/vapid-key/` |
 
 ## Layout

@@ -10,7 +10,7 @@ import SiteNav from "@/components/site/SiteNav";
 import SiteFooter, { HoursList } from "@/components/site/SiteFooter";
 import ToolRack from "@/components/site/ToolRack";
 import { IconPhone, IconPin, Skeleton } from "@/components/ui/Feedback";
-import { API_ROOT } from "@/lib/auth";
+import { API_ROOT } from "@/lib/config";
 import { ADDRESS_LINE, GALLERY, REVIEWS, SHOP } from "@/lib/shop";
 import { shopStatus } from "@/lib/time";
 import s from "./home.module.css";
