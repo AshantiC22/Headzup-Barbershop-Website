@@ -1,172 +1,90 @@
 "use client";
-import { createContext, useContext, useState, useEffect } from "react";
+// Two lights on one street: Lamplight (the default, night) and Daylight (the
+// same street under an overcast morning). The colors live in globals.css;
+// this file only decides which one is on.
+//
+// <html data-theme> is the source of truth. The inline script in layout.tsx
+// sets it before first paint, and everything here reads it back through
+// useSyncExternalStore, so React never disagrees with what's on screen.
+import { createContext, useCallback, useContext, useMemo, useSyncExternalStore } from "react";
+import { arrowSelect, rovingIndex } from "@/components/ui/roving";
 
-// ── DARK THEME — Deep black, amber fire, glass surfaces ────────────────────────
-const DARK = {
-  name:         "dark",
-  bg:           "#070709",
-  bgDeep:       "#050507",
-  surface:      "rgba(255,255,255,0.04)",
-  surfaceB:     "rgba(255,255,255,0.07)",
-  surfaceC:     "rgba(255,255,255,0.11)",
-  glass:        "rgba(255,255,255,0.04)",
-  glassB:       "rgba(255,255,255,0.07)",
-  border:       "rgba(255,255,255,0.08)",
-  borderB:      "rgba(255,255,255,0.15)",
-  amber:        "#f59e0b",
-  amberL:       "#fbbf24",
-  amberD:       "#d97706",
-  amberDim:     "rgba(245,158,11,0.10)",
-  amberGlow:    "rgba(245,158,11,0.18)",
-  amberBorder:  "rgba(245,158,11,0.35)",
-  red:          "#ef4444",
-  redDim:       "rgba(239,68,68,0.10)",
-  green:        "#22c55e",
-  greenDim:     "rgba(34,197,94,0.10)",
-  blue:         "#60a5fa",
-  blueDim:      "rgba(96,165,250,0.10)",
-  purple:       "#a78bfa",
-  text:         "#f1f0ee",
-  sub:          "#9ca3af",
-  muted:        "#4b5563",
-  inputBg:      "rgba(255,255,255,0.05)",
-  inputText:    "#f1f0ee",
-  placeholder:  "#6b7280",
-  headerBg:     "rgba(7,7,9,0.88)",
-  sidebarBg:    "rgba(7,7,9,0.97)",
+const STORAGE_KEY = "headzup_theme";
+const MODES = ["dark", "light"];
+
+// Hex values for code that can't read CSS variables (canvas, meta theme-color).
+export const TOKENS = {
+  dark: {
+    name: "dark", bg: "#1A1D1C", surface: "#242826", ink: "#E6DFCF", ink2: "#B4AD9D",
+    ink3: "#9C9689", accent: "#8E1B1B", onAccent: "#F3ECDD", steel: "#9DB4C0",
+    brass: "#C9A25A", ok: "#8DBF97", bad: "#E4806E",
+  },
+  light: {
+    name: "light", bg: "#D9D6CE", surface: "#E9E6DF", ink: "#1D201F", ink2: "#45463F",
+    ink3: "#4F4E47", accent: "#8E1B1B", onAccent: "#F6F1E6", steel: "#2F4B5A",
+    brass: "#8A6A2E", ok: "#2E6B44", bad: "#9E2620",
+  },
 };
 
-// ── LIGHT THEME — True opposite: white/light bg, dark text, everything visible ─
-// Philosophy: flip every dark token to its bright equivalent.
-// Dark bg → white bg. Dark glass → crisp white card.
-// Light text → dark text. Amber stays amber (deepened for contrast).
-const LIGHT = {
-  name:         "light",
-  // Pure white page background
-  bg:           "#ffffff",
-  bgDeep:       "#f4f4f5",
-  // Card surfaces — solid white with slight depth
-  surface:      "rgba(0,0,0,0.03)",
-  surfaceB:     "rgba(0,0,0,0.055)",
-  surfaceC:     "rgba(0,0,0,0.08)",
-  glass:        "rgba(0,0,0,0.03)",
-  glassB:       "rgba(0,0,0,0.055)",
-  // Visible dark borders
-  border:       "rgba(0,0,0,0.11)",
-  borderB:      "rgba(0,0,0,0.20)",
-  // Amber — deeper for contrast on white
-  amber:        "#b45309",
-  amberL:       "#d97706",
-  amberD:       "#92400e",
-  amberDim:     "rgba(180,83,9,0.09)",
-  amberGlow:    "rgba(180,83,9,0.16)",
-  amberBorder:  "rgba(180,83,9,0.38)",
-  // Status — deep saturated for white bg readability
-  red:          "#dc2626",
-  redDim:       "rgba(220,38,38,0.08)",
-  green:        "#16a34a",
-  greenDim:     "rgba(22,163,74,0.08)",
-  blue:         "#2563eb",
-  blueDim:      "rgba(37,99,235,0.08)",
-  purple:       "#7c3aed",
-  // TEXT — near-black, high contrast on white
-  text:         "#111111",
-  sub:          "#3f3f46",
-  muted:        "#71717a",
-  // INPUTS — solid white with dark text/placeholder
-  inputBg:      "#ffffff",
-  inputText:    "#111111",
-  placeholder:  "#71717a",
-  // Structural
-  headerBg:     "rgba(255,255,255,0.92)",
-  sidebarBg:    "rgba(244,244,245,0.99)",
-};
+function subscribe(onChange) {
+  const observer = new MutationObserver(onChange);
+  observer.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+  return () => observer.disconnect();
+}
+const readMode = () => (document.documentElement.dataset.theme === "light" ? "light" : "dark");
 
-export const THEMES = { dark: DARK, light: LIGHT };
-const ThemeContext = createContext({ theme: DARK, isDark: true, toggle: () => {} });
-
-export function ThemeProvider({ children }) {
-  const [isDark, setIsDark] = useState(true);
-
-  useEffect(() => {
-    try {
-      const saved = localStorage.getItem("headzup_theme");
-      if (saved === "light") setIsDark(false);
-    } catch(e) {}
-  }, []);
-
-  const toggle = () => {
-    setIsDark(prev => {
-      const next = !prev;
-      try { localStorage.setItem("headzup_theme", next ? "dark" : "light"); } catch(e) {}
-      return next;
-    });
-  };
-
-  const theme = isDark ? DARK : LIGHT;
-
-  useEffect(() => {
-    const root = document.documentElement;
-    root.setAttribute("data-theme", theme.name);
-    document.body.style.background = theme.bg;
-    document.body.style.color      = theme.text;
-    root.style.setProperty("--bg",           theme.bg);
-    root.style.setProperty("--surface",      theme.surface);
-    root.style.setProperty("--border",       theme.border);
-    root.style.setProperty("--text",         theme.text);
-    root.style.setProperty("--sub",          theme.sub);
-    root.style.setProperty("--muted",        theme.muted);
-    root.style.setProperty("--amber",        theme.amber);
-    root.style.setProperty("--amber-dim",    theme.amberDim);
-    root.style.setProperty("--amber-border", theme.amberBorder);
-    root.style.setProperty("--input-bg",     theme.inputBg);
-    root.style.setProperty("--input-text",   theme.inputText);
-    root.style.setProperty("--placeholder",  theme.placeholder);
-    root.style.setProperty("--header-bg",    theme.headerBg);
-    root.style.setProperty("--sidebar-bg",   theme.sidebarBg);
-  }, [theme]);
-
-  return (
-    <ThemeContext.Provider value={{ theme, isDark, toggle }}>
-      {children}
-    </ThemeContext.Provider>
-  );
+function applyMode(mode, { remember }) {
+  const root = document.documentElement;
+  root.dataset.theme = mode;
+  root.style.colorScheme = mode;
+  document.querySelectorAll('meta[name="theme-color"]').forEach((m) => m.setAttribute("content", TOKENS[mode].bg));
+  if (remember) { try { localStorage.setItem(STORAGE_KEY, mode); } catch {} }
 }
 
-export function useTheme() { return useContext(ThemeContext); }
+const ThemeContext = createContext({
+  mode: "dark", isDark: true, theme: TOKENS.dark, palette: "night", setMode: () => {},
+});
 
-export function ThemeToggle({ style = {} }) {
-  const { isDark, toggle } = useTheme();
+export function ThemeProvider({ children }) {
+  const mode = useSyncExternalStore(subscribe, readMode, () => "dark");
+
+  const setMode = useCallback((next) => applyMode(next, { remember: true }), []);
+
+  const value = useMemo(() => ({
+    mode,
+    isDark: mode === "dark",
+    theme: TOKENS[mode],
+    palette: mode === "dark" ? "night" : "day",
+    setMode,
+  }), [mode, setMode]);
+
+  return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
+}
+
+export const useTheme = () => useContext(ThemeContext);
+
+/** Lamplight / Daylight switch: two labelled options rather than a mystery toggle. */
+export function ThemeToggle({ className = "" }) {
+  const { mode, setMode } = useTheme();
   return (
-    <button onClick={toggle}
-      title={isDark ? "Switch to light" : "Switch to dark"}
-      style={{
-        width: 46, height: 26, borderRadius: 13, padding: 0, cursor: "pointer",
-        position: "relative", flexShrink: 0,
-        background: isDark
-          ? "rgba(245,158,11,0.15)"
-          : "rgba(180,83,9,0.10)",
-        border: `1px solid ${isDark ? "rgba(245,158,11,0.4)" : "rgba(180,83,9,0.4)"}`,
-        transition: "all 0.3s cubic-bezier(0.4,0,0.2,1)",
-        ...style,
-      }}>
-      <span style={{ position:"absolute", left:5, top:"50%",
-        transform:"translateY(-50%)", fontSize:11,
-        opacity: isDark ? 1 : 0, transition:"opacity 0.2s",
-        pointerEvents:"none" }}>🌙</span>
-      <span style={{ position:"absolute", right:5, top:"50%",
-        transform:"translateY(-50%)", fontSize:11,
-        opacity: isDark ? 0 : 1, transition:"opacity 0.2s",
-        pointerEvents:"none" }}>☀️</span>
-      <div style={{
-        position:"absolute", top:3, width:18, height:18, borderRadius:"50%",
-        left: isDark ? 3 : 23,
-        background: isDark
-          ? "linear-gradient(135deg,#f59e0b,#d97706)"
-          : "linear-gradient(135deg,#d97706,#b45309)",
-        boxShadow: "0 1px 4px rgba(0,0,0,0.35)",
-        transition: "left 0.3s cubic-bezier(0.4,0,0.2,1)",
-      }}/>
-    </button>
+    <div className={`hu-theme-switch ${className}`} role="radiogroup" aria-label="Lighting"
+      onKeyDown={(e) => arrowSelect(e, MODES, mode, setMode)}>
+      <button type="button" role="radio" aria-checked={mode === "dark"} tabIndex={rovingIndex("dark", mode, MODES)}
+        className={mode === "dark" ? "is-on" : ""} onClick={() => setMode("dark")}>
+        <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+          <path d="M12 2.5c2.6 3.1 4.8 5.6 4.8 9.1A4.8 4.8 0 0 1 12 16.4a4.8 4.8 0 0 1-4.8-4.8c0-2 .9-3.6 2.2-5.1.2 1.6 1 2.7 2.1 3.2C11 7.6 11.2 5 12 2.5Z" fill="currentColor" />
+          <path d="M8 19h8M9.5 21.5h5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+        </svg>
+        Lamplight
+      </button>
+      <button type="button" role="radio" aria-checked={mode === "light"} tabIndex={rovingIndex("light", mode, MODES)}
+        className={mode === "light" ? "is-on" : ""} onClick={() => setMode("light")}>
+        <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+          <circle cx="10" cy="9" r="4" fill="currentColor" />
+          <path d="M6.5 19.5h11a3.5 3.5 0 0 0 .3-7 5 5 0 0 0-9.6.9A3.1 3.1 0 0 0 6.5 19.5Z" fill="currentColor" opacity=".55" />
+        </svg>
+        Daylight
+      </button>
+    </div>
   );
 }
