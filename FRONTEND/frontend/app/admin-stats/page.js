@@ -1,5 +1,6 @@
 "use client";
 // Shop overview (admin/stats/): the whole shop at a glance, every barber together.
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import API from "@/lib/api";
@@ -44,7 +45,7 @@ export default function AdminStatsPage() {
   return (
     <>
       <AppHeader title="Shop overview" signOutTo="/barber-login">
-        <a href="/barber-dashboard" className="btn btn-ghost btn-sm">My dashboard</a>
+        <Link href="/barber-dashboard" className="btn btn-ghost btn-sm">My dashboard</Link>
       </AppHeader>
       <main id="main" className="wrap dash" style={{ maxWidth: 1180 }}>
         <h1 className="h1">The whole shop</h1>
@@ -59,7 +60,7 @@ export default function AdminStatsPage() {
                 ["Waiting to check in", o.pending_shop], ["On waitlists", o.waitlist], ["Cancelled, 30 days", o.cancelled_30d], ["No-shows, 30 days", o.no_shows_30d]]
                 .map(([l, v]) => <div key={l} className="stat"><span className="stat-n">{v ?? 0}</span><span className="stat-l">{l}</span></div>)}
             </div>
-            <div className="stat-row">
+            <div className="stat-row is-3">
               {[["Deposits this week", o.week_revenue], ["Deposits, 30 days", o.month_revenue], ["Deposits all time", o.total_revenue]]
                 .map(([l, v]) => <div key={l} className="stat"><span className="stat-n">{money(v)}</span><span className="stat-l">{l}</span></div>)}
             </div>

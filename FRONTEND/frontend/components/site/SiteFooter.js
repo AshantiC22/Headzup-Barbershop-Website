@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 import { useSyncExternalStore } from "react";
 import { ThemeToggle } from "@/components/ThemeProvider";
 import { ADDRESS_LINE, HOURS, SHOP } from "@/lib/shop";
@@ -53,14 +54,14 @@ export default function SiteFooter({ showTheme = false, showHours = true }) {
           <div>
             <h2 className="h4 mb-4">Around the shop</h2>
             <ul className="footer-list">
-              <li><a href="/book">Book a cut</a></li>
-              <li><a href="/gallery">Recent work</a></li>
-              <li><a href="/newsletter">News and deals</a></li>
-              <li><a href="/waitlist">Join a waitlist</a></li>
-              <li><a href="/dashboard">My appointments</a></li>
-              <li><a href="/barber-login">Barber sign-in</a></li>
-              <li><a href="/sms-optin">Text message settings</a></li>
-              <li><a href="/terms">Terms and privacy</a></li>
+              <li><Link href="/book">Book a cut</Link></li>
+              <li><Link href="/gallery">Recent work</Link></li>
+              <li><Link href="/newsletter">News and deals</Link></li>
+              <li><Link href="/waitlist">Join a waitlist</Link></li>
+              <li><Link href="/dashboard">My appointments</Link></li>
+              <li><Link href="/barber-login">Barber sign-in</Link></li>
+              <li><Link href="/sms-optin">Text message settings</Link></li>
+              <li><Link href="/terms">Terms and privacy</Link></li>
             </ul>
           </div>
         </div>

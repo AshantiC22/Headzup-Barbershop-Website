@@ -1,6 +1,7 @@
 "use client";
 // The approve / decline link from a reschedule-request email:
 // /reschedule?token=…&action=accept|reject
+import Link from "next/link";
 import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { AuthShell } from "@/components/auth/AuthParts";
@@ -38,7 +39,7 @@ function Inner() {
       <h1 className="h1" aria-live="polite">{status === "loading" ? <Spinner label={c.title} /> : c.title}</h1>
       <p className="lede mt-3">{c.body}</p>
       {status !== "loading" && (
-        <a href="/barber-dashboard" className="btn btn-primary btn-lg btn-block mt-6">Open the barber dashboard</a>
+        <Link href="/barber-dashboard" className="btn btn-primary btn-lg btn-block mt-6">Open the barber dashboard</Link>
       )}
     </AuthShell>
   );

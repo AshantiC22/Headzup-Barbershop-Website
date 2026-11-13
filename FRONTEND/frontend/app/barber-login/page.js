@@ -1,5 +1,6 @@
 "use client";
 // Barber sign-in and invite-code sign-up (token/, barber/register/).
+import Link from "next/link";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import API from "@/lib/api";
@@ -151,7 +152,7 @@ export default function BarberLoginPage() {
         </form>
       )}
       <div className="auth-foot">
-        <a className="link" href="/login">Client sign-in</a>
+        <Link className="link" href="/login">Client sign-in</Link>
       </div>
     </AuthShell>
   );

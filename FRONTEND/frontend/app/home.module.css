@@ -124,7 +124,7 @@
   align-items: start;
 }
 .hangItem { display: grid; gap: 12px; justify-items: start; }
-.hangLink { display: block; width: 100%; text-decoration: none; transition: transform 0.35s var(--ease), filter 0.35s; }
+.hangLink { display: block; width: 100%; text-decoration: none; transition: transform var(--dur-3) var(--ease), filter var(--dur-3); }
 .hangLink:hover { transform: translateY(-3px); filter: drop-shadow(0 0 24px color-mix(in srgb, var(--flame) 18%, transparent)); }
 .hangImg { width: 100%; aspect-ratio: 3 / 4; }
 .hangPlacard { width: fit-content; max-width: 100%; padding: 9px 20px 8px; }

@@ -8,6 +8,7 @@ import { createContext, useCallback, useContext, useEffect, useRef, useState } f
 import { useRouter } from "next/navigation";
 import { currentSubscription, permission, pushSupport, saveSubscription, turnOnPush } from "@/lib/push";
 import { IconBell, IconClose } from "@/components/ui/Feedback";
+import { EXIT_MS, useHeld, usePresence } from "@/components/ui/motion";
 
 const KIND = {
   booking_confirmed:   { tone: "ok",   label: "Booking confirmed" },
@@ -55,8 +56,11 @@ export function AlertsProvider({ children }) {
 
   const dismiss = useCallback((id) => {
     clearTimeout(timers.current.get(id));
-    timers.current.delete(id);
-    setToasts((list) => list.filter((t) => t.id !== id));
+    setToasts((list) => list.map((t) => (t.id === id ? { ...t, leaving: true } : t)));
+    timers.current.set(id, setTimeout(() => {
+      timers.current.delete(id);
+      setToasts((list) => list.filter((t) => t.id !== id));
+    }, EXIT_MS));
   }, []);
 
   const notify = useCallback((title, body, type = "general", url = null) => {
@@ -131,14 +135,17 @@ export function AlertsProvider({ children }) {
     }
   };
 
-  const iosInstall = card === "offer" && pushSupport() === "ios-install";
+  const sheet = usePresence(card !== null);
+  const shownCard = useHeld(card, card !== null);
+  const iosInstall = shownCard === "offer" && pushSupport() === "ios-install";
 
   return (
     <AlertsContext.Provider value={{ notify, offerPush, askForPush, pushOn }}>
       {children}
 
-      {card === "offer" && (
-        <div className="np-sheet" role="dialog" aria-labelledby="np-title" aria-describedby="np-body">
+      {sheet && shownCard === "offer" && (
+        <div className="np-sheet" role="dialog" aria-labelledby="np-title" aria-describedby="np-body"
+          data-state={sheet} inert={sheet === "closing"}>
           <div className="np-card">
             <div className="row np-head">
               <span className="np-icon" aria-hidden="true"><IconBell size={22} /></span>
@@ -161,8 +168,9 @@ export function AlertsProvider({ children }) {
         </div>
       )}
 
-      {card === "ios" && (
-        <div className="np-sheet" role="dialog" aria-labelledby="np-ios-title">
+      {sheet && shownCard === "ios" && (
+        <div className="np-sheet" role="dialog" aria-labelledby="np-ios-title"
+          data-state={sheet} inert={sheet === "closing"}>
           <div className="np-card">
             <div className="spread np-head">
               <p id="np-ios-title" className="h4">Add to your home screen</p>
@@ -183,21 +191,26 @@ export function AlertsProvider({ children }) {
           const kind = kindOf(t.type);
           const body = (
             <>
-              <span className="np-label">{kind.label}<span className="faint"> · {ago(t.at)}</span></span>
+              <span className="np-label">
+                <span>{kind.label}</span>
+                <time className="faint" dateTime={t.at.toISOString()}>{ago(t.at)}</time>
+              </span>
               <span className="np-title">{t.title}</span>
               {t.body && <span className="small muted">{t.body}</span>}
             </>
           );
           return (
-            <div key={t.id} className={`np-toast np-${kind.tone}`}>
-              {t.url ? (
-                <button type="button" className="np-text" onClick={() => { dismiss(t.id); router.push(t.url); }}>{body}</button>
-              ) : (
-                <div className="np-text">{body}</div>
-              )}
-              <button type="button" className="icon-btn np-close" aria-label="Dismiss" onClick={() => dismiss(t.id)}>
-                <IconClose size={16} />
-              </button>
+            <div key={t.id} className="np-slot" data-state={t.leaving ? "closing" : "open"} inert={t.leaving}>
+              <div className={`np-toast np-${kind.tone}`}>
+                {t.url ? (
+                  <button type="button" className="np-text" onClick={() => { dismiss(t.id); router.push(t.url); }}>{body}</button>
+                ) : (
+                  <div className="np-text">{body}</div>
+                )}
+                <button type="button" className="icon-btn np-close" aria-label="Dismiss" onClick={() => dismiss(t.id)}>
+                  <IconClose size={16} />
+                </button>
+              </div>
             </div>
           );
         })}

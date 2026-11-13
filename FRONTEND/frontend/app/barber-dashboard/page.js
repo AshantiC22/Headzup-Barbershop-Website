@@ -1,6 +1,7 @@
 "use client";
 // The barber's studio. Each tab is its own component under components/barber/.
 // The current tab lives in the URL (?tab=clients) so a refresh keeps your place.
+import Link from "next/link";
 import { Suspense, useCallback, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import API from "@/lib/api";
@@ -144,7 +145,7 @@ function Studio() {
               </button>
             ))}
           </nav>
-          <a href="/admin-stats" className="side-link mt-2"><IconChart size={18} /> <span className="grow">Whole-shop overview</span></a>
+          <Link href="/admin-stats" className="side-link mt-2"><IconChart size={18} /> <span className="grow">Whole-shop overview</span></Link>
           <div className="mt-5"><ThemeToggle /></div>
         </aside>
 

@@ -1,5 +1,6 @@
 "use client";
 // The review link texted after a cut: /review?appt=123
+import Link from "next/link";
 import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import API from "@/lib/api";
@@ -55,7 +56,7 @@ function ReviewContent() {
       <AuthShell seed={5}>
         <h1 className="h2">Which cut are we reviewing?</h1>
         <p className="muted mt-3 mb-5">This link is missing its appointment. Open My appointments to review a past cut.</p>
-        <a href="/dashboard" className="btn btn-primary btn-lg btn-block">Open My appointments</a>
+        <Link href="/dashboard" className="btn btn-primary btn-lg btn-block">Open My appointments</Link>
       </AuthShell>
     );
   }
@@ -69,8 +70,8 @@ function ReviewContent() {
             ? `Your ${rating}-star review went to ${appt?.barber_name || "your barber"}. Reviews are how a barber's book fills up.`
             : "You've already left a review for this cut. Thanks for that."}
         </p>
-        <a href="/book" className="btn btn-primary btn-lg btn-block mt-6">Book the next one</a>
-        <a href="/dashboard" className="btn btn-quiet btn-block mt-2">My appointments</a>
+        <Link href="/book" className="btn btn-primary btn-lg btn-block mt-6">Book the next one</Link>
+        <Link href="/dashboard" className="btn btn-quiet btn-block mt-2">My appointments</Link>
       </AuthShell>
     );
   }

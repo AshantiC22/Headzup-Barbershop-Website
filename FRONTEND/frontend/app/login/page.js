@@ -1,6 +1,7 @@
 "use client";
 // Client sign-in and sign-up. Honors ?next= so someone who started booking
 // lands back in the booking flow after signing in.
+import Link from "next/link";
 import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import API from "@/lib/api";
@@ -158,16 +159,16 @@ function LoginContent() {
           {errs.secA && <p className="field-error">{errs.secA}</p>}
           <p className="small muted mt-5">
             We&apos;ll text booking confirmations and reminders to this number. Message and data rates may apply.
-            Reply STOP to opt out. <a className="link" href="/sms-optin">Text message details</a>
+            Reply STOP to opt out. <Link className="link" href="/sms-optin">Text message details</Link>
           </p>
           <SubmitButton busy={busy} busyLabel="Creating your account">Create account</SubmitButton>
           <p className="small faint center mt-3">
-            By creating an account you agree to the <a className="link" href="/terms">terms and privacy policy</a>.
+            By creating an account you agree to the <Link className="link" href="/terms">terms and privacy policy</Link>.
           </p>
         </form>
       )}
       <div className="auth-foot">
-        <a className="link" href="/barber-login">Barbers sign in here</a>
+        <Link className="link" href="/barber-login">Barbers sign in here</Link>
       </div>
     </AuthShell>
   );

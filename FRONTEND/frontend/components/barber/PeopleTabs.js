@@ -2,7 +2,8 @@
 // Walk-ins, reschedule requests, clients (with the message blast) and reviews.
 import { useEffect, useMemo, useState } from "react";
 import API from "@/lib/api";
-import { IconPlus, IconStar, Modal, Skeleton, Spinner } from "@/components/ui/Feedback";
+import { IconArrowRight, IconPlus, IconStar, Modal, Skeleton, Spinner } from "@/components/ui/Feedback";
+import { Collapse, Present } from "@/components/ui/motion";
 import { fmtTime, todayStr } from "@/lib/time";
 
 // Walk-in
@@ -124,7 +125,7 @@ export function ReschedulesTab({ toast, onCount }) {
               </div>
               <div className="swap">
                 <div><p className="small faint">Booked for</p><p style={{ fontWeight: 650 }}>{r.original_date}, {fmtTime(r.original_time)}</p></div>
-                <span aria-hidden="true" className="swap-arrow">→</span>
+                <IconArrowRight size={20} className="swap-arrow" />
                 <div><p className="small faint">Wants</p><p style={{ fontWeight: 650, color: "var(--accent-ink)" }}>{r.requested_date}, {fmtTime(r.requested_time)}</p></div>
               </div>
               {r.status === "pending" && (
@@ -153,7 +154,7 @@ const TEMPLATES = [
     msg: "Hey {name}, heads up: our hours changed. See the new times and book at headzupp.com\n\nReply STOP to opt out" },
 ];
 
-function Blast({ clients, preselect, onClose, toast }) {
+function Blast({ clients, preselect, open, onClose, toast }) {
   const [form, setForm] = useState({ subject: TEMPLATES[0].subject, message: "", send_sms: true, send_email: true });
   const [sel, setSel] = useState(preselect);
   const [ext, setExt] = useState([]);
@@ -186,7 +187,7 @@ function Blast({ clients, preselect, onClose, toast }) {
   };
 
   return (
-    <Modal open onClose={onClose} wide title="Message clients">
+    <Modal open={open} onClose={onClose} wide title="Message clients">
       <p className="label mb-2">Start from</p>
       <div className="pills mb-4">
         {TEMPLATES.map((t) => (
@@ -282,10 +283,10 @@ export function ClientsTab({ toast }) {
                   <span className="small muted">{c.total_visits} visit{c.total_visits === 1 ? "" : "s"}{c.last_visit ? `, last ${c.last_visit}` : ""}</span>
                 </span>
               </button>
-              {open === c.id && (
+              <Collapse open={open === c.id}>
                 <div className="appt-body">
                   <dl className="kv">
-                    <div><dt>Email</dt><dd className="break-anywhere">{c.email || "None"}</dd></div>
+                    <div className="kv-wide"><dt>Email</dt><dd className="break-anywhere">{c.email || "None"}</dd></div>
                     <div><dt>Finished cuts</dt><dd>{c.completed ?? c.total_visits}</dd></div>
                     <div><dt>No-shows</dt><dd>{c.no_shows || 0}</dd></div>
                     {c.last_service && <div><dt>Last service</dt><dd>{c.last_service}</dd></div>}
@@ -295,12 +296,14 @@ export function ClientsTab({ toast }) {
                     <button className="btn btn-ghost btn-sm" onClick={() => setBlast([c.id])}>Message {c.name.split(" ")[0]}</button>
                   </div>
                 </div>
-              )}
+              </Collapse>
             </li>
           ))}
         </ul>
       )}
-      {blast && <Blast clients={clients || []} preselect={blast} onClose={() => setBlast(null)} toast={toast} />}
+      <Present value={blast}>
+        {(ids, open) => <Blast clients={clients || []} preselect={ids} open={open} onClose={() => setBlast(null)} toast={toast} />}
+      </Present>
     </div>
   );
 }

@@ -1,10 +1,12 @@
 "use client";
 // Public navigation. On the home page it floats clear over the painting and
 // turns solid once you scroll; elsewhere it's solid from the start.
-import { useEffect, useState } from "react";
+import Link from "next/link";
+import { useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { useSession } from "@/lib/auth";
 import { IconClose, IconMenu } from "@/components/ui/Feedback";
+import { usePresence } from "@/components/ui/motion";
 
 const LINKS = [
   { href: "/#services", label: "Services" },
@@ -16,10 +18,10 @@ const LINKS = [
 
 export function ShopSign({ href = "/", small = false }) {
   return (
-    <a href={href} className="sign" aria-label="Headz Up Barbershop, home">
+    <Link href={href} className="sign" aria-label="Headz Up Barbershop, home">
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img src="/logo1.jpg" alt="" width="94" height="30" style={small ? { height: 26 } : undefined} />
-    </a>
+    </Link>
   );
 }
 
@@ -28,6 +30,9 @@ export default function SiteNav({ overlay = false }) {
   const { ready, loggedIn, isStaff } = useSession();
   const [solid, setSolid] = useState(!overlay);
   const [open, setOpen] = useState(false);
+  const sheet = usePresence(open);
+  const menuBtn = useRef(null);
+  const closeBtn = useRef(null);
 
   useEffect(() => {
     if (!overlay) return;
@@ -41,9 +46,18 @@ export default function SiteNav({ overlay = false }) {
     if (!open) return;
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
+    closeBtn.current?.focus();
+    const button = menuBtn.current;
     const onKey = (e) => e.key === "Escape" && setOpen(false);
     document.addEventListener("keydown", onKey);
-    return () => { document.body.style.overflow = prev; document.removeEventListener("keydown", onKey); };
+    return () => {
+      document.body.style.overflow = prev;
+      document.removeEventListener("keydown", onKey);
+      // back to the menu button, unless a link already took focus elsewhere
+      if (!document.activeElement || document.activeElement === document.body || document.getElementById("site-menu")?.contains(document.activeElement)) {
+        button?.focus({ preventScroll: true });
+      }
+    };
   }, [open]);
 
   const account = !ready ? null : loggedIn
@@ -57,18 +71,18 @@ export default function SiteNav({ overlay = false }) {
           <ShopSign />
           <nav className="nav-links" aria-label="Main">
             {LINKS.map((l) => (
-              <a key={l.href} href={l.href} className="nav-link"
+              <Link key={l.href} href={l.href} className="nav-link"
                 aria-current={pathname === l.href ? "page" : undefined}>
                 <span className={pathname === l.href ? "drip-under" : undefined}>{l.label}</span>
-              </a>
+              </Link>
             ))}
           </nav>
           <div className="nav-end">
-            {account && <a href={account.href} className="nav-link hide-sm">{account.label}</a>}
+            {account && <Link href={account.href} className="nav-link hide-sm">{account.label}</Link>}
             {isStaff
-              ? <a href="/barber-dashboard" className="btn btn-primary btn-sm hide-sm">Open dashboard</a>
-              : <a href="/book" className="btn btn-primary btn-sm">Book a cut</a>}
-            <button className="icon-btn nav-menu-btn" onClick={() => setOpen(true)} aria-label="Open menu"
+              ? <Link href="/barber-dashboard" className="btn btn-primary btn-sm hide-sm">Open dashboard</Link>
+              : <Link href="/book" className="btn btn-primary btn-sm">Book a cut</Link>}
+            <button ref={menuBtn} className="icon-btn nav-menu-btn" onClick={() => setOpen(true)} aria-label="Open menu"
               aria-expanded={open} aria-controls="site-menu">
               <IconMenu size={22} />
             </button>
@@ -76,25 +90,26 @@ export default function SiteNav({ overlay = false }) {
         </div>
       </header>
 
-      {open && (
-        <div className="menu-sheet" id="site-menu" role="dialog" aria-modal="true" aria-label="Menu">
+      {sheet && (
+        <div className="menu-sheet" id="site-menu" role="dialog" aria-modal="true" aria-label="Menu"
+          data-state={sheet} inert={sheet === "closing"}>
           <div className="spread">
             <ShopSign />
-            <button className="icon-btn" onClick={() => setOpen(false)} aria-label="Close menu">
+            <button ref={closeBtn} className="icon-btn" onClick={() => setOpen(false)} aria-label="Close menu">
               <IconClose size={22} />
             </button>
           </div>
           <nav aria-label="Main">
             {LINKS.map((l) => (
-              <a key={l.href} href={l.href} onClick={() => setOpen(false)}>{l.label}</a>
+              <Link key={l.href} href={l.href} onClick={() => setOpen(false)}>{l.label}</Link>
             ))}
-            {account && <a href={account.href} onClick={() => setOpen(false)}>{account.label}</a>}
-            {!loggedIn && <a href="/barber-login" onClick={() => setOpen(false)}>Barber sign-in</a>}
+            {account && <Link href={account.href} onClick={() => setOpen(false)}>{account.label}</Link>}
+            {!loggedIn && <Link href="/barber-login" onClick={() => setOpen(false)}>Barber sign-in</Link>}
           </nav>
           <div style={{ marginTop: "auto", paddingTop: 28 }}>
-            <a href={isStaff ? "/barber-dashboard" : "/book"} className="btn btn-primary btn-lg btn-block">
+            <Link href={isStaff ? "/barber-dashboard" : "/book"} className="btn btn-primary btn-lg btn-block">
               {isStaff ? "Open dashboard" : "Book a cut"}
-            </a>
+            </Link>
           </div>
         </div>
       )}

@@ -6,6 +6,7 @@ import {
   IconChevronDown, IconChevronLeft, IconChevronRight, IconRefresh, Modal, Notice, Skeleton, Spinner,
 } from "@/components/ui/Feedback";
 import { addDays, apptDate, fmtDate, fmtTime, todayStr } from "@/lib/time";
+import { Collapse } from "@/components/ui/motion";
 
 export const B_STATUS = {
   confirmed:    { label: "Confirmed", chip: "chip-ok" },
@@ -54,14 +55,14 @@ function Row({ a, onStatus, onAsk, onRemind }) {
           </span>
           <IconChevronDown />
         </button>
-        {open && (
+        <Collapse open={open}>
           <div className="appt-body">
             <dl className="kv">
               <div><dt>Payment</dt><dd>{payText(a)}</dd></div>
-              {a.client_email && <div><dt>Email</dt><dd className="break-anywhere">{a.client_email}</dd></div>}
+              {a.client_email && <div className="kv-wide"><dt>Email</dt><dd className="break-anywhere">{a.client_email}</dd></div>}
             </dl>
             {a.client_notes && (
-              <p className="placard-medium mb-4">&ldquo;{a.client_notes}&rdquo; — {a.client}</p>
+              <p className="placard-medium mb-4">&ldquo;{a.client_notes}&rdquo;</p>
             )}
             {!closed && (
               <div className="row-wrap mb-4">
@@ -81,7 +82,7 @@ function Row({ a, onStatus, onAsk, onRemind }) {
               {saving ? <Spinner label="Saving" /> : saved ? "Saved" : "Save note"}
             </button>
           </div>
-        )}
+        </Collapse>
       </div>
     </li>
   );
@@ -175,7 +176,7 @@ export default function ScheduleTab({ toast, onSummary }) {
         </div>
       </div>
 
-      <div className="stat-row mb-6">
+      <div className="stat-row is-3 mb-6">
         <div className="stat"><span className="stat-n">{summary.total || 0}</span><span className="stat-l">Booked</span></div>
         <div className="stat"><span className="stat-n">{summary.paid_online || 0}</span><span className="stat-l">Paid online</span></div>
         <div className="stat"><span className="stat-n">{summary.pay_in_shop || 0}</span><span className="stat-l">Paying at the shop</span></div>

@@ -7,7 +7,7 @@ export const API_ROOT = process.env.NEXT_PUBLIC_API_URL || "https://api.headzupp
 
 const SESSION_EVENT = "headzup:session";
 
-export function decodeToken(token) {
+function decodeToken(token) {
   try {
     const part = token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
     return JSON.parse(atob(part));

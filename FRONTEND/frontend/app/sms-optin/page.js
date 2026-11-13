@@ -1,6 +1,7 @@
 "use client";
 // Text-message opt-in. The consent language below is what the toll-free
 // number was verified with; keep it word-for-word if you edit this page.
+import Link from "next/link";
 import { useState } from "react";
 import API from "@/lib/api";
 import { AuthShell, Field, TextInput, normalizePhone } from "@/components/auth/AuthParts";
@@ -38,7 +39,7 @@ export default function SMSOptInPage() {
         <p className="lede mt-3">
           Confirmations, reminders and updates will text to that number. Reply STOP any time to unsubscribe.
         </p>
-        <a href="/dashboard" className="btn btn-primary btn-lg btn-block mt-6">Go to My appointments</a>
+        <Link href="/dashboard" className="btn btn-primary btn-lg btn-block mt-6">Go to My appointments</Link>
       </AuthShell>
     );
   }
@@ -75,7 +76,7 @@ export default function SMSOptInPage() {
         <p className="small faint mt-4">
           By subscribing you consent to receive recurring automated transactional SMS messages from HEADZ UP
           Barbershop ({SHOP.street}, {SHOP.city} {SHOP.region} {SHOP.zip}) to the number provided. Consent is not a
-          condition of any purchase. View our <a className="link" href="/terms">Terms &amp; Privacy Policy</a>.
+          condition of any purchase. View our <Link className="link" href="/terms">Terms &amp; Privacy Policy</Link>.
         </p>
         <p className="small faint mt-2">
           STOP to unsubscribe. HELP for help. <a className="link" href={`mailto:${SHOP.email}`}>{SHOP.email}</a>

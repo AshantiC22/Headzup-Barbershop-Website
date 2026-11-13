@@ -2,6 +2,7 @@
 // Booking: service → barber → time → confirm.
 // Links from the home page pre-fill choices (?service=Haircut&barber=2), and a
 // cancelled Stripe checkout returns to the confirm step with everything kept.
+import Link from "next/link";
 import { Suspense, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import API from "@/lib/api";
@@ -329,9 +330,9 @@ function BookContent() {
                 {!slots.loading && slots.list.length === 0 ? (
                   <Notice tone="info">
                     Try another day, or{" "}
-                    <a className="link" href={`/waitlist?barber=${barber.id}&date=${date}&service=${service.id}`}>
+                    <Link className="link" href={`/waitlist?barber=${barber.id}&date=${date}&service=${service.id}`}>
                       join the waitlist for {fmtDate(date)}
-                    </a>{" "}
+                    </Link>{" "}
                     and we&apos;ll text you if a chair opens.
                   </Notice>
                 ) : (
@@ -409,7 +410,7 @@ function BookContent() {
               </button>
               <p className="small faint center mt-3">
                 Need to change plans later? Reschedule or cancel from My appointments.{" "}
-                {pay === "online" && <>Deposits are non-refundable. <a className="link" href="/terms">Terms</a></>}
+                {pay === "online" && <>Deposits are non-refundable. <Link className="link" href="/terms">Terms</Link></>}
               </p>
             </div>
             <button className="btn btn-quiet" onClick={() => go(3)}><IconArrowLeft size={16} /> Change the time</button>

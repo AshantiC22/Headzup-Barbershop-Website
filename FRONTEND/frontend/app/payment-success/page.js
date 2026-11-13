@@ -43,7 +43,7 @@ function Content() {
           Your booking will show up in My appointments in a moment. If it doesn&apos;t, call the shop.
         </p>
       )}
-      <a href="/dashboard" className="btn btn-primary btn-lg btn-block mt-6">See my appointments</a>
+      <Link href="/dashboard" className="btn btn-primary btn-lg btn-block mt-6">See my appointments</Link>
       <Link href="/" className="btn btn-quiet btn-block mt-2">Back to the home page</Link>
     </AuthShell>
   );

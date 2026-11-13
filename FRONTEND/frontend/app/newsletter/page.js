@@ -1,5 +1,6 @@
 "use client";
 // News from the shop: deals, hours changes, events. Posted from the barber dashboard.
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import API from "@/lib/api";
 import SiteNav from "@/components/site/SiteNav";
@@ -86,7 +87,7 @@ export default function NewsletterPage() {
             <h2 className="h4">Want these as texts?</h2>
             <p className="muted small mt-1">Clients with a phone on file get big announcements by text.</p>
           </div>
-          <a href="/sms-optin" className="btn btn-ghost">Text message settings</a>
+          <Link href="/sms-optin" className="btn btn-ghost">Text message settings</Link>
         </div>
       </main>
       <SiteFooter />

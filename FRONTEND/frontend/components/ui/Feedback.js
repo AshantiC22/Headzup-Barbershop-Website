@@ -1,19 +1,22 @@
 "use client";
 // Small shared pieces of feedback UI: toasts, modals, notices, skeletons.
 import { useCallback, useEffect, useRef, useState } from "react";
+import { EXIT_MS, useHeld, usePresence } from "./motion";
 
 /** const [toasts, toast] = useToasts();  toast("Saved");  toast("Failed", "bad") */
 export function useToasts() {
   const [items, setItems] = useState([]);
   const show = useCallback((msg, tone = "ok") => {
     const id = Math.random().toString(36).slice(2);
+    const life = tone === "bad" ? 5200 : 3600;
     setItems((p) => [...p.slice(-2), { id, msg, tone }]);
-    setTimeout(() => setItems((p) => p.filter((t) => t.id !== id)), tone === "bad" ? 5200 : 3600);
+    setTimeout(() => setItems((p) => p.map((t) => (t.id === id ? { ...t, leaving: true } : t))), life - EXIT_MS);
+    setTimeout(() => setItems((p) => p.filter((t) => t.id !== id)), life);
   }, []);
   const host = (
     <div className="toast-host" role="status" aria-live="polite">
       {items.map((t) => (
-        <div key={t.id} className={`toast ${t.tone === "bad" ? "toast-bad" : ""}`}>
+        <div key={t.id} className={`toast ${t.tone === "bad" ? "toast-bad" : ""}`} data-state={t.leaving ? "closing" : "open"}>
           {t.tone === "bad" ? <IconAlert /> : <IconCheck />}
           <span>{t.msg}</span>
         </div>
@@ -52,21 +55,25 @@ export function Modal({ open, onClose, title, children, wide = false, labelledBy
       lastFocus.current?.focus?.();
     };
   }, [open, onClose]);
-  if (!open) return null;
+  const state = usePresence(open);
+  const shownTitle = useHeld(title, open);
+  const shownChildren = useHeld(children, open);
+  if (!state) return null;
   const titleId = labelledBy || "modal-title";
   return (
-    <div className="modal-root" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose?.(); }}>
+    <div className="modal-root" data-state={state} inert={state === "closing"}
+      onMouseDown={(e) => { if (e.target === e.currentTarget) onClose?.(); }}>
       <div ref={ref} className={`modal ${wide ? "modal-wide" : ""}`} role="dialog" aria-modal="true"
-        aria-labelledby={title ? titleId : undefined} tabIndex={-1}>
-        {title && (
+        aria-labelledby={shownTitle ? titleId : undefined} tabIndex={-1}>
+        {shownTitle && (
           <div className="spread mb-4" style={{ alignItems: "flex-start" }}>
-            <h2 id={titleId} className="h3">{title}</h2>
+            <h2 id={titleId} className="h3">{shownTitle}</h2>
             <button className="icon-btn" onClick={onClose} aria-label="Close" style={{ marginTop: -8, marginRight: -8 }}>
               <IconClose />
             </button>
           </div>
         )}
-        {children}
+        {shownChildren}
       </div>
     </div>
   );

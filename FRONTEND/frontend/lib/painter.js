@@ -21,7 +21,7 @@ export function seeded(seed = 1) {
 }
 
 /** Classic 2D gradient noise with a seeded permutation table. */
-export function createNoise(rand) {
+function createNoise(rand) {
   const p = new Uint8Array(256);
   for (let i = 0; i < 256; i++) p[i] = i;
   for (let i = 255; i > 0; i--) {
@@ -61,7 +61,7 @@ export function createNoise(rand) {
 }
 
 // Color
-export function hexToRgb(hex) {
+function hexToRgb(hex) {
   const h = hex.replace("#", "");
   const n = parseInt(h.length === 3 ? h.split("").map((c) => c + c).join("") : h, 16);
   return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
@@ -112,7 +112,7 @@ function gradientSampler(stops) {
 // Palettes
 // Lamplight: a night street in river fog under a big moon. Daylight: the same
 // street on an overcast morning, the sun a pale disc behind the cloud.
-export const PALETTES = {
+const PALETTES = {
   night: {
     sky:   [[0, "#0B0E10"], [0.4, "#141A1C"], [0.75, "#22292A"], [1, "#2E3634"]],
     cloud: ["#262E2E", "#2F3837", "#1E2525", "#384140"],
@@ -915,20 +915,30 @@ export function poleEdges(width, height, seed = 5) {
 }
 
 // Impression of a photo
+// Works on the main thread and in a worker, so scratch canvases come from
+// OffscreenCanvas when there's no document.
+function scratchCanvas(w, h) {
+  if (typeof document === "undefined") return new OffscreenCanvas(w, h);
+  const c = document.createElement("canvas");
+  c.width = w; c.height = h;
+  return c;
+}
+
 /**
  * Re-paints an image as brushwork. Strokes follow the image's edges, so faces
- * and fades stay readable. Returns false if pixels can't be read (CORS).
+ * and fades stay readable. `img` can be an <img> or an ImageBitmap. Returns
+ * false if pixels can't be read (cross-origin without CORS).
  */
 export function paintImage(canvas, img, { width, height, dpr = 1, seed = 9, detail = 1 }) {
   const w = Math.round(width), h = Math.round(height);
-  const src = document.createElement("canvas");
-  src.width = w; src.height = h;
+  const src = scratchCanvas(w, h);
   const sctx = src.getContext("2d", { willReadFrequently: true });
   // cover-crop, biased up so heads stay in frame
-  const ir = img.naturalWidth / img.naturalHeight, r = w / h;
+  const iw = img.naturalWidth || img.width, ih = img.naturalHeight || img.height;
+  const ir = iw / ih, r = w / h;
   let sw, sh, sx, sy;
-  if (ir > r) { sh = img.naturalHeight; sw = sh * r; sx = (img.naturalWidth - sw) / 2; sy = 0; }
-  else { sw = img.naturalWidth; sh = sw / r; sx = 0; sy = (img.naturalHeight - sh) * 0.3; }
+  if (ir > r) { sh = ih; sw = sh * r; sx = (iw - sw) / 2; sy = 0; }
+  else { sw = iw; sh = sw / r; sx = 0; sy = (ih - sh) * 0.3; }
   sctx.drawImage(img, sx, sy, sw, sh, 0, 0, w, h);
   let data;
   try { data = sctx.getImageData(0, 0, w, h).data; } catch { return false; }
@@ -947,8 +957,7 @@ export function paintImage(canvas, img, { width, height, dpr = 1, seed = 9, deta
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   ctx.lineCap = "round";
   // soft underpainting: the image, downsampled and scaled back up
-  const tiny = document.createElement("canvas");
-  tiny.width = Math.max(8, Math.round(w / 10)); tiny.height = Math.max(8, Math.round(h / 10));
+  const tiny = scratchCanvas(Math.max(8, Math.round(w / 10)), Math.max(8, Math.round(h / 10)));
   tiny.getContext("2d").drawImage(src, 0, 0, tiny.width, tiny.height);
   ctx.imageSmoothingEnabled = true;
   ctx.drawImage(tiny, 0, 0, w, h);

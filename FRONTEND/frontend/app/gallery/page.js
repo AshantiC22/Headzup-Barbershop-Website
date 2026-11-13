@@ -1,25 +1,29 @@
 "use client";
 // The wall: every photo in an iron frame, shown first as an oil sketch.
 // Open one and the photograph comes through, with its plate and a way to book.
+import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Impression from "@/components/art/Impression";
 import SiteNav from "@/components/site/SiteNav";
 import SiteFooter from "@/components/site/SiteFooter";
 import { IconChevronLeft, IconChevronRight, IconClose } from "@/components/ui/Feedback";
 import { arrowSelect, rovingIndex } from "@/components/ui/roving";
+import { Present } from "@/components/ui/motion";
 import { GALLERY, GALLERY_FILTERS } from "@/lib/shop";
 import s from "./gallery.module.css";
 
 const VIEWS = ["photo", "paint"];
 const CROPS = ["3 / 4", "1 / 1", "4 / 5", "3 / 4", "4 / 3", "4 / 5"];
 
-function Lightbox({ items, index, onClose, onMove }) {
+function Lightbox({ items, index, open, onClose, onMove }) {
   const piece = items[index];
   const [view, setView] = useState("photo");
   const touch = useRef(null);
   const closeRef = useRef(null);
 
   useEffect(() => {
+    if (!open) return;
+    const opener = document.activeElement;
     closeRef.current?.focus();
     const onKey = (e) => {
       if (e.key === "Escape") onClose();
@@ -29,12 +33,17 @@ function Lightbox({ items, index, onClose, onMove }) {
     document.addEventListener("keydown", onKey);
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
-    return () => { document.removeEventListener("keydown", onKey); document.body.style.overflow = prev; };
-  }, [onClose, onMove]);
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.body.style.overflow = prev;
+      opener?.focus?.({ preventScroll: true });
+    };
+  }, [open, onClose, onMove]);
 
   if (!piece) return null;
   return (
     <div className={s.lightbox} role="dialog" aria-modal="true" aria-label={piece.title}
+      data-state={open ? "open" : "closing"} inert={!open}
       onTouchStart={(e) => { touch.current = e.touches[0].clientX; }}
       onTouchEnd={(e) => {
         if (touch.current == null) return;
@@ -78,7 +87,7 @@ function Lightbox({ items, index, onClose, onMove }) {
         <p className="placard-title">{piece.title}</p>
         <p className="placard-medium">{piece.medium}. Headz Up, Hattiesburg.</p>
         <div className="row-wrap mt-3">
-          <a href="/book" className="btn btn-primary btn-sm">Book a cut</a>
+          <Link href="/book" className="btn btn-primary btn-sm">Book a cut</Link>
           <span className="small faint">{index + 1} of {items.length}</span>
         </div>
       </div>
@@ -161,12 +170,14 @@ export default function GalleryPage() {
               <h2 className="h3">Want to hang on this wall?</h2>
               <p className="muted mt-2">Book your chair and ask your barber for a photo on the way out.</p>
             </div>
-            <a href="/book" className="btn btn-primary btn-lg">Book a cut</a>
+            <Link href="/book" className="btn btn-primary btn-lg">Book a cut</Link>
           </section>
         </div>
       </main>
       <SiteFooter />
-      {open != null && <Lightbox items={items} index={open} onClose={close} onMove={move} />}
+      <Present value={open}>
+        {(index, shown) => <Lightbox items={items} index={index} open={shown} onClose={close} onMove={move} />}
+      </Present>
     </>
   );
 }

@@ -2,6 +2,7 @@
 // My appointments (client). Same API as before: dashboard/, appointments/,
 // client/strike-status/, appointments/:id/ (cancel), appointments/:id/reschedule/,
 // review/submit/, client/update-phone/, change-password/.
+import Link from "next/link";
 import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import API from "@/lib/api";
@@ -15,6 +16,7 @@ import {
   IconBell, IconCalendar, IconChevronDown, IconPin, Modal, Notice, Skeleton, Spinner, useToasts,
 } from "@/components/ui/Feedback";
 import { normalizePhone } from "@/components/auth/AuthParts";
+import { Collapse, Present } from "@/components/ui/motion";
 import { SHOP } from "@/lib/shop";
 import { apptDate, fmtDate, fmtTime, parseDate, timeUntil, to24Hour } from "@/lib/time";
 
@@ -66,8 +68,8 @@ function ApptRow({ a, onCancel, onReschedule, onReview }) {
         </span>
         <IconChevronDown />
       </button>
-      {open && (
-        <div className="appt-body" id={id}>
+      <Collapse open={open} id={id}>
+        <div className="appt-body">
           <dl className="kv">
             <div><dt>When</dt><dd>{fmtDate(a.date, "long")}, {fmtTime(a.time)}</dd></div>
             <div><dt>Length</dt><dd>{a.service_duration || 30} min</dd></div>
@@ -85,18 +87,17 @@ function ApptRow({ a, onCancel, onReschedule, onReview }) {
           )}
           {a.status === "no_show" && <p className="small muted">This one was marked as missed.</p>}
         </div>
-      )}
+      </Collapse>
     </li>
   );
 }
 
-function CancelDialog({ appt, onClose, onConfirm, busy }) {
-  if (!appt) return null;
+function CancelDialog({ appt, open, onClose, onConfirm, busy }) {
   const hrs = (apptDate(appt.date, appt.time) - new Date()) / 3600e3;
   const late = hrs >= 0 && hrs < 2;
   const paid = appt.payment_method === "online" && appt.deposit_paid;
   return (
-    <Modal open onClose={onClose} title={late ? "Cancel this late?" : "Cancel this appointment?"}>
+    <Modal open={open} onClose={onClose} title={late ? "Cancel this late?" : "Cancel this appointment?"}>
       <p className="muted">
         {appt.service_name} with {appt.barber_name}, {fmtDate(appt.date, "long")} at {fmtTime(appt.time)}.
       </p>
@@ -118,7 +119,7 @@ function CancelDialog({ appt, onClose, onConfirm, busy }) {
   );
 }
 
-function RescheduleDialog({ appt, onClose, onDone }) {
+function RescheduleDialog({ appt, open, onClose, onDone }) {
   const bid = appt?.barber_id || appt?.barber;
   const sid = appt?.service_id || appt?.service;
   const [days, setDays] = useState({ all: [], off: [], loading: true });
@@ -154,7 +155,7 @@ function RescheduleDialog({ appt, onClose, onDone }) {
   };
 
   return (
-    <Modal open onClose={onClose} wide title="Ask for a new time">
+    <Modal open={open} onClose={onClose} wide title="Ask for a new time">
       <p className="muted mb-4">
         {appt.barber_name} gets your request and approves it. Until then you keep {fmtDate(appt.date)} at {fmtTime(appt.time)}.
       </p>
@@ -180,7 +181,7 @@ function RescheduleDialog({ appt, onClose, onDone }) {
   );
 }
 
-function ReviewDialog({ appt, onClose, onDone }) {
+function ReviewDialog({ appt, open, onClose, onDone }) {
   const [rating, setRating] = useState(5);
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
@@ -194,7 +195,7 @@ function ReviewDialog({ appt, onClose, onDone }) {
     finally { setBusy(false); }
   };
   return (
-    <Modal open onClose={onClose} title="How was the cut?">
+    <Modal open={open} onClose={onClose} title="How was the cut?">
       <p className="muted mb-4">{appt.service_name} with {appt.barber_name}, {fmtDate(appt.date, "long")}.</p>
       <StarRating value={rating} onChange={setRating} />
       <div className="field mt-3">
@@ -256,7 +257,7 @@ function AccountTab({ user, strike, visits, spent, toast }) {
         )}
         <dl className="kv mb-0">
           <div><dt>Username</dt><dd>{user?.user || user?.username}</dd></div>
-          <div><dt>Email</dt><dd className="break-anywhere">{user?.email || "None on file"}</dd></div>
+          <div className="kv-wide"><dt>Email</dt><dd className="break-anywhere">{user?.email || "None on file"}</dd></div>
           <div><dt>Strikes</dt><dd>{strike?.strike_count ?? 0}</dd></div>
           <div><dt>Next deposit</dt><dd>{money(strike?.deposit_fee || 10)}</dd></div>
         </dl>
@@ -303,9 +304,9 @@ function AccountTab({ user, strike, visits, spent, toast }) {
         </div>
         <div className="mt-4"><ThemeToggle /></div>
         <div className="row-wrap small mt-5">
-          <a className="link" href="/sms-optin">Text message settings</a>
-          <a className="link" href="/waitlist">Waitlist</a>
-          <a className="link" href="/terms">Terms</a>
+          <Link className="link" href="/sms-optin">Text message settings</Link>
+          <Link className="link" href="/waitlist">Waitlist</Link>
+          <Link className="link" href="/terms">Terms</Link>
         </div>
       </section>
     </div>
@@ -425,7 +426,7 @@ function DashboardContent() {
   return (
     <>
       <AppHeader title="My appointments">
-        <a href="/book" className="btn btn-primary btn-sm">Book a cut</a>
+        <Link href="/book" className="btn btn-primary btn-sm">Book a cut</Link>
       </AppHeader>
       <main id="main" className="wrap dash" style={{ maxWidth: 960 }}>
         <h1 className="h1">Hey, {name}.</h1>
@@ -454,7 +455,7 @@ function DashboardContent() {
               <h2 className="h3">Nothing on the books.</h2>
               <p className="muted mt-1">Pick a barber and a time; it takes about a minute.</p>
             </div>
-            <a href="/book" className="btn btn-primary btn-lg">Book a cut</a>
+            <Link href="/book" className="btn btn-primary btn-lg">Book a cut</Link>
           </section>
         )}
 
@@ -477,7 +478,7 @@ function DashboardContent() {
             <Notice tone="warn">
               <strong>{strike.strike_count} strike{strike.strike_count === 1 ? "" : "s"} on your account.</strong>{" "}
               Your next online deposit is {money(strike.deposit_fee)}. Showing up on time keeps it from climbing.{" "}
-              <a className="link" href="/terms#payments">How strikes work</a>
+              <Link className="link" href="/terms#payments">How strikes work</Link>
             </Notice>
           )}
           {toReview && (
@@ -507,7 +508,7 @@ function DashboardContent() {
           ) : listFor.length === 0 ? (
             <div className="empty">
               <p className="h4">{tab === "upcoming" ? "No appointments coming up." : tab === "past" ? "No past cuts yet." : "Nothing cancelled."}</p>
-              {tab === "upcoming" && <a href="/book" className="btn btn-primary mt-4">Book a cut</a>}
+              {tab === "upcoming" && <Link href="/book" className="btn btn-primary mt-4">Book a cut</Link>}
             </div>
           ) : (
             <ul className="stack" style={{ "--stack": "10px" }}>
@@ -519,20 +520,28 @@ function DashboardContent() {
         </div>
       </main>
 
-      <CancelDialog appt={cancelling} busy={cancelBusy} onClose={() => setCancelling(null)} onConfirm={confirmCancel} />
-      {resched && (
-        <RescheduleDialog appt={resched} onClose={() => setResched(null)}
-          onDone={() => { setResched(null); toast(`Request sent. ${resched.barber_name.split(" ")[0]} will confirm.`); }} />
-      )}
-      {review && (
-        <ReviewDialog appt={review} onClose={() => setReview(null)}
-          onDone={(r) => {
-            setAppts((p) => p.map((a) => (a.id === review.id ? { ...a, has_review: true } : a)));
-            setReview(null);
-            toast(`Thanks. Your ${r}-star review is in.`);
-            notify("Review sent", "Thanks for the feedback.", "haircut_review");
-          }} />
-      )}
+      <Present value={cancelling}>
+        {(appt, open) => (
+          <CancelDialog appt={appt} open={open} busy={cancelBusy} onClose={() => setCancelling(null)} onConfirm={confirmCancel} />
+        )}
+      </Present>
+      <Present value={resched}>
+        {(appt, open) => (
+          <RescheduleDialog appt={appt} open={open} onClose={() => setResched(null)}
+            onDone={() => { setResched(null); toast(`Request sent. ${appt.barber_name.split(" ")[0]} will confirm.`); }} />
+        )}
+      </Present>
+      <Present value={review}>
+        {(appt, open) => (
+          <ReviewDialog appt={appt} open={open} onClose={() => setReview(null)}
+            onDone={(r) => {
+              setAppts((p) => p.map((a) => (a.id === appt.id ? { ...a, has_review: true } : a)));
+              setReview(null);
+              toast(`Thanks. Your ${r}-star review is in.`);
+              notify("Review sent", "Thanks for the feedback.", "haircut_review");
+            }} />
+        )}
+      </Present>
       {toastHost}
     </>
   );

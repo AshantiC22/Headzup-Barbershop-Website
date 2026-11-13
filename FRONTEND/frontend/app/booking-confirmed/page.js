@@ -1,6 +1,7 @@
 "use client";
 // Where both booking paths land: pay-at-shop goes straight here, and Stripe's
 // deposit flow comes back here through the API's deposit-success redirect.
+import Link from "next/link";
 import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { AuthShell } from "@/components/auth/AuthParts";
@@ -72,7 +73,7 @@ function ConfirmedContent() {
           call the shop and we&apos;ll sort it out.
         </p>
         <div className="stack" style={{ "--stack": "10px" }}>
-          <a href="/dashboard" className="btn btn-primary btn-lg btn-block">Check My appointments</a>
+          <Link href="/dashboard" className="btn btn-primary btn-lg btn-block">Check My appointments</Link>
           <a href={`tel:${SHOP.phone}`} className="btn btn-ghost btn-lg btn-block">Call {SHOP.phoneDisplay}</a>
         </div>
       </AuthShell>
@@ -110,7 +111,7 @@ function ConfirmedContent() {
       </Notice>
 
       <div className="stack mt-6" style={{ "--stack": "10px" }}>
-        <a href="/dashboard" className="btn btn-primary btn-lg btn-block">See my appointments</a>
+        <Link href="/dashboard" className="btn btn-primary btn-lg btn-block">See my appointments</Link>
         <div className="row" style={{ gap: 10 }}>
           {date && time && (
             <button className="btn btn-ghost grow" onClick={addToCalendar}><IconCalendar /> Add to calendar</button>

@@ -27,7 +27,7 @@ components/
   booking/            calendar, slot picker, work-week editor
   barber/             dashboard tabs, grouped by job (schedule, people, setup, money)
   auth/               shared form pieces and the password recovery flow
-  ui/                 modal, toasts, notices, icons
+  ui/                 modal, toasts, notices, icons, motion helpers
 lib/
   api.js              axios client: token refresh, short GET cache
   auth.js             session helpers, safe ?next= redirects
@@ -70,8 +70,30 @@ reads the palette through `useTheme()`.
 
 Type is Grenze Gotisch (headlines and names), Grenze (italic lore lines and
 quotes) and Archivo with its width axis (everything functional, condensed for
-prices and numbers), all self-hosted through Fontsource. Grenze Gotisch stops
-reading well under about 24px, so `.h3` and `.h4` switch to the roman Grenze.
+prices and numbers). The latin subsets live in `app/fonts/` (OFL, license
+alongside) and load through `next/font/local`, which preloads them and sizes a
+fallback face to match, so text doesn't jump when the real font arrives.
+Grenze Gotisch stops reading well under about 24px, so `.h3` and `.h4` switch
+to the roman Grenze.
+
+## Motion
+
+Durations and easings are tokens in `globals.css` (`--dur-1/2/3`, `--ease`,
+`--ease-in`). Things arrive on `--ease` and leave faster on `--ease-in`.
+React removes an element as soon as its condition is false, so dialogs,
+sheets, toasts and the lightbox use the helpers in `components/ui/motion.js`
+(`usePresence`, `Present`) to stay mounted for the exit, and CSS animates
+`[data-state="closing"]`. Expanding rows use `<Collapse>`, which animates
+height with the `grid-template-rows: 0fr → 1fr` trick and makes closed
+content inert. `app/template.js` fades each new page in after client-side
+navigation, so internal links should be `next/link`, not `<a>`.
+
+Painting a gallery photo is a few hundred milliseconds of work, so
+`Impression` sends it to `lib/impression.worker.js`, which fetches, decodes and
+paints the photo and hands back a bitmap. Scrolling the gallery at 4× CPU
+throttle has no long tasks.
+
+`prefers-reduced-motion` turns all of it off, including the paint-in.
 
 ## Things that are easy to get wrong
 
