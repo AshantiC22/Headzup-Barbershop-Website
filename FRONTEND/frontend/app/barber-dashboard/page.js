@@ -1,6 +1,7 @@
 "use client";
 // The barber's studio. Each tab is its own component under components/barber/.
 // The current tab lives in the URL (?tab=clients) so a refresh keeps your place.
+import Link from "next/link";
 import { Suspense, useCallback, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import API from "@/lib/api";
@@ -13,25 +14,39 @@ import { ClientsTab, ReschedulesTab, ReviewsTab, WalkInTab } from "@/components/
 import { HoursTab, NewsTab, ProfileTab } from "@/components/barber/SetupTabs";
 import { PaymentsTab, ReportsTab, StripeTab } from "@/components/barber/MoneyTabs";
 import {
-  IconCalendar, IconCard, IconChart, IconClock, IconMegaphone, IconStar, IconSwap, IconUser, IconUsers,
-  IconWalk, IconWallet, Skeleton, useToasts,
+  IconCalendar,
+  IconCard,
+  IconChart,
+  IconClock,
+  IconMegaphone,
+  IconStar,
+  IconSwap,
+  IconUser,
+  IconUsers,
+  IconWalk,
+  IconWallet,
+  Skeleton,
+  useToasts,
 } from "@/components/ui/Feedback";
 
 const TABS = [
-  { id: "schedule",    label: "Schedule",     Icon: IconCalendar },
-  { id: "walkin",      label: "Walk-in",      Icon: IconWalk },
-  { id: "reschedules", label: "Reschedules",  Icon: IconSwap },
-  { id: "clients",     label: "Clients",      Icon: IconUsers },
-  { id: "reviews",     label: "Reviews",      Icon: IconStar },
-  { id: "hours",       label: "Hours",        Icon: IconClock },
-  { id: "news",        label: "News",         Icon: IconMegaphone },
-  { id: "payments",    label: "Deposits",     Icon: IconWallet },
-  { id: "reports",     label: "Reports",      Icon: IconChart },
-  { id: "stripe",      label: "Getting paid", Icon: IconCard },
-  { id: "profile",     label: "Profile",      Icon: IconUser },
+  { id: "schedule", label: "Schedule", Icon: IconCalendar },
+  { id: "walkin", label: "Walk-in", Icon: IconWalk },
+  { id: "reschedules", label: "Reschedules", Icon: IconSwap },
+  { id: "clients", label: "Clients", Icon: IconUsers },
+  { id: "reviews", label: "Reviews", Icon: IconStar },
+  { id: "hours", label: "Hours", Icon: IconClock },
+  { id: "news", label: "News", Icon: IconMegaphone },
+  { id: "payments", label: "Deposits", Icon: IconWallet },
+  { id: "reports", label: "Reports", Icon: IconChart },
+  { id: "stripe", label: "Getting paid", Icon: IconCard },
+  { id: "profile", label: "Profile", Icon: IconUser },
 ];
 const ALIASES = { availability: "hours", newsletter: "news", walk: "walkin" };
-const money = (n) => { const v = parseFloat(n || 0); return `$${v.toFixed(v % 1 ? 2 : 0)}`; };
+const money = (n) => {
+  const v = parseFloat(n || 0);
+  return `$${v.toFixed(v % 1 ? 2 : 0)}`;
+};
 
 function Studio() {
   const router = useRouter();
@@ -50,26 +65,44 @@ function Studio() {
 
   useEffect(() => {
     let token = null;
-    try { token = localStorage.getItem("access"); } catch {}
-    if (!token) { router.replace("/barber-login"); return; }
+    try {
+      token = localStorage.getItem("access");
+    } catch {}
+    if (!token) {
+      router.replace("/barber-login");
+      return;
+    }
     (async () => {
       try {
         const [dash, me] = await Promise.all([API.get("dashboard/"), API.get("barber/me/")]);
-        if (!dash.data.is_staff) { router.replace("/dashboard"); return; }
+        if (!dash.data.is_staff) {
+          router.replace("/dashboard");
+          return;
+        }
         setBarber(me.data);
-        API.get("services/").then((r) => setServices(Array.isArray(r.data) ? r.data : r.data?.results || [])).catch(() => {});
-        API.get(`barber/schedule/?date=${todayStr()}`, { _noCache: true }).then((r) => setToday(r.data?.summary || {})).catch(() => {});
-        API.get("barber/reviews/", { _noCache: true }).then((r) => {
-          const unread = (r.data?.reviews || []).filter((x) => !x.barber_seen).length;
-          const cached = parseInt(localStorage.getItem("headzup_review_badge") || "0", 10);
-          setBadges((b) => ({ ...b, reviews: Math.max(unread, cached) }));
-        }).catch(() => {});
-        API.get("barber/reschedules/", { _noCache: true }).then((r) => {
-          setBadges((b) => ({ ...b, reschedules: (r.data || []).filter((x) => x.status === "pending").length }));
-        }).catch(() => {});
+        API.get("services/")
+          .then((r) => setServices(Array.isArray(r.data) ? r.data : r.data?.results || []))
+          .catch(() => {});
+        API.get(`barber/schedule/?date=${todayStr()}`, { _noCache: true })
+          .then((r) => setToday(r.data?.summary || {}))
+          .catch(() => {});
+        API.get("barber/reviews/", { _noCache: true })
+          .then((r) => {
+            const unread = (r.data?.reviews || []).filter((x) => !x.barber_seen).length;
+            const cached = parseInt(localStorage.getItem("headzup_review_badge") || "0", 10);
+            setBadges((b) => ({ ...b, reviews: Math.max(unread, cached) }));
+          })
+          .catch(() => {});
+        API.get("barber/reschedules/", { _noCache: true })
+          .then((r) => {
+            setBadges((b) => ({ ...b, reschedules: (r.data || []).filter((x) => x.status === "pending").length }));
+          })
+          .catch(() => {});
       } catch (e) {
         if (e?.response?.status === 401 || e?.response?.status === 403) router.replace("/barber-login");
-      } finally { setLoading(false); }
+      } finally {
+        setLoading(false);
+      }
     })();
   }, [router]);
 
@@ -79,7 +112,9 @@ function Studio() {
       if (e.detail?.type === "review" || e.detail?.notif_type === "haircut_review") {
         setBadges((b) => {
           const n = b.reviews + 1;
-          try { localStorage.setItem("headzup_review_badge", String(n)); } catch {}
+          try {
+            localStorage.setItem("headzup_review_badge", String(n));
+          } catch {}
           return { ...b, reviews: n };
         });
       }
@@ -98,7 +133,9 @@ function Studio() {
   const onReschedCount = useCallback((n) => setBadges((b) => ({ ...b, reschedules: n })), []);
   const onReviewsSeen = useCallback(() => {
     setBadges((b) => ({ ...b, reviews: 0 }));
-    try { localStorage.setItem("headzup_review_badge", "0"); } catch {}
+    try {
+      localStorage.setItem("headzup_review_badge", "0");
+    } catch {}
   }, []);
 
   if (loading) {
@@ -106,8 +143,15 @@ function Studio() {
       <>
         <AppHeader title="Barber dashboard" signOutTo="/barber-login" />
         <div className="studio" aria-busy="true">
-          <aside className="studio-side"><Skeleton h={120} /><Skeleton h={360} className="mt-4" /></aside>
-          <main className="studio-main"><Skeleton h={50} w="40%" /><Skeleton h={90} className="mt-5" /><Skeleton h={300} className="mt-4" /></main>
+          <aside className="studio-side">
+            <Skeleton h={120} />
+            <Skeleton h={360} className="mt-4" />
+          </aside>
+          <main className="studio-main">
+            <Skeleton h={50} w="40%" />
+            <Skeleton h={90} className="mt-5" />
+            <Skeleton h={300} className="mt-4" />
+          </main>
         </div>
       </>
     );
@@ -121,8 +165,14 @@ function Studio() {
       <AppHeader title="Barber dashboard" signOutTo="/barber-login" />
       <nav className="studio-strip" aria-label="Dashboard sections">
         {TABS.map(({ id, label, Icon }) => (
-          <button key={id} className={`strip-btn ${tab === id ? "is-on" : ""}`} aria-current={tab === id ? "page" : undefined} onClick={() => go(id)}>
-            <Icon size={18} /> {label}{badgeFor(id) > 0 && <span className="count">{badgeFor(id)}</span>}
+          <button
+            key={id}
+            className={`strip-btn ${tab === id ? "is-on" : ""}`}
+            aria-current={tab === id ? "page" : undefined}
+            onClick={() => go(id)}
+          >
+            <Icon size={18} /> {label}
+            {badgeFor(id) > 0 && <span className="count">{badgeFor(id)}</span>}
           </button>
         ))}
       </nav>
@@ -131,21 +181,43 @@ function Studio() {
           <div className="side-card">
             <p className="h4">Hey, {first}.</p>
             <dl className="side-stats">
-              <div><dt>Booked today</dt><dd>{today.total ?? "–"}</dd></div>
-              <div><dt>Paid online</dt><dd>{today.paid_online ?? "–"}</dd></div>
-              <div><dt>Online revenue</dt><dd>{today.online_revenue != null ? money(today.online_revenue) : "–"}</dd></div>
+              <div>
+                <dt>Booked today</dt>
+                <dd>{today.total ?? "–"}</dd>
+              </div>
+              <div>
+                <dt>Paid online</dt>
+                <dd>{today.paid_online ?? "–"}</dd>
+              </div>
+              <div>
+                <dt>Online revenue</dt>
+                <dd>{today.online_revenue != null ? money(today.online_revenue) : "–"}</dd>
+              </div>
             </dl>
           </div>
           <nav className="side-nav" aria-label="Dashboard sections">
             {TABS.map(({ id, label, Icon }) => (
-              <button key={id} className={`side-link ${tab === id ? "is-on" : ""}`} aria-current={tab === id ? "page" : undefined} onClick={() => go(id)}>
+              <button
+                key={id}
+                className={`side-link ${tab === id ? "is-on" : ""}`}
+                aria-current={tab === id ? "page" : undefined}
+                onClick={() => go(id)}
+              >
                 <Icon size={18} /> <span className="grow">{label}</span>
-                {badgeFor(id) > 0 && <span className="count" aria-label={`${badgeFor(id)} new`}>{badgeFor(id)}</span>}
+                {badgeFor(id) > 0 && (
+                  <span className="count" aria-label={`${badgeFor(id)} new`}>
+                    {badgeFor(id)}
+                  </span>
+                )}
               </button>
             ))}
           </nav>
-          <a href="/admin-stats" className="side-link mt-2"><IconChart size={18} /> <span className="grow">Whole-shop overview</span></a>
-          <div className="mt-5"><ThemeToggle /></div>
+          <Link href="/admin-stats" className="side-link mt-2">
+            <IconChart size={18} /> <span className="grow">Whole-shop overview</span>
+          </Link>
+          <div className="mt-5">
+            <ThemeToggle />
+          </div>
         </aside>
 
         <main id="main" className="studio-main fade-in" key={tab}>
@@ -168,5 +240,9 @@ function Studio() {
 }
 
 export default function BarberDashboard() {
-  return <Suspense fallback={null}><Studio /></Suspense>;
+  return (
+    <Suspense fallback={null}>
+      <Studio />
+    </Suspense>
+  );
 }

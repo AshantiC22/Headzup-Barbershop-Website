@@ -2,12 +2,11 @@
 // Session helpers. The API issues JWTs and the access token's payload carries
 // is_staff, which is all the nav needs to know.
 import { useEffect, useMemo, useSyncExternalStore } from "react";
-
-export const API_ROOT = process.env.NEXT_PUBLIC_API_URL || "https://api.headzupp.com";
+import { API_ROOT } from "./config";
 
 const SESSION_EVENT = "headzup:session";
 
-export function decodeToken(token) {
+function decodeToken(token) {
   try {
     const part = token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
     return JSON.parse(atob(part));
@@ -52,7 +51,13 @@ function subscribe(onChange) {
     window.removeEventListener(SESSION_EVENT, onChange);
   };
 }
-const readAccess = () => { try { return localStorage.getItem("access"); } catch { return null; } };
+const readAccess = () => {
+  try {
+    return localStorage.getItem("access");
+  } catch {
+    return null;
+  }
+};
 const NOT_YET = undefined; // server render and hydration: we don't know yet
 
 /** Who is looking at the page? { ready, loggedIn, isStaff } */
@@ -64,8 +69,13 @@ export function useSession() {
   useEffect(() => {
     if (!claims?.exp || claims.exp * 1000 > Date.now()) return;
     let refresh = null;
-    try { refresh = localStorage.getItem("refresh"); } catch {}
-    if (!refresh) { clearSession(); return; }
+    try {
+      refresh = localStorage.getItem("refresh");
+    } catch {}
+    if (!refresh) {
+      clearSession();
+      return;
+    }
     const ctrl = new AbortController();
     fetch(`${API_ROOT}/api/token/refresh/`, {
       method: "POST",

@@ -16,7 +16,10 @@ function Content() {
       .then((r) => {
         const list = Array.isArray(r.data) ? r.data : r.data?.results || [];
         const upcoming = list
-          .filter((a) => !["cancelled", "no_show"].includes(a.status) && apptDate(a.date, a.time) > new Date(Date.now() - 3600e3))
+          .filter(
+            (a) =>
+              !["cancelled", "no_show"].includes(a.status) && apptDate(a.date, a.time) > new Date(Date.now() - 3600e3),
+          )
           .sort((a, b) => (b.id || 0) - (a.id || 0));
         setState({ loading: false, appt: upcoming[0] || null });
       })
@@ -28,7 +31,10 @@ function Content() {
     <AuthShell seed={21}>
       <h1 className="h1">Payment received.</h1>
       {state.loading ? (
-        <div className="mt-5"><Skeleton h={22} w="80%" /><Skeleton h={120} className="mt-4" /></div>
+        <div className="mt-5">
+          <Skeleton h={22} w="80%" />
+          <Skeleton h={120} className="mt-4" />
+        </div>
       ) : a ? (
         <>
           <p className="lede mt-3">
@@ -43,12 +49,20 @@ function Content() {
           Your booking will show up in My appointments in a moment. If it doesn&apos;t, call the shop.
         </p>
       )}
-      <a href="/dashboard" className="btn btn-primary btn-lg btn-block mt-6">See my appointments</a>
-      <Link href="/" className="btn btn-quiet btn-block mt-2">Back to the home page</Link>
+      <Link href="/dashboard" className="btn btn-primary btn-lg btn-block mt-6">
+        See my appointments
+      </Link>
+      <Link href="/" className="btn btn-quiet btn-block mt-2">
+        Back to the home page
+      </Link>
     </AuthShell>
   );
 }
 
 export default function PaymentSuccessPage() {
-  return <Suspense fallback={null}><Content /></Suspense>;
+  return (
+    <Suspense fallback={null}>
+      <Content />
+    </Suspense>
+  );
 }

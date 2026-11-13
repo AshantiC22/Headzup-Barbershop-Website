@@ -10,7 +10,7 @@ import SiteNav from "@/components/site/SiteNav";
 import SiteFooter, { HoursList } from "@/components/site/SiteFooter";
 import ToolRack from "@/components/site/ToolRack";
 import { IconPhone, IconPin, Skeleton } from "@/components/ui/Feedback";
-import { API_ROOT } from "@/lib/auth";
+import { API_ROOT } from "@/lib/config";
 import { ADDRESS_LINE, GALLERY, REVIEWS, SHOP } from "@/lib/shop";
 import { shopStatus } from "@/lib/time";
 import s from "./home.module.css";
@@ -38,7 +38,9 @@ function useBarbers() {
         const list = (Array.isArray(d) ? d : d.results || []).filter((b) => b.id && b.name);
         setState({ loading: false, list });
       })
-      .catch((e) => { if (e?.name !== "AbortError") setState({ loading: false, list: [], failed: true }); });
+      .catch((e) => {
+        if (e?.name !== "AbortError") setState({ loading: false, list: [], failed: true });
+      });
     return () => ctrl.abort();
   }, []);
   return state;
@@ -53,21 +55,35 @@ function Hero({ status }) {
       <div className={`wrap ${s.heroContent}`}>
         <p className={`${s.status} ${open ? s.statusOpen : ""}`} aria-live="polite">
           <span className={s.flame} aria-hidden="true" />
-          {status ? <>{status.label}, {status.detail}</> : "Checking the hours"}
+          {status ? (
+            <>
+              {status.label}, {status.detail}
+            </>
+          ) : (
+            "Checking the hours"
+          )}
         </p>
-        <h1 id="hero-title" className={`display ${s.title}`}>Keep your head up.</h1>
+        <h1 id="hero-title" className={`display ${s.title}`}>
+          Keep your head up.
+        </h1>
         <p className={`lede ${s.lede}`}>
-          Fades, lineups, beard work and hot shaves on West 4th Street in Hattiesburg.
-          Pick your barber, pick a time, and the chair is yours.
+          Fades, lineups, beard work and hot shaves on West 4th Street in Hattiesburg. Pick your barber, pick a time,
+          and the chair is yours.
         </p>
         <div className={s.ctas}>
-          <Link href="/book" className="btn btn-primary btn-lg">Book a cut</Link>
-          <a href="#services" className={`btn btn-ghost btn-lg ${s.ghostOnArt}`}>See prices</a>
+          <Link href="/book" className="btn btn-primary btn-lg">
+            Book a cut
+          </Link>
+          <a href="#services" className={`btn btn-ghost btn-lg ${s.ghostOnArt}`}>
+            See prices
+          </a>
         </div>
       </div>
       <div className={`placard ${s.heroPlate}`}>
         <p className="placard-title">{SHOP.legalName}</p>
-        <p className="placard-medium">{SHOP.street}, {SHOP.city}. The lamp is lit while we&apos;re open.</p>
+        <p className="placard-medium">
+          {SHOP.street}, {SHOP.city}. The lamp is lit while we&apos;re open.
+        </p>
       </div>
     </section>
   );
@@ -78,10 +94,12 @@ function Services() {
     <section id="services" className={`section`} aria-labelledby="services-title">
       <div className="wrap">
         <div className={s.sectionHead}>
-          <h2 id="services-title" className="h2">Services and prices</h2>
+          <h2 id="services-title" className="h2">
+            Services and prices
+          </h2>
           <p className="lede">
-            Pick a service to see what it takes and what it costs. Pay in the shop, or put a deposit
-            down online to hold your spot.
+            Pick a service to see what it takes and what it costs. Pay in the shop, or put a deposit down online to hold
+            your spot.
           </p>
         </div>
         <ToolRack />
@@ -96,8 +114,12 @@ function Barbers({ barbers }) {
     <section id="barbers" className={`section mist`} aria-labelledby="barbers-title">
       <div className="wrap">
         <div className={s.sectionHead}>
-          <h2 id="barbers-title" className="h2">The barbers</h2>
-          <p className="lede">Each barber keeps their own book. Choose who you sit with, and they get your notes before you arrive.</p>
+          <h2 id="barbers-title" className="h2">
+            The barbers
+          </h2>
+          <p className="lede">
+            Each barber keeps their own book. Choose who you sit with, and they get your notes before you arrive.
+          </p>
         </div>
 
         {loading ? (
@@ -112,10 +134,10 @@ function Barbers({ barbers }) {
         ) : list.length === 0 ? (
           <div className="panel panel-pad w-m">
             <p className="h4">{failed ? "Barber profiles didn't load." : "No barbers listed yet."}</p>
-            <p className="muted mt-2">
-              You can still book. The booking page shows everyone taking appointments today.
-            </p>
-            <Link href="/book" className="btn btn-primary mt-4">Book a cut</Link>
+            <p className="muted mt-2">You can still book. The booking page shows everyone taking appointments today.</p>
+            <Link href="/book" className="btn btn-primary mt-4">
+              Book a cut
+            </Link>
           </div>
         ) : (
           <ul className={s.portraits} role="list">
@@ -127,9 +149,17 @@ function Barbers({ barbers }) {
                   <div className={`frame frame-arch ${s.arch}`}>
                     <div className="frame-inner">
                       {photo ? (
-                        <Impression src={photo} alt={`Portrait of ${b.name}`} seed={b.id * 13} detail={1.1} className={s.archImg} />
+                        <Impression
+                          src={photo}
+                          alt={`Portrait of ${b.name}`}
+                          seed={b.id * 13}
+                          detail={1.1}
+                          className={s.archImg}
+                        />
                       ) : (
-                        <div className={s.monogram} aria-hidden="true">{first.charAt(0)}</div>
+                        <div className={s.monogram} aria-hidden="true">
+                          {first.charAt(0)}
+                        </div>
                       )}
                     </div>
                   </div>
@@ -154,18 +184,32 @@ function Work() {
       <div className="wrap">
         <div className={`${s.sectionHead} ${s.sectionHeadRow}`}>
           <div>
-            <h2 id="work-title" className="h2">Recent work</h2>
+            <h2 id="work-title" className="h2">
+              Recent work
+            </h2>
             <p className="lede">Hung as oil sketches. Open one to see the photograph.</p>
           </div>
-          <Link href="/gallery" className="btn btn-ghost">See the full gallery</Link>
+          <Link href="/gallery" className="btn btn-ghost">
+            See the full gallery
+          </Link>
         </div>
         <ul className={s.hang} role="list">
           {GALLERY.map((g, i) => (
             <li key={g.id} className={`${s.hangItem} ${s[`hang${i + 1}`]}`}>
-              <Link href={`/gallery?piece=${g.id}`} className={s.hangLink} aria-label={`${g.title}, ${g.medium}. Open in gallery`}>
+              <Link
+                href={`/gallery?piece=${g.id}`}
+                className={s.hangLink}
+                aria-label={`${g.title}, ${g.medium}. Open in gallery`}
+              >
                 <div className="frame">
                   <div className="frame-inner">
-                    <Impression src={g.src} alt={`${g.title}: ${g.medium}`} seed={g.id * 7} reveal="hover" className={s.hangImg} />
+                    <Impression
+                      src={g.src}
+                      alt={`${g.title}: ${g.medium}`}
+                      seed={g.id * 7}
+                      reveal="hover"
+                      className={s.hangImg}
+                    />
                   </div>
                 </div>
               </Link>
@@ -186,19 +230,27 @@ function Reviews() {
   return (
     <section id="reviews" className={`section mist`} aria-labelledby="reviews-title">
       <div className="wrap">
-        <h2 id="reviews-title" className="h2 mb-8">What clients say</h2>
+        <h2 id="reviews-title" className="h2 mb-8">
+          What clients say
+        </h2>
         <div className={s.reviewGrid}>
           <figure className={s.leadQuote}>
             <blockquote>
               <p>{lead.quote}</p>
             </blockquote>
-            <figcaption className="muted">{lead.name}, {lead.city}</figcaption>
+            <figcaption className="muted">
+              {lead.name}, {lead.city}
+            </figcaption>
           </figure>
           <div className={s.quoteList}>
             {rest.map((r) => (
               <figure key={r.name} className={s.quote}>
-                <blockquote><p>{r.quote}</p></blockquote>
-                <figcaption className="small muted">{r.name}, {r.city}</figcaption>
+                <blockquote>
+                  <p>{r.quote}</p>
+                </blockquote>
+                <figcaption className="small muted">
+                  {r.name}, {r.city}
+                </figcaption>
               </figure>
             ))}
           </div>
@@ -214,16 +266,25 @@ function Visit({ status }) {
       <div className="wrap">
         <div className={s.visitGrid}>
           <div className={`stack ${s.visitText}`}>
-            <h2 id="visit-title" className="h2">Find the shop</h2>
+            <h2 id="visit-title" className="h2">
+              Find the shop
+            </h2>
             <p className="lede">
               {ADDRESS_LINE}.
-              {status && <> Right now we&apos;re <strong>{status.open ? "open" : "closed"}</strong>, {status.detail}.</>}
+              {status && (
+                <>
+                  {" "}
+                  Right now we&apos;re <strong>{status.open ? "open" : "closed"}</strong>, {status.detail}.
+                </>
+              )}
             </p>
             <div className={`panel panel-pad ${s.ledger}`}>
               <HoursList />
             </div>
             <div className="row-wrap">
-              <Link className="btn btn-primary" href="/book">Book a cut</Link>
+              <Link className="btn btn-primary" href="/book">
+                Book a cut
+              </Link>
               <a className="btn btn-ghost" href={SHOP.mapsLink} target="_blank" rel="noopener noreferrer">
                 <IconPin /> Directions
               </a>

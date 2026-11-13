@@ -1,5 +1,6 @@
 "use client";
 // News from the shop: deals, hours changes, events. Posted from the barber dashboard.
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import API from "@/lib/api";
 import SiteNav from "@/components/site/SiteNav";
@@ -28,7 +29,10 @@ export default function NewsletterPage() {
       .finally(() => setLoading(false));
   }, []);
 
-  const present = useMemo(() => Object.keys(CATS).filter((c) => posts.some((p) => (p.category || "general") === c)), [posts]);
+  const present = useMemo(
+    () => Object.keys(CATS).filter((c) => posts.some((p) => (p.category || "general") === c)),
+    [posts],
+  );
   const shown = posts
     .filter((p) => filter === "all" || (p.category || "general") === filter)
     .sort((a, b) => Number(!!b.pinned) - Number(!!a.pinned));
@@ -39,16 +43,18 @@ export default function NewsletterPage() {
       <main id="main" className="wrap page-pad">
         <div className="w-l">
           <h1 className="h1">News from the shop</h1>
-          <p className="lede mt-3">
-            Deals, hours changes and anything else worth knowing before you sit down.
-          </p>
+          <p className="lede mt-3">Deals, hours changes and anything else worth knowing before you sit down.</p>
         </div>
 
         {present.length > 1 && (
           <div className="pills mt-6" role="group" aria-label="Filter news">
-            <button className="pill" aria-pressed={filter === "all"} onClick={() => setFilter("all")}>Everything</button>
+            <button className="pill" aria-pressed={filter === "all"} onClick={() => setFilter("all")}>
+              Everything
+            </button>
             {present.map((c) => (
-              <button key={c} className="pill" aria-pressed={filter === c} onClick={() => setFilter(c)}>{CATS[c].label}</button>
+              <button key={c} className="pill" aria-pressed={filter === c} onClick={() => setFilter(c)}>
+                {CATS[c].label}
+              </button>
             ))}
           </div>
         )}
@@ -65,16 +71,23 @@ export default function NewsletterPage() {
           {shown.map((p, i) => {
             const cat = p.category || "general";
             return (
-              <article key={p.id} className={`news-post ${p.pinned ? "is-pinned" : ""}`}
-                style={{ transform: `rotate(${[-0.5, 0.4, -0.2, 0.6][i % 4]}deg)` }}>
+              <article
+                key={p.id}
+                className={`news-post ${p.pinned ? "is-pinned" : ""}`}
+                style={{ transform: `rotate(${[-0.5, 0.4, -0.2, 0.6][i % 4]}deg)` }}
+              >
                 <div className="row-wrap mb-3" style={{ gap: 8 }}>
                   {p.pinned && <span className="chip chip-warn">Pinned</span>}
                   <span className={`chip ${CATS[cat]?.chip || "chip-quiet"} chip-plain`}>{single[cat] || "News"}</span>
                 </div>
-                <h2 className="h3">{p.emoji && <span aria-hidden="true">{p.emoji} </span>}{p.title}</h2>
+                <h2 className="h3">
+                  {p.emoji && <span aria-hidden="true">{p.emoji} </span>}
+                  {p.title}
+                </h2>
                 <p className="mt-3 pre-line">{p.body}</p>
                 <p className="small faint mt-4">
-                  {p.barber_name ? `Posted by ${p.barber_name}` : "Posted by the shop"}{p.created_at ? `, ${p.created_at}` : ""}
+                  {p.barber_name ? `Posted by ${p.barber_name}` : "Posted by the shop"}
+                  {p.created_at ? `, ${p.created_at}` : ""}
                 </p>
               </article>
             );
@@ -86,7 +99,9 @@ export default function NewsletterPage() {
             <h2 className="h4">Want these as texts?</h2>
             <p className="muted small mt-1">Clients with a phone on file get big announcements by text.</p>
           </div>
-          <a href="/sms-optin" className="btn btn-ghost">Text message settings</a>
+          <Link href="/sms-optin" className="btn btn-ghost">
+            Text message settings
+          </Link>
         </div>
       </main>
       <SiteFooter />

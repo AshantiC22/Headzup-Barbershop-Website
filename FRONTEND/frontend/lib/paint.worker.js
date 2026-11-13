@@ -29,11 +29,14 @@ self.onmessage = ({ data: msg }) => {
   if (msg.type !== "paint" || !canvases.paint) return;
   cancel();
   const { scene, key, w, h, dpr, mode, seed, light, animate, duration } = msg;
-  const compose = scene === "street"
-    ? composeStreet({ w, h, mode, seed })
-    : composeSky({ w, h, mode, seed, light });
+  const compose = scene === "street" ? composeStreet({ w, h, mode, seed }) : composeSky({ w, h, mode, seed, light });
   cancel = paint(canvases.paint, {
-    width: w, height: h, dpr, compose, animate, duration,
+    width: w,
+    height: h,
+    dpr,
+    compose,
+    animate,
+    duration,
     onDone: () => {
       if (scene === "street") paintForeground({ w, h, dpr, mode, seed });
       self.postMessage({ type: "done", key });

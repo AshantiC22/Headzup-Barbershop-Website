@@ -1,25 +1,29 @@
 "use client";
 // The wall: every photo in an iron frame, shown first as an oil sketch.
 // Open one and the photograph comes through, with its plate and a way to book.
+import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Impression from "@/components/art/Impression";
 import SiteNav from "@/components/site/SiteNav";
 import SiteFooter from "@/components/site/SiteFooter";
 import { IconChevronLeft, IconChevronRight, IconClose } from "@/components/ui/Feedback";
 import { arrowSelect, rovingIndex } from "@/components/ui/roving";
+import { Present } from "@/components/ui/motion";
 import { GALLERY, GALLERY_FILTERS } from "@/lib/shop";
 import s from "./gallery.module.css";
 
 const VIEWS = ["photo", "paint"];
 const CROPS = ["3 / 4", "1 / 1", "4 / 5", "3 / 4", "4 / 3", "4 / 5"];
 
-function Lightbox({ items, index, onClose, onMove }) {
+function Lightbox({ items, index, open, onClose, onMove }) {
   const piece = items[index];
   const [view, setView] = useState("photo");
   const touch = useRef(null);
   const closeRef = useRef(null);
 
   useEffect(() => {
+    if (!open) return;
+    const opener = document.activeElement;
     closeRef.current?.focus();
     const onKey = (e) => {
       if (e.key === "Escape") onClose();
@@ -29,25 +33,52 @@ function Lightbox({ items, index, onClose, onMove }) {
     document.addEventListener("keydown", onKey);
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
-    return () => { document.removeEventListener("keydown", onKey); document.body.style.overflow = prev; };
-  }, [onClose, onMove]);
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.body.style.overflow = prev;
+      opener?.focus?.({ preventScroll: true });
+    };
+  }, [open, onClose, onMove]);
 
   if (!piece) return null;
   return (
-    <div className={s.lightbox} role="dialog" aria-modal="true" aria-label={piece.title}
-      onTouchStart={(e) => { touch.current = e.touches[0].clientX; }}
+    <div
+      className={s.lightbox}
+      role="dialog"
+      aria-modal="true"
+      aria-label={piece.title}
+      data-state={open ? "open" : "closing"}
+      inert={!open}
+      onTouchStart={(e) => {
+        touch.current = e.touches[0].clientX;
+      }}
       onTouchEnd={(e) => {
         if (touch.current == null) return;
         const dx = e.changedTouches[0].clientX - touch.current;
         if (Math.abs(dx) > 50) onMove(dx < 0 ? 1 : -1);
         touch.current = null;
-      }}>
+      }}
+    >
       <div className={s.lbTop}>
-        <div className="hu-theme-switch" role="radiogroup" aria-label="How to show this piece"
-          onKeyDown={(e) => { e.stopPropagation(); arrowSelect(e, VIEWS, view, setView); }}>
+        <div
+          className="hu-theme-switch"
+          role="radiogroup"
+          aria-label="How to show this piece"
+          onKeyDown={(e) => {
+            e.stopPropagation();
+            arrowSelect(e, VIEWS, view, setView);
+          }}
+        >
           {VIEWS.map((v) => (
-            <button key={v} type="button" role="radio" aria-checked={view === v} tabIndex={rovingIndex(v, view, VIEWS)}
-              className={view === v ? "is-on" : ""} onClick={() => setView(v)}>
+            <button
+              key={v}
+              type="button"
+              role="radio"
+              aria-checked={view === v}
+              tabIndex={rovingIndex(v, view, VIEWS)}
+              className={view === v ? "is-on" : ""}
+              onClick={() => setView(v)}
+            >
               {v === "photo" ? "Photograph" : "Oil sketch"}
             </button>
           ))}
@@ -58,7 +89,9 @@ function Lightbox({ items, index, onClose, onMove }) {
       </div>
 
       <div className={s.lbStage}>
-        <button className={`icon-btn ${s.lbNav}`} onClick={() => onMove(-1)} aria-label="Previous piece"><IconChevronLeft size={28} /></button>
+        <button className={`icon-btn ${s.lbNav}`} onClick={() => onMove(-1)} aria-label="Previous piece">
+          <IconChevronLeft size={28} />
+        </button>
         <div className={`frame ${s.lbFrame}`}>
           <div className="frame-inner">
             {view === "photo" ? (
@@ -67,19 +100,33 @@ function Lightbox({ items, index, onClose, onMove }) {
                 <img src={piece.src} alt={`${piece.title}: ${piece.medium}`} className={s.lbImg} />
               </picture>
             ) : (
-              <Impression key={`p${piece.id}`} src={piece.src} alt={`${piece.title}, painted`} seed={piece.id * 7} detail={1.4} className={s.lbImg} priority />
+              <Impression
+                key={`p${piece.id}`}
+                src={piece.src}
+                alt={`${piece.title}, painted`}
+                seed={piece.id * 7}
+                detail={1.4}
+                className={s.lbImg}
+                priority
+              />
             )}
           </div>
         </div>
-        <button className={`icon-btn ${s.lbNav}`} onClick={() => onMove(1)} aria-label="Next piece"><IconChevronRight size={28} /></button>
+        <button className={`icon-btn ${s.lbNav}`} onClick={() => onMove(1)} aria-label="Next piece">
+          <IconChevronRight size={28} />
+        </button>
       </div>
 
       <div className={`placard ${s.lbPlacard}`}>
         <p className="placard-title">{piece.title}</p>
         <p className="placard-medium">{piece.medium}. Headz Up, Hattiesburg.</p>
         <div className="row-wrap mt-3">
-          <a href="/book" className="btn btn-primary btn-sm">Book a cut</a>
-          <span className="small faint">{index + 1} of {items.length}</span>
+          <Link href="/book" className="btn btn-primary btn-sm">
+            Book a cut
+          </Link>
+          <span className="small faint">
+            {index + 1} of {items.length}
+          </span>
         </div>
       </div>
     </div>
@@ -108,7 +155,10 @@ export default function GalleryPage() {
   }, [open, items]);
 
   const close = useCallback(() => setOpen(null), []);
-  const move = useCallback((d) => setOpen((i) => (i == null ? i : (i + d + items.length) % items.length)), [items.length]);
+  const move = useCallback(
+    (d) => setOpen((i) => (i == null ? i : (i + d + items.length) % items.length)),
+    [items.length],
+  );
 
   return (
     <>
@@ -118,8 +168,8 @@ export default function GalleryPage() {
           <header className={s.head}>
             <h1 className="h1">Recent work</h1>
             <p className="lede">
-              Every piece here walked out of the shop on West 4th. They hang as oil sketches first;
-              open one to see the photograph.
+              Every piece here walked out of the shop on West 4th. They hang as oil sketches first; open one to see the
+              photograph.
             </p>
             <div className="pills" role="group" aria-label="Filter the work">
               {GALLERY_FILTERS.map((f) => (
@@ -133,17 +183,29 @@ export default function GalleryPage() {
           {items.length === 0 ? (
             <div className="panel panel-pad w-m">
               <p className="h4">Nothing hung under that label yet.</p>
-              <button className="btn btn-ghost mt-4" onClick={() => setFilter("all")}>Show everything</button>
+              <button className="btn btn-ghost mt-4" onClick={() => setFilter("all")}>
+                Show everything
+              </button>
             </div>
           ) : (
             <ul className={s.wall} role="list">
               {items.map((g, i) => (
                 <li key={g.id} className={s.piece}>
                   <button className={s.pieceBtn} onClick={() => setOpen(i)} aria-label={`Open ${g.title}`}>
-                    <div className="frame" style={{ transform: `rotate(${[-0.8, 0.6, -0.3, 0.9, -0.5, 0.4][i % 6]}deg)` }}>
+                    <div
+                      className="frame"
+                      style={{ transform: `rotate(${[-0.8, 0.6, -0.3, 0.9, -0.5, 0.4][i % 6]}deg)` }}
+                    >
                       <div className="frame-inner">
-                        <Impression src={g.src} alt={`${g.title}: ${g.medium}`} seed={g.id * 7} detail={1.2}
-                          reveal="hover" imgStyle={{ aspectRatio: CROPS[g.id % CROPS.length] }} className={s.pieceImg} />
+                        <Impression
+                          src={g.src}
+                          alt={`${g.title}: ${g.medium}`}
+                          seed={g.id * 7}
+                          detail={1.2}
+                          reveal="hover"
+                          imgStyle={{ aspectRatio: CROPS[g.id % CROPS.length] }}
+                          className={s.pieceImg}
+                        />
                       </div>
                     </div>
                   </button>
@@ -161,12 +223,16 @@ export default function GalleryPage() {
               <h2 className="h3">Want to hang on this wall?</h2>
               <p className="muted mt-2">Book your chair and ask your barber for a photo on the way out.</p>
             </div>
-            <a href="/book" className="btn btn-primary btn-lg">Book a cut</a>
+            <Link href="/book" className="btn btn-primary btn-lg">
+              Book a cut
+            </Link>
           </section>
         </div>
       </main>
       <SiteFooter />
-      {open != null && <Lightbox items={items} index={open} onClose={close} onMove={move} />}
+      <Present value={open}>
+        {(index, shown) => <Lightbox items={items} index={index} open={shown} onClose={close} onMove={move} />}
+      </Present>
     </>
   );
 }

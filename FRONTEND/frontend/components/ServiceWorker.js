@@ -30,9 +30,12 @@ export default function ServiceWorker() {
     navigator.serviceWorker.addEventListener("controllerchange", onControllerChange);
     document.addEventListener("visibilitychange", reloadWhenHidden);
 
-    navigator.serviceWorker.register("/sw.js").then((reg) => {
-      interval = window.setInterval(() => reg.update().catch(() => {}), CHECK_EVERY_MS);
-    }).catch(() => {});
+    navigator.serviceWorker
+      .register("/sw.js")
+      .then((reg) => {
+        interval = window.setInterval(() => reg.update().catch(() => {}), CHECK_EVERY_MS);
+      })
+      .catch(() => {});
 
     return () => {
       window.clearInterval(interval);

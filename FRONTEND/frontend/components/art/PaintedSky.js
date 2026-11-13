@@ -20,16 +20,29 @@ export default function PaintedSky({ seed = 3, light = true, fixed = true, class
       setSize((p) => (p && Math.abs(p.w - w) < 2 && Math.abs(p.h - h) < 100 ? p : { w, h }));
     };
     measure();
-    const onResize = () => { clearTimeout(t); t = setTimeout(measure, 150); };
+    const onResize = () => {
+      clearTimeout(t);
+      t = setTimeout(measure, 150);
+    };
     window.addEventListener("resize", onResize);
-    return () => { window.removeEventListener("resize", onResize); clearTimeout(t); };
+    return () => {
+      window.removeEventListener("resize", onResize);
+      clearTimeout(t);
+    };
   }, [fixed]);
 
   useEffect(() => {
     if (!size) return;
     requestPaint.current?.({
-      scene: "sky", key: `${size.w}x${size.h}:${palette}`, w: size.w, h: size.h,
-      dpr: Math.min(window.devicePixelRatio || 1, 1.5), mode: palette, seed, light, animate: false,
+      scene: "sky",
+      key: `${size.w}x${size.h}:${palette}`,
+      w: size.w,
+      h: size.h,
+      dpr: Math.min(window.devicePixelRatio || 1, 1.5),
+      mode: palette,
+      seed,
+      light,
+      animate: false,
     });
   }, [size, palette, seed, light, requestPaint]);
 

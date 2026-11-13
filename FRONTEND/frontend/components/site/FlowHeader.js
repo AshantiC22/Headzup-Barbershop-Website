@@ -1,6 +1,7 @@
 "use client";
 // A quiet header for task pages (booking, sign-in, confirmations): the shop
 // sign, what you're doing, and one way out.
+import Link from "next/link";
 import { ShopSign } from "./SiteNav";
 import { IconArrowLeft } from "@/components/ui/Feedback";
 
@@ -13,9 +14,9 @@ export default function FlowHeader({ title, backHref = "/", backLabel = "Home", 
         <div className="nav-end">
           {right}
           {backHref && (
-            <a href={backHref} className="btn btn-quiet btn-sm">
+            <Link href={backHref} className="btn btn-quiet btn-sm">
               <IconArrowLeft size={16} /> {backLabel}
-            </a>
+            </Link>
           )}
         </div>
       </div>

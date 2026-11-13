@@ -1,12 +1,21 @@
 "use client";
 // Barber sign-in and invite-code sign-up (token/, barber/register/).
+import Link from "next/link";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import API from "@/lib/api";
 import { clearSession, saveSession } from "@/lib/auth";
 import {
-  AuthShell, Field, PasswordInput, RecoveryFlow, Segmented, SecurityQuestionFields, SubmitButton, TextInput,
-  normalizePhone, useSecurityQuestions,
+  AuthShell,
+  Field,
+  PasswordInput,
+  RecoveryFlow,
+  Segmented,
+  SecurityQuestionFields,
+  SubmitButton,
+  TextInput,
+  normalizePhone,
+  useSecurityQuestions,
 } from "@/components/auth/AuthParts";
 import { Notice } from "@/components/ui/Feedback";
 
@@ -27,7 +36,11 @@ export default function BarberLoginPage() {
   const [secQ, setSecQ] = useState("");
   const [secA, setSecA] = useState("");
 
-  const switchMode = (m) => { setMode(m); setError(""); setErrs({}); };
+  const switchMode = (m) => {
+    setMode(m);
+    setError("");
+    setErrs({});
+  };
 
   const signIn = async (e) => {
     e.preventDefault();
@@ -36,7 +49,9 @@ export default function BarberLoginPage() {
     if (!pass) fe.pass = "Enter your password.";
     setErrs(fe);
     if (Object.keys(fe).length) return;
-    setBusy(true); setError(""); setSuccess("");
+    setBusy(true);
+    setError("");
+    setSuccess("");
     try {
       const r = await API.post("token/", { username: user.trim(), password: pass });
       saveSession(r.data);
@@ -50,9 +65,11 @@ export default function BarberLoginPage() {
       router.replace("/barber-dashboard");
     } catch (err) {
       clearSession();
-      setError(err?.response?.status === 401 || err?.response?.status === 400
-        ? "That username and password don't match."
-        : "We couldn't reach the server. Check your connection and try again.");
+      setError(
+        err?.response?.status === 401 || err?.response?.status === 400
+          ? "That username and password don't match."
+          : "We couldn't reach the server. Check your connection and try again.",
+      );
       setBusy(false);
     }
   };
@@ -69,11 +86,16 @@ export default function BarberLoginPage() {
     if (!f.invite.trim()) fe.invite = "Ask the shop owner for the invite code.";
     setErrs(fe);
     if (Object.keys(fe).length) return;
-    setBusy(true); setError("");
+    setBusy(true);
+    setError("");
     try {
       await API.post("barber/register/", {
-        full_name: f.name.trim(), username: f.user.trim(), email: f.email.trim(),
-        password: f.pass, phone, invite_code: f.invite.trim(),
+        full_name: f.name.trim(),
+        username: f.user.trim(),
+        email: f.email.trim(),
+        password: f.pass,
+        phone,
+        invite_code: f.invite.trim(),
       });
       const r = await API.post("token/", { username: f.user.trim(), password: f.pass });
       saveSession(r.data);
@@ -95,33 +117,71 @@ export default function BarberLoginPage() {
   if (mode === "forgot") {
     return (
       <AuthShell seed={11}>
-        <RecoveryFlow onBack={() => switchMode("login")}
-          onDone={(u) => { switchMode("login"); setUser(u); setSuccess("Password saved. Sign in with the new one."); }} />
+        <RecoveryFlow
+          onBack={() => switchMode("login")}
+          onDone={(u) => {
+            switchMode("login");
+            setUser(u);
+            setSuccess("Password saved. Sign in with the new one.");
+          }}
+        />
       </AuthShell>
     );
   }
 
   return (
     <AuthShell seed={11}>
-      <Segmented label="Barber account" value={mode} onChange={switchMode}
-        options={[["login", "Sign in"], ["join", "Join the shop"]]} />
-      {success && <Notice tone="ok" className="mb-5">{success}</Notice>}
-      {error && <Notice tone="bad" className="mb-5">{error}</Notice>}
+      <Segmented
+        label="Barber account"
+        value={mode}
+        onChange={switchMode}
+        options={[
+          ["login", "Sign in"],
+          ["join", "Join the shop"],
+        ]}
+      />
+      {success && (
+        <Notice tone="ok" className="mb-5">
+          {success}
+        </Notice>
+      )}
+      {error && (
+        <Notice tone="bad" className="mb-5">
+          {error}
+        </Notice>
+      )}
 
       {mode === "login" ? (
         <form onSubmit={signIn} noValidate>
           <h1 className="h2 mb-2">Barber sign-in</h1>
           <p className="muted mb-5">Your chair, your book, your clients.</p>
           <Field id="b-user" label="Username" error={errs.user}>
-            <TextInput id="b-user" error={errs.user} value={user} onChange={(e) => setUser(e.target.value)}
-              autoComplete="username" autoCapitalize="none" autoCorrect="off" />
+            <TextInput
+              id="b-user"
+              error={errs.user}
+              value={user}
+              onChange={(e) => setUser(e.target.value)}
+              autoComplete="username"
+              autoCapitalize="none"
+              autoCorrect="off"
+            />
           </Field>
           <Field id="b-pass" label="Password" error={errs.pass}>
-            <PasswordInput id="b-pass" error={errs.pass} value={pass} onChange={(e) => setPass(e.target.value)} autoComplete="current-password" />
+            <PasswordInput
+              id="b-pass"
+              error={errs.pass}
+              value={pass}
+              onChange={(e) => setPass(e.target.value)}
+              autoComplete="current-password"
+            />
           </Field>
-          <SubmitButton busy={busy} busyLabel="Signing in">Sign in</SubmitButton>
+          <SubmitButton busy={busy} busyLabel="Signing in">
+            Sign in
+          </SubmitButton>
           <div className="auth-foot">
-            <button type="button" className="link" onClick={() => switchMode("forgot")}>Forgot your password?</button>
+            <button type="button" className="link" onClick={() => switchMode("forgot")}>
+              Forgot your password?
+            </button>
           </div>
         </form>
       ) : (
@@ -132,26 +192,72 @@ export default function BarberLoginPage() {
             <TextInput id="j-name" error={errs.name} value={f.name} onChange={set("name")} autoComplete="name" />
           </Field>
           <Field id="j-user" label="Username" error={errs.user}>
-            <TextInput id="j-user" error={errs.user} value={f.user} onChange={set("user")} autoComplete="username" autoCapitalize="none" />
+            <TextInput
+              id="j-user"
+              error={errs.user}
+              value={f.user}
+              onChange={set("user")}
+              autoComplete="username"
+              autoCapitalize="none"
+            />
           </Field>
           <Field id="j-email" label="Email" error={errs.email}>
-            <TextInput id="j-email" type="email" inputMode="email" error={errs.email} value={f.email} onChange={set("email")} autoComplete="email" />
+            <TextInput
+              id="j-email"
+              type="email"
+              inputMode="email"
+              error={errs.email}
+              value={f.email}
+              onChange={set("email")}
+              autoComplete="email"
+            />
           </Field>
-          <Field id="j-phone" label="Mobile number" error={errs.phone} hint="New bookings, cancellations and reviews get texted here.">
-            <TextInput id="j-phone" type="tel" inputMode="tel" error={errs.phone} value={f.phone} onChange={set("phone")} autoComplete="tel" placeholder="(601) 555-0100" />
+          <Field
+            id="j-phone"
+            label="Mobile number"
+            error={errs.phone}
+            hint="New bookings, cancellations and reviews get texted here."
+          >
+            <TextInput
+              id="j-phone"
+              type="tel"
+              inputMode="tel"
+              error={errs.phone}
+              value={f.phone}
+              onChange={set("phone")}
+              autoComplete="tel"
+              placeholder="(601) 555-0100"
+            />
           </Field>
           <Field id="j-pass" label="Password" error={errs.pass} hint="At least 8 characters.">
-            <PasswordInput id="j-pass" error={errs.pass} value={f.pass} onChange={set("pass")} autoComplete="new-password" />
+            <PasswordInput
+              id="j-pass"
+              error={errs.pass}
+              value={f.pass}
+              onChange={set("pass")}
+              autoComplete="new-password"
+            />
           </Field>
           <Field id="j-invite" label="Invite code" error={errs.invite}>
-            <TextInput id="j-invite" error={errs.invite} value={f.invite} onChange={set("invite")} autoCapitalize="none" autoComplete="off" />
+            <TextInput
+              id="j-invite"
+              error={errs.invite}
+              value={f.invite}
+              onChange={set("invite")}
+              autoCapitalize="none"
+              autoComplete="off"
+            />
           </Field>
           <SecurityQuestionFields questions={questions} q={secQ} setQ={setSecQ} a={secA} setA={setSecA} />
-          <SubmitButton busy={busy} busyLabel="Setting up your chair">Create barber account</SubmitButton>
+          <SubmitButton busy={busy} busyLabel="Setting up your chair">
+            Create barber account
+          </SubmitButton>
         </form>
       )}
       <div className="auth-foot">
-        <a className="link" href="/login">Client sign-in</a>
+        <Link className="link" href="/login">
+          Client sign-in
+        </Link>
       </div>
     </AuthShell>
   );

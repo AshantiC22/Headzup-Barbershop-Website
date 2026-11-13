@@ -3,8 +3,7 @@
 import API from "@/lib/api";
 
 const isIOS = () => /iphone|ipad|ipod/i.test(navigator.userAgent);
-const isStandalone = () =>
-  window.matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
+const isStandalone = () => window.matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
 
 /**
  * "ready"        push works here
