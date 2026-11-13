@@ -33,7 +33,7 @@
   --accent: #8e1b1b; /* oxblood            */
   --accent-2: #a8261f;
   --on-accent: #f3ecdd;
-  --accent-ink: #e07563; /* oxblood, as readable text on stone */
+  --accent-ink: #e5806e; /* oxblood, as readable text on stone: 4.8:1 on surface-2 */
   --accent-wash: rgba(176, 44, 34, 0.16);
   --steel: #9db4c0; /* cold iron, for links */
   --steel-wash: rgba(157, 180, 192, 0.12);
