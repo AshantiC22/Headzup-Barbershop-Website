@@ -35,8 +35,9 @@ function icsFile({ service, barber, date, time, minutes = 30 }) {
 
 function ConfirmedContent() {
   const p = useSearchParams();
-  // The deposit redirect doesn't URL-encode names, so "Haircut & Shave" arrives
-  // split at the "&". Read the raw query between service= and &barber= instead.
+  // API versions before Nov 2026 didn't URL-encode names in the deposit
+  // redirect, so "Haircut & Shave" could arrive split at the "&". Reading the
+  // raw query between service= and &barber= handles both old and new links.
   const rawService = (() => {
     if (typeof window === "undefined") return null;
     const m = window.location.search.match(/[?&]service=(.*?)&barber=/);

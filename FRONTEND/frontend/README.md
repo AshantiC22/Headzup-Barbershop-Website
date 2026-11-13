@@ -80,8 +80,8 @@ reading well under about 24px, so `.h3` and `.h4` switch to the roman Grenze.
   not the visitor's.
 - **Times from the API** come as `HH:MM:SS` or `h:mm AM`. `fmtTime` and
   `toMinutes` handle both.
-- **Deposit return URL.** The API's deposit-success redirect doesn't encode
-  the service name, so `Haircut & Shave` arrives split at the `&`.
-  `booking-confirmed` reads the raw query string to put it back together.
+- **Deposit return URL.** The API now URL-encodes the names it sends back
+  after a Stripe deposit; older links split `Haircut & Shave` at the `&`.
+  `booking-confirmed` reads the raw query string so both kinds work.
 - **Service worker.** `public/sw.js` caches by `CACHE_VERSION`. Bump it when
   shipping changes to cached routes or the offline page.

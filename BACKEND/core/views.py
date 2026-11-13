@@ -1,6 +1,7 @@
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
 import stripe
+import urllib.parse
 from decimal import Decimal
 from django.conf import settings
 from django.db import IntegrityError
@@ -2519,52 +2520,6 @@ class SecurityQuestionsListView(APIView):
         return Response({"questions": SECURITY_QUESTIONS})
 
 
-class PasswordResetView(APIView):
-    """Legacy — kept for backwards compatibility."""
-    permission_classes = [AllowAny]
-
-    def post(self, request):
-        identifier = request.data.get("identifier", "").strip()
-        if not identifier:
-            return Response({"error": "identifier required"}, status=400)
-        user = (
-            User.objects.filter(username__iexact=identifier).first()
-            or User.objects.filter(email__iexact=identifier).first()
-        )
-        if not user:
-            return Response({"error": "No account found"}, status=404)
-        from django.contrib.auth.tokens import default_token_generator
-        token = default_token_generator.make_token(user)
-        return Response({"token": token, "user_id": user.pk})
-
-
-class PasswordResetConfirmView(APIView):
-    """Legacy — kept for backwards compatibility."""
-    permission_classes = [AllowAny]
-
-    def post(self, request):
-        identifier   = request.data.get("identifier", "").strip()
-        token        = request.data.get("token", "").strip()
-        new_password = request.data.get("password", "")
-        if not all([identifier, token, new_password]):
-            return Response({"error": "identifier, token, and password required"}, status=400)
-        if len(new_password) < 6:
-            return Response({"error": "Password must be at least 6 characters"}, status=400)
-        user = (
-            User.objects.filter(username__iexact=identifier).first()
-            or User.objects.filter(email__iexact=identifier).first()
-        )
-        if not user:
-            return Response({"error": "Account not found"}, status=404)
-        from django.contrib.auth.tokens import default_token_generator
-        if not default_token_generator.check_token(user, token):
-            return Response({"error": "Invalid or expired token"}, status=400)
-        user.set_password(new_password)
-        user.save()
-        return Response({"message": "Password updated successfully"})
-
-
-
 class ChangePasswordView(APIView):
     """Authenticated — change password from inside the dashboard."""
     permission_classes = [IsAuthenticated]
@@ -2858,7 +2813,10 @@ class DepositSuccessView(APIView):
                     "status":             "confirmed",
                 },
             )
-            if not created and not appt.deposit_paid:
+            # An existing booking whose deposit wasn't recorded yet (paid twice, or
+            # the webhook got there first without marking it).
+            newly_paid = not created and not appt.deposit_paid
+            if newly_paid:
                 appt.deposit_paid       = True
                 appt.deposit_session_id = session_id
                 appt.deposit_amount     = Decimal(metadata.get("deposit_amount", "10.00"))
@@ -2903,23 +2861,25 @@ class DepositSuccessView(APIView):
                 except Exception as _ne:
                     import logging
                     logging.getLogger(__name__).error(f"Deposit barber notify failed: {_ne}")
-            elif not created and not appt.deposit_paid:
+            elif newly_paid:
                 appt_full = Appointment.objects.select_related(
                     "user", "barber", "barber__user", "service"
                 ).get(pk=appt.pk)
                 send_deposit_paid_email(appt_full)
                 sms_deposit_paid(appt_full)
 
-            return redirect(
-                f"{FRONTEND_URL}/booking-confirmed"
-                f"?service={metadata.get('service_name','')}"
-                f"&barber={metadata.get('barber_name','')}"
-                f"&date={metadata.get('date','')}"
-                f"&time={metadata.get('time','')}"
-                f"&deposit={metadata.get('deposit_amount','10.00')}"
-                f"&remaining={metadata.get('remaining','0.00')}"
-                f"&payment=deposit"
-            )
+            # Encode everything: a service called "Haircut & Shave" would
+            # otherwise split the query string at the "&".
+            query = urllib.parse.urlencode({
+                "service":   metadata.get("service_name", ""),
+                "barber":    metadata.get("barber_name", ""),
+                "date":      metadata.get("date", ""),
+                "time":      metadata.get("time", ""),
+                "deposit":   metadata.get("deposit_amount", "10.00"),
+                "remaining": metadata.get("remaining", "0.00"),
+                "payment":   "deposit",
+            })
+            return redirect(f"{FRONTEND_URL}/booking-confirmed?{query}")
         except Exception as e:
             import logging
             logging.getLogger(__name__).error(f"DepositSuccessView error: {e}")

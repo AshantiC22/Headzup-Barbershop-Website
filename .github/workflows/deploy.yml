@@ -44,6 +44,13 @@ jobs:
           python manage.py makemigrations --check --dry-run
           echo "✓ No unapplied model changes"
 
+      - name: Backend tests
+        env:
+          DATABASE_URL: sqlite:///./test.db
+          SECRET_KEY: ci-test-secret-key-not-real
+          DEBUG: "True"
+        run: python manage.py test core
+
       - name: Django system check
         env:
           DATABASE_URL: sqlite:///./test.db

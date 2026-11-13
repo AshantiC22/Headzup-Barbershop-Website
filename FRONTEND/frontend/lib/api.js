@@ -108,7 +108,7 @@ API.delete = async (url, ...args) => {
 // Endpoints that never need a token, so a 401 there isn't a reason to refresh.
 const PUBLIC_URLS = [
   "token/", "token/refresh/", "register/", "barber/register/",
-  "check-username/", "password-reset/", "password-reset/confirm/",
+  "check-username/",
   "barbers/", "services/", "available-slots/",
   "push/subscribe/", "push/vapid-key/",
 ];
