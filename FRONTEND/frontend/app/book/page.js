@@ -278,12 +278,12 @@ function BookContent() {
             <h1 id="step-title" className="h2">Who&apos;s cutting?</h1>
             <p className="muted mt-2">Each barber keeps their own hours. You&apos;ll see their open days next.</p>
             <div className={s.barbers}>
-              {barbers.map((b, i) => {
+              {barbers.map((b) => {
                 const photo = photoOk(b.photo_url) ? b.photo_url : null;
                 return (
                   <button key={b.id} className="choice" aria-pressed={barber?.id === b.id}
                     onClick={() => { if (barber?.id !== b.id) { setDate(""); setTime(""); } setBarber(b); go(3); }}>
-                    <span className={`frame frame-oval ${s.miniOval}`} style={{ transform: `rotate(${i % 2 ? 1.5 : -1.5}deg)` }}>
+                    <span className={`frame frame-arch ${s.miniArch}`}>
                       <span className="frame-inner">
                         {photo
                           ? <Impression src={photo} alt="" seed={b.id * 13} className={s.miniImg} />

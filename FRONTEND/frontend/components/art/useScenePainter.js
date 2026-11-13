@@ -8,9 +8,9 @@
 // double-mount would otherwise try to transfer the same element twice.
 //
 //   const request = useScenePainter({ paint: paintSlot, fore: foreSlot }, onDone);
-//   request.current?.({ scene: "harbor", key, w, h, dpr, mode, seed, animate, duration });
+//   request.current?.({ scene: "street", key, w, h, dpr, mode, seed, animate, duration });
 import { useEffect, useRef } from "react";
-import { composeForegroundClouds, composeHarbor, composeSky, drawStrokes, paint } from "@/lib/painter";
+import { composeFog, composeSky, composeStreet, drawStrokes, paint } from "@/lib/painter";
 
 const canTransfer = () =>
   typeof Worker !== "undefined" &&
@@ -18,7 +18,7 @@ const canTransfer = () =>
   "transferControlToOffscreen" in HTMLCanvasElement.prototype;
 
 function paintHere(els, req, onDone) {
-  const compose = req.scene === "harbor" ? composeHarbor(req) : composeSky(req);
+  const compose = req.scene === "street" ? composeStreet(req) : composeSky(req);
   return paint(els.paint, {
     width: req.w, height: req.h, dpr: req.dpr, compose, animate: req.animate, duration: req.duration,
     onDone: () => {
@@ -27,7 +27,7 @@ function paintHere(els, req, onDone) {
         els.fore.height = Math.round(req.h * req.dpr);
         const ctx = els.fore.getContext("2d");
         ctx.setTransform(req.dpr, 0, 0, req.dpr, 0, 0);
-        drawStrokes(ctx, composeForegroundClouds(req));
+        drawStrokes(ctx, composeFog(req));
       }
       onDone(req.key);
     },

@@ -269,14 +269,14 @@ export function ProfileTab({ barber, setBarber, toast }) {
       <div className="tab-head"><div><h1 className="h2">Your profile</h1><p className="muted">This is what clients see on the home page and when they book.</p></div></div>
       <div className="setup-grid">
         <section className="panel panel-pad" style={{ textAlign: "center" }}>
-          <div className="frame frame-oval" style={{ width: 180, margin: "6px auto 0", transform: "rotate(-1.5deg)" }}>
-            <div className="frame-inner" style={{ aspectRatio: "4 / 5" }}>
+          <div className="frame frame-arch profile-arch">
+            <div className="frame-inner">
               {photo ? <Impression key={photo.slice(0, 64)} src={photo} alt={`${barber?.name}'s portrait`} seed={(barber?.id || 1) * 13} className="fill" />
                 : <div className="monogram-sm" aria-hidden="true">{barber?.name?.charAt(0)}</div>}
             </div>
           </div>
           <p className="h3 mt-5">{barber?.name}</p>
-          <p className="small muted mt-1">Clients see your photo painted, like this.</p>
+          <p className="small muted mt-1">Clients see your photo as an oil sketch, like this.</p>
           <div className="row-wrap mt-4" style={{ justifyContent: "center" }}>
             <label className="btn btn-ghost btn-sm">
               <IconCamera size={16} /> {barber?.photo_url ? "Change photo" : "Add a photo"}

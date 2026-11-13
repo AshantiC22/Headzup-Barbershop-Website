@@ -6,7 +6,7 @@
 //
 // Bump CACHE_VERSION when the offline page or caching rules change.
 
-const CACHE_VERSION = "headzup-v6";
+const CACHE_VERSION = "headzup-v7";
 const STATIC_CACHE = `${CACHE_VERSION}-static`;
 const PAGE_CACHE = `${CACHE_VERSION}-pages`;
 const OFFLINE_URL = "/offline";

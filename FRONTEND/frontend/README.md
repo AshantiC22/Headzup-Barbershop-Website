@@ -22,8 +22,8 @@ npm run build
 ```
 app/                  one folder per route; page-level CSS modules sit beside the page
 components/
-  art/                HarborScene (home hero), PaintedSky, Impression (photo → painting)
-  site/               nav, footer, flow and app headers
+  art/                StreetScene (home hero), PaintedSky, Impression (photo → oil sketch), ToolIcons
+  site/               nav, footer, flow and app headers, ToolRack (services)
   booking/            calendar, slot picker, work-week editor
   barber/             dashboard tabs, grouped by job (schedule, people, setup, money)
   auth/               shared form pieces and the password recovery flow
@@ -38,14 +38,19 @@ lib/
 
 ## The look
 
-Impressionist light with a surrealist hang: the home hero is a harbor at
-sunrise (night, in the dark theme) painted stroke by stroke into a canvas, with
-a barber pole standing in the water that turns while the shop is open. Prices
-hang as a painted board, barbers as oval portraits, haircuts as a salon wall
-with museum placards.
+A night street in an old town, river fog, a big moon behind a cathedral
+spire, and the shop's barber pole standing in the road like a gas lamp. The
+globe on top is lit and the stripes turn only while the shop is open, so the
+hero doubles as the open sign. Services hang as a rack of tools, barbers sit
+in pointed-arch frames, reviews are cut into stone.
+
+The palette comes from the barber-surgeons the pole is named for: oxblood
+for the blood, bone for the bandages, brass for the basin, on wet stone.
+Lamplight is the default theme; Daylight is the same street on an overcast
+morning.
 
 Everything visual is drawn in `lib/painter.js`; there are no image assets for
-the art. A scene function (`composeHarbor`, `composeSky`) returns a list of
+the art. A scene function (`composeStreet`, `composeSky`) returns a list of
 strokes and `paint()` lays them down. Seeds are fixed, so the same viewport
 always gets the same painting (the tests check this). The paint-in animation
 runs once per session and never with `prefers-reduced-motion`.
@@ -58,12 +63,15 @@ on browsers that can't transfer a canvas.
 
 Colors and type are CSS variables in `app/globals.css`, switched by
 `<html data-theme>`. Spacing between blocks uses one scale (4, 8, 12, 16, 20,
-24, 32, 40 px) through the `mt-*`/`mb-*` classes at the end of that file. A small inline script in `app/layout.tsx` sets that
-attribute before first paint from `localStorage.headzup_theme` or the OS
-setting. Canvas code reads the palette through `useTheme()`.
+24, 32, 40 px) through the `mt-*`/`mb-*` classes at the end of that file.
+A small inline script in `app/layout.tsx` sets that attribute before first
+paint: Lamplight unless `localStorage.headzup_theme` says `light`. Canvas code
+reads the palette through `useTheme()`.
 
-Type is Fraunces (display, with its SOFT and WONK axes) and Figtree (UI), both
-self-hosted through Fontsource.
+Type is Grenze Gotisch (headlines and names), Grenze (italic lore lines and
+quotes) and Archivo with its width axis (everything functional, condensed for
+prices and numbers), all self-hosted through Fontsource. Grenze Gotisch stops
+reading well under about 24px, so `.h3` and `.h4` switch to the roman Grenze.
 
 ## Things that are easy to get wrong
 

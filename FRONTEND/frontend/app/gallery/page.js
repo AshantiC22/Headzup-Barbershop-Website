@@ -1,6 +1,6 @@
 "use client";
-// The salon: every photo hung in a gilt frame, shown first as a painting.
-// Open one and the photograph comes through, with a placard and a way to book.
+// The wall: every photo in an iron frame, shown first as an oil sketch.
+// Open one and the photograph comes through, with its plate and a way to book.
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Impression from "@/components/art/Impression";
 import SiteNav from "@/components/site/SiteNav";
@@ -48,7 +48,7 @@ function Lightbox({ items, index, onClose, onMove }) {
           {VIEWS.map((v) => (
             <button key={v} type="button" role="radio" aria-checked={view === v} tabIndex={rovingIndex(v, view, VIEWS)}
               className={view === v ? "is-on" : ""} onClick={() => setView(v)}>
-              {v === "photo" ? "Photograph" : "Painting"}
+              {v === "photo" ? "Photograph" : "Oil sketch"}
             </button>
           ))}
         </div>
@@ -118,7 +118,7 @@ export default function GalleryPage() {
           <header className={s.head}>
             <h1 className="h1">Recent work</h1>
             <p className="lede">
-              Every piece here walked out of the shop on West 4th. They hang as paintings first;
+              Every piece here walked out of the shop on West 4th. They hang as oil sketches first;
               open one to see the photograph.
             </p>
             <div className="pills" role="group" aria-label="Filter the work">

@@ -1,21 +1,30 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
   <defs>
-    <clipPath id="pole"><rect x="11" y="0" width="10" height="23"/></clipPath>
+    <clipPath id="pole"><rect x="12" y="11" width="8" height="15"/></clipPath>
     <linearGradient id="round" x1="0" x2="1">
-      <stop offset="0" stop-color="#0F1A2E" stop-opacity=".45"/>
-      <stop offset=".35" stop-color="#fff" stop-opacity=".25"/>
+      <stop offset="0" stop-color="#0E1110" stop-opacity=".55"/>
+      <stop offset=".35" stop-color="#fff" stop-opacity=".22"/>
       <stop offset=".55" stop-color="#fff" stop-opacity="0"/>
-      <stop offset="1" stop-color="#0F1A2E" stop-opacity=".55"/>
+      <stop offset="1" stop-color="#0E1110" stop-opacity=".6"/>
     </linearGradient>
+    <radialGradient id="globe" cx=".4" cy=".35" r=".7">
+      <stop offset="0" stop-color="#FFF4DA"/><stop offset=".55" stop-color="#F6C878"/><stop offset="1" stop-color="#B8701F"/>
+    </radialGradient>
+    <radialGradient id="glow" cx=".5" cy=".5" r=".5">
+      <stop offset="0" stop-color="#F2B866" stop-opacity=".55"/><stop offset="1" stop-color="#F2B866" stop-opacity="0"/>
+    </radialGradient>
   </defs>
-  <rect width="32" height="32" rx="7" fill="#0F1A2E"/>
-  <circle cx="25" cy="7" r="2.6" fill="#F1D795"/>
+  <rect width="32" height="32" rx="5" fill="#1A1D1C"/>
+  <circle cx="16" cy="7.5" r="9" fill="url(#glow)"/>
   <g clip-path="url(#pole)">
-    <rect x="11" y="0" width="10" height="23" fill="#ECE7DA"/>
-    <path fill="#C8352B" d="M11-3 21-8v3.5L11 .5ZM11 9 21 4v3.5L11 12.5ZM11 21 21 16v3.5L11 24.5Z"/>
-    <path fill="#2B4F8F" d="M11 3 21-2v3.5L11 6.5ZM11 15 21 10v3.5L11 18.5Z"/>
-    <rect x="11" y="0" width="10" height="23" fill="url(#round)"/>
+    <rect x="12" y="11" width="8" height="15" fill="#D8D0BE"/>
+    <path fill="#8E1B1B" d="M12 9 20 5v3l-8 4ZM12 17l8-4v3l-8 4ZM12 25l8-4v3l-8 4Z"/>
+    <path fill="#2E4558" d="M12 13l8-4v3l-8 4ZM12 21l8-4v3l-8 4Z"/>
+    <rect x="12" y="11" width="8" height="15" fill="url(#round)"/>
   </g>
-  <rect x="10" y="22.5" width="12" height="5.5" rx="1.2" fill="#D9A945"/>
-  <rect x="10" y="25" width="12" height="1" fill="#8A6424" opacity=".6"/>
+  <path d="M13.2 10.6h5.6l-1-1.6h-3.6z" fill="#3A3B38"/>
+  <circle cx="16" cy="6.6" r="3.3" fill="url(#globe)"/>
+  <path d="M15.4 2.4 16 0.8l.6 1.6z" fill="#6E6E66"/>
+  <path d="M10.6 26h10.8l-1.4 3.4h-8z" fill="#3A3B38"/>
+  <rect x="11.5" y="26.6" width="9" height=".9" fill="#C9A25A"/>
 </svg>

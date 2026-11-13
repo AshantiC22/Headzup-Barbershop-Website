@@ -34,16 +34,18 @@ architecture to deployment.
 - **Mass messaging:** email and SMS blasts to all clients
 - **News feed:** barber posts that push to every client
 - **A2P 10DLC compliance:** registered SMS campaign with US carriers
-- **Painted interface:** an Impressionist/Surrealist design system with a generative canvas painter, day and night themes
+- **Lamplight design:** a gothic night-street look painted live in canvas; the barber pole on the home page is lit only while the shop is open
 - **CI/CD:** automated deploys through GitHub Actions
 
 ## Screenshots
 
-| Day | Nocturne, on a phone |
+| Lamplight | Daylight, on a phone |
 | --- | --- |
-| ![Home page in the Day theme](screenshots/home-day.jpg) | ![Home page in the Nocturne theme on a phone](screenshots/home-nocturne-phone.jpg) |
+| ![Home page at night: a lit barber pole on a foggy street under a big moon](screenshots/home-lamplight.jpg) | ![Home page in the Daylight theme on a phone](screenshots/home-daylight-phone.jpg) |
 
-![Barber dashboard in the Nocturne theme](screenshots/barber-dashboard-nocturne.jpg)
+![Services shown as a rack of barber tools with prices](screenshots/services-lamplight.jpg)
+
+![Barber dashboard](screenshots/barber-dashboard-lamplight.jpg)
 
 ## Local setup
 

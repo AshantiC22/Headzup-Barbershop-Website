@@ -1,16 +1,17 @@
 "use client";
-// Home, hung like a small salon: the hero is the big canvas, prices are a
-// painted board, barbers are oval portraits, and the work hangs with placards.
+// Home: a night street with the shop's pole lit like a gas lamp, then the
+// tools and prices, the barbers in arched frames, recent work on the wall,
+// what clients say, and how to find the place.
 import { useEffect, useState } from "react";
-import HarborScene from "@/components/art/HarborScene";
+import Link from "next/link";
+import StreetScene from "@/components/art/StreetScene";
 import Impression from "@/components/art/Impression";
 import SiteNav from "@/components/site/SiteNav";
 import SiteFooter, { HoursList } from "@/components/site/SiteFooter";
+import ToolRack from "@/components/site/ToolRack";
 import { IconPhone, IconPin, Skeleton } from "@/components/ui/Feedback";
 import { API_ROOT } from "@/lib/auth";
-import {
-  ADDRESS_LINE, GALLERY, REVIEWS, SERVICES, SERVICE_GROUPS, SHOP, describeService,
-} from "@/lib/shop";
+import { ADDRESS_LINE, GALLERY, REVIEWS, SHOP } from "@/lib/shop";
 import { shopStatus } from "@/lib/time";
 import s from "./home.module.css";
 
@@ -44,13 +45,14 @@ function useBarbers() {
 }
 
 function Hero({ status }) {
+  const open = !!status?.open;
   return (
     <section className={s.hero} aria-labelledby="hero-title">
-      <HarborScene turning={!!status?.open} />
+      <StreetScene open={open} />
       <div className={s.glaze} aria-hidden="true" />
       <div className={`wrap ${s.heroContent}`}>
-        <p className={s.status} aria-live="polite">
-          <span className={`${s.dot} ${status?.open ? s.dotOpen : ""}`} aria-hidden="true" />
+        <p className={`${s.status} ${open ? s.statusOpen : ""}`} aria-live="polite">
+          <span className={s.flame} aria-hidden="true" />
           {status ? <>{status.label}, {status.detail}</> : "Checking the hours"}
         </p>
         <h1 id="hero-title" className={`display ${s.title}`}>Keep your head up.</h1>
@@ -59,54 +61,30 @@ function Hero({ status }) {
           Pick your barber, pick a time, and the chair is yours.
         </p>
         <div className={s.ctas}>
-          <a href="/book" className="btn btn-primary btn-lg">Book a cut</a>
+          <Link href="/book" className="btn btn-primary btn-lg">Book a cut</Link>
           <a href="#services" className={`btn btn-ghost btn-lg ${s.ghostOnArt}`}>See prices</a>
         </div>
       </div>
-      <figure className={`placard ${s.heroPlacard}`}>
-        <figcaption>
-          <p className="placard-title">Impression, Headz Up</p>
-          <p className="placard-medium">Oil, clippers and hot lather. Hattiesburg, Mississippi.</p>
-          <p className={`tiny faint ${s.placardNote}`}>The pole turns while the shop is open.</p>
-        </figcaption>
-      </figure>
+      <div className={`placard ${s.heroPlate}`}>
+        <p className="placard-title">{SHOP.legalName}</p>
+        <p className="placard-medium">{SHOP.street}, {SHOP.city}. The lamp is lit while we&apos;re open.</p>
+      </div>
     </section>
   );
 }
 
-function PriceBoard() {
+function Services() {
   return (
-    <section id="services" className={`section ${s.services}`} aria-labelledby="services-title">
+    <section id="services" className={`section`} aria-labelledby="services-title">
       <div className="wrap">
         <div className={s.sectionHead}>
           <h2 id="services-title" className="h2">Services and prices</h2>
           <p className="lede">
-            Prices are per sitting. Pay in the shop, or put a deposit down online to hold your spot.
-            Tap any service to book it.
+            Pick a service to see what it takes and what it costs. Pay in the shop, or put a deposit
+            down online to hold your spot.
           </p>
         </div>
-        <div className={s.boardGrid}>
-          {SERVICE_GROUPS.map((g) => {
-            const rows = SERVICES.filter((x) => x.group === g.id);
-            return (
-              <div key={g.id} className={`board-group ${s[`group_${g.id}`] || ""}`}>
-                <h3 className="h3">{g.title}</h3>
-                <p className="caption mt-1 mb-2">{g.note}</p>
-                {rows.map((svc) => (
-                  <a key={svc.name} className="board-row" href={`/book?service=${encodeURIComponent(svc.name)}`}>
-                    <span className="board-name">{svc.name}</span>
-                    <span className="board-price price">${svc.price}</span>
-                    <span className="board-meta">
-                      <span>{svc.minutes} min</span>
-                      {describeService(svc.name) && <span className="caption">{describeService(svc.name)}</span>}
-                      {svc.popular && <span className="chip chip-warn chip-plain">Most booked</span>}
-                    </span>
-                  </a>
-                ))}
-              </div>
-            );
-          })}
-        </div>
+        <ToolRack />
       </div>
     </section>
   );
@@ -115,19 +93,19 @@ function PriceBoard() {
 function Barbers({ barbers }) {
   const { loading, list, failed } = barbers;
   return (
-    <section id="barbers" className={`section mist ${s.barbers}`} aria-labelledby="barbers-title">
+    <section id="barbers" className={`section mist`} aria-labelledby="barbers-title">
       <div className="wrap">
         <div className={s.sectionHead}>
           <h2 id="barbers-title" className="h2">The barbers</h2>
-          <p className="lede">Each one keeps their own book. Choose who you sit with, and they get your notes before you arrive.</p>
+          <p className="lede">Each barber keeps their own book. Choose who you sit with, and they get your notes before you arrive.</p>
         </div>
 
         {loading ? (
           <div className={s.portraits}>
             {[0, 1, 2].map((i) => (
               <div key={i} className={s.portrait}>
-                <Skeleton h={0} style={{ aspectRatio: "4 / 5", borderRadius: "50%" }} />
-                <Skeleton h={22} w="60%" style={{ margin: "18px auto 0" }} />
+                <Skeleton h={0} className={s.archSkeleton} />
+                <Skeleton h={22} w="60%" className={s.nameSkeleton} />
               </div>
             ))}
           </div>
@@ -137,31 +115,29 @@ function Barbers({ barbers }) {
             <p className="muted mt-2">
               You can still book. The booking page shows everyone taking appointments today.
             </p>
-            <a href="/book" className="btn btn-primary mt-4">Book a cut</a>
+            <Link href="/book" className="btn btn-primary mt-4">Book a cut</Link>
           </div>
         ) : (
           <ul className={s.portraits} role="list">
-            {list.map((b, i) => {
+            {list.map((b) => {
               const first = (b.name || "").split(" ")[0];
               const photo = photoOk(b.photo_url) ? b.photo_url : photoOk(b.photo) ? b.photo : null;
               return (
                 <li key={b.id} className={s.portrait}>
-                  <div className={`frame frame-oval ${s.oval}`} style={{ transform: `rotate(${[-1.5, 1.2, -0.6, 1.8][i % 4]}deg)` }}>
+                  <div className={`frame frame-arch ${s.arch}`}>
                     <div className="frame-inner">
                       {photo ? (
-                        <Impression src={photo} alt={`Portrait of ${b.name}`} seed={b.id * 13} detail={1.1} className={s.ovalImg} />
+                        <Impression src={photo} alt={`Portrait of ${b.name}`} seed={b.id * 13} detail={1.1} className={s.archImg} />
                       ) : (
                         <div className={s.monogram} aria-hidden="true">{first.charAt(0)}</div>
                       )}
                     </div>
                   </div>
-                  <h3 className="h3 mt-6">{b.name}</h3>
-                  <p className="muted mt-2" style={{ maxWidth: "32ch", marginInline: "auto" }}>
-                    {b.bio || "Clean fades, sharp lines and an easy chair."}
-                  </p>
-                  <a href={`/book?barber=${b.id}`} className="btn btn-ghost mt-4">
+                  <h3 className={s.barberName}>{b.name}</h3>
+                  <p className={`lore ${s.barberBio}`}>{b.bio || "Clean fades, sharp lines and an easy chair."}</p>
+                  <Link href={`/book?barber=${b.id}`} className="btn btn-ghost mt-4">
                     Book with {first}
-                  </a>
+                  </Link>
                 </li>
               );
             })}
@@ -174,25 +150,25 @@ function Barbers({ barbers }) {
 
 function Work() {
   return (
-    <section id="work" className={`section ${s.work}`} aria-labelledby="work-title">
+    <section id="work" className={`section`} aria-labelledby="work-title">
       <div className="wrap">
         <div className={`${s.sectionHead} ${s.sectionHeadRow}`}>
           <div>
             <h2 id="work-title" className="h2">Recent work</h2>
-            <p className="lede">Shown as paintings first. Open any piece to see the photograph.</p>
+            <p className="lede">Hung as oil sketches. Open one to see the photograph.</p>
           </div>
-          <a href="/gallery" className="btn btn-ghost">See the full gallery</a>
+          <Link href="/gallery" className="btn btn-ghost">See the full gallery</Link>
         </div>
         <ul className={s.hang} role="list">
           {GALLERY.map((g, i) => (
             <li key={g.id} className={`${s.hangItem} ${s[`hang${i + 1}`]}`}>
-              <a href={`/gallery?piece=${g.id}`} className={s.hangLink} aria-label={`${g.title}, ${g.medium}. Open in gallery`}>
+              <Link href={`/gallery?piece=${g.id}`} className={s.hangLink} aria-label={`${g.title}, ${g.medium}. Open in gallery`}>
                 <div className="frame">
                   <div className="frame-inner">
                     <Impression src={g.src} alt={`${g.title}: ${g.medium}`} seed={g.id * 7} reveal="hover" className={s.hangImg} />
                   </div>
                 </div>
-              </a>
+              </Link>
               <div className={`placard ${s.hangPlacard}`}>
                 <p className="placard-title">{g.title}</p>
                 <p className="placard-medium">{g.medium}</p>
@@ -208,7 +184,7 @@ function Work() {
 function Reviews() {
   const [lead, ...rest] = REVIEWS;
   return (
-    <section id="reviews" className={`section mist ${s.reviews}`} aria-labelledby="reviews-title">
+    <section id="reviews" className={`section mist`} aria-labelledby="reviews-title">
       <div className="wrap">
         <h2 id="reviews-title" className="h2 mb-8">What clients say</h2>
         <div className={s.reviewGrid}>
@@ -234,20 +210,20 @@ function Reviews() {
 
 function Visit({ status }) {
   return (
-    <section id="visit" className={`section ${s.visit}`} aria-labelledby="visit-title">
+    <section id="visit" className={`section`} aria-labelledby="visit-title">
       <div className="wrap">
         <div className={s.visitGrid}>
-          <div className="stack" style={{ "--stack": "22px" }}>
-            <h2 id="visit-title" className="h2">Come by the shop</h2>
+          <div className={`stack ${s.visitText}`}>
+            <h2 id="visit-title" className="h2">Find the shop</h2>
             <p className="lede">
               {ADDRESS_LINE}.
               {status && <> Right now we&apos;re <strong>{status.open ? "open" : "closed"}</strong>, {status.detail}.</>}
             </p>
-            <div className="panel panel-pad">
+            <div className={`panel panel-pad ${s.ledger}`}>
               <HoursList />
             </div>
             <div className="row-wrap">
-              <a className="btn btn-primary" href="/book">Book a cut</a>
+              <Link className="btn btn-primary" href="/book">Book a cut</Link>
               <a className="btn btn-ghost" href={SHOP.mapsLink} target="_blank" rel="noopener noreferrer">
                 <IconPin /> Directions
               </a>
@@ -281,7 +257,7 @@ export default function HomePage() {
       <SiteNav overlay />
       <main id="main">
         <Hero status={status} />
-        <PriceBoard />
+        <Services />
         <Barbers barbers={barbers} />
         <Work />
         <Reviews />

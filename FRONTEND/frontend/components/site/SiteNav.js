@@ -59,7 +59,7 @@ export default function SiteNav({ overlay = false }) {
             {LINKS.map((l) => (
               <a key={l.href} href={l.href} className="nav-link"
                 aria-current={pathname === l.href ? "page" : undefined}>
-                <span className={pathname === l.href ? "brush-under" : undefined}>{l.label}</span>
+                <span className={pathname === l.href ? "drip-under" : undefined}>{l.label}</span>
               </a>
             ))}
           </nav>

@@ -3,11 +3,11 @@
 
 .wall { list-style: none; columns: 3 260px; column-gap: clamp(20px, 3vw, 40px); }
 .piece { break-inside: avoid; margin-bottom: clamp(28px, 4vw, 44px); display: grid; gap: 12px; }
-.pieceBtn { display: block; width: 100%; text-align: left; border-radius: 8px; transition: transform 0.35s var(--ease); }
-.pieceBtn:hover { transform: translateY(-3px); }
+.pieceBtn { display: block; width: 100%; text-align: left; border-radius: 2px; transition: transform 0.35s var(--ease), filter 0.35s; }
+.pieceBtn:hover { transform: translateY(-3px); filter: drop-shadow(0 0 24px color-mix(in srgb, var(--flame) 18%, transparent)); }
 .pieceImg { width: 100%; }
 .pieceImg img { aspect-ratio: inherit; }
-.piecePlacard { width: fit-content; max-width: 100%; padding: 10px 14px 9px; }
+.piecePlacard { width: fit-content; max-width: 100%; padding: 9px 20px 8px; }
 
 .cta {
   display: flex; align-items: center; justify-content: space-between; gap: 20px; flex-wrap: wrap;
@@ -19,7 +19,7 @@
   position: fixed; inset: 0; z-index: 800;
   display: grid; grid-template-rows: auto 1fr auto; gap: 16px;
   padding: calc(env(safe-area-inset-top) + 14px) var(--gutter) calc(env(safe-area-inset-bottom) + 18px);
-  background: var(--bg);
+  background: radial-gradient(ellipse 70% 60% at 50% 45%, color-mix(in srgb, var(--flame) 7%, transparent), transparent 70%), var(--bg-2);
   animation: fade-in 0.25s ease both;
 }
 .lbTop { display: flex; justify-content: space-between; align-items: center; gap: 12px; }

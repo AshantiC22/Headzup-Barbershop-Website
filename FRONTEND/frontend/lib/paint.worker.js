@@ -3,9 +3,9 @@
 // composed and drawn here, so a slow phone keeps scrolling while the picture
 // goes down. Messages:
 //   in   { type: "canvases", paint, fore? }
-//   in   { type: "paint", scene: "harbor" | "sky", key, w, h, dpr, mode, seed, light?, animate, duration }
+//   in   { type: "paint", scene: "street" | "sky", key, w, h, dpr, mode, seed, light?, animate, duration }
 //   out  { type: "done", key }
-import { composeForegroundClouds, composeHarbor, composeSky, drawStrokes, paint } from "./painter";
+import { composeFog, composeSky, composeStreet, drawStrokes, paint } from "./painter";
 
 let canvases = {};
 let cancel = () => {};
@@ -18,7 +18,7 @@ function paintForeground({ w, h, dpr, mode, seed }) {
   const ctx = fore.getContext("2d");
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   ctx.clearRect(0, 0, w, h);
-  drawStrokes(ctx, composeForegroundClouds({ w, h, mode, seed }));
+  drawStrokes(ctx, composeFog({ w, h, mode, seed }));
 }
 
 self.onmessage = ({ data: msg }) => {
@@ -29,13 +29,13 @@ self.onmessage = ({ data: msg }) => {
   if (msg.type !== "paint" || !canvases.paint) return;
   cancel();
   const { scene, key, w, h, dpr, mode, seed, light, animate, duration } = msg;
-  const compose = scene === "harbor"
-    ? composeHarbor({ w, h, mode, seed })
+  const compose = scene === "street"
+    ? composeStreet({ w, h, mode, seed })
     : composeSky({ w, h, mode, seed, light });
   cancel = paint(canvases.paint, {
     width: w, height: h, dpr, compose, animate, duration,
     onDone: () => {
-      if (scene === "harbor") paintForeground({ w, h, dpr, mode, seed });
+      if (scene === "street") paintForeground({ w, h, dpr, mode, seed });
       self.postMessage({ type: "done", key });
     },
   });

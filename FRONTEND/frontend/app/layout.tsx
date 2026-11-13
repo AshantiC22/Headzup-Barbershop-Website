@@ -1,7 +1,9 @@
 import type { Metadata, Viewport } from "next";
-import "@fontsource-variable/fraunces/full.css";
-import "@fontsource-variable/fraunces/full-italic.css";
-import "@fontsource-variable/figtree";
+import "@fontsource-variable/grenze-gotisch";
+import "@fontsource/grenze/400.css";
+import "@fontsource/grenze/400-italic.css";
+import "@fontsource/grenze/600.css";
+import "@fontsource-variable/archivo/wdth.css";
 import "./globals.css";
 import ClientProviders from "@/components/ClientProviders";
 import { HOURS, SHOP } from "@/lib/shop";
@@ -15,10 +17,7 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
-  themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#E9EEF1" },
-    { media: "(prefers-color-scheme: dark)", color: "#0F1A2E" },
-  ],
+  themeColor: "#1A1D1C",
 };
 
 export const metadata: Metadata = {
@@ -33,7 +32,7 @@ export const metadata: Metadata = {
     siteName: SITE_NAME,
     title: `${SITE_NAME} in Hattiesburg, MS`,
     description: DESCRIPTION,
-    images: [{ url: "/og-image.jpg", width: 1200, height: 630, alt: "A painted harbor at sunrise with a barber pole standing in the water" }],
+    images: [{ url: "/og-image.jpg", width: 1200, height: 630, alt: "A night street in fog with a lit barber pole standing under a large moon" }],
   },
   twitter: { card: "summary_large_image" },
   manifest: "/site.webmanifest",
@@ -48,8 +47,8 @@ export const metadata: Metadata = {
   },
 };
 
-// Runs before first paint so the right light is on from the first frame.
-const THEME_SCRIPT = `(function(){try{var s=localStorage.getItem('headzup_theme');var d=s?s==='dark':(window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches);var r=document.documentElement;r.setAttribute('data-theme',d?'dark':'light');r.style.colorScheme=d?'dark':'light';}catch(e){document.documentElement.setAttribute('data-theme','light');}})();`;
+// Runs before first paint. Lamplight is the default; Daylight only if chosen.
+const THEME_SCRIPT = `(function(){var r=document.documentElement,t='dark';try{if(localStorage.getItem('headzup_theme')==='light')t='light';}catch(e){}r.setAttribute('data-theme',t);r.style.colorScheme=t;})();`;
 
 // Opening hours for search engines, grouped so days with the same hours share a row.
 const openingHours = Object.values(

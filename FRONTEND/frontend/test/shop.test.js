@@ -36,3 +36,17 @@ describe("safeNext", () => {
     expect(safeNext(null, "/")).toBe("/");
   });
 });
+
+describe("tool icons", () => {
+  it("gives every service one or two tools that exist, and crosses the shaves with a razor", async () => {
+    const { toolsForService } = await import("@/components/art/ToolIcons");
+    const known = new Set(["clippers", "razor", "shears", "trimmer", "comb", "brush"]);
+    for (const s of SERVICES) {
+      const tools = toolsForService(s.name);
+      expect(tools.length).toBeGreaterThanOrEqual(1);
+      expect(tools.length).toBeLessThanOrEqual(2);
+      tools.forEach((t) => expect(known.has(t)).toBe(true));
+      if (/shave/i.test(s.name)) expect(tools).toContain("razor");
+    }
+  });
+});

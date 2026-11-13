@@ -4,7 +4,7 @@
 import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { AuthShell } from "@/components/auth/AuthParts";
-import { IconCalendar, IconCheck, IconPin, Notice } from "@/components/ui/Feedback";
+import { IconCalendar, IconPin, Notice } from "@/components/ui/Feedback";
 import { ADDRESS_LINE, SHOP } from "@/lib/shop";
 import { fmtDate, fmtTime, to24Hour } from "@/lib/time";
 
@@ -81,7 +81,7 @@ function ConfirmedContent() {
   const paidOnline = payment === "deposit" || payment === "online";
   return (
     <AuthShell seed={21}>
-      <div className={`confirm-stamp ${stamp ? "is-on" : ""}`} aria-hidden="true"><IconCheck size={30} /></div>
+      <div className={`confirm-stamp ${stamp ? "is-on" : ""}`} aria-hidden="true"><span className="seal-mark">H</span></div>
       <h1 className="h1 mt-4">You&apos;re booked.</h1>
       <p className="lede mt-3">
         {service && barber ? <>{service} with {barber}</> : "Your appointment is set"}

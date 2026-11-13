@@ -5,8 +5,8 @@
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
-  "background_color": "#0F1A2E",
-  "theme_color": "#0F1A2E",
+  "background_color": "#1A1D1C",
+  "theme_color": "#1A1D1C",
   "categories": [
     "lifestyle",
     "beauty"
