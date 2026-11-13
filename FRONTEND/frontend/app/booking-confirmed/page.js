@@ -21,15 +21,24 @@ function icsFile({ service, barber, date, time, minutes = 30 }) {
   const endMins = parseInt(hh, 10) * 60 + parseInt(mm, 10) + minutes;
   const end = `${date.replace(/-/g, "")}T${String(Math.floor(endMins / 60)).padStart(2, "0")}${String(endMins % 60).padStart(2, "0")}00`;
   const lines = [
-    "BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//Headz Up//Booking//EN", "BEGIN:VEVENT",
+    "BEGIN:VCALENDAR",
+    "VERSION:2.0",
+    "PRODID:-//Headz Up//Booking//EN",
+    "BEGIN:VEVENT",
     `UID:${start}-${Math.random().toString(36).slice(2)}@headzupp.com`,
     `DTSTAMP:${new Date().toISOString().replace(/[-:]/g, "").split(".")[0]}Z`,
-    `DTSTART;TZID=${SHOP.timezone}:${start}`, `DTEND;TZID=${SHOP.timezone}:${end}`,
+    `DTSTART;TZID=${SHOP.timezone}:${start}`,
+    `DTEND;TZID=${SHOP.timezone}:${end}`,
     `SUMMARY:${service} with ${barber} at Headz Up`,
     `LOCATION:${ADDRESS_LINE.replace(/,/g, "\\,")}`,
     "DESCRIPTION:Arrive five minutes early. Reschedule or cancel at headzupp.com/dashboard",
-    "BEGIN:VALARM", "TRIGGER:-PT1H", "ACTION:DISPLAY", "DESCRIPTION:Haircut in one hour", "END:VALARM",
-    "END:VEVENT", "END:VCALENDAR",
+    "BEGIN:VALARM",
+    "TRIGGER:-PT1H",
+    "ACTION:DISPLAY",
+    "DESCRIPTION:Haircut in one hour",
+    "END:VALARM",
+    "END:VEVENT",
+    "END:VCALENDAR",
   ];
   return new Blob([lines.join("\r\n")], { type: "text/calendar;charset=utf-8" });
 }
@@ -42,7 +51,11 @@ function ConfirmedContent() {
   const rawService = (() => {
     if (typeof window === "undefined") return null;
     const m = window.location.search.match(/[?&]service=(.*?)&barber=/);
-    try { return m ? decodeURIComponent(m[1].replace(/\+/g, " ")) : null; } catch { return m ? m[1] : null; }
+    try {
+      return m ? decodeURIComponent(m[1].replace(/\+/g, " ")) : null;
+    } catch {
+      return m ? m[1] : null;
+    }
   })();
   const service = rawService || p.get("service") || "";
   const barber = p.get("barber") || "";
@@ -54,13 +67,19 @@ function ConfirmedContent() {
   const price = p.get("price");
   const failed = p.get("error") === "true";
   const [stamp, setStamp] = useState(false);
-  useEffect(() => { const t = setTimeout(() => setStamp(true), 250); return () => clearTimeout(t); }, []);
+  useEffect(() => {
+    const t = setTimeout(() => setStamp(true), 250);
+    return () => clearTimeout(t);
+  }, []);
 
   const addToCalendar = () => {
     const url = URL.createObjectURL(icsFile({ service, barber, date, time }));
     const a = document.createElement("a");
-    a.href = url; a.download = "headz-up-appointment.ics";
-    document.body.appendChild(a); a.click(); a.remove();
+    a.href = url;
+    a.download = "headz-up-appointment.ics";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
     setTimeout(() => URL.revokeObjectURL(url), 2000);
   };
 
@@ -69,12 +88,16 @@ function ConfirmedContent() {
       <AuthShell seed={21}>
         <h1 className="h2">The booking didn&apos;t confirm</h1>
         <p className="muted mt-3 mb-5">
-          Your card may still have been charged. Check My appointments first; if the booking isn&apos;t there,
-          call the shop and we&apos;ll sort it out.
+          Your card may still have been charged. Check My appointments first; if the booking isn&apos;t there, call the
+          shop and we&apos;ll sort it out.
         </p>
         <div className="stack" style={{ "--stack": "10px" }}>
-          <Link href="/dashboard" className="btn btn-primary btn-lg btn-block">Check My appointments</Link>
-          <a href={`tel:${SHOP.phone}`} className="btn btn-ghost btn-lg btn-block">Call {SHOP.phoneDisplay}</a>
+          <Link href="/dashboard" className="btn btn-primary btn-lg btn-block">
+            Check My appointments
+          </Link>
+          <a href={`tel:${SHOP.phone}`} className="btn btn-ghost btn-lg btn-block">
+            Call {SHOP.phoneDisplay}
+          </a>
         </div>
       </AuthShell>
     );
@@ -83,40 +106,88 @@ function ConfirmedContent() {
   const paidOnline = payment === "deposit" || payment === "online";
   return (
     <AuthShell seed={21}>
-      <div className={`confirm-stamp ${stamp ? "is-on" : ""}`} aria-hidden="true"><span className="seal-mark">H</span></div>
+      <div className={`confirm-stamp ${stamp ? "is-on" : ""}`} aria-hidden="true">
+        <span className="seal-mark">H</span>
+      </div>
       <h1 className="h1 mt-4">You&apos;re booked.</h1>
       <p className="lede mt-3">
-        {service && barber ? <>{service} with {barber}</> : "Your appointment is set"}
-        {date && <>, {fmtDate(date, "long")}</>}{time && <> at {fmtTime(time)}</>}.
+        {service && barber ? (
+          <>
+            {service} with {barber}
+          </>
+        ) : (
+          "Your appointment is set"
+        )}
+        {date && <>, {fmtDate(date, "long")}</>}
+        {time && <> at {fmtTime(time)}</>}.
       </p>
 
       <div className="placard mt-6">
         <dl className="sum-rows">
-          {service && <div className="sum-row"><dt>Service</dt><dd>{service}</dd></div>}
-          {barber && <div className="sum-row"><dt>Barber</dt><dd>{barber}</dd></div>}
-          {date && <div className="sum-row"><dt>When</dt><dd>{fmtDate(date)}{time && `, ${fmtTime(time)}`}</dd></div>}
-          {paidOnline && deposit && <div className="sum-row"><dt>Deposit paid</dt><dd>{money(deposit)}</dd></div>}
+          {service && (
+            <div className="sum-row">
+              <dt>Service</dt>
+              <dd>{service}</dd>
+            </div>
+          )}
+          {barber && (
+            <div className="sum-row">
+              <dt>Barber</dt>
+              <dd>{barber}</dd>
+            </div>
+          )}
+          {date && (
+            <div className="sum-row">
+              <dt>When</dt>
+              <dd>
+                {fmtDate(date)}
+                {time && `, ${fmtTime(time)}`}
+              </dd>
+            </div>
+          )}
+          {paidOnline && deposit && (
+            <div className="sum-row">
+              <dt>Deposit paid</dt>
+              <dd>{money(deposit)}</dd>
+            </div>
+          )}
           {paidOnline && remaining && parseFloat(remaining) > 0 && (
-            <div className="sum-row sum-total"><dt>Due in the chair</dt><dd className="price" style={{ fontSize: "1.25rem" }}>{money(remaining)}</dd></div>
+            <div className="sum-row sum-total">
+              <dt>Due in the chair</dt>
+              <dd className="price" style={{ fontSize: "1.25rem" }}>
+                {money(remaining)}
+              </dd>
+            </div>
           )}
           {!paidOnline && price && (
-            <div className="sum-row sum-total"><dt>Pay at the shop</dt><dd className="price" style={{ fontSize: "1.25rem" }}>{money(price)}</dd></div>
+            <div className="sum-row sum-total">
+              <dt>Pay at the shop</dt>
+              <dd className="price" style={{ fontSize: "1.25rem" }}>
+                {money(price)}
+              </dd>
+            </div>
           )}
         </dl>
       </div>
 
       <Notice tone="info" className="mt-5">
-        {ADDRESS_LINE}. Get there five minutes early; your chair is held for 15 minutes past your time.
-        A confirmation text is on its way.
+        {ADDRESS_LINE}. Get there five minutes early; your chair is held for 15 minutes past your time. A confirmation
+        text is on its way.
       </Notice>
 
       <div className="stack mt-6" style={{ "--stack": "10px" }}>
-        <Link href="/dashboard" className="btn btn-primary btn-lg btn-block">See my appointments</Link>
+        <Link href="/dashboard" className="btn btn-primary btn-lg btn-block">
+          See my appointments
+        </Link>
         <div className="row" style={{ gap: 10 }}>
           {date && time && (
-            <button className="btn btn-ghost grow" onClick={addToCalendar}><IconCalendar /> Add to calendar</button>
+            <button className="btn btn-ghost grow" onClick={addToCalendar}>
+              <IconCalendar /> Add to calendar
+            </button>
           )}
-          <a className="btn btn-ghost grow" href={SHOP.mapsLink} target="_blank" rel="noopener noreferrer"><IconPin /> Directions</a>
+          <a className="btn btn-ghost grow" href={SHOP.mapsLink} target="_blank" rel="noopener noreferrer">
+            <IconPin /> Directions
+          </a>
         </div>
       </div>
     </AuthShell>

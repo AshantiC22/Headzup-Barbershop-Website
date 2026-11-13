@@ -21,15 +21,23 @@ export default function SMSOptInPage() {
     if (!norm) return setError("Enter a 10-digit US mobile number.");
     if (!agreed) return setError("Check the box to agree to text messages.");
     let token = null;
-    try { token = localStorage.getItem("access"); } catch {}
-    if (!token) { window.location.href = "/login?next=/sms-optin"; return; }
-    setError(""); setBusy(true);
+    try {
+      token = localStorage.getItem("access");
+    } catch {}
+    if (!token) {
+      window.location.href = "/login?next=/sms-optin";
+      return;
+    }
+    setError("");
+    setBusy(true);
     try {
       await API.patch("client/update-phone/", { phone: norm });
       setDone(true);
     } catch (err) {
       setError(err?.response?.data?.error || "That number didn't save. Try again.");
-    } finally { setBusy(false); }
+    } finally {
+      setBusy(false);
+    }
   };
 
   if (done) {
@@ -39,7 +47,9 @@ export default function SMSOptInPage() {
         <p className="lede mt-3">
           Confirmations, reminders and updates will text to that number. Reply STOP any time to unsubscribe.
         </p>
-        <Link href="/dashboard" className="btn btn-primary btn-lg btn-block mt-6">Go to My appointments</Link>
+        <Link href="/dashboard" className="btn btn-primary btn-lg btn-block mt-6">
+          Go to My appointments
+        </Link>
       </AuthShell>
     );
   }
@@ -58,28 +68,46 @@ export default function SMSOptInPage() {
           <li>Cancellation and reschedule notices</li>
         </ul>
         <Field id="sms-phone" label="Mobile number">
-          <TextInput id="sms-phone" type="tel" inputMode="tel" value={phone} onChange={(e) => setPhone(e.target.value)}
-            placeholder="(601) 555-0100" autoComplete="tel" />
+          <TextInput
+            id="sms-phone"
+            type="tel"
+            inputMode="tel"
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
+            placeholder="(601) 555-0100"
+            autoComplete="tel"
+          />
         </Field>
         <label className="check mt-4">
           <input type="checkbox" checked={agreed} onChange={(e) => setAgreed(e.target.checked)} />
           <span>
-            I agree to receive SMS text messages from HEADZ UP Barbershop at the phone number provided.
-            Message frequency varies. Message &amp; data rates may apply. Reply <strong>STOP</strong> to
-            unsubscribe at any time. Reply <strong>HELP</strong> for help.
+            I agree to receive SMS text messages from HEADZ UP Barbershop at the phone number provided. Message
+            frequency varies. Message &amp; data rates may apply. Reply <strong>STOP</strong> to unsubscribe at any
+            time. Reply <strong>HELP</strong> for help.
           </span>
         </label>
-        {error && <Notice tone="bad" className="mt-4">{error}</Notice>}
+        {error && (
+          <Notice tone="bad" className="mt-4">
+            {error}
+          </Notice>
+        )}
         <button className="btn btn-primary btn-lg btn-block mt-5" disabled={busy}>
           {busy ? <Spinner label="Saving" /> : "Subscribe to text updates"}
         </button>
         <p className="small faint mt-4">
-          By subscribing you consent to receive recurring automated transactional SMS messages from HEADZ UP
-          Barbershop ({SHOP.street}, {SHOP.city} {SHOP.region} {SHOP.zip}) to the number provided. Consent is not a
-          condition of any purchase. View our <Link className="link" href="/terms">Terms &amp; Privacy Policy</Link>.
+          By subscribing you consent to receive recurring automated transactional SMS messages from HEADZ UP Barbershop
+          ({SHOP.street}, {SHOP.city} {SHOP.region} {SHOP.zip}) to the number provided. Consent is not a condition of
+          any purchase. View our{" "}
+          <Link className="link" href="/terms">
+            Terms &amp; Privacy Policy
+          </Link>
+          .
         </p>
         <p className="small faint mt-2">
-          STOP to unsubscribe. HELP for help. <a className="link" href={`mailto:${SHOP.email}`}>{SHOP.email}</a>
+          STOP to unsubscribe. HELP for help.{" "}
+          <a className="link" href={`mailto:${SHOP.email}`}>
+            {SHOP.email}
+          </a>
         </p>
       </form>
     </AuthShell>

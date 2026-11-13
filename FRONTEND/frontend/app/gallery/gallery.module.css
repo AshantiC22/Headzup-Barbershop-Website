@@ -1,45 +1,126 @@
-.page { padding-top: calc(var(--nav-h) + env(safe-area-inset-top) + clamp(32px, 6vw, 64px)); padding-bottom: clamp(56px, 8vw, 96px); }
-.head { display: grid; gap: 18px; max-width: 720px; margin-bottom: clamp(36px, 5vw, 56px); }
+.page {
+  padding-top: calc(var(--nav-h) + env(safe-area-inset-top) + clamp(32px, 6vw, 64px));
+  padding-bottom: clamp(56px, 8vw, 96px);
+}
+.head {
+  display: grid;
+  gap: 18px;
+  max-width: 720px;
+  margin-bottom: clamp(36px, 5vw, 56px);
+}
 
-.wall { list-style: none; columns: 3 260px; column-gap: clamp(20px, 3vw, 40px); }
-.piece { break-inside: avoid; margin-bottom: clamp(28px, 4vw, 44px); display: grid; gap: 12px; }
-.pieceBtn { display: block; width: 100%; text-align: left; border-radius: 2px; transition: transform var(--dur-3) var(--ease), filter var(--dur-3); }
-.pieceBtn:hover { transform: translateY(-3px); filter: drop-shadow(0 0 24px color-mix(in srgb, var(--flame) 18%, transparent)); }
-.pieceImg { width: 100%; }
-.pieceImg img { aspect-ratio: inherit; }
-.piecePlacard { width: fit-content; max-width: 100%; padding: 9px 20px 8px; }
+.wall {
+  list-style: none;
+  columns: 3 260px;
+  column-gap: clamp(20px, 3vw, 40px);
+}
+.piece {
+  break-inside: avoid;
+  margin-bottom: clamp(28px, 4vw, 44px);
+  display: grid;
+  gap: 12px;
+}
+.pieceBtn {
+  display: block;
+  width: 100%;
+  text-align: left;
+  border-radius: 2px;
+  transition:
+    transform var(--dur-3) var(--ease),
+    filter var(--dur-3);
+}
+.pieceBtn:hover {
+  transform: translateY(-3px);
+  filter: drop-shadow(0 0 24px color-mix(in srgb, var(--flame) 18%, transparent));
+}
+.pieceImg {
+  width: 100%;
+}
+.pieceImg img {
+  aspect-ratio: inherit;
+}
+.piecePlacard {
+  width: fit-content;
+  max-width: 100%;
+  padding: 9px 20px 8px;
+}
 
 .cta {
-  display: flex; align-items: center; justify-content: space-between; gap: 20px; flex-wrap: wrap;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  flex-wrap: wrap;
   margin-top: clamp(24px, 4vw, 40px);
 }
 
 /* Lightbox */
 .lightbox {
-  position: fixed; inset: 0; z-index: 800;
-  display: grid; grid-template-rows: auto 1fr auto; gap: 16px;
+  position: fixed;
+  inset: 0;
+  z-index: 800;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  gap: 16px;
   padding: calc(env(safe-area-inset-top) + 14px) var(--gutter) calc(env(safe-area-inset-bottom) + 18px);
-  background: radial-gradient(ellipse 70% 60% at 50% 45%, color-mix(in srgb, var(--flame) 7%, transparent), transparent 70%), var(--bg-2);
+  background:
+    radial-gradient(ellipse 70% 60% at 50% 45%, color-mix(in srgb, var(--flame) 7%, transparent), transparent 70%),
+    var(--bg-2);
   animation: fade-in var(--dur-2) ease both;
 }
-.lightbox[data-state="closing"] { animation: fade-out var(--dur-2) var(--ease-in) both; }
+.lightbox[data-state="closing"] {
+  animation: fade-out var(--dur-2) var(--ease-in) both;
+}
 /* Stepping between pieces: the new one comes up out of the dark. */
-.lbFrame :global(.frame-inner) > * { animation: fade-in var(--dur-3) var(--ease) both; }
-.lbTop { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
-.lbClose { flex-shrink: 0; }
-.lbStage { display: flex; align-items: center; justify-content: center; gap: 12px; min-height: 0; }
-.lbFrame { max-height: 100%; display: flex; }
-.lbFrame :global(.frame-inner) { display: flex; }
+.lbFrame :global(.frame-inner) > * {
+  animation: fade-in var(--dur-3) var(--ease) both;
+}
+.lbTop {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+.lbClose {
+  flex-shrink: 0;
+}
+.lbStage {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  min-height: 0;
+}
+.lbFrame {
+  max-height: 100%;
+  display: flex;
+}
+.lbFrame :global(.frame-inner) {
+  display: flex;
+}
 .lbImg {
   display: block;
   width: min(78vw, calc((100dvh - 270px) * 0.75), 640px);
   aspect-ratio: 3 / 4;
   object-fit: cover;
 }
-.lbImg img { width: 100%; height: 100%; object-fit: cover; }
-.lbNav { flex-shrink: 0; }
-.lbPlacard { justify-self: center; width: min(100%, 460px); }
+.lbImg img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.lbNav {
+  flex-shrink: 0;
+}
+.lbPlacard {
+  justify-self: center;
+  width: min(100%, 460px);
+}
 @media (max-width: 640px) {
-  .lbNav { display: none; }
-  .lbImg { width: min(100%, calc((100dvh - 300px) * 0.75)); }
+  .lbNav {
+    display: none;
+  }
+  .lbImg {
+    width: min(100%, calc((100dvh - 300px) * 0.75));
+  }
 }

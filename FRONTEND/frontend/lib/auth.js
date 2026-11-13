@@ -51,7 +51,13 @@ function subscribe(onChange) {
     window.removeEventListener(SESSION_EVENT, onChange);
   };
 }
-const readAccess = () => { try { return localStorage.getItem("access"); } catch { return null; } };
+const readAccess = () => {
+  try {
+    return localStorage.getItem("access");
+  } catch {
+    return null;
+  }
+};
 const NOT_YET = undefined; // server render and hydration: we don't know yet
 
 /** Who is looking at the page? { ready, loggedIn, isStaff } */
@@ -63,8 +69,13 @@ export function useSession() {
   useEffect(() => {
     if (!claims?.exp || claims.exp * 1000 > Date.now()) return;
     let refresh = null;
-    try { refresh = localStorage.getItem("refresh"); } catch {}
-    if (!refresh) { clearSession(); return; }
+    try {
+      refresh = localStorage.getItem("refresh");
+    } catch {}
+    if (!refresh) {
+      clearSession();
+      return;
+    }
     const ctrl = new AbortController();
     fetch(`${API_ROOT}/api/token/refresh/`, {
       method: "POST",

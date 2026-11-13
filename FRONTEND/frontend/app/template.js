@@ -9,6 +9,8 @@ let hydrated = false;
 
 export default function Template({ children }) {
   const [fade] = useState(() => hydrated);
-  useEffect(() => { hydrated = true; }, []);
+  useEffect(() => {
+    hydrated = true;
+  }, []);
   return <div className={fade ? "route-in" : undefined}>{children}</div>;
 }

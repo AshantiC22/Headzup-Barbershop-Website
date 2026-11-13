@@ -10,9 +10,9 @@ import { usePresence } from "@/components/ui/motion";
 
 const LINKS = [
   { href: "/#services", label: "Services" },
-  { href: "/#barbers",  label: "Barbers" },
-  { href: "/gallery",   label: "Work" },
-  { href: "/#visit",    label: "Visit" },
+  { href: "/#barbers", label: "Barbers" },
+  { href: "/gallery", label: "Work" },
+  { href: "/#visit", label: "Visit" },
   { href: "/newsletter", label: "News" },
 ];
 
@@ -54,15 +54,23 @@ export default function SiteNav({ overlay = false }) {
       document.body.style.overflow = prev;
       document.removeEventListener("keydown", onKey);
       // back to the menu button, unless a link already took focus elsewhere
-      if (!document.activeElement || document.activeElement === document.body || document.getElementById("site-menu")?.contains(document.activeElement)) {
+      if (
+        !document.activeElement ||
+        document.activeElement === document.body ||
+        document.getElementById("site-menu")?.contains(document.activeElement)
+      ) {
         button?.focus({ preventScroll: true });
       }
     };
   }, [open]);
 
-  const account = !ready ? null : loggedIn
-    ? (isStaff ? { href: "/barber-dashboard", label: "Dashboard" } : { href: "/dashboard", label: "My appointments" })
-    : { href: "/login", label: "Log in" };
+  const account = !ready
+    ? null
+    : loggedIn
+      ? isStaff
+        ? { href: "/barber-dashboard", label: "Dashboard" }
+        : { href: "/dashboard", label: "My appointments" }
+      : { href: "/login", label: "Log in" };
 
   return (
     <>
@@ -71,19 +79,39 @@ export default function SiteNav({ overlay = false }) {
           <ShopSign />
           <nav className="nav-links" aria-label="Main">
             {LINKS.map((l) => (
-              <Link key={l.href} href={l.href} className="nav-link"
-                aria-current={pathname === l.href ? "page" : undefined}>
+              <Link
+                key={l.href}
+                href={l.href}
+                className="nav-link"
+                aria-current={pathname === l.href ? "page" : undefined}
+              >
                 <span className={pathname === l.href ? "drip-under" : undefined}>{l.label}</span>
               </Link>
             ))}
           </nav>
           <div className="nav-end">
-            {account && <Link href={account.href} className="nav-link hide-sm">{account.label}</Link>}
-            {isStaff
-              ? <Link href="/barber-dashboard" className="btn btn-primary btn-sm hide-sm">Open dashboard</Link>
-              : <Link href="/book" className="btn btn-primary btn-sm">Book a cut</Link>}
-            <button ref={menuBtn} className="icon-btn nav-menu-btn" onClick={() => setOpen(true)} aria-label="Open menu"
-              aria-expanded={open} aria-controls="site-menu">
+            {account && (
+              <Link href={account.href} className="nav-link hide-sm">
+                {account.label}
+              </Link>
+            )}
+            {isStaff ? (
+              <Link href="/barber-dashboard" className="btn btn-primary btn-sm hide-sm">
+                Open dashboard
+              </Link>
+            ) : (
+              <Link href="/book" className="btn btn-primary btn-sm">
+                Book a cut
+              </Link>
+            )}
+            <button
+              ref={menuBtn}
+              className="icon-btn nav-menu-btn"
+              onClick={() => setOpen(true)}
+              aria-label="Open menu"
+              aria-expanded={open}
+              aria-controls="site-menu"
+            >
               <IconMenu size={22} />
             </button>
           </div>
@@ -91,8 +119,15 @@ export default function SiteNav({ overlay = false }) {
       </header>
 
       {sheet && (
-        <div className="menu-sheet" id="site-menu" role="dialog" aria-modal="true" aria-label="Menu"
-          data-state={sheet} inert={sheet === "closing"}>
+        <div
+          className="menu-sheet"
+          id="site-menu"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Menu"
+          data-state={sheet}
+          inert={sheet === "closing"}
+        >
           <div className="spread">
             <ShopSign />
             <button ref={closeBtn} className="icon-btn" onClick={() => setOpen(false)} aria-label="Close menu">
@@ -101,10 +136,20 @@ export default function SiteNav({ overlay = false }) {
           </div>
           <nav aria-label="Main">
             {LINKS.map((l) => (
-              <Link key={l.href} href={l.href} onClick={() => setOpen(false)}>{l.label}</Link>
+              <Link key={l.href} href={l.href} onClick={() => setOpen(false)}>
+                {l.label}
+              </Link>
             ))}
-            {account && <Link href={account.href} onClick={() => setOpen(false)}>{account.label}</Link>}
-            {!loggedIn && <Link href="/barber-login" onClick={() => setOpen(false)}>Barber sign-in</Link>}
+            {account && (
+              <Link href={account.href} onClick={() => setOpen(false)}>
+                {account.label}
+              </Link>
+            )}
+            {!loggedIn && (
+              <Link href="/barber-login" onClick={() => setOpen(false)}>
+                Barber sign-in
+              </Link>
+            )}
           </nav>
           <div style={{ marginTop: "auto", paddingTop: 28 }}>
             <Link href={isStaff ? "/barber-dashboard" : "/book"} className="btn btn-primary btn-lg btn-block">

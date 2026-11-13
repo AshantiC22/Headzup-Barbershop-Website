@@ -16,7 +16,8 @@ const waiting = new Map();
 
 function painter() {
   if (worker !== null) return worker;
-  const supported = typeof Worker !== "undefined" && typeof OffscreenCanvas !== "undefined" && typeof createImageBitmap === "function";
+  const supported =
+    typeof Worker !== "undefined" && typeof OffscreenCanvas !== "undefined" && typeof createImageBitmap === "function";
   if (!supported) return (worker = false);
   try {
     worker = new Worker(new URL("../../lib/impression.worker.js", import.meta.url), { type: "module" });
@@ -53,7 +54,15 @@ function paintHere(canvas, src, options) {
 }
 
 export default function Impression({
-  src, alt = "", seed = 9, detail = 1, reveal = "never", className = "", imgStyle, priority = false, sizes,
+  src,
+  alt = "",
+  seed = 9,
+  detail = 1,
+  reveal = "never",
+  className = "",
+  imgStyle,
+  priority = false,
+  sizes,
 }) {
   const boxRef = useRef(null);
   const canvasRef = useRef(null);
@@ -68,7 +77,10 @@ export default function Impression({
       if (done) return;
       done = true;
       const r = box.getBoundingClientRect();
-      if (!r.width || !r.height || !canvasRef.current) { setState("failed"); return; }
+      if (!r.width || !r.height || !canvasRef.current) {
+        setState("failed");
+        return;
+      }
       const dpr = Math.min(window.devicePixelRatio || 1, 2);
       // paint at a modest resolution: brushwork doesn't need retina pixels
       const scale = Math.min(1, 520 / Math.max(r.width, r.height));
@@ -81,23 +93,36 @@ export default function Impression({
       }
       const result = await paintOffThread(w, src, options);
       const canvas = canvasRef.current;
-      if (cancelled || !canvas) { result?.close(); return; }
-      if (!result) { setState("failed"); return; }
+      if (cancelled || !canvas) {
+        result?.close();
+        return;
+      }
+      if (!result) {
+        setState("failed");
+        return;
+      }
       canvas.width = result.width;
       canvas.height = result.height;
       canvas.getContext("2d").drawImage(result, 0, 0);
       result.close();
       setState("painted");
     };
-    const io = new IntersectionObserver(([e]) => {
-      if (e.isIntersecting) {
-        io.disconnect();
-        if ("requestIdleCallback" in window) window.requestIdleCallback(run, { timeout: 600 });
-        else setTimeout(run, 60);
-      }
-    }, { rootMargin: "200px" });
+    const io = new IntersectionObserver(
+      ([e]) => {
+        if (e.isIntersecting) {
+          io.disconnect();
+          if ("requestIdleCallback" in window) window.requestIdleCallback(run, { timeout: 600 });
+          else setTimeout(run, 60);
+        }
+      },
+      { rootMargin: "200px" },
+    );
     io.observe(box);
-    return () => { io.disconnect(); done = true; cancelled = true; };
+    return () => {
+      io.disconnect();
+      done = true;
+      cancelled = true;
+    };
   }, [src, seed, detail]);
 
   return (

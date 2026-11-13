@@ -13,13 +13,13 @@ const API = axios.create({
 // tabs and pages doesn't refetch what was just loaded.
 const _cache = new Map();
 const CACHE_TTL = {
-  "services/":          60_000,
-  "barbers/":           30_000,
-  "barber/me/":         30_000,
-  "dashboard/":         10_000,
-  "barber/reviews/":    15_000,
-  "barber/clients/":    15_000,
-  "barber/reports/":    30_000,
+  "services/": 60_000,
+  "barbers/": 30_000,
+  "barber/me/": 30_000,
+  "dashboard/": 10_000,
+  "barber/reviews/": 15_000,
+  "barber/clients/": 15_000,
+  "barber/reports/": 30_000,
   "newsletter/manage/": 20_000,
 };
 
@@ -31,7 +31,10 @@ function getCacheKey(url, params) {
 function getCached(key) {
   const entry = _cache.get(key);
   if (!entry) return null;
-  if (Date.now() - entry.ts > entry.ttl) { _cache.delete(key); return null; }
+  if (Date.now() - entry.ts > entry.ttl) {
+    _cache.delete(key);
+    return null;
+  }
   return entry.data;
 }
 
@@ -42,7 +45,7 @@ function setCached(key, data, ttl) {
 // Drop cached entries whose key contains any of the patterns (all if none).
 API.invalidate = (...patterns) => {
   for (const key of _cache.keys()) {
-    if (!patterns.length || patterns.some(p => key.includes(p))) {
+    if (!patterns.length || patterns.some((p) => key.includes(p))) {
       _cache.delete(key);
     }
   }
@@ -77,20 +80,20 @@ API.get = async (url, config = {}) => {
 };
 
 // Writes invalidate whatever they could have changed.
-const _originalPost   = API.post.bind(API);
-const _originalPatch  = API.patch.bind(API);
+const _originalPost = API.post.bind(API);
+const _originalPatch = API.patch.bind(API);
 const _originalDelete = API.delete.bind(API);
 
 API.post = async (url, ...args) => {
   const res = await _originalPost(url, ...args);
-  if (url.includes("appointments"))   API.invalidate("appointments", "schedule", "dashboard");
-  if (url.includes("walk-in"))        API.invalidate("schedule", "dashboard");
-  if (url.includes("availability"))   API.invalidate("availability");
-  if (url.includes("time-off"))       API.invalidate("time-off");
-  if (url.includes("newsletter"))     API.invalidate("newsletter");
-  if (url.includes("review"))         API.invalidate("reviews");
-  if (url.includes("reschedule"))     API.invalidate("reschedules");
-  if (url.includes("barber/me"))      API.invalidate("barber/me");
+  if (url.includes("appointments")) API.invalidate("appointments", "schedule", "dashboard");
+  if (url.includes("walk-in")) API.invalidate("schedule", "dashboard");
+  if (url.includes("availability")) API.invalidate("availability");
+  if (url.includes("time-off")) API.invalidate("time-off");
+  if (url.includes("newsletter")) API.invalidate("newsletter");
+  if (url.includes("review")) API.invalidate("reviews");
+  if (url.includes("reschedule")) API.invalidate("reschedules");
+  if (url.includes("barber/me")) API.invalidate("barber/me");
   return res;
 };
 API.patch = async (url, ...args) => {
@@ -106,10 +109,16 @@ API.delete = async (url, ...args) => {
 
 // Endpoints that never need a token, so a 401 there isn't a reason to refresh.
 const PUBLIC_URLS = [
-  "token/", "token/refresh/", "register/", "barber/register/",
+  "token/",
+  "token/refresh/",
+  "register/",
+  "barber/register/",
   "check-username/",
-  "barbers/", "services/", "available-slots/",
-  "push/subscribe/", "push/vapid-key/",
+  "barbers/",
+  "services/",
+  "available-slots/",
+  "push/subscribe/",
+  "push/vapid-key/",
 ];
 const isPublic = (url = "") => PUBLIC_URLS.some((p) => url.includes(p));
 
@@ -147,7 +156,7 @@ API.interceptors.response.use(
     }
 
     return Promise.reject(error);
-  }
+  },
 );
 
 export default API;

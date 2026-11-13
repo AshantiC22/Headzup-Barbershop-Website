@@ -16,9 +16,13 @@ export function AuthShell({ children, seed = 3 }) {
       <div className="sky-content auth-wrap">
         <header className="auth-top">
           <ShopSign />
-          <Link href="/" className="btn btn-quiet btn-sm auth-home"><IconArrowLeft size={16} /> Home</Link>
+          <Link href="/" className="btn btn-quiet btn-sm auth-home">
+            <IconArrowLeft size={16} /> Home
+          </Link>
         </header>
-        <main id="main" className="auth-card panel">{children}</main>
+        <main id="main" className="auth-card panel">
+          {children}
+        </main>
       </div>
     </div>
   );
@@ -27,17 +31,31 @@ export function AuthShell({ children, seed = 3 }) {
 export function Field({ id, label, note, error, hint, children }) {
   return (
     <div className="field">
-      <label className="label" htmlFor={id}>{label}{note && <span className="label-note"> {note}</span>}</label>
+      <label className="label" htmlFor={id}>
+        {label}
+        {note && <span className="label-note"> {note}</span>}
+      </label>
       {children}
-      {error ? <p className="field-error" id={`${id}-err`}>{error}</p> : hint ? <p className="field-hint">{hint}</p> : null}
+      {error ? (
+        <p className="field-error" id={`${id}-err`}>
+          {error}
+        </p>
+      ) : hint ? (
+        <p className="field-hint">{hint}</p>
+      ) : null}
     </div>
   );
 }
 
 export function TextInput({ id, error, ...rest }) {
   return (
-    <input id={id} className="input" aria-invalid={error ? "true" : undefined}
-      aria-describedby={error ? `${id}-err` : undefined} {...rest} />
+    <input
+      id={id}
+      className="input"
+      aria-invalid={error ? "true" : undefined}
+      aria-describedby={error ? `${id}-err` : undefined}
+      {...rest}
+    />
   );
 }
 
@@ -45,10 +63,21 @@ export function PasswordInput({ id, error, ...rest }) {
   const [show, setShow] = useState(false);
   return (
     <div className="input-wrap">
-      <input id={id} className="input" type={show ? "text" : "password"} aria-invalid={error ? "true" : undefined}
-        aria-describedby={error ? `${id}-err` : undefined} {...rest} />
-      <button type="button" className="icon-btn input-action" onClick={() => setShow((v) => !v)}
-        aria-label={show ? "Hide password" : "Show password"} aria-pressed={show}>
+      <input
+        id={id}
+        className="input"
+        type={show ? "text" : "password"}
+        aria-invalid={error ? "true" : undefined}
+        aria-describedby={error ? `${id}-err` : undefined}
+        {...rest}
+      />
+      <button
+        type="button"
+        className="icon-btn input-action"
+        onClick={() => setShow((v) => !v)}
+        aria-label={show ? "Hide password" : "Show password"}
+        aria-pressed={show}
+      >
         <IconEye off={show} />
       </button>
     </div>
@@ -65,12 +94,35 @@ export function SubmitButton({ busy, children, busyLabel }) {
 
 export function Segmented({ value, options, onChange, label }) {
   return (
-    <div className="hu-theme-switch auth-seg" role="tablist" aria-label={label}
-      onKeyDown={(e) => arrowSelect(e, options.map(([v]) => v), value, onChange)}>
+    <div
+      className="hu-theme-switch auth-seg"
+      role="tablist"
+      aria-label={label}
+      onKeyDown={(e) =>
+        arrowSelect(
+          e,
+          options.map(([v]) => v),
+          value,
+          onChange,
+        )
+      }
+    >
       {options.map(([v, l]) => (
-        <button key={v} type="button" role="tab" aria-selected={value === v}
-          tabIndex={rovingIndex(v, value, options.map(([o]) => o))}
-          className={value === v ? "is-on" : ""} onClick={() => onChange(v)}>{l}</button>
+        <button
+          key={v}
+          type="button"
+          role="tab"
+          aria-selected={value === v}
+          tabIndex={rovingIndex(
+            v,
+            value,
+            options.map(([o]) => o),
+          )}
+          className={value === v ? "is-on" : ""}
+          onClick={() => onChange(v)}
+        >
+          {l}
+        </button>
       ))}
     </div>
   );
@@ -103,8 +155,13 @@ export function SecurityQuestionFields({ questions, q, setQ, a, setA }) {
   if (!questions.length) return null;
   return (
     <div className="auth-optional">
-      <button type="button" className="btn btn-quiet btn-sm" aria-expanded={open} onClick={() => setOpen((v) => !v)}
-        style={{ paddingLeft: 0 }}>
+      <button
+        type="button"
+        className="btn btn-quiet btn-sm"
+        aria-expanded={open}
+        onClick={() => setOpen((v) => !v)}
+        style={{ paddingLeft: 0 }}
+      >
         {open ? "Skip the security question" : "Add a security question"}
       </button>
       {!open && <p className="field-hint">It&apos;s how you get back in if you forget your password.</p>}
@@ -113,7 +170,11 @@ export function SecurityQuestionFields({ questions, q, setQ, a, setA }) {
           <Field id="secq" label="Security question">
             <select id="secq" className="select" value={q} onChange={(e) => setQ(e.target.value)}>
               <option value="">Choose one</option>
-              {questions.map((x) => <option key={x} value={x}>{x}</option>)}
+              {questions.map((x) => (
+                <option key={x} value={x}>
+                  {x}
+                </option>
+              ))}
             </select>
           </Field>
           {q && (
@@ -144,12 +205,17 @@ export function RecoveryFlow({ onDone, onBack }) {
   const [noQuestion, setNoQuestion] = useState(false);
 
   const run = async (fn) => {
-    setBusy(true); setError("");
-    try { await fn(); } catch (e) {
+    setBusy(true);
+    setError("");
+    try {
+      await fn();
+    } catch (e) {
       const d = e?.response?.data || {};
       if (d.no_question) setNoQuestion(true);
       setError(d.error || "That didn't go through. Try again.");
-    } finally { setBusy(false); }
+    } finally {
+      setBusy(false);
+    }
   };
 
   const submit = (e) => {
@@ -158,14 +224,16 @@ export function RecoveryFlow({ onDone, onBack }) {
       if (!identifier.trim()) return setError("Enter your username or the email on your account.");
       return run(async () => {
         const r = await API.post("recovery/step1/", { identifier: identifier.trim() });
-        setAccount(r.data); setStep(2);
+        setAccount(r.data);
+        setStep(2);
       });
     }
     if (step === 2) {
       if (!answer.trim()) return setError("Type your answer.");
       return run(async () => {
         const r = await API.post("recovery/step2/", { user_id: account.user_id, answer: answer.trim() });
-        setToken(r.data.token); setStep(3);
+        setToken(r.data.token);
+        setStep(3);
       });
     }
     if (pw.length < 8) return setError("Use at least 8 characters.");
@@ -187,14 +255,29 @@ export function RecoveryFlow({ onDone, onBack }) {
       {error && (
         <Notice tone="bad" className="mb-4">
           {error}
-          {noQuestion && <> Call the shop at <a className="link" href={`tel:${SHOP.phone}`}>{SHOP.phoneDisplay}</a> and we&apos;ll reset it for you.</>}
+          {noQuestion && (
+            <>
+              {" "}
+              Call the shop at{" "}
+              <a className="link" href={`tel:${SHOP.phone}`}>
+                {SHOP.phoneDisplay}
+              </a>{" "}
+              and we&apos;ll reset it for you.
+            </>
+          )}
         </Notice>
       )}
 
       {step === 1 && (
         <Field id="rec-id" label="Username or email">
-          <TextInput id="rec-id" value={identifier} onChange={(e) => setIdentifier(e.target.value)}
-            autoComplete="username" autoCapitalize="none" autoCorrect="off" />
+          <TextInput
+            id="rec-id"
+            value={identifier}
+            onChange={(e) => setIdentifier(e.target.value)}
+            autoComplete="username"
+            autoCapitalize="none"
+            autoCorrect="off"
+          />
         </Field>
       )}
       {step === 2 && account && (
@@ -203,17 +286,34 @@ export function RecoveryFlow({ onDone, onBack }) {
             Signed up as <strong>{account.username}</strong>. {account.security_question}
           </p>
           <Field id="rec-a" label="Your answer">
-            <TextInput id="rec-a" value={answer} onChange={(e) => setAnswer(e.target.value)} autoComplete="off" autoFocus />
+            <TextInput
+              id="rec-a"
+              value={answer}
+              onChange={(e) => setAnswer(e.target.value)}
+              autoComplete="off"
+              autoFocus
+            />
           </Field>
         </>
       )}
       {step === 3 && (
         <>
           <Field id="rec-pw" label="New password" hint="At least 8 characters.">
-            <PasswordInput id="rec-pw" value={pw} onChange={(e) => setPw(e.target.value)} autoComplete="new-password" autoFocus />
+            <PasswordInput
+              id="rec-pw"
+              value={pw}
+              onChange={(e) => setPw(e.target.value)}
+              autoComplete="new-password"
+              autoFocus
+            />
           </Field>
           <Field id="rec-pw2" label="Type it again">
-            <PasswordInput id="rec-pw2" value={pw2} onChange={(e) => setPw2(e.target.value)} autoComplete="new-password" />
+            <PasswordInput
+              id="rec-pw2"
+              value={pw2}
+              onChange={(e) => setPw2(e.target.value)}
+              autoComplete="new-password"
+            />
           </Field>
         </>
       )}

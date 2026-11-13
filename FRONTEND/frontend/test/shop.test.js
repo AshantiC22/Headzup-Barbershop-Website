@@ -15,8 +15,12 @@ describe("shop facts", () => {
   });
 
   it.each([
-    ["Haircut & Shave", "cuts"], ["Kids Cutz (1–12)", "cuts"], ["Line", "lines"],
-    ["Senior Line", "lines"], ["Beard Trim", "beard"], ["Shave", "beard"],
+    ["Haircut & Shave", "cuts"],
+    ["Kids Cutz (1–12)", "cuts"],
+    ["Line", "lines"],
+    ["Senior Line", "lines"],
+    ["Beard Trim", "beard"],
+    ["Shave", "beard"],
   ])("files %s under %s", (name, group) => {
     expect(groupForService(name)).toBe(group);
   });
