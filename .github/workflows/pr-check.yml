@@ -85,13 +85,14 @@ jobs:
             "SENDGRID_API_KEY\s*=\s*SG\."
             "sk_live_[A-Za-z0-9]+"
             "sk_test_[A-Za-z0-9]+"
-            "AC[a-z0-9]{32}"
-            "twilio.*auth.*token"
+            "\bAC[a-f0-9]{32}\b"
+            "twilio.*auth.*token\s*[=:]\s*['\"]?[A-Za-z0-9]{16,}"
           )
           FAILED=0
           for PATTERN in "${PATTERNS[@]}"; do
-            # Only added lines: deleting a leaked key is the fix, not a new leak.
-            if git diff origin/main...HEAD | grep -E '^\+' | grep -iE "$PATTERN"; then
+            # Only added lines (deleting a leaked key is the fix, not a new leak),
+            # and not lockfiles, whose integrity hashes look like anything.
+            if git diff origin/main...HEAD -- . ':(exclude)**/package-lock.json' | grep -E '^\+' | grep -iE "$PATTERN"; then
               echo "❌ Possible secret found matching pattern: $PATTERN"
               FAILED=1
             fi
