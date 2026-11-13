@@ -3,7 +3,9 @@ import { composeFog, composeSky, composeStreet, lampGeometry, seeded, streetLayo
 
 const strokesOf = (c) => JSON.stringify(c.strokes ?? c);
 
-describe("painter", () => {
+// Composing a full-screen painting is real work (tens of thousands of strokes);
+// CI machines can be several times slower than a laptop.
+describe("painter", { timeout: 30_000 }, () => {
   it("seeded() repeats its sequence and stays in [0, 1)", () => {
     const a = seeded(42), b = seeded(42);
     for (let i = 0; i < 1000; i++) {
