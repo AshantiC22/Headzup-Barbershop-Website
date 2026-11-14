@@ -106,5 +106,13 @@ throttle has no long tasks.
 - **Deposit return URL.** The API now URL-encodes the names it sends back
   after a Stripe deposit; older links split `Haircut & Shave` at the `&`.
   `booking-confirmed` reads the raw query string so both kinds work.
+- **`useSearchParams`** opts everything up to the nearest `<Suspense>` out of
+  prerendering. Give that boundary a real fallback (the page's own loading
+  view) and keep shells with a painted canvas outside it, or the page ships
+  as empty HTML.
+- **Overlays** (dialogs, toasts, the lightbox) go through `Portal` in
+  `components/ui/Feedback.js`. Rendered in place, an animated or transformed
+  ancestor traps them under the sticky header. Entrance animations fill
+  `backwards` for the same reason.
 - **Service worker.** `public/sw.js` caches by `CACHE_VERSION`. Bump it when
   shipping changes to cached routes or the offline page.
