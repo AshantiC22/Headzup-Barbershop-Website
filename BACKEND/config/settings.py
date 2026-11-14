@@ -6,9 +6,16 @@ load_dotenv()
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY = os.environ.get("SECRET_KEY", "django-insecure-zpte96z#tw3!kyh458p7br=nlxhrj*mbx5ixqrf!yy3s5x%@rb")
-
 DEBUG = os.environ.get("DEBUG", "False") == "True"
+
+# SimpleJWT signs tokens with this key, so a known key means anyone can forge a
+# login. Production must set its own; the throwaway fallback only works with
+# DEBUG on.
+SECRET_KEY = os.environ.get("SECRET_KEY") or ("django-insecure-local-development-only" if DEBUG else "")
+if not SECRET_KEY:
+    from django.core.exceptions import ImproperlyConfigured
+
+    raise ImproperlyConfigured("Set the SECRET_KEY environment variable (or DEBUG=True for local development).")
 
 ALLOWED_HOSTS = ["*"]
 
@@ -97,7 +104,12 @@ REST_FRAMEWORK = {
         'rest_framework.throttling.UserRateThrottle',
     ],
     'DEFAULT_THROTTLE_RATES': {
-        'user': '100/day',
+        # Per signed-in user, or per IP when signed out. 100/day was low
+        # enough for one barber's dashboard, or a phone carrier's shared IP,
+        # to hit it.
+        'user': '3000/day',
+        # Account recovery (security questions), per IP.
+        'recovery': '10/hour',
     }
 }
 
@@ -168,7 +180,8 @@ VAPID_PRIVATE_KEY = os.environ.get("VAPID_PRIVATE_KEY", "")
 VAPID_CLAIM_EMAIL = os.environ.get("VAPID_CLAIM_EMAIL", "")
 
 # ── Barber invite code (required to create a barber account) ─────────────────
-BARBER_INVITE_CODE = os.environ.get("BARBER_INVITE_CODE", "HEADZUP2026")
+# No default: an empty code turns barber sign-up off rather than opening it.
+BARBER_INVITE_CODE = os.environ.get("BARBER_INVITE_CODE", "").strip()
 
 # Twilio SMS
 TWILIO_ACCOUNT_SID  = os.environ.get("TWILIO_ACCOUNT_SID", "")

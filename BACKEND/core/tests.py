@@ -61,3 +61,118 @@ class DepositSuccessRedirect(TestCase):
         self.assertTrue(appt.deposit_paid)
         self.assertEqual(appt.date, date(2026, 11, 20))
         self.assertEqual(appt.time, time(10, 0))
+
+
+class MakeAdmin(TestCase):
+    """The admin account comes from the environment, and the old committed
+    password stops working whether or not the environment sets one."""
+
+    def run_with(self, **env):
+        from io import StringIO
+
+        from django.core.management import call_command
+
+        clean = {k: "" for k in ("DJANGO_SUPERUSER_USERNAME", "DJANGO_SUPERUSER_PASSWORD", "DJANGO_SUPERUSER_EMAIL")}
+        with mock.patch.dict("os.environ", {**clean, **env}):
+            call_command("make_admin", stdout=StringIO())
+
+    def test_creates_the_admin_from_the_environment(self):
+        self.run_with(DJANGO_SUPERUSER_USERNAME="owner", DJANGO_SUPERUSER_PASSWORD="a-long-new-password")
+        owner = User.objects.get(username="owner")
+        self.assertTrue(owner.is_superuser and owner.is_staff)
+        self.assertTrue(owner.check_password("a-long-new-password"))
+
+    def test_without_a_password_it_disables_the_legacy_account(self):
+        User.objects.create_superuser("headzup_admin", "", "the-old-public-one")
+        self.run_with()
+        self.assertFalse(User.objects.get(username="headzup_admin").has_usable_password())
+
+    def test_a_new_password_for_the_legacy_name_replaces_the_old_one(self):
+        User.objects.create_superuser("headzup_admin", "", "the-old-public-one")
+        self.run_with(DJANGO_SUPERUSER_PASSWORD="a-long-new-password")
+        admin = User.objects.get(username="headzup_admin")
+        self.assertTrue(admin.check_password("a-long-new-password"))
+        self.assertFalse(admin.check_password("the-old-public-one"))
+
+    def test_a_different_admin_name_still_retires_the_legacy_account(self):
+        User.objects.create_superuser("headzup_admin", "", "the-old-public-one")
+        self.run_with(DJANGO_SUPERUSER_USERNAME="owner", DJANGO_SUPERUSER_PASSWORD="a-long-new-password")
+        self.assertFalse(User.objects.get(username="headzup_admin").has_usable_password())
+
+
+class BarberInviteCode(TestCase):
+    payload = {"username": "newbarber", "email": "nb@example.com", "password": "pw-123456", "full_name": "New Barber"}
+
+    @override_settings(BARBER_INVITE_CODE="")
+    def test_sign_up_is_off_without_a_configured_code(self):
+        res = self.client.post("/api/barber/register/", {**self.payload, "invite_code": ""}, content_type="application/json")
+        self.assertEqual(res.status_code, 400)
+        self.assertFalse(User.objects.filter(username="newbarber").exists())
+
+    @override_settings(BARBER_INVITE_CODE="SHOP-CODE")
+    def test_wrong_code_is_refused_and_right_code_works(self):
+        bad = self.client.post("/api/barber/register/", {**self.payload, "invite_code": "HEADZUP2026"}, content_type="application/json")
+        self.assertEqual(bad.status_code, 400)
+        good = self.client.post("/api/barber/register/", {**self.payload, "invite_code": "shop-code"}, content_type="application/json")
+        self.assertIn(good.status_code, (200, 201))
+        self.assertTrue(User.objects.get(username="newbarber").is_staff)
+
+
+class Recovery(TestCase):
+    """Security-question recovery: no lookup by answer alone, and guessing locks."""
+
+    def setUp(self):
+        from django.core.cache import cache
+
+        from core.models import UserProfile
+
+        cache.clear()
+        self.user = User.objects.create_user(username="client", password="old-password-1")
+        UserProfile.objects.update_or_create(
+            user=self.user, defaults={"security_question": "What city were you born in?", "security_answer": "hattiesburg"}
+        )
+
+    def step2(self, answer):
+        return self.client.post(
+            "/api/recovery/step2/", {"user_id": self.user.pk, "answer": answer}, content_type="application/json"
+        )
+
+    def test_answer_only_lookup_is_gone(self):
+        res = self.client.post(
+            "/api/recovery/step1-by-question/",
+            {"question": "What city were you born in?", "answer": "hattiesburg"},
+            content_type="application/json",
+        )
+        self.assertEqual(res.status_code, 404)
+
+    def test_right_answer_gets_a_token(self):
+        res = self.step2("Hattiesburg")
+        self.assertEqual(res.status_code, 200)
+        self.assertIn("token", res.json())
+
+    def test_five_wrong_answers_lock_the_account_for_an_hour(self):
+        for guess in ("jackson", "biloxi", "meridian", "tupelo", "laurel"):
+            self.assertEqual(self.step2(guess).status_code, 400)
+        locked = self.step2("hattiesburg")
+        self.assertEqual(locked.status_code, 429)
+        self.assertNotIn("token", locked.json())
+
+    def test_non_ascii_answers_do_not_crash(self):
+        self.assertEqual(self.step2("héllo 🙂").status_code, 400)
+
+
+class StaffOnlyEndpoints(TestCase):
+    def test_test_email_needs_an_admin(self):
+        res = self.client.post("/api/test-email/", {"to": "someone@example.com"}, content_type="application/json")
+        self.assertIn(res.status_code, (401, 403))
+
+    def test_barber_payments_loads(self):
+        from rest_framework.test import APIClient
+
+        user = User.objects.create_user(username="barber", password="pw-123456", is_staff=True)
+        Barber.objects.create(name="Marcus Bell", user=user)
+        api = APIClient()
+        api.force_authenticate(user)
+        for period in ("week", "month", "year"):
+            res = api.get(f"/api/barber/payments/?period={period}")
+            self.assertEqual(res.status_code, 200, res.content[:200])

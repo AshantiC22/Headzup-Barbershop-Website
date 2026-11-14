@@ -1,8 +1,12 @@
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
 import stripe
+import hmac
 import urllib.parse
 from decimal import Decimal
+from django.utils import timezone
+from django.core.cache import cache
+from rest_framework.throttling import AnonRateThrottle
 from django.conf import settings
 from django.db import IntegrityError
 from django.shortcuts import redirect
@@ -2018,10 +2022,10 @@ class BarberRegisterView(APIView):
     def post(self, request):
         from django.conf import settings as django_settings
 
-        # Validate invite code — case insensitive
-        invite_code = request.data.get("invite_code", "").strip().upper()
-        valid_code  = getattr(django_settings, "BARBER_INVITE_CODE", "HEADZUP2026").strip().upper()
-        if invite_code != valid_code:
+        # Invite code, case-insensitive. With no code configured, sign-up is off.
+        invite_code = str(request.data.get("invite_code", "")).strip().upper()
+        valid_code  = getattr(django_settings, "BARBER_INVITE_CODE", "").strip().upper()
+        if not valid_code or not _same_text(invite_code, valid_code):
             return Response({"invite_code": "Invalid invite code. Contact the shop owner."}, status=status.HTTP_400_BAD_REQUEST)
 
         username  = request.data.get("username", "").strip()
@@ -2369,12 +2373,28 @@ class SetSecurityQuestionView(APIView):
         })
 
 
+class RecoveryThrottle(AnonRateThrottle):
+    """Per-IP limit on the recovery steps (rate in settings: "recovery")."""
+    scope = "recovery"
+
+
+# Wrong answers allowed per account per hour before recovery locks. Kept in
+# the default cache, so each gunicorn worker counts separately.
+RECOVERY_MAX_MISSES = 5
+
+
+def _same_text(a, b):
+    """Constant-time comparison that also copes with non-ASCII text."""
+    return hmac.compare_digest(str(a).encode("utf-8"), str(b).encode("utf-8"))
+
+
 class RecoveryStep1View(APIView):
     """
     Step 1 — find the account by username or email.
     Returns the security question for that account (if set).
     """
     permission_classes = [AllowAny]
+    throttle_classes = [RecoveryThrottle]
 
     def post(self, request):
         identifier = request.data.get("identifier", "").strip()
@@ -2402,43 +2422,17 @@ class RecoveryStep1View(APIView):
         })
 
 
-class RecoveryStep1ByQuestionView(APIView):
-    """
-    Step 1 alternate — user doesn't remember username OR email.
-    They provide just the security question answer to find their account.
-    Only works if answers are unique — otherwise returns all matching usernames.
-    """
-    permission_classes = [AllowAny]
-
-    def post(self, request):
-        answer   = request.data.get("answer", "").strip().lower()
-        question = request.data.get("question", "").strip()
-        if not answer or not question:
-            return Response({"error": "Question and answer required"}, status=400)
-
-        profiles = UserProfile.objects.filter(
-            security_question__iexact=question,
-            security_answer__iexact=answer,
-        ).select_related("user")
-
-        if not profiles.exists():
-            return Response({"error": "No account found with that answer"}, status=404)
-
-        # Return matching usernames so user can pick theirs
-        matches = [{"username": p.user.username, "user_id": p.user.pk} for p in profiles]
-        return Response({"matches": matches})
-
-
 class RecoveryStep2View(APIView):
     """
     Step 2 — verify security question answer.
     Returns a reset token if correct.
     """
     permission_classes = [AllowAny]
+    throttle_classes = [RecoveryThrottle]
 
     def post(self, request):
         user_id = request.data.get("user_id")
-        answer  = request.data.get("answer", "").strip().lower()
+        answer  = str(request.data.get("answer", "")).strip().lower()
         if not user_id or not answer:
             return Response({"error": "user_id and answer required"}, status=400)
 
@@ -2451,8 +2445,17 @@ class RecoveryStep2View(APIView):
         if not profile or not profile.security_answer:
             return Response({"error": "No security question on this account"}, status=400)
 
-        if profile.security_answer.strip().lower() != answer:
+        misses_key = f"recovery-misses:{user.pk}"
+        misses = cache.get(misses_key, 0)
+        if misses >= RECOVERY_MAX_MISSES:
+            return Response(
+                {"error": "Too many wrong answers. Try again in an hour, or call the shop."},
+                status=429,
+            )
+        if not _same_text(profile.security_answer.strip().lower(), answer):
+            cache.set(misses_key, misses + 1, 3600)
             return Response({"error": "Incorrect answer. Try again."}, status=400)
+        cache.delete(misses_key)
 
         # Correct — generate a reset token
         from django.contrib.auth.tokens import default_token_generator
@@ -2470,6 +2473,7 @@ class RecoveryStep3View(APIView):
     Step 3 — reset password and/or username using the verified token.
     """
     permission_classes = [AllowAny]
+    throttle_classes = [RecoveryThrottle]
 
     def post(self, request):
         user_id      = request.data.get("user_id")
@@ -6015,16 +6019,12 @@ class ClientRescheduleRequestView(APIView):
                 )
                 # Barber SMS for reschedule request
                 try:
-                    _rq_barber = reschedule_req.appointment.barber if hasattr(reschedule_req, 'appointment') else None
-                    if not _rq_barber:
-                        _rq_barber = RescheduleRequest.objects.select_related(
-                            'appointment__barber'
-                        ).get(pk=reschedule_req.pk).appointment.barber
+                    _rq_barber = rr_full.appointment.barber
                     _rbp_rq = _get_barber_phone(_rq_barber)
                     if _rbp_rq:
-                        _svc_rq = reschedule_req.appointment.service.name
-                        _new_d  = reschedule_req.new_date.strftime("%a %b %d").replace(" 0"," ")
-                        _new_t  = reschedule_req.new_time.strftime("%I:%M %p").lstrip("0")
+                        _svc_rq = rr_full.appointment.service.name
+                        _new_d  = rr_full.new_date.strftime("%a %b %d").replace(" 0"," ")
+                        _new_t  = rr_full.new_time.strftime("%I:%M %p").lstrip("0")
                         _twilio_send(_rbp_rq,
                             f"↻ HEADZ UP: Reschedule request!\n"
                             f"Client: {client_name}\n"
@@ -6183,53 +6183,3 @@ class BarberRescheduleRequestView(APIView):
             "new_date": str(appt.date),
             "new_time": str(appt.time),
         })
-
-
-class TestEmailView(APIView):
-    """Debug endpoint — sends a test email via SendGrid HTTP API."""
-    permission_classes = [AllowAny]
-
-    def post(self, request):
-        import urllib.request
-        import json as json_lib
-        from django.conf import settings as django_settings
-
-        recipient  = request.data.get("to", "bdkshan18@gmail.com")
-        api_key    = getattr(django_settings, "SENDGRID_API_KEY", "")
-        from_email = getattr(django_settings, "DEFAULT_FROM_EMAIL", "")
-
-        if not api_key:
-            return Response({"error": "SENDGRID_API_KEY not set"}, status=500)
-
-        # Extract plain email from "Name <email>" format
-        import re
-        match = re.search(r'<(.+?)>', from_email)
-        sender_email = match.group(1) if match else from_email
-        sender_name  = from_email.split("<")[0].strip() if "<" in from_email else "HEADZ UP"
-
-        payload = {
-            "personalizations": [{"to": [{"email": recipient}]}],
-            "from": {"email": sender_email, "name": sender_name},
-            "subject": "HEADZ UP — Test Email",
-            "content": [{"type": "text/plain", "value": "This is a test email from HEADZ UP Barbershop. Email is working!"}],
-        }
-
-        try:
-            data = json_lib.dumps(payload).encode("utf-8")
-            req  = urllib.request.Request(
-                "https://api.sendgrid.com/v3/mail/send",
-                data=data,
-                headers={
-                    "Authorization": f"Bearer {api_key}",
-                    "Content-Type":  "application/json",
-                },
-                method="POST",
-            )
-            with urllib.request.urlopen(req, timeout=10) as resp:
-                status_code = resp.status
-            return Response({"success": True, "sendgrid_status": status_code, "sent_to": recipient, "from": from_email})
-        except urllib.error.HTTPError as e:
-            body = e.read().decode("utf-8")
-            return Response({"error": f"SendGrid HTTP {e.code}: {body}", "sent_to": recipient}, status=500)
-        except Exception as e:
-            return Response({"error": str(e), "sent_to": recipient}, status=500)

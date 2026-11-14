@@ -212,7 +212,11 @@ export function RecoveryFlow({ onDone, onBack }) {
     } catch (e) {
       const d = e?.response?.data || {};
       if (d.no_question) setNoQuestion(true);
-      setError(d.error || "That didn't go through. Try again.");
+      if (e?.response?.status === 429 && typeof d.error !== "string") {
+        setError("Too many tries for now. Wait an hour, or call the shop.");
+      } else {
+        setError(typeof d.error === "string" ? d.error : "That didn't go through. Try again.");
+      }
     } finally {
       setBusy(false);
     }
