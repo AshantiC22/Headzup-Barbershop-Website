@@ -46,6 +46,12 @@ export default function NewsletterPage() {
           <p className="lede mt-3">Deals, hours changes and anything else worth knowing before you sit down.</p>
         </div>
 
+        {loading && (
+          // most weeks there's more than one kind of post, so hold the filter row's space
+          <div className="pills mt-6" aria-hidden="true">
+            <Skeleton h={38} w={260} />
+          </div>
+        )}
         {present.length > 1 && (
           <div className="pills mt-6" role="group" aria-label="Filter news">
             <button className="pill" aria-pressed={filter === "all"} onClick={() => setFilter("all")}>
@@ -60,7 +66,7 @@ export default function NewsletterPage() {
         )}
 
         <div className="news-board">
-          {loading && [0, 1, 2].map((i) => <Skeleton key={i} h={180} />)}
+          {loading && [0, 1, 2].map((i) => <Skeleton key={i} h={210} />)}
           {!loading && failed && <Notice tone="bad">News didn&apos;t load. Refresh to try again.</Notice>}
           {!loading && !failed && shown.length === 0 && (
             <div className="panel panel-pad">

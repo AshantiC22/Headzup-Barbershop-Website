@@ -9,6 +9,15 @@ import StarRating from "@/components/ui/StarRating";
 import { Notice, Skeleton, Spinner } from "@/components/ui/Feedback";
 import { fmtDate } from "@/lib/time";
 
+function ReviewLoading() {
+  return (
+    <div aria-busy="true">
+      <Skeleton h={40} w="70%" />
+      <Skeleton h={160} className="mt-5" />
+    </div>
+  );
+}
+
 function ReviewContent() {
   const apptId = useSearchParams().get("appt");
   const [appt, setAppt] = useState(null);
@@ -60,17 +69,11 @@ function ReviewContent() {
     }
   };
 
-  if (loading)
-    return (
-      <AuthShell seed={5}>
-        <Skeleton h={40} w="70%" />
-        <Skeleton h={160} className="mt-5" />
-      </AuthShell>
-    );
+  if (loading) return <ReviewLoading />;
 
   if (!apptId) {
     return (
-      <AuthShell seed={5}>
+      <>
         <h1 className="h2">Which cut are we reviewing?</h1>
         <p className="muted mt-3 mb-5">
           This link is missing its appointment. Open My appointments to review a past cut.
@@ -78,13 +81,13 @@ function ReviewContent() {
         <Link href="/dashboard" className="btn btn-primary btn-lg btn-block">
           Open My appointments
         </Link>
-      </AuthShell>
+      </>
     );
   }
 
   if (done || already) {
     return (
-      <AuthShell seed={5}>
+      <>
         <h1 className="h1">{done ? "Thank you." : "Already reviewed."}</h1>
         <p className="lede mt-3">
           {done
@@ -97,12 +100,12 @@ function ReviewContent() {
         <Link href="/dashboard" className="btn btn-quiet btn-block mt-2">
           My appointments
         </Link>
-      </AuthShell>
+      </>
     );
   }
 
   return (
-    <AuthShell seed={5}>
+    <>
       <form onSubmit={submit}>
         <h1 className="h2">How was the cut?</h1>
         {appt && (
@@ -138,14 +141,18 @@ function ReviewContent() {
           {busy ? <Spinner label="Sending" /> : `Send ${rating}-star review`}
         </button>
       </form>
-    </AuthShell>
+    </>
   );
 }
 
 export default function ReviewPage() {
+  // The shell (painted sky, sign, card) prerenders; only the part that reads
+  // the query string waits for the browser.
   return (
-    <Suspense fallback={null}>
-      <ReviewContent />
-    </Suspense>
+    <AuthShell seed={5}>
+      <Suspense fallback={<ReviewLoading />}>
+        <ReviewContent />
+      </Suspense>
+    </AuthShell>
   );
 }

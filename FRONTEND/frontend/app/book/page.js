@@ -62,6 +62,23 @@ function SittingPlacard({ service, barber, date, time, price }) {
   );
 }
 
+// Shown while services load, and as the prerendered page before the browser
+// can read the query string.
+function BookLoading() {
+  return (
+    <>
+      <FlowHeader title="Book a cut" />
+      <main id="main" className={`wrap-narrow ${s.page}`} aria-busy="true">
+        <Skeleton h={34} className="mb-7" />
+        <Skeleton h={44} w="60%" className="mb-5" />
+        {[0, 1, 2, 3, 4].map((i) => (
+          <Skeleton key={i} h={64} className="mb-3" />
+        ))}
+      </main>
+    </>
+  );
+}
+
 function BookContent() {
   const router = useRouter();
   const params = useSearchParams();
@@ -293,20 +310,7 @@ function BookContent() {
     setSubmitting(false);
   };
 
-  if (initLoading) {
-    return (
-      <>
-        <FlowHeader title="Book a cut" />
-        <main id="main" className={`wrap-narrow ${s.page}`} aria-busy="true">
-          <Skeleton h={34} className="mb-7" />
-          <Skeleton h={44} w="60%" className="mb-5" />
-          {[0, 1, 2, 3, 4].map((i) => (
-            <Skeleton key={i} h={64} className="mb-3" />
-          ))}
-        </main>
-      </>
-    );
-  }
+  if (initLoading) return <BookLoading />;
 
   return (
     <>
@@ -618,7 +622,7 @@ function BookContent() {
 
 export default function BookPage() {
   return (
-    <Suspense fallback={null}>
+    <Suspense fallback={<BookLoading />}>
       <BookContent />
     </Suspense>
   );

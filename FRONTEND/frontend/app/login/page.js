@@ -18,7 +18,18 @@ import {
   normalizePhone,
   useSecurityQuestions,
 } from "@/components/auth/AuthParts";
-import { Notice } from "@/components/ui/Feedback";
+import { Notice, Skeleton } from "@/components/ui/Feedback";
+
+function LoginLoading() {
+  return (
+    <div aria-busy="true">
+      <Skeleton h={44} className="mb-6" />
+      <Skeleton h={76} className="mb-4" />
+      <Skeleton h={76} className="mb-6" />
+      <Skeleton h={52} />
+    </div>
+  );
+}
 
 function LoginContent() {
   const router = useRouter();
@@ -114,7 +125,7 @@ function LoginContent() {
 
   if (mode === "forgot") {
     return (
-      <AuthShell>
+      <>
         <RecoveryFlow
           onBack={() => switchMode("login")}
           onDone={(u) => {
@@ -124,12 +135,12 @@ function LoginContent() {
             setSuccess("Password saved. Sign in with the new one.");
           }}
         />
-      </AuthShell>
+      </>
     );
   }
 
   return (
-    <AuthShell>
+    <>
       <Segmented
         label="Account"
         value={mode}
@@ -275,14 +286,18 @@ function LoginContent() {
           Barbers sign in here
         </Link>
       </div>
-    </AuthShell>
+    </>
   );
 }
 
 export default function LoginPage() {
+  // The shell (painted sky, sign, card) prerenders; only the part that reads
+  // the query string waits for the browser.
   return (
-    <Suspense fallback={null}>
-      <LoginContent />
-    </Suspense>
+    <AuthShell>
+      <Suspense fallback={<LoginLoading />}>
+        <LoginContent />
+      </Suspense>
+    </AuthShell>
   );
 }

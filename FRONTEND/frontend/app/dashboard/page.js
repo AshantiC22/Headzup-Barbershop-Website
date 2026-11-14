@@ -460,6 +460,21 @@ function AccountTab({ user, strike, visits, spent, toast }) {
   );
 }
 
+function DashboardLoading() {
+  return (
+    <>
+      <AppHeader title="My appointments" />
+      <main className="wrap dash" style={{ maxWidth: 960 }} aria-busy="true">
+        <Skeleton h={44} w="50%" />
+        <Skeleton h={150} className="mt-6" />
+        {[0, 1, 2].map((i) => (
+          <Skeleton key={i} h={76} className="mt-3" />
+        ))}
+      </main>
+    </>
+  );
+}
+
 function DashboardContent() {
   const router = useRouter();
   const params = useSearchParams();
@@ -578,20 +593,7 @@ function DashboardContent() {
     );
   }, []);
 
-  if (loading) {
-    return (
-      <>
-        <AppHeader title="My appointments" />
-        <main className="wrap dash" style={{ maxWidth: 960 }} aria-busy="true">
-          <Skeleton h={44} w="50%" />
-          <Skeleton h={150} className="mt-6" />
-          {[0, 1, 2].map((i) => (
-            <Skeleton key={i} h={76} className="mt-3" />
-          ))}
-        </main>
-      </>
-    );
-  }
+  if (loading) return <DashboardLoading />;
 
   const name = user?.user || user?.username || "there";
   const tabs = [
@@ -812,7 +814,7 @@ function DashboardContent() {
 
 export default function Dashboard() {
   return (
-    <Suspense fallback={null}>
+    <Suspense fallback={<DashboardLoading />}>
       <DashboardContent />
     </Suspense>
   );

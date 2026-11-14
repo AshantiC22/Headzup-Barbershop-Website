@@ -23,6 +23,17 @@ const COPY = {
   },
 };
 
+function Checking() {
+  return (
+    <>
+      <h1 className="h1">
+        <Spinner label={COPY.loading.title} />
+      </h1>
+      <p className="lede mt-3">{COPY.loading.body}</p>
+    </>
+  );
+}
+
 function Inner() {
   const p = useSearchParams();
   const token = p.get("token");
@@ -49,7 +60,7 @@ function Inner() {
   const status = valid ? result : "invalid";
   const c = COPY[status];
   return (
-    <AuthShell seed={17}>
+    <>
       <h1 className="h1" aria-live="polite">
         {status === "loading" ? <Spinner label={c.title} /> : c.title}
       </h1>
@@ -59,14 +70,18 @@ function Inner() {
           Open the barber dashboard
         </Link>
       )}
-    </AuthShell>
+    </>
   );
 }
 
 export default function ReschedulePage() {
+  // The shell (painted sky, sign, card) prerenders; only the part that reads
+  // the query string waits for the browser.
   return (
-    <Suspense fallback={null}>
-      <Inner />
-    </Suspense>
+    <AuthShell seed={17}>
+      <Suspense fallback={<Checking />}>
+        <Inner />
+      </Suspense>
+    </AuthShell>
   );
 }

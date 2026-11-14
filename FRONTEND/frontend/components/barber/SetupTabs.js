@@ -146,7 +146,15 @@ export function HoursTab({ toast }) {
           <h2 className="h4">Weekly hours</h2>
           <p className="small muted mt-1">Changes save when you leave a field. The shop is closed Sundays.</p>
           {!avail ? (
-            <Skeleton h={300} className="mt-4" />
+            <ul className="day-list" aria-busy="true">
+              {DAYS.map((d) => (
+                <li key={d} className="day-row">
+                  <Skeleton h={30} w={52} />
+                  <Skeleton h={18} w={80} />
+                  <Skeleton h={40} w={236} style={{ maxWidth: "100%" }} />
+                </li>
+              ))}
+            </ul>
           ) : (
             <ul className="day-list">
               {DAYS.map((d, i) => {

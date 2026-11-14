@@ -5,7 +5,7 @@ import Link from "next/link";
 import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { AuthShell } from "@/components/auth/AuthParts";
-import { IconCalendar, IconPin, Notice } from "@/components/ui/Feedback";
+import { IconCalendar, IconPin, Notice, Skeleton } from "@/components/ui/Feedback";
 import { ADDRESS_LINE, SHOP } from "@/lib/shop";
 import { fmtDate, fmtTime, to24Hour } from "@/lib/time";
 
@@ -41,6 +41,17 @@ function icsFile({ service, barber, date, time, minutes = 30 }) {
     "END:VCALENDAR",
   ];
   return new Blob([lines.join("\r\n")], { type: "text/calendar;charset=utf-8" });
+}
+
+function ConfirmedLoading() {
+  return (
+    <div aria-busy="true">
+      <Skeleton h={96} w={96} />
+      <Skeleton h={48} w="70%" className="mt-4" />
+      <Skeleton h={56} className="mt-3" />
+      <Skeleton h={140} className="mt-6" />
+    </div>
+  );
 }
 
 function ConfirmedContent() {
@@ -85,7 +96,7 @@ function ConfirmedContent() {
 
   if (failed) {
     return (
-      <AuthShell seed={21}>
+      <>
         <h1 className="h2">The booking didn&apos;t confirm</h1>
         <p className="muted mt-3 mb-5">
           Your card may still have been charged. Check My appointments first; if the booking isn&apos;t there, call the
@@ -99,13 +110,13 @@ function ConfirmedContent() {
             Call {SHOP.phoneDisplay}
           </a>
         </div>
-      </AuthShell>
+      </>
     );
   }
 
   const paidOnline = payment === "deposit" || payment === "online";
   return (
-    <AuthShell seed={21}>
+    <>
       <div className={`confirm-stamp ${stamp ? "is-on" : ""}`} aria-hidden="true">
         <span className="seal-mark">H</span>
       </div>
@@ -190,14 +201,18 @@ function ConfirmedContent() {
           </a>
         </div>
       </div>
-    </AuthShell>
+    </>
   );
 }
 
 export default function BookingConfirmedPage() {
+  // The shell (painted sky, sign, card) prerenders; only the part that reads
+  // the query string waits for the browser.
   return (
-    <Suspense fallback={null}>
-      <ConfirmedContent />
-    </Suspense>
+    <AuthShell seed={21}>
+      <Suspense fallback={<ConfirmedLoading />}>
+        <ConfirmedContent />
+      </Suspense>
+    </AuthShell>
   );
 }

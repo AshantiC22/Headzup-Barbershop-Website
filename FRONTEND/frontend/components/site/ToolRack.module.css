@@ -67,8 +67,10 @@
     inset 0 0 0 4px rgba(29, 32, 31, 0.14),
     0 6px 12px -10px rgba(29, 32, 31, 0.5);
 }
-.slot:hover {
-  color: var(--ink);
+@media (hover: hover) {
+  .slot:hover {
+    color: var(--ink);
+  }
 }
 .slot:active {
   transform: translateY(1px);

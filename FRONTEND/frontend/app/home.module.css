@@ -254,9 +254,11 @@
     transform var(--dur-3) var(--ease),
     filter var(--dur-3);
 }
-.hangLink:hover {
-  transform: translateY(-3px);
-  filter: drop-shadow(0 0 24px color-mix(in srgb, var(--flame) 18%, transparent));
+@media (hover: hover) {
+  .hangLink:hover {
+    transform: translateY(-3px);
+    filter: drop-shadow(0 0 24px color-mix(in srgb, var(--flame) 18%, transparent));
+  }
 }
 .hangImg {
   width: 100%;

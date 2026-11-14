@@ -326,9 +326,11 @@ body::after {
   text-decoration-thickness: 1px;
   text-underline-offset: 3px;
 }
-.link:hover {
-  text-decoration-thickness: 2px;
-  color: var(--ink);
+@media (hover: hover) {
+  .link:hover {
+    text-decoration-thickness: 2px;
+    color: var(--ink);
+  }
 }
 
 /* The active nav item gets an oxblood rule with a single drip off it. */
@@ -348,7 +350,7 @@ body::after {
   mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 12' preserveAspectRatio='none'%3E%3Cpath d='M0 0h100v2.2H64.5c-1 0-1.6.6-1.7 1.6-.2 2.6-.4 6.1-1.9 6.1s-1.7-3.5-1.9-6.1c-.1-1-.7-1.6-1.7-1.6H0z'/%3E%3C/svg%3E")
     center top / 100% 100% no-repeat;
   transform-origin: top;
-  animation: drip-in 0.5s var(--ease) both;
+  animation: drip-in 0.5s var(--ease) backwards;
 }
 @keyframes drip-in {
   from {
@@ -459,8 +461,10 @@ ul.stack {
     box-shadow var(--dur-2),
     color var(--dur-2);
 }
-.btn:hover {
-  border-color: var(--ink-3);
+@media (hover: hover) {
+  .btn:hover {
+    border-color: var(--ink-3);
+  }
 }
 .btn:active {
   transform: translateY(1px);
@@ -486,20 +490,24 @@ ul.stack {
     inset 0 1px 0 rgba(255, 210, 180, 0.22),
     0 8px 22px -12px rgba(142, 27, 27, 0.9);
 }
-.btn-primary:hover {
-  --btn-bg: var(--accent-2);
-  border-color: #c4483a;
-  box-shadow:
-    inset 0 1px 0 rgba(255, 210, 180, 0.28),
-    0 0 26px -4px rgba(190, 50, 36, 0.55);
+@media (hover: hover) {
+  .btn-primary:hover {
+    --btn-bg: var(--accent-2);
+    border-color: #c4483a;
+    box-shadow:
+      inset 0 1px 0 rgba(255, 210, 180, 0.28),
+      0 0 26px -4px rgba(190, 50, 36, 0.55);
+  }
 }
 .btn-ghost {
   --btn-bg: transparent;
 }
-.btn-ghost:hover {
-  background: color-mix(in srgb, var(--surface) 80%, transparent);
-  box-shadow: var(--glow);
-  border-color: transparent;
+@media (hover: hover) {
+  .btn-ghost:hover {
+    background: color-mix(in srgb, var(--surface) 80%, transparent);
+    box-shadow: var(--glow);
+    border-color: transparent;
+  }
 }
 .btn-quiet {
   --btn-bg: transparent;
@@ -507,26 +515,32 @@ ul.stack {
   padding: 0 10px;
   color: var(--ink-2);
 }
-.btn-quiet:hover {
-  color: var(--ink);
-  border-color: transparent;
-  background: var(--surface-2);
+@media (hover: hover) {
+  .btn-quiet:hover {
+    color: var(--ink);
+    border-color: transparent;
+    background: var(--surface-2);
+  }
 }
 .btn-danger {
   --btn-bg: var(--bad-wash);
   --btn-fg: var(--bad);
   --btn-bd: color-mix(in srgb, var(--bad) 40%, transparent);
 }
-.btn-danger:hover {
-  border-color: var(--bad);
+@media (hover: hover) {
+  .btn-danger:hover {
+    border-color: var(--bad);
+  }
 }
 .btn-ok {
   --btn-bg: var(--ok-wash);
   --btn-fg: var(--ok);
   --btn-bd: color-mix(in srgb, var(--ok) 40%, transparent);
 }
-.btn-ok:hover {
-  border-color: var(--ok);
+@media (hover: hover) {
+  .btn-ok:hover {
+    border-color: var(--ok);
+  }
 }
 .btn-sm {
   min-height: 40px;
@@ -564,9 +578,11 @@ ul.stack {
   opacity: 0.3;
   cursor: not-allowed;
 }
-.icon-btn:hover:not(:disabled) {
-  background: var(--surface-2);
-  color: var(--ink);
+@media (hover: hover) {
+  .icon-btn:hover:not(:disabled) {
+    background: var(--surface-2);
+    color: var(--ink);
+  }
 }
 
 .spinner {
@@ -722,10 +738,12 @@ ul.stack {
   color: var(--ink-3);
   opacity: 1;
 }
-.input:hover,
-.select:hover,
-.textarea:hover {
-  border-color: var(--ink-3);
+@media (hover: hover) {
+  .input:hover,
+  .select:hover,
+  .textarea:hover {
+    border-color: var(--ink-3);
+  }
 }
 .input:focus,
 .select:focus,
@@ -923,9 +941,11 @@ input[type="time"].input {
     color var(--dur-2),
     border-color var(--dur-2);
 }
-.pill:hover {
-  color: var(--ink);
-  border-color: var(--ink-3);
+@media (hover: hover) {
+  .pill:hover {
+    color: var(--ink);
+    border-color: var(--ink-3);
+  }
 }
 .pill[aria-pressed="true"],
 .pill.is-on {
@@ -959,8 +979,10 @@ input[type="time"].input {
   align-items: center;
   gap: 8px;
 }
-.tab:hover {
-  color: var(--ink);
+@media (hover: hover) {
+  .tab:hover {
+    color: var(--ink);
+  }
 }
 .tab[aria-selected="true"] {
   color: var(--ink);
@@ -998,7 +1020,7 @@ input[type="time"].input {
   background: rgba(6, 7, 7, 0.68);
   backdrop-filter: blur(4px);
   -webkit-backdrop-filter: blur(4px);
-  animation: fade-in var(--dur-2) ease both;
+  animation: fade-in var(--dur-2) ease backwards;
 }
 .modal {
   width: 100%;
@@ -1010,7 +1032,7 @@ input[type="time"].input {
   border-radius: var(--r-panel);
   box-shadow: var(--shadow-2);
   padding: clamp(20px, 4vw, 28px);
-  animation: rise-in var(--dur-3) var(--ease) both;
+  animation: rise-in var(--dur-3) var(--ease) backwards;
 }
 .modal-wide {
   max-width: 560px;
@@ -1024,7 +1046,7 @@ input[type="time"].input {
     max-width: none;
     border-radius: 6px 6px 0 0;
     padding-bottom: calc(24px + env(safe-area-inset-bottom));
-    animation: sheet-in var(--dur-3) var(--ease) both;
+    animation: sheet-in var(--dur-3) var(--ease) backwards;
   }
 }
 @keyframes fade-in {
@@ -1129,7 +1151,7 @@ input[type="time"].input {
   box-shadow: var(--shadow-2);
   font-weight: 600;
   font-size: 0.9375rem;
-  animation: rise-in var(--dur-3) var(--ease) both;
+  animation: rise-in var(--dur-3) var(--ease) backwards;
 }
 .toast[data-state="closing"] {
   animation: sink-out var(--dur-2) var(--ease-in) both;
@@ -1184,8 +1206,10 @@ input[type="time"].input {
     background-color var(--dur-2),
     color var(--dur-2);
 }
-.hu-theme-switch button:hover {
-  color: var(--ink);
+@media (hover: hover) {
+  .hu-theme-switch button:hover {
+    color: var(--ink);
+  }
 }
 .hu-theme-switch button.is-on {
   background: var(--surface-2);
@@ -1244,8 +1268,10 @@ input[type="time"].input {
   transform: rotate(-1deg);
   transition: transform var(--dur-3) var(--ease);
 }
-.sign:hover {
-  transform: rotate(0.6deg);
+@media (hover: hover) {
+  .sign:hover {
+    transform: rotate(0.6deg);
+  }
 }
 .sign img {
   height: 30px;
@@ -1266,8 +1292,10 @@ input[type="time"].input {
   color: var(--ink-2);
   text-decoration: none;
 }
-.nav-link:hover {
-  color: var(--ink);
+@media (hover: hover) {
+  .nav-link:hover {
+    color: var(--ink);
+  }
 }
 .nav-link[aria-current="page"] {
   color: var(--ink);
@@ -1298,7 +1326,7 @@ input[type="time"].input {
   padding: calc(env(safe-area-inset-top) + 12px) var(--gutter) calc(env(safe-area-inset-bottom) + 24px);
   display: flex;
   flex-direction: column;
-  animation: fade-in var(--dur-2) ease both;
+  animation: fade-in var(--dur-2) ease backwards;
   overflow-y: auto;
 }
 .menu-sheet[data-state="closing"] {
@@ -1343,10 +1371,12 @@ input[type="time"].input {
   color: var(--ink-2);
   text-decoration: none;
 }
-.footer a:hover {
-  color: var(--ink);
-  text-decoration: underline;
-  text-underline-offset: 3px;
+@media (hover: hover) {
+  .footer a:hover {
+    color: var(--ink);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
 }
 .hours {
   display: grid;
@@ -1403,9 +1433,11 @@ button.board-row,
 a.board-row {
   cursor: pointer;
 }
-button.board-row:hover,
-a.board-row:hover {
-  background: color-mix(in srgb, var(--surface) 60%, transparent);
+@media (hover: hover) {
+  button.board-row:hover,
+  a.board-row:hover {
+    background: color-mix(in srgb, var(--surface) 60%, transparent);
+  }
 }
 .board-name {
   display: flex;
@@ -1458,9 +1490,11 @@ a.board-row:hover {
   }
 }
 
-/* Utility motion */
+/* Utility motion. Entrances fill backwards only: an animation that keeps
+   holding its end state keeps a stacking context, which traps fixed
+   dialogs under the header. */
 .fade-in {
-  animation: fade-in var(--dur-3) ease both;
+  animation: fade-in var(--dur-3) ease backwards;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -1525,7 +1559,13 @@ a.board-row:hover {
   height: 100%;
 }
 .street-pole {
+  /* zero-size until StreetScene measures the street, so the empty 300×150
+     default canvas never takes up room */
   position: absolute;
+  left: 0;
+  top: 0;
+  width: 0;
+  height: 0;
 }
 .street-fog {
   opacity: 0;
@@ -1725,8 +1765,10 @@ a.board-row:hover {
 .pole-step.is-current {
   color: var(--ink);
 }
-.pole-step.is-done:not([disabled]):hover {
-  color: var(--accent-ink);
+@media (hover: hover) {
+  .pole-step.is-done:not([disabled]):hover {
+    color: var(--accent-ink);
+  }
 }
 
 /* Calendar */
@@ -1767,9 +1809,11 @@ a.board-row:hover {
     border-color var(--dur-1),
     color var(--dur-1);
 }
-.cal-day:hover:not([disabled]) {
-  background: var(--accent-wash);
-  border-color: var(--accent);
+@media (hover: hover) {
+  .cal-day:hover:not([disabled]) {
+    background: var(--accent-wash);
+    border-color: var(--accent);
+  }
 }
 .cal-day[disabled] {
   color: var(--ink-3);
@@ -1810,8 +1854,10 @@ a.board-row:hover {
     background-color var(--dur-1),
     border-color var(--dur-1);
 }
-.slot:hover {
-  border-color: var(--ink-2);
+@media (hover: hover) {
+  .slot:hover {
+    border-color: var(--ink-2);
+  }
 }
 .slot[aria-pressed="true"] {
   background: var(--accent);
@@ -1827,7 +1873,7 @@ a.board-row:hover {
   height: 11px;
   background: var(--accent);
   border-radius: 50% 50% 50% 50% / 30% 30% 70% 70%;
-  animation: drip 0.7s var(--ease) both;
+  animation: drip 0.7s var(--ease) backwards;
 }
 @keyframes drip {
   from {
@@ -1856,8 +1902,10 @@ a.board-row:hover {
     background-color var(--dur-1),
     box-shadow var(--dur-1);
 }
-.choice:hover {
-  border-color: var(--ink-3);
+@media (hover: hover) {
+  .choice:hover {
+    border-color: var(--ink-3);
+  }
 }
 .choice[aria-checked="true"],
 .choice[aria-pressed="true"] {
@@ -2034,8 +2082,10 @@ a.board-row:hover {
 .star.is-lit {
   color: var(--brass);
 }
-.star:hover {
-  transform: scale(1.12) rotate(-4deg);
+@media (hover: hover) {
+  .star:hover {
+    transform: scale(1.12) rotate(-4deg);
+  }
 }
 .sms-list {
   list-style: none;
@@ -2255,8 +2305,10 @@ a.board-row:hover {
   padding: 14px 16px;
   text-align: left;
 }
-.appt-head:hover {
-  background: color-mix(in srgb, var(--surface-2) 60%, transparent);
+@media (hover: hover) {
+  .appt-head:hover {
+    background: color-mix(in srgb, var(--surface-2) 60%, transparent);
+  }
 }
 .appt-body {
   padding: 4px 16px 18px;
@@ -2516,9 +2568,11 @@ a.board-row:hover {
 a.side-link {
   text-decoration: none;
 }
-.side-link:hover {
-  background: var(--surface-2);
-  color: var(--ink);
+@media (hover: hover) {
+  .side-link:hover {
+    background: var(--surface-2);
+    color: var(--ink);
+  }
 }
 .side-link.is-on {
   background: var(--surface);
@@ -2537,6 +2591,14 @@ a.side-link {
 }
 .tab-head .muted {
   margin-top: 4px;
+}
+@media (max-width: 560px) {
+  /* always stacked on a phone: side by side, a longer subtitle pushed the
+     button onto its own line once the data arrived, and the page jumped */
+  .tab-head {
+    flex-direction: column;
+    align-items: flex-start;
+  }
 }
 .date-nav {
   display: flex;
@@ -2880,7 +2942,7 @@ a.side-link {
   display: flex;
   justify-content: center;
   padding: 0 12px calc(12px + env(safe-area-inset-bottom));
-  animation: sheet-in var(--dur-3) var(--ease) both;
+  animation: sheet-in var(--dur-3) var(--ease) backwards;
   pointer-events: none;
 }
 .np-card {
@@ -2931,7 +2993,7 @@ a.side-link {
   border: 1px solid var(--line);
   box-shadow: var(--shadow-2);
   border-left: 4px solid var(--steel);
-  animation: rise-in var(--dur-3) var(--ease) both;
+  animation: rise-in var(--dur-3) var(--ease) backwards;
   cursor: default;
 }
 /* Each alert sits in a slot that folds shut as it leaves, so the ones below
@@ -2981,9 +3043,11 @@ button.np-text {
   cursor: pointer;
   border-radius: 2px;
 }
-button.np-text:hover .np-title {
-  text-decoration: underline;
-  text-underline-offset: 3px;
+@media (hover: hover) {
+  button.np-text:hover .np-title {
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
 }
 .np-close {
   width: 32px;

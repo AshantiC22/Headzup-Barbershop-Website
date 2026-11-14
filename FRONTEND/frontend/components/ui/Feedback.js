@@ -1,7 +1,23 @@
 "use client";
 // Small shared pieces of feedback UI: toasts, modals, notices, skeletons.
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { createPortal } from "react-dom";
 import { EXIT_MS, useHeld, usePresence } from "./motion";
+
+const noSubscribe = () => () => {};
+
+/**
+ * Renders into <body>, so a dialog or toast is never clipped or out-stacked by
+ * an animated or transformed ancestor. Nothing on the server.
+ */
+export function Portal({ children }) {
+  const inBrowser = useSyncExternalStore(
+    noSubscribe,
+    () => true,
+    () => false,
+  );
+  return inBrowser ? createPortal(children, document.body) : null;
+}
 
 /** const [toasts, toast] = useToasts();  toast("Saved");  toast("Failed", "bad") */
 export function useToasts() {
@@ -14,18 +30,20 @@ export function useToasts() {
     setTimeout(() => setItems((p) => p.filter((t) => t.id !== id)), life);
   }, []);
   const host = (
-    <div className="toast-host" role="status" aria-live="polite">
-      {items.map((t) => (
-        <div
-          key={t.id}
-          className={`toast ${t.tone === "bad" ? "toast-bad" : ""}`}
-          data-state={t.leaving ? "closing" : "open"}
-        >
-          {t.tone === "bad" ? <IconAlert /> : <IconCheck />}
-          <span>{t.msg}</span>
-        </div>
-      ))}
-    </div>
+    <Portal key="toasts">
+      <div className="toast-host" role="status" aria-live="polite">
+        {items.map((t) => (
+          <div
+            key={t.id}
+            className={`toast ${t.tone === "bad" ? "toast-bad" : ""}`}
+            data-state={t.leaving ? "closing" : "open"}
+          >
+            {t.tone === "bad" ? <IconAlert /> : <IconCheck />}
+            <span>{t.msg}</span>
+          </div>
+        ))}
+      </div>
+    </Portal>
   );
   return [host, show];
 }
@@ -75,40 +93,42 @@ export function Modal({ open, onClose, title, children, wide = false, labelledBy
   if (!state) return null;
   const titleId = labelledBy || "modal-title";
   return (
-    <div
-      className="modal-root"
-      data-state={state}
-      inert={state === "closing"}
-      onMouseDown={(e) => {
-        if (e.target === e.currentTarget) onClose?.();
-      }}
-    >
+    <Portal>
       <div
-        ref={ref}
-        className={`modal ${wide ? "modal-wide" : ""}`}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby={shownTitle ? titleId : undefined}
-        tabIndex={-1}
+        className="modal-root"
+        data-state={state}
+        inert={state === "closing"}
+        onMouseDown={(e) => {
+          if (e.target === e.currentTarget) onClose?.();
+        }}
       >
-        {shownTitle && (
-          <div className="spread mb-4" style={{ alignItems: "flex-start" }}>
-            <h2 id={titleId} className="h3">
-              {shownTitle}
-            </h2>
-            <button
-              className="icon-btn"
-              onClick={onClose}
-              aria-label="Close"
-              style={{ marginTop: -8, marginRight: -8 }}
-            >
-              <IconClose />
-            </button>
-          </div>
-        )}
-        {shownChildren}
+        <div
+          ref={ref}
+          className={`modal ${wide ? "modal-wide" : ""}`}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby={shownTitle ? titleId : undefined}
+          tabIndex={-1}
+        >
+          {shownTitle && (
+            <div className="spread mb-4" style={{ alignItems: "flex-start" }}>
+              <h2 id={titleId} className="h3">
+                {shownTitle}
+              </h2>
+              <button
+                className="icon-btn"
+                onClick={onClose}
+                aria-label="Close"
+                style={{ marginTop: -8, marginRight: -8 }}
+              >
+                <IconClose />
+              </button>
+            </div>
+          )}
+          {shownChildren}
+        </div>
       </div>
-    </div>
+    </Portal>
   );
 }
 

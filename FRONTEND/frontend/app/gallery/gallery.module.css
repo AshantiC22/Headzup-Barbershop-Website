@@ -29,9 +29,11 @@
     transform var(--dur-3) var(--ease),
     filter var(--dur-3);
 }
-.pieceBtn:hover {
-  transform: translateY(-3px);
-  filter: drop-shadow(0 0 24px color-mix(in srgb, var(--flame) 18%, transparent));
+@media (hover: hover) {
+  .pieceBtn:hover {
+    transform: translateY(-3px);
+    filter: drop-shadow(0 0 24px color-mix(in srgb, var(--flame) 18%, transparent));
+  }
 }
 .pieceImg {
   width: 100%;
@@ -66,14 +68,14 @@
   background:
     radial-gradient(ellipse 70% 60% at 50% 45%, color-mix(in srgb, var(--flame) 7%, transparent), transparent 70%),
     var(--bg-2);
-  animation: fade-in var(--dur-2) ease both;
+  animation: fade-in var(--dur-2) ease backwards;
 }
 .lightbox[data-state="closing"] {
   animation: fade-out var(--dur-2) var(--ease-in) both;
 }
 /* Stepping between pieces: the new one comes up out of the dark. */
 .lbFrame :global(.frame-inner) > * {
-  animation: fade-in var(--dur-3) var(--ease) both;
+  animation: fade-in var(--dur-3) var(--ease) backwards;
 }
 .lbTop {
   display: flex;

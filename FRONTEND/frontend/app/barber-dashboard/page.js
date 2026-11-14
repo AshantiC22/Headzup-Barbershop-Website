@@ -48,6 +48,25 @@ const money = (n) => {
   return `$${v.toFixed(v % 1 ? 2 : 0)}`;
 };
 
+function StudioLoading() {
+  return (
+    <>
+      <AppHeader title="Barber dashboard" signOutTo="/barber-login" />
+      <div className="studio" aria-busy="true">
+        <aside className="studio-side">
+          <Skeleton h={120} />
+          <Skeleton h={360} className="mt-4" />
+        </aside>
+        <main className="studio-main">
+          <Skeleton h={50} w="40%" />
+          <Skeleton h={90} className="mt-5" />
+          <Skeleton h={300} className="mt-4" />
+        </main>
+      </div>
+    </>
+  );
+}
+
 function Studio() {
   const router = useRouter();
   const params = useSearchParams();
@@ -138,24 +157,7 @@ function Studio() {
     } catch {}
   }, []);
 
-  if (loading) {
-    return (
-      <>
-        <AppHeader title="Barber dashboard" signOutTo="/barber-login" />
-        <div className="studio" aria-busy="true">
-          <aside className="studio-side">
-            <Skeleton h={120} />
-            <Skeleton h={360} className="mt-4" />
-          </aside>
-          <main className="studio-main">
-            <Skeleton h={50} w="40%" />
-            <Skeleton h={90} className="mt-5" />
-            <Skeleton h={300} className="mt-4" />
-          </main>
-        </div>
-      </>
-    );
-  }
+  if (loading) return <StudioLoading />;
 
   const first = barber?.name?.split(" ")[0] || "there";
   const badgeFor = (id) => (id === "reviews" ? badges.reviews : id === "reschedules" ? badges.reschedules : 0);
@@ -241,7 +243,7 @@ function Studio() {
 
 export default function BarberDashboard() {
   return (
-    <Suspense fallback={null}>
+    <Suspense fallback={<StudioLoading />}>
       <Studio />
     </Suspense>
   );

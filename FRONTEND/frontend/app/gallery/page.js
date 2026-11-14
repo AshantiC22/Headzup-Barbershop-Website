@@ -6,7 +6,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Impression from "@/components/art/Impression";
 import SiteNav from "@/components/site/SiteNav";
 import SiteFooter from "@/components/site/SiteFooter";
-import { IconChevronLeft, IconChevronRight, IconClose } from "@/components/ui/Feedback";
+import { IconChevronLeft, IconChevronRight, IconClose, Portal } from "@/components/ui/Feedback";
 import { arrowSelect, rovingIndex } from "@/components/ui/roving";
 import { Present } from "@/components/ui/motion";
 import { GALLERY, GALLERY_FILTERS } from "@/lib/shop";
@@ -42,94 +42,96 @@ function Lightbox({ items, index, open, onClose, onMove }) {
 
   if (!piece) return null;
   return (
-    <div
-      className={s.lightbox}
-      role="dialog"
-      aria-modal="true"
-      aria-label={piece.title}
-      data-state={open ? "open" : "closing"}
-      inert={!open}
-      onTouchStart={(e) => {
-        touch.current = e.touches[0].clientX;
-      }}
-      onTouchEnd={(e) => {
-        if (touch.current == null) return;
-        const dx = e.changedTouches[0].clientX - touch.current;
-        if (Math.abs(dx) > 50) onMove(dx < 0 ? 1 : -1);
-        touch.current = null;
-      }}
-    >
-      <div className={s.lbTop}>
-        <div
-          className="hu-theme-switch"
-          role="radiogroup"
-          aria-label="How to show this piece"
-          onKeyDown={(e) => {
-            e.stopPropagation();
-            arrowSelect(e, VIEWS, view, setView);
-          }}
-        >
-          {VIEWS.map((v) => (
-            <button
-              key={v}
-              type="button"
-              role="radio"
-              aria-checked={view === v}
-              tabIndex={rovingIndex(v, view, VIEWS)}
-              className={view === v ? "is-on" : ""}
-              onClick={() => setView(v)}
-            >
-              {v === "photo" ? "Photograph" : "Oil sketch"}
-            </button>
-          ))}
+    <Portal>
+      <div
+        className={s.lightbox}
+        role="dialog"
+        aria-modal="true"
+        aria-label={piece.title}
+        data-state={open ? "open" : "closing"}
+        inert={!open}
+        onTouchStart={(e) => {
+          touch.current = e.touches[0].clientX;
+        }}
+        onTouchEnd={(e) => {
+          if (touch.current == null) return;
+          const dx = e.changedTouches[0].clientX - touch.current;
+          if (Math.abs(dx) > 50) onMove(dx < 0 ? 1 : -1);
+          touch.current = null;
+        }}
+      >
+        <div className={s.lbTop}>
+          <div
+            className="hu-theme-switch"
+            role="radiogroup"
+            aria-label="How to show this piece"
+            onKeyDown={(e) => {
+              e.stopPropagation();
+              arrowSelect(e, VIEWS, view, setView);
+            }}
+          >
+            {VIEWS.map((v) => (
+              <button
+                key={v}
+                type="button"
+                role="radio"
+                aria-checked={view === v}
+                tabIndex={rovingIndex(v, view, VIEWS)}
+                className={view === v ? "is-on" : ""}
+                onClick={() => setView(v)}
+              >
+                {v === "photo" ? "Photograph" : "Oil sketch"}
+              </button>
+            ))}
+          </div>
+          <button ref={closeRef} className={`icon-btn ${s.lbClose}`} onClick={onClose} aria-label="Close">
+            <IconClose size={24} />
+          </button>
         </div>
-        <button ref={closeRef} className={`icon-btn ${s.lbClose}`} onClick={onClose} aria-label="Close">
-          <IconClose size={24} />
-        </button>
-      </div>
 
-      <div className={s.lbStage}>
-        <button className={`icon-btn ${s.lbNav}`} onClick={() => onMove(-1)} aria-label="Previous piece">
-          <IconChevronLeft size={28} />
-        </button>
-        <div className={`frame ${s.lbFrame}`}>
-          <div className="frame-inner">
-            {view === "photo" ? (
-              <picture key={piece.id}>
-                <source srcSet={piece.webp} type="image/webp" />
-                <img src={piece.src} alt={`${piece.title}: ${piece.medium}`} className={s.lbImg} />
-              </picture>
-            ) : (
-              <Impression
-                key={`p${piece.id}`}
-                src={piece.src}
-                alt={`${piece.title}, painted`}
-                seed={piece.id * 7}
-                detail={1.4}
-                className={s.lbImg}
-                priority
-              />
-            )}
+        <div className={s.lbStage}>
+          <button className={`icon-btn ${s.lbNav}`} onClick={() => onMove(-1)} aria-label="Previous piece">
+            <IconChevronLeft size={28} />
+          </button>
+          <div className={`frame ${s.lbFrame}`}>
+            <div className="frame-inner">
+              {view === "photo" ? (
+                <picture key={piece.id}>
+                  <source srcSet={piece.webp} type="image/webp" />
+                  <img src={piece.src} alt={`${piece.title}: ${piece.medium}`} className={s.lbImg} />
+                </picture>
+              ) : (
+                <Impression
+                  key={`p${piece.id}`}
+                  src={piece.src}
+                  alt={`${piece.title}, painted`}
+                  seed={piece.id * 7}
+                  detail={1.4}
+                  className={s.lbImg}
+                  priority
+                />
+              )}
+            </div>
+          </div>
+          <button className={`icon-btn ${s.lbNav}`} onClick={() => onMove(1)} aria-label="Next piece">
+            <IconChevronRight size={28} />
+          </button>
+        </div>
+
+        <div className={`placard ${s.lbPlacard}`}>
+          <p className="placard-title">{piece.title}</p>
+          <p className="placard-medium">{piece.medium}. Headz Up, Hattiesburg.</p>
+          <div className="row-wrap mt-3">
+            <Link href="/book" className="btn btn-primary btn-sm">
+              Book a cut
+            </Link>
+            <span className="small faint">
+              {index + 1} of {items.length}
+            </span>
           </div>
         </div>
-        <button className={`icon-btn ${s.lbNav}`} onClick={() => onMove(1)} aria-label="Next piece">
-          <IconChevronRight size={28} />
-        </button>
       </div>
-
-      <div className={`placard ${s.lbPlacard}`}>
-        <p className="placard-title">{piece.title}</p>
-        <p className="placard-medium">{piece.medium}. Headz Up, Hattiesburg.</p>
-        <div className="row-wrap mt-3">
-          <Link href="/book" className="btn btn-primary btn-sm">
-            Book a cut
-          </Link>
-          <span className="small faint">
-            {index + 1} of {items.length}
-          </span>
-        </div>
-      </div>
-    </div>
+    </Portal>
   );
 }
 

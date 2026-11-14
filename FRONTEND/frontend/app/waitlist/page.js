@@ -8,6 +8,22 @@ import SiteFooter from "@/components/site/SiteFooter";
 import { Notice, Skeleton, Spinner, IconTrash } from "@/components/ui/Feedback";
 import { fmtDate, todayStr } from "@/lib/time";
 
+// Same rhythm as the form (three fields, a note, the button) so nothing
+// below it moves when the real form arrives.
+function WaitlistLoading() {
+  return (
+    <div className="panel panel-pad mt-7" aria-busy="true">
+      {[50, 50, 50, 96].map((h, i) => (
+        <div key={i} className="mb-5">
+          <Skeleton h={18} w="34%" className="mb-2" />
+          <Skeleton h={h} />
+        </div>
+      ))}
+      <Skeleton h={56} />
+    </div>
+  );
+}
+
 function WaitlistContent() {
   const params = useSearchParams();
   const [barbers, setBarbers] = useState([]);
@@ -87,130 +103,127 @@ function WaitlistContent() {
 
   return (
     <>
-      <SiteNav />
-      <main id="main" className="wrap-narrow page-pad">
-        <h1 className="h1">Waitlist</h1>
-        <p className="lede mt-3">
-          Day already full? Put your name down and we&apos;ll text you the moment a chair opens with that barber.
-        </p>
+      {msg.text && (
+        <Notice tone={msg.tone} className="mt-6">
+          {msg.text}
+        </Notice>
+      )}
 
-        {msg.text && (
-          <Notice tone={msg.tone} className="mt-6">
-            {msg.text}
-          </Notice>
-        )}
-
-        {loading ? (
-          <div className="panel panel-pad mt-7">
-            {[0, 1, 2].map((i) => (
-              <Skeleton key={i} h={50} className="mb-4" />
-            ))}
-          </div>
-        ) : (
-          <form className="panel panel-pad mt-7" onSubmit={join} noValidate>
-            <div className="field">
-              <label className="label" htmlFor="w-barber">
-                Barber
-              </label>
-              <select id="w-barber" className="select" value={form.barber} onChange={set("barber")}>
-                <option value="">Choose a barber</option>
-                {barbers.map((b) => (
-                  <option key={b.id} value={b.id}>
-                    {b.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="field">
-              <label className="label" htmlFor="w-date">
-                Day you want
-              </label>
-              <input
-                id="w-date"
-                type="date"
-                className="input"
-                min={todayStr()}
-                value={form.date}
-                onChange={set("date")}
-              />
-            </div>
-            <div className="field">
-              <label className="label" htmlFor="w-svc">
-                Service <span className="label-note">(optional)</span>
-              </label>
-              <select id="w-svc" className="select" value={form.service} onChange={set("service")}>
-                <option value="">Any service</option>
-                {services.map((x) => (
-                  <option key={x.id} value={x.id}>
-                    {x.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="field">
-              <label className="label" htmlFor="w-notes">
-                Anything to know <span className="label-note">(optional)</span>
-              </label>
-              <textarea
-                id="w-notes"
-                className="textarea"
-                rows={2}
-                value={form.notes}
-                onChange={set("notes")}
-                placeholder="Any time after 3 works for me"
-              />
-            </div>
-            <button className="btn btn-primary btn-lg btn-block mt-6" disabled={busy}>
-              {busy ? <Spinner label="Adding you" /> : "Join the waitlist"}
-            </button>
-          </form>
-        )}
-
-        {mine.length > 0 && (
-          <section className="mt-8" aria-labelledby="mine-title">
-            <h2 id="mine-title" className="h3">
-              You&apos;re waiting on
-            </h2>
-            <ul className="stack mt-4" style={{ "--stack": "10px" }}>
-              {mine.map((w) => (
-                <li key={w.id} className="placard spread">
-                  <div>
-                    <p className="placard-title">{fmtDate(w.date, "long")}</p>
-                    <p className="placard-medium">
-                      with {w.barber_name}
-                      {w.service_name ? `, ${w.service_name}` : ""}
-                    </p>
-                    {w.notified && <span className="chip chip-ok mt-2">We texted you</span>}
-                  </div>
-                  <button
-                    className="btn btn-quiet btn-sm"
-                    disabled={removing === w.id}
-                    onClick={() => remove(w.id)}
-                    aria-label={`Leave the waitlist for ${fmtDate(w.date)}`}
-                  >
-                    {removing === w.id ? (
-                      <Spinner />
-                    ) : (
-                      <>
-                        <IconTrash size={16} /> Leave
-                      </>
-                    )}
-                  </button>
-                </li>
+      {loading ? (
+        <WaitlistLoading />
+      ) : (
+        <form className="panel panel-pad mt-7" onSubmit={join} noValidate>
+          <div className="field">
+            <label className="label" htmlFor="w-barber">
+              Barber
+            </label>
+            <select id="w-barber" className="select" value={form.barber} onChange={set("barber")}>
+              <option value="">Choose a barber</option>
+              {barbers.map((b) => (
+                <option key={b.id} value={b.id}>
+                  {b.name}
+                </option>
               ))}
-            </ul>
-          </section>
-        )}
-      </main>
-      <SiteFooter />
+            </select>
+          </div>
+          <div className="field">
+            <label className="label" htmlFor="w-date">
+              Day you want
+            </label>
+            <input
+              id="w-date"
+              type="date"
+              className="input"
+              min={todayStr()}
+              value={form.date}
+              onChange={set("date")}
+            />
+          </div>
+          <div className="field">
+            <label className="label" htmlFor="w-svc">
+              Service <span className="label-note">(optional)</span>
+            </label>
+            <select id="w-svc" className="select" value={form.service} onChange={set("service")}>
+              <option value="">Any service</option>
+              {services.map((x) => (
+                <option key={x.id} value={x.id}>
+                  {x.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="field">
+            <label className="label" htmlFor="w-notes">
+              Anything to know <span className="label-note">(optional)</span>
+            </label>
+            <textarea
+              id="w-notes"
+              className="textarea"
+              rows={2}
+              value={form.notes}
+              onChange={set("notes")}
+              placeholder="Any time after 3 works for me"
+            />
+          </div>
+          <button className="btn btn-primary btn-lg btn-block mt-6" disabled={busy}>
+            {busy ? <Spinner label="Adding you" /> : "Join the waitlist"}
+          </button>
+        </form>
+      )}
+
+      {mine.length > 0 && (
+        <section className="mt-8" aria-labelledby="mine-title">
+          <h2 id="mine-title" className="h3">
+            You&apos;re waiting on
+          </h2>
+          <ul className="stack mt-4" style={{ "--stack": "10px" }}>
+            {mine.map((w) => (
+              <li key={w.id} className="placard spread">
+                <div>
+                  <p className="placard-title">{fmtDate(w.date, "long")}</p>
+                  <p className="placard-medium">
+                    with {w.barber_name}
+                    {w.service_name ? `, ${w.service_name}` : ""}
+                  </p>
+                  {w.notified && <span className="chip chip-ok mt-2">We texted you</span>}
+                </div>
+                <button
+                  className="btn btn-quiet btn-sm"
+                  disabled={removing === w.id}
+                  onClick={() => remove(w.id)}
+                  aria-label={`Leave the waitlist for ${fmtDate(w.date)}`}
+                >
+                  {removing === w.id ? (
+                    <Spinner />
+                  ) : (
+                    <>
+                      <IconTrash size={16} /> Leave
+                    </>
+                  )}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
     </>
   );
 }
 
 export default function WaitlistPage() {
   return (
-    <Suspense fallback={null}>
-      <WaitlistContent />
-    </Suspense>
+    <>
+      <SiteNav />
+      <main id="main" className="wrap-narrow page-pad">
+        <h1 className="h1">Waitlist</h1>
+        <p className="lede mt-3">
+          Day already full? Put your name down and we&apos;ll text you the moment a chair opens with that barber.
+        </p>
+        <Suspense fallback={<WaitlistLoading />}>
+          <WaitlistContent />
+        </Suspense>
+      </main>
+      <SiteFooter />
+    </>
   );
 }
