@@ -16,6 +16,7 @@ npm run build
 | Variable | Default | |
 | --- | --- | --- |
 | `NEXT_PUBLIC_API_URL` | `https://api.headzupp.com` | API origin. A trailing `/api` or slash is stripped (`lib/config.js`) |
+| `NEXT_PUBLIC_ONLINE_PAYMENTS` | off | `on` brings back Stripe card deposits. Off, the shop takes cash and Cash App in person and nothing offers a card. The API needs `ONLINE_PAYMENTS=on` too |
 | `NEXT_PUBLIC_VAPID_PUBLIC_KEY` | none | Web push key; when unset it's fetched from `push/vapid-key/` |
 
 ## Layout

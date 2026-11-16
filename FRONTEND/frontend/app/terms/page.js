@@ -4,6 +4,7 @@
 import SiteNav from "@/components/site/SiteNav";
 import SiteFooter from "@/components/site/SiteFooter";
 import { ADDRESS_LINE, SHOP } from "@/lib/shop";
+import { ONLINE_PAYMENTS } from "@/lib/config";
 
 const TERMS = [
   {
@@ -25,17 +26,28 @@ const TERMS = [
       "The shop may cancel an appointment for an emergency or anything outside its control; you'll be told by text or email.",
     ],
   },
-  {
-    id: "payments",
-    title: "Payments and deposits",
-    items: [
-      "Pay at the shop with cash or card, or hold your time online with a deposit. Card payments are handled by Stripe; the shop never sees or stores your card number.",
-      "A deposit comes off your service price. The rest is paid in the chair.",
-      "Deposits aren't refunded if you cancel or miss your appointment. Other refunds are handled case by case; contact the shop.",
-      "With more than one strike on your account, your next online deposit goes up by $1.50 for each extra strike.",
-      "Prices are in US dollars. The price shown when you book is the price you pay.",
-    ],
-  },
+  ONLINE_PAYMENTS
+    ? {
+        id: "payments",
+        title: "Payments and deposits",
+        items: [
+          "Pay at the shop with cash or Cash App, or hold your time online with a deposit. Card payments are handled by Stripe; the shop never sees or stores your card number.",
+          "A deposit comes off your service price. The rest is paid in the chair.",
+          "Deposits aren't refunded if you cancel or miss your appointment. Other refunds are handled case by case; contact the shop.",
+          "With more than one strike on your account, your next online deposit goes up by $1.50 for each extra strike.",
+          "Prices are in US dollars. The price shown when you book is the price you pay.",
+        ],
+      }
+    : {
+        id: "payments",
+        title: "Payments",
+        items: [
+          "You pay at the shop, in cash or by Cash App. Booking online is free; nothing is charged when you book.",
+          "Refunds are handled case by case; talk to your barber or contact the shop.",
+          "Strikes for missed appointments and late cancels stay on your account, and your barber can see them.",
+          "Prices are in US dollars. The price shown when you book is the price you pay.",
+        ],
+      },
   {
     id: "texts",
     title: "Text messages",
@@ -80,7 +92,7 @@ const PRIVACY = [
     items: [
       "Your username, email and phone number when you sign up.",
       "Your appointments: service, barber, date, time, notes and how you paid.",
-      "Payment choice only. Card details go straight to Stripe.",
+      ...(ONLINE_PAYMENTS ? ["Payment choice only. Card details go straight to Stripe."] : []),
     ],
   },
   {
@@ -97,7 +109,9 @@ const PRIVACY = [
     title: "Who sees it",
     items: [
       "Barbers at the shop see your appointment details so they can serve you.",
-      "Stripe processes card payments under its own privacy policy. Our text-message provider delivers texts.",
+      ONLINE_PAYMENTS
+        ? "Stripe processes card payments under its own privacy policy. Our text-message provider delivers texts."
+        : "Our text-message provider delivers texts.",
       "Mobile numbers and text-message consent are never shared with third parties or affiliates for marketing.",
       "We'll disclose information if the law requires it.",
     ],
@@ -141,7 +155,7 @@ export default function TermsPage() {
         <h1 className="h1">Terms and privacy</h1>
         <p className="lede mt-3">
           The rules for booking with HEADZ UP Barbershop, and what we do with your information. Last updated November
-          2026.
+          16, 2026.
         </p>
         <nav className="panel panel-pad mt-7" aria-label="On this page">
           <p className="label">On this page</p>

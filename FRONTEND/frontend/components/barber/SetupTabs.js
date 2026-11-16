@@ -2,6 +2,7 @@
 // Hours and booking rules, news posts, and the barber's own profile.
 import { useEffect, useState } from "react";
 import API from "@/lib/api";
+import { ONLINE_PAYMENTS } from "@/lib/config";
 import Impression from "@/components/art/Impression";
 import { IconCamera, IconTrash, Modal, Skeleton, Spinner } from "@/components/ui/Feedback";
 import { fmtDate, fmtTime, todayStr } from "@/lib/time";
@@ -214,45 +215,53 @@ export function HoursTab({ toast }) {
         </section>
 
         <form className="panel panel-pad span-all" onSubmit={saveSettings}>
-          <h2 className="h4">Online booking rules</h2>
+          <h2 className="h4">{ONLINE_PAYMENTS ? "Online booking rules" : "No-show rules"}</h2>
           {!settings ? (
             <Skeleton h={160} className="mt-3" />
           ) : (
             <>
-              <div className="field mt-4" style={{ maxWidth: 260 }}>
-                <label className="label" htmlFor="dep">
-                  Deposit amount
-                </label>
-                <div className="input-wrap">
-                  <span className="input-prefix" aria-hidden="true">
-                    $
-                  </span>
-                  <input
-                    id="dep"
-                    className="input"
-                    type="number"
-                    min="1"
-                    max="500"
-                    step="0.5"
-                    inputMode="decimal"
-                    style={{ paddingLeft: 28 }}
-                    value={settings.deposit_amount}
-                    onChange={(e) => setSettings((p) => ({ ...p, deposit_amount: e.target.value }))}
-                  />
+              {ONLINE_PAYMENTS && (
+                <div className="field mt-4" style={{ maxWidth: 260 }}>
+                  <label className="label" htmlFor="dep">
+                    Deposit amount
+                  </label>
+                  <div className="input-wrap">
+                    <span className="input-prefix" aria-hidden="true">
+                      $
+                    </span>
+                    <input
+                      id="dep"
+                      className="input"
+                      type="number"
+                      min="1"
+                      max="500"
+                      step="0.5"
+                      inputMode="decimal"
+                      style={{ paddingLeft: 28 }}
+                      value={settings.deposit_amount}
+                      onChange={(e) => setSettings((p) => ({ ...p, deposit_amount: e.target.value }))}
+                    />
+                  </div>
+                  <p className="field-hint">What clients pay up front to hold a time online. $1 to $500.</p>
                 </div>
-                <p className="field-hint">What clients pay up front to hold a time online. $1 to $500.</p>
-              </div>
+              )}
               {[
                 [
                   "strike_enabled",
                   "Strikes for no-shows",
-                  "Missed appointments and late cancels add a strike; each extra strike adds $1.50 to that client's next deposit.",
+                  ONLINE_PAYMENTS
+                    ? "Missed appointments and late cancels add a strike; each extra strike adds $1.50 to that client's next deposit."
+                    : "Missed appointments and late cancels add a strike to the client's account. They see it when they book.",
                 ],
-                [
-                  "require_deposit",
-                  "Ask for a deposit online",
-                  "Turn off to let clients hold a time online without paying first.",
-                ],
+                ...(ONLINE_PAYMENTS
+                  ? [
+                      [
+                        "require_deposit",
+                        "Ask for a deposit online",
+                        "Turn off to let clients hold a time online without paying first.",
+                      ],
+                    ]
+                  : []),
               ].map(([k, label, desc]) => (
                 <div key={k} className="spread setting">
                   <div>
@@ -564,7 +573,9 @@ export function ProfileTab({ barber, setBarber, toast }) {
             <label className="h4" htmlFor="cash">
               Cash App
             </label>
-            <p className="small muted mt-1">For clients who want to pay you that way in the shop.</p>
+            <p className="small muted mt-1">
+              Clients see it when they book and on their confirmation, with a link that opens Cash App to pay you.
+            </p>
             <div className="row mt-3">
               <div className="input-wrap grow">
                 <span className="input-prefix" aria-hidden="true">

@@ -1490,6 +1490,10 @@ a.board-row {
   }
 }
 
+.nowrap {
+  white-space: nowrap;
+}
+
 /* Utility motion. Entrances fill backwards only: an animation that keeps
    holding its end state keeps a stacking context, which traps fixed
    dialogs under the header. */

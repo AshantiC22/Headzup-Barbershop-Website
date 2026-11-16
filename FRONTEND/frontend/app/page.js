@@ -10,7 +10,7 @@ import SiteNav from "@/components/site/SiteNav";
 import SiteFooter, { HoursList } from "@/components/site/SiteFooter";
 import ToolRack from "@/components/site/ToolRack";
 import { IconPhone, IconPin, Skeleton } from "@/components/ui/Feedback";
-import { API_ROOT } from "@/lib/config";
+import { API_ROOT, ONLINE_PAYMENTS } from "@/lib/config";
 import { ADDRESS_LINE, GALLERY, REVIEWS, SHOP } from "@/lib/shop";
 import { shopStatus } from "@/lib/time";
 import s from "./home.module.css";
@@ -98,8 +98,10 @@ function Services() {
             Services and prices
           </h2>
           <p className="lede">
-            Pick a service to see what it takes and what it costs. Pay in the shop, or put a deposit down online to hold
-            your spot.
+            Pick a service to see what it takes and what it costs.{" "}
+            {ONLINE_PAYMENTS
+              ? "Pay in the shop, or put a deposit down online to hold your spot."
+              : "Pay in the shop, cash or Cash App."}
           </p>
         </div>
         <ToolRack />
