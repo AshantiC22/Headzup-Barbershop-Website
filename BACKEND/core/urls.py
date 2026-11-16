@@ -20,7 +20,6 @@ from core.views import (
     # Account recovery
     SetSecurityQuestionView,
     RecoveryStep1View,
-    RecoveryStep1ByQuestionView,
     RecoveryStep2View,
     RecoveryStep3View,
     SecurityQuestionsListView,
@@ -73,7 +72,6 @@ from core.views import (
     VapidPublicKeyView,
     TestPushView,
     TestSMSView,
-    TestEmailView,
     SMSTestView,
 )
 
@@ -99,7 +97,6 @@ urlpatterns = [
     path("security-questions/",          SecurityQuestionsListView.as_view(),   name="security_questions"),
     path("security-question/set/",       SetSecurityQuestionView.as_view(),     name="set_security_question"),
     path("recovery/step1/",              RecoveryStep1View.as_view(),           name="recovery_step1"),
-    path("recovery/step1-by-question/",  RecoveryStep1ByQuestionView.as_view(), name="recovery_step1_question"),
     path("recovery/step2/",              RecoveryStep2View.as_view(),           name="recovery_step2"),
     path("recovery/step3/",              RecoveryStep3View.as_view(),           name="recovery_step3"),
 
@@ -178,7 +175,6 @@ urlpatterns = [
     path("waitlist/<int:pk>/",           ClientWaitlistView.as_view(),               name="waitlist_remove"),
 
     path("test-sms/",   TestSMSView.as_view(),   name="test_sms"),
-    path("test-email/", TestEmailView.as_view(), name="test_email"),
 
     path("", include(router.urls)),
 ]

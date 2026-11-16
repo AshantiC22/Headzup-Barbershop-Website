@@ -32,7 +32,9 @@ export default function StreetScene({ open = false }) {
   const lit = open && painted;
   const onPainted = useCallback((key) => {
     setPaintedFor(key);
-    try { sessionStorage.setItem("hu_painted", "1"); } catch {}
+    try {
+      sessionStorage.setItem("hu_painted", "1");
+    } catch {}
   }, []);
   const requestPaint = useScenePainter({ paint: paintSlot, fore: fogSlot }, onPainted);
   const lastPalette = useRef(null);
@@ -46,16 +48,23 @@ export default function StreetScene({ open = false }) {
     let t;
     const measure = () => {
       const r = el.getBoundingClientRect();
-      const w = Math.round(r.width), h = Math.round(r.height);
+      const w = Math.round(r.width),
+        h = Math.round(r.height);
       setSize((prev) => {
         if (prev && Math.abs(prev.w - w) < 2 && Math.abs(prev.h - h) < 80) return prev;
         return { w, h };
       });
     };
     measure();
-    const ro = new ResizeObserver(() => { clearTimeout(t); t = setTimeout(measure, 120); });
+    const ro = new ResizeObserver(() => {
+      clearTimeout(t);
+      t = setTimeout(measure, 120);
+    });
     ro.observe(el);
-    return () => { ro.disconnect(); clearTimeout(t); };
+    return () => {
+      ro.disconnect();
+      clearTimeout(t);
+    };
   }, []);
 
   // Paint the street.
@@ -63,11 +72,18 @@ export default function StreetScene({ open = false }) {
     if (!size) return;
     const { w, h } = size;
     let firstThisSession = false;
-    try { firstThisSession = !sessionStorage.getItem("hu_painted"); } catch {}
+    try {
+      firstThisSession = !sessionStorage.getItem("hu_painted");
+    } catch {}
     const themeChanged = lastPalette.current && lastPalette.current !== palette;
     lastPalette.current = palette;
     requestPaint.current?.({
-      scene: "street", key: `${w}x${h}:${palette}`, w, h, mode: palette, seed: 7,
+      scene: "street",
+      key: `${w}x${h}:${palette}`,
+      w,
+      h,
+      mode: palette,
+      seed: 7,
       dpr: Math.min(window.devicePixelRatio || 1, 2),
       animate: !prefersReducedMotion() && (firstThisSession || themeChanged),
       duration: themeChanged ? 900 : 1500,
@@ -81,7 +97,8 @@ export default function StreetScene({ open = false }) {
     const G = lampGeometry(L);
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
     const cw = G.width;
-    const ox = L.pole.x - cw / 2, oy = G.top - 2;
+    const ox = L.pole.x - cw / 2,
+      oy = G.top - 2;
     const ch = L.pole.base - oy + 2;
     const canvas = poleRef.current;
     canvas.width = Math.round(cw * dpr);
@@ -89,15 +106,35 @@ export default function StreetScene({ open = false }) {
     Object.assign(canvas.style, { width: `${cw}px`, height: `${ch}px`, left: `${ox}px`, top: `${oy}px` });
     const { tile, period } = paintPoleTile({ width: L.pole.w, mode: palette, dpr });
     poleState.current = {
-      ctx: canvas.getContext("2d"), dpr, cw, ch, ox, oy, L, tile, period,
-      edges: poleEdges(L.pole.w, G.bodyBottom - G.bodyTop), offset: poleState.current?.offset || 0,
-      mode: palette, lit: poleState.current?.lit || false,
+      ctx: canvas.getContext("2d"),
+      dpr,
+      cw,
+      ch,
+      ox,
+      oy,
+      L,
+      tile,
+      period,
+      edges: poleEdges(L.pole.w, G.bodyBottom - G.bodyTop),
+      offset: poleState.current?.offset || 0,
+      mode: palette,
+      lit: poleState.current?.lit || false,
     };
     const s = poleState.current;
     s.draw = () => {
       s.ctx.setTransform(s.dpr, 0, 0, s.dpr, 0, 0);
       s.ctx.clearRect(0, 0, s.cw, s.ch);
-      drawLampPole(s.ctx, { L: s.L, tile: s.tile, period: s.period, offset: s.offset, mode: s.mode, edges: s.edges, lit: s.lit, ox: s.ox, oy: s.oy });
+      drawLampPole(s.ctx, {
+        L: s.L,
+        tile: s.tile,
+        period: s.period,
+        offset: s.offset,
+        mode: s.mode,
+        edges: s.edges,
+        lit: s.lit,
+        ox: s.ox,
+        oy: s.oy,
+      });
     };
     s.draw();
   }, [size, palette]);
@@ -114,10 +151,17 @@ export default function StreetScene({ open = false }) {
   useEffect(() => {
     const el = boxRef.current;
     if (!el) return;
-    const io = new IntersectionObserver(([e]) => { visible.current = e.isIntersecting; }, { threshold: 0 });
+    const io = new IntersectionObserver(
+      ([e]) => {
+        visible.current = e.isIntersecting;
+      },
+      { threshold: 0 },
+    );
     io.observe(el);
     if (!open || prefersReducedMotion()) return () => io.disconnect();
-    let raf, last = performance.now(), acc = 0;
+    let raf,
+      last = performance.now(),
+      acc = 0;
     const loop = (now) => {
       const dt = Math.min(0.1, (now - last) / 1000);
       last = now;
@@ -131,7 +175,10 @@ export default function StreetScene({ open = false }) {
       raf = requestAnimationFrame(loop);
     };
     raf = requestAnimationFrame(loop);
-    return () => { cancelAnimationFrame(raf); io.disconnect(); };
+    return () => {
+      cancelAnimationFrame(raf);
+      io.disconnect();
+    };
   }, [open, size, palette]);
 
   const L = size ? streetLayout(size.w, size.h) : null;
@@ -140,14 +187,24 @@ export default function StreetScene({ open = false }) {
       <div ref={paintSlot} className="street-paint" />
       {L && (
         <>
-          <div className="lamp-pool" style={{
-            left: L.pole.x, top: L.ground + L.h * 0.03,
-            "--pool-w": `${Math.round(L.pole.w * (L.narrow ? 7 : 11))}px`, "--pool-h": `${Math.round(L.h * 0.1)}px`,
-          }} />
+          <div
+            className="lamp-pool"
+            style={{
+              left: L.pole.x,
+              top: L.ground + L.h * 0.03,
+              "--pool-w": `${Math.round(L.pole.w * (L.narrow ? 7 : 11))}px`,
+              "--pool-h": `${Math.round(L.h * 0.1)}px`,
+            }}
+          />
         </>
       )}
       <canvas ref={poleRef} className="street-pole" />
-      {L && <div className="lamp-glow" style={{ left: L.pole.x, top: L.pole.globeY, "--glow-size": `${Math.round(L.pole.globeR * 13)}px` }} />}
+      {L && (
+        <div
+          className="lamp-glow"
+          style={{ left: L.pole.x, top: L.pole.globeY, "--glow-size": `${Math.round(L.pole.globeR * 13)}px` }}
+        />
+      )}
       <div ref={fogSlot} className={`street-fog ${painted ? "is-on" : ""}`} />
     </div>
   );

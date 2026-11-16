@@ -17,7 +17,14 @@ function Clippers() {
   return (
     <g>
       <path d="M20 13.5h24v7.5H20z" />
-      <path d={range(21.5, 42.5, 3).map((x) => `M${x} 13.5v-3.2`).join("")} {...hatch} strokeWidth="1.1" opacity="0.9" />
+      <path
+        d={range(21.5, 42.5, 3)
+          .map((x) => `M${x} 13.5v-3.2`)
+          .join("")}
+        {...hatch}
+        strokeWidth="1.1"
+        opacity="0.9"
+      />
       <path d="M21 21h22l-1.9 31.2c-.2 3-2.6 5.3-5.6 5.3h-7c-3 0-5.4-2.3-5.6-5.3z" />
       <rect x="28.8" y="27" width="6.4" height="9.5" rx="1.6" />
       <path d="M38.5 39.5l-.6 12.5M35.3 40.5l-.3 12M32 41.5V53" {...hatch} />
@@ -59,7 +66,14 @@ function Trimmer() {
   return (
     <g>
       <path d="M13 12.5h38v6H13z" />
-      <path d={range(14.5, 49.5, 2.5).map((x) => `M${x} 12.5v-3`).join("")} {...hatch} strokeWidth="1" opacity="0.9" />
+      <path
+        d={range(14.5, 49.5, 2.5)
+          .map((x) => `M${x} 12.5v-3`)
+          .join("")}
+        {...hatch}
+        strokeWidth="1"
+        opacity="0.9"
+      />
       <path d="M26.5 18.5h11v4h-11z" />
       <path d="M25 22.5h14l-1.5 30c-.2 3.1-2.6 5.3-5.5 5.3s-5.3-2.2-5.5-5.3z" />
       <circle cx="32" cy="30.5" r="2.6" />
@@ -75,7 +89,8 @@ function Comb() {
       <path d="M11 24.5h42" {...hatch} />
       <path
         d={[...range(10, 30, 2.5).map((x) => `M${x} 30v12.5`), ...range(34, 54, 4).map((x) => `M${x} 30v16`)].join("")}
-        fill="none" strokeWidth="1.5"
+        fill="none"
+        strokeWidth="1.5"
       />
     </g>
   );
@@ -97,11 +112,11 @@ function Brush() {
 // upright so two tools can be crossed at the same angle.
 const TOOLS = {
   clippers: { Draw: Clippers, solo: "", upright: "" },
-  razor:    { Draw: Razor, solo: "rotate(-38 32 32)", upright: "rotate(-90 32 32)" },
-  shears:   { Draw: Shears, solo: "", upright: "" },
-  trimmer:  { Draw: Trimmer, solo: "", upright: "" },
-  comb:     { Draw: Comb, solo: "rotate(-8 32 32)", upright: "rotate(-90 32 32)" },
-  brush:    { Draw: Brush, solo: "", upright: "" },
+  razor: { Draw: Razor, solo: "rotate(-38 32 32)", upright: "rotate(-90 32 32)" },
+  shears: { Draw: Shears, solo: "", upright: "" },
+  trimmer: { Draw: Trimmer, solo: "", upright: "" },
+  comb: { Draw: Comb, solo: "rotate(-8 32 32)", upright: "rotate(-90 32 32)" },
+  brush: { Draw: Brush, solo: "", upright: "" },
 };
 
 /** Which tools a service uses, from its name. */
@@ -120,20 +135,37 @@ export function toolsForService(name = "") {
 export function ToolIcon({ tools = ["clippers"], size = 64, className = "", title }) {
   const [first, second] = tools.map((t) => TOOLS[t]).filter(Boolean);
   return (
-    <svg viewBox="0 0 64 64" width={size} height={size} className={className}
-      role={title ? "img" : undefined} aria-label={title} aria-hidden={title ? undefined : true}
-      style={{ fill: "var(--tool-fill, none)" }} stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" strokeLinecap="round">
+    <svg
+      viewBox="0 0 64 64"
+      width={size}
+      height={size}
+      className={className}
+      role={title ? "img" : undefined}
+      aria-label={title}
+      aria-hidden={title ? undefined : true}
+      style={{ fill: "var(--tool-fill, none)" }}
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinejoin="round"
+      strokeLinecap="round"
+    >
       {second ? (
         <>
           <g transform="translate(32 32) rotate(-34) scale(0.88) translate(-32 -32)">
-            <g transform={second.upright}><second.Draw /></g>
+            <g transform={second.upright}>
+              <second.Draw />
+            </g>
           </g>
           <g transform="translate(32 32) rotate(34) scale(0.88) translate(-32 -32)">
-            <g transform={first.upright}><first.Draw /></g>
+            <g transform={first.upright}>
+              <first.Draw />
+            </g>
           </g>
         </>
       ) : (
-        <g transform={first.solo}><first.Draw /></g>
+        <g transform={first.solo}>
+          <first.Draw />
+        </g>
       )}
     </svg>
   );

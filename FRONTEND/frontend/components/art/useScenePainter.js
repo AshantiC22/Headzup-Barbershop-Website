@@ -20,7 +20,12 @@ const canTransfer = () =>
 function paintHere(els, req, onDone) {
   const compose = req.scene === "street" ? composeStreet(req) : composeSky(req);
   return paint(els.paint, {
-    width: req.w, height: req.h, dpr: req.dpr, compose, animate: req.animate, duration: req.duration,
+    width: req.w,
+    height: req.h,
+    dpr: req.dpr,
+    compose,
+    animate: req.animate,
+    duration: req.duration,
     onDone: () => {
       if (els.fore) {
         els.fore.width = Math.round(req.w * req.dpr);
@@ -37,7 +42,9 @@ function paintHere(els, req, onDone) {
 export function useScenePainter(slots, onDone) {
   const request = useRef(null);
   const onDoneRef = useRef(onDone);
-  useEffect(() => { onDoneRef.current = onDone; }, [onDone]);
+  useEffect(() => {
+    onDoneRef.current = onDone;
+  }, [onDone]);
 
   useEffect(() => {
     const els = {};
@@ -54,7 +61,9 @@ export function useScenePainter(slots, onDone) {
         worker = new Worker(new URL("../../lib/paint.worker.js", import.meta.url), { type: "module" });
         const offscreen = Object.fromEntries(Object.entries(els).map(([n, c]) => [n, c.transferControlToOffscreen()]));
         worker.postMessage({ type: "canvases", ...offscreen }, Object.values(offscreen));
-        worker.onmessage = (e) => { if (e.data?.type === "done") done(e.data.key); };
+        worker.onmessage = (e) => {
+          if (e.data?.type === "done") done(e.data.key);
+        };
       } catch {
         worker?.terminate();
         worker = null;
@@ -64,7 +73,10 @@ export function useScenePainter(slots, onDone) {
     let cancel = () => {};
     request.current = (req) => {
       if (worker) worker.postMessage({ type: "paint", ...req });
-      else { cancel(); cancel = paintHere(els, req, done); }
+      else {
+        cancel();
+        cancel = paintHere(els, req, done);
+      }
     };
 
     return () => {

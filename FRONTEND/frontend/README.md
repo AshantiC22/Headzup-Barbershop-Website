@@ -9,12 +9,13 @@ npm install
 npm run dev        # http://localhost:3000
 npm test           # vitest: date/time rules, shop data, painter determinism
 npm run lint
+npm run format     # Prettier; CI runs format:check
 npm run build
 ```
 
 | Variable | Default | |
 | --- | --- | --- |
-| `NEXT_PUBLIC_API_URL` | `https://api.headzupp.com` | API origin, no trailing slash |
+| `NEXT_PUBLIC_API_URL` | `https://api.headzupp.com` | API origin. A trailing `/api` or slash is stripped (`lib/config.js`) |
 | `NEXT_PUBLIC_VAPID_PUBLIC_KEY` | none | Web push key; when unset it's fetched from `push/vapid-key/` |
 
 ## Layout
@@ -27,7 +28,7 @@ components/
   booking/            calendar, slot picker, work-week editor
   barber/             dashboard tabs, grouped by job (schedule, people, setup, money)
   auth/               shared form pieces and the password recovery flow
-  ui/                 modal, toasts, notices, icons
+  ui/                 modal, toasts, notices, icons, motion helpers
 lib/
   api.js              axios client: token refresh, short GET cache
   auth.js             session helpers, safe ?next= redirects
@@ -70,8 +71,30 @@ reads the palette through `useTheme()`.
 
 Type is Grenze Gotisch (headlines and names), Grenze (italic lore lines and
 quotes) and Archivo with its width axis (everything functional, condensed for
-prices and numbers), all self-hosted through Fontsource. Grenze Gotisch stops
-reading well under about 24px, so `.h3` and `.h4` switch to the roman Grenze.
+prices and numbers). The latin subsets live in `app/fonts/` (OFL, license
+alongside) and load through `next/font/local`, which preloads them and sizes a
+fallback face to match, so text doesn't jump when the real font arrives.
+Grenze Gotisch stops reading well under about 24px, so `.h3` and `.h4` switch
+to the roman Grenze.
+
+## Motion
+
+Durations and easings are tokens in `globals.css` (`--dur-1/2/3`, `--ease`,
+`--ease-in`). Things arrive on `--ease` and leave faster on `--ease-in`.
+React removes an element as soon as its condition is false, so dialogs,
+sheets, toasts and the lightbox use the helpers in `components/ui/motion.js`
+(`usePresence`, `Present`) to stay mounted for the exit, and CSS animates
+`[data-state="closing"]`. Expanding rows use `<Collapse>`, which animates
+height with the `grid-template-rows: 0fr → 1fr` trick and makes closed
+content inert. `app/template.js` fades each new page in after client-side
+navigation, so internal links should be `next/link`, not `<a>`.
+
+Painting a gallery photo is a few hundred milliseconds of work, so
+`Impression` sends it to `lib/impression.worker.js`, which fetches, decodes and
+paints the photo and hands back a bitmap. Scrolling the gallery at 4× CPU
+throttle has no long tasks.
+
+`prefers-reduced-motion` turns all of it off, including the paint-in.
 
 ## Things that are easy to get wrong
 
@@ -83,5 +106,13 @@ reading well under about 24px, so `.h3` and `.h4` switch to the roman Grenze.
 - **Deposit return URL.** The API now URL-encodes the names it sends back
   after a Stripe deposit; older links split `Haircut & Shave` at the `&`.
   `booking-confirmed` reads the raw query string so both kinds work.
+- **`useSearchParams`** opts everything up to the nearest `<Suspense>` out of
+  prerendering. Give that boundary a real fallback (the page's own loading
+  view) and keep shells with a painted canvas outside it, or the page ships
+  as empty HTML.
+- **Overlays** (dialogs, toasts, the lightbox) go through `Portal` in
+  `components/ui/Feedback.js`. Rendered in place, an animated or transformed
+  ancestor traps them under the sticky header. Entrance animations fill
+  `backwards` for the same reason.
 - **Service worker.** `public/sw.js` caches by `CACHE_VERSION`. Bump it when
   shipping changes to cached routes or the offline page.

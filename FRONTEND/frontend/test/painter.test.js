@@ -7,7 +7,8 @@ const strokesOf = (c) => JSON.stringify(c.strokes ?? c);
 // CI machines can be several times slower than a laptop.
 describe("painter", { timeout: 30_000 }, () => {
   it("seeded() repeats its sequence and stays in [0, 1)", () => {
-    const a = seeded(42), b = seeded(42);
+    const a = seeded(42),
+      b = seeded(42);
     for (let i = 0; i < 1000; i++) {
       const x = a();
       expect(x).toBe(b());
@@ -30,7 +31,11 @@ describe("painter", { timeout: 30_000 }, () => {
     expect(strokesOf(composeStreet({ ...base, mode: "night" }))).not.toBe(day);
   });
 
-  it.each([[390, 844], [1440, 900], [2560, 1200]])("keeps every stroke drawable at %ix%i", (w, h) => {
+  it.each([
+    [390, 844],
+    [1440, 900],
+    [2560, 1200],
+  ])("keeps every stroke drawable at %ix%i", (w, h) => {
     const { strokes } = composeStreet({ w, h, mode: "night", seed: 7 });
     expect(strokes.length).toBeGreaterThan(1000);
     for (const s of strokes) {
@@ -41,7 +46,10 @@ describe("painter", { timeout: 30_000 }, () => {
   });
 
   it("keeps the pole and moon clear of the headline", () => {
-    for (const [w, h] of [[390, 844], [1440, 900]]) {
+    for (const [w, h] of [
+      [390, 844],
+      [1440, 900],
+    ]) {
       const L = streetLayout(w, h);
       expect(L.pole.x - lampGeometry(L).width / 2).toBeGreaterThan(L.calm.x1 - (L.narrow ? 70 : 0));
       expect(L.moon.x - L.moon.r).toBeGreaterThan(L.narrow ? w * 0.6 : L.calm.x1);

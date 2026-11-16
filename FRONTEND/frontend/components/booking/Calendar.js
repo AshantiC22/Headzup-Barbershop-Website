@@ -63,10 +63,11 @@ export function Calendar({ value, onChange, isDisabled, label = "Choose a day" }
   }, [cells]);
 
   const monthName = new Date(view.y, view.m, 1).toLocaleDateString("en-US", { month: "long", year: "numeric" });
-  const step = (n) => setView((v) => {
-    const d = new Date(v.y, v.m + n, 1);
-    return { y: d.getFullYear(), m: d.getMonth() };
-  });
+  const step = (n) =>
+    setView((v) => {
+      const d = new Date(v.y, v.m + n, 1);
+      return { y: d.getFullYear(), m: d.getMonth() };
+    });
 
   const focusDay = (ds) => {
     const d = parseDate(ds);
@@ -111,27 +112,46 @@ export function Calendar({ value, onChange, isDisabled, label = "Choose a day" }
   return (
     <div role="group" aria-label={label}>
       <div className="cal-head">
-        <button type="button" className="icon-btn" onClick={() => step(-1)} disabled={atMin} aria-label="Previous month">
+        <button
+          type="button"
+          className="icon-btn"
+          onClick={() => step(-1)}
+          disabled={atMin}
+          aria-label="Previous month"
+        >
           <IconChevronLeft size={22} />
         </button>
-        <p className="h4" aria-live="polite">{monthName}</p>
+        <p className="h4" aria-live="polite">
+          {monthName}
+        </p>
         <button type="button" className="icon-btn" onClick={() => step(1)} aria-label="Next month">
           <IconChevronRight size={22} />
         </button>
       </div>
       <div className="cal-grid" ref={gridRef} onKeyDown={onKeyDown}>
-        {DOW.map((d) => <div key={d} className="cal-dow" aria-hidden="true">{d.charAt(0)}<span className="sr-only">{d}</span></div>)}
+        {DOW.map((d) => (
+          <div key={d} className="cal-dow" aria-hidden="true">
+            {d.charAt(0)}
+            <span className="sr-only">{d}</span>
+          </div>
+        ))}
         {cells.map((ds, i) => {
           if (!ds) return <div key={`b${i}`} />;
           const disabled = isDisabled(ds);
           const sel = value === ds;
           const d = parseDate(ds);
           return (
-            <button key={ds} type="button" data-date={ds}
+            <button
+              key={ds}
+              type="button"
+              data-date={ds}
               className={`cal-day ${sel ? "is-selected" : ""} ${ds === today ? "is-today" : ""}`}
-              disabled={disabled} aria-pressed={sel} tabIndex={ds === tabStop ? 0 : -1}
+              disabled={disabled}
+              aria-pressed={sel}
+              tabIndex={ds === tabStop ? 0 : -1}
               aria-label={`${d.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}${ds === today ? ", today" : ""}${disabled ? ", not available" : ""}`}
-              onClick={() => onChange(ds)}>
+              onClick={() => onChange(ds)}
+            >
               {d.getDate()}
             </button>
           );
@@ -146,26 +166,34 @@ export function SlotPicker({ slots, value, onChange, loading }) {
   if (loading) {
     return (
       <div className="slots" aria-busy="true">
-        {Array.from({ length: 8 }).map((_, i) => <Skeleton key={i} h={46} />)}
+        {Array.from({ length: 8 }).map((_, i) => (
+          <Skeleton key={i} h={46} />
+        ))}
       </div>
     );
   }
   const groups = {};
-  slots.forEach((t) => { (groups[partOfDay(t)] ||= []).push(t); });
+  slots.forEach((t) => {
+    (groups[partOfDay(t)] ||= []).push(t);
+  });
   return (
     <div className="stack" style={{ "--stack": "18px" }}>
-      {["Morning", "Afternoon", "Evening"].filter((g) => groups[g]).map((g) => (
-        <div key={g}>
-          <p className="small muted mb-2" style={{ fontWeight: 650 }}>{g}</p>
-          <div className="slots">
-            {groups[g].map((t) => (
-              <button key={t} className="slot" aria-pressed={value === t} onClick={() => onChange(t)}>
-                {fmtTime(t)}
-              </button>
-            ))}
+      {["Morning", "Afternoon", "Evening"]
+        .filter((g) => groups[g])
+        .map((g) => (
+          <div key={g}>
+            <p className="small muted mb-2" style={{ fontWeight: 650 }}>
+              {g}
+            </p>
+            <div className="slots">
+              {groups[g].map((t) => (
+                <button key={t} className="slot" aria-pressed={value === t} onClick={() => onChange(t)}>
+                  {fmtTime(t)}
+                </button>
+              ))}
+            </div>
           </div>
-        </div>
-      ))}
+        ))}
     </div>
   );
 }

@@ -24,7 +24,9 @@ export default function OfflinePage() {
           <button className="btn btn-primary btn-lg btn-block mt-5" onClick={() => window.location.reload()}>
             Try again
           </button>
-          <a className="btn btn-quiet btn-block mt-2" href={`tel:${SHOP.phone}`}>Call {SHOP.phoneDisplay}</a>
+          <a className="btn btn-quiet btn-block mt-2" href={`tel:${SHOP.phone}`}>
+            Call {SHOP.phoneDisplay}
+          </a>
         </div>
       </main>
     </div>

@@ -33,16 +33,27 @@ export default function ToolRack() {
 
   return (
     <div className={s.rack}>
-      <div role="radiogroup" aria-label="Services" className={s.groups}
-        onKeyDown={(e) => arrowSelect(e, ORDER, picked, setPicked)}>
+      <div
+        role="radiogroup"
+        aria-label="Services"
+        className={s.groups}
+        onKeyDown={(e) => arrowSelect(e, ORDER, picked, setPicked)}
+      >
         {SERVICE_GROUPS.map((g) => (
           <div key={g.id} className={s.group}>
             <p className={s.groupName}>{g.title}</p>
             <div className={s.slots}>
               {SERVICES.filter((x) => x.group === g.id).map((x) => (
-                <button key={x.name} type="button" role="radio" aria-checked={picked === x.name}
-                  tabIndex={rovingIndex(x.name, picked, ORDER)} className={s.slot}
-                  aria-label={`${x.name}, $${x.price}, ${x.minutes} minutes`} onClick={() => pick(x.name)}>
+                <button
+                  key={x.name}
+                  type="button"
+                  role="radio"
+                  aria-checked={picked === x.name}
+                  tabIndex={rovingIndex(x.name, picked, ORDER)}
+                  className={s.slot}
+                  aria-label={`${x.name}, $${x.price}, ${x.minutes} minutes`}
+                  onClick={() => pick(x.name)}
+                >
                   <span className={s.price}>${x.price}</span>
                   <ToolIcon tools={toolsForService(x.name)} size={52} className={s.icon} />
                   <span className={s.name}>{x.name}</span>
@@ -55,13 +66,23 @@ export default function ToolRack() {
 
       <article ref={detail} className={s.detail} aria-labelledby="rack-title">
         <ToolIcon tools={toolsForService(svc.name)} size={132} className={s.detailIcon} />
-        <h3 id="rack-title" className={s.detailName} aria-live="polite">{svc.name}</h3>
+        <h3 id="rack-title" className={s.detailName} aria-live="polite">
+          {svc.name}
+        </h3>
         {svc.popular && <p className={`chip chip-warn chip-plain ${s.badge}`}>Most booked</p>}
         <dl className={s.stats}>
-          <div><dt>Price</dt><dd className="price">${svc.price}</dd></div>
-          <div><dt>In the chair</dt><dd>{svc.minutes} min</dd></div>
+          <div>
+            <dt>Price</dt>
+            <dd className="price">${svc.price}</dd>
+          </div>
+          <div>
+            <dt>In the chair</dt>
+            <dd>{svc.minutes} min</dd>
+          </div>
         </dl>
-        <p className={`lore ${s.lore}`}>{describeService(svc.name)} {group?.note}</p>
+        <p className={`lore ${s.lore}`}>
+          {describeService(svc.name)} {group?.note}
+        </p>
         <Link href={`/book?service=${encodeURIComponent(svc.name)}`} className="btn btn-primary btn-lg btn-block">
           Book {svc.name}
         </Link>

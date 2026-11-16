@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 import { useSyncExternalStore } from "react";
 import { ThemeToggle } from "@/components/ThemeProvider";
 import { ADDRESS_LINE, HOURS, SHOP } from "@/lib/shop";
@@ -20,7 +21,10 @@ export function HoursList({ compact = false }) {
         const h = HOURS[d];
         return (
           <div key={d} className={`spread ${today === d ? "is-today" : ""}`}>
-            <dt>{h.label}{today === d && <span className="sr-only"> (today)</span>}</dt>
+            <dt>
+              {h.label}
+              {today === d && <span className="sr-only"> (today)</span>}
+            </dt>
             <dd className="num">{h.open ? `${fmtTime(h.open)} – ${fmtTime(h.close)}` : "Closed"}</dd>
           </div>
         );
@@ -40,7 +44,10 @@ export default function SiteFooter({ showTheme = false, showHours = true }) {
               Fades, lineups, beard work and hot shaves on West 4th Street. Walk-ins welcome when the chair is free.
             </p>
             <p>
-              <a href={SHOP.mapsLink} target="_blank" rel="noopener noreferrer">{ADDRESS_LINE}</a><br />
+              <a href={SHOP.mapsLink} target="_blank" rel="noopener noreferrer">
+                {ADDRESS_LINE}
+              </a>
+              <br />
               <a href={`tel:${SHOP.phone}`}>{SHOP.phoneDisplay}</a>
             </p>
           </div>
@@ -53,14 +60,30 @@ export default function SiteFooter({ showTheme = false, showHours = true }) {
           <div>
             <h2 className="h4 mb-4">Around the shop</h2>
             <ul className="footer-list">
-              <li><a href="/book">Book a cut</a></li>
-              <li><a href="/gallery">Recent work</a></li>
-              <li><a href="/newsletter">News and deals</a></li>
-              <li><a href="/waitlist">Join a waitlist</a></li>
-              <li><a href="/dashboard">My appointments</a></li>
-              <li><a href="/barber-login">Barber sign-in</a></li>
-              <li><a href="/sms-optin">Text message settings</a></li>
-              <li><a href="/terms">Terms and privacy</a></li>
+              <li>
+                <Link href="/book">Book a cut</Link>
+              </li>
+              <li>
+                <Link href="/gallery">Recent work</Link>
+              </li>
+              <li>
+                <Link href="/newsletter">News and deals</Link>
+              </li>
+              <li>
+                <Link href="/waitlist">Join a waitlist</Link>
+              </li>
+              <li>
+                <Link href="/dashboard">My appointments</Link>
+              </li>
+              <li>
+                <Link href="/barber-login">Barber sign-in</Link>
+              </li>
+              <li>
+                <Link href="/sms-optin">Text message settings</Link>
+              </li>
+              <li>
+                <Link href="/terms">Terms and privacy</Link>
+              </li>
             </ul>
           </div>
         </div>

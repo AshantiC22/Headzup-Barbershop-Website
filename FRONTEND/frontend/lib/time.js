@@ -23,7 +23,9 @@ export function addDays(dateStr, n) {
 
 /** "YYYY-MM-DD" → Date at local midnight. */
 export function parseDate(dateStr) {
-  const [y, m, d] = String(dateStr || "").split("-").map(Number);
+  const [y, m, d] = String(dateStr || "")
+    .split("-")
+    .map(Number);
   return new Date(y || 1970, (m || 1) - 1, d || 1);
 }
 
@@ -60,10 +62,13 @@ export function fmtDate(dateStr, style = "short") {
   if (!dateStr) return "";
   const d = parseDate(dateStr);
   const opts =
-    style === "long"   ? { weekday: "long", month: "long", day: "numeric" } :
-    style === "full"   ? { weekday: "long", month: "long", day: "numeric", year: "numeric" } :
-    style === "day"    ? { weekday: "short" } :
-                         { weekday: "short", month: "short", day: "numeric" };
+    style === "long"
+      ? { weekday: "long", month: "long", day: "numeric" }
+      : style === "full"
+        ? { weekday: "long", month: "long", day: "numeric", year: "numeric" }
+        : style === "day"
+          ? { weekday: "short" }
+          : { weekday: "short", month: "short", day: "numeric" };
   return d.toLocaleDateString("en-US", opts);
 }
 
@@ -99,7 +104,11 @@ export function partOfDay(t) {
 function shopNowParts() {
   try {
     const fmt = new Intl.DateTimeFormat("en-US", {
-      timeZone: SHOP.timezone, weekday: "short", hour: "2-digit", minute: "2-digit", hour12: false,
+      timeZone: SHOP.timezone,
+      weekday: "short",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
     });
     const parts = Object.fromEntries(fmt.formatToParts(new Date()).map((p) => [p.type, p.value]));
     const dayIdx = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].indexOf(parts.weekday);

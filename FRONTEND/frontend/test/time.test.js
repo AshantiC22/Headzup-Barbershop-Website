@@ -3,8 +3,14 @@ import { addDays, fmtTime, localDateStr, partOfDay, shopStatus, to24Hour, toMinu
 
 describe("time formats from the API", () => {
   it.each([
-    ["14:30", 870], ["14:30:00", 870], ["2:30 PM", 870], ["2:30 pm", 870],
-    ["12:05 AM", 5], ["12:00 PM", 720], ["09:00:00", 540], ["", 0],
+    ["14:30", 870],
+    ["14:30:00", 870],
+    ["2:30 PM", 870],
+    ["2:30 pm", 870],
+    ["12:05 AM", 5],
+    ["12:00 PM", 720],
+    ["09:00:00", 540],
+    ["", 0],
   ])("toMinutes(%j) is %i", (input, minutes) => {
     expect(toMinutes(input)).toBe(minutes);
   });
@@ -44,10 +50,19 @@ describe("calendar dates stay local", () => {
 
 describe("shopStatus is computed in Hattiesburg time", () => {
   afterEach(() => vi.useRealTimers());
-  const at = (iso) => { vi.useFakeTimers(); vi.setSystemTime(new Date(iso)); return shopStatus(); };
+  const at = (iso) => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(iso));
+    return shopStatus();
+  };
 
   it("is open on a weekday morning (CST)", () => {
-    expect(at("2026-11-06T15:00:00Z")).toMatchObject({ open: true, label: "Open now", detail: "until 6:00 PM", today: 5 });
+    expect(at("2026-11-06T15:00:00Z")).toMatchObject({
+      open: true,
+      label: "Open now",
+      detail: "until 6:00 PM",
+      today: 5,
+    });
   });
 
   it("warns when closing is near", () => {
