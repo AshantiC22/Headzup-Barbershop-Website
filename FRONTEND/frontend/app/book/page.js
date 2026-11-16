@@ -1,11 +1,14 @@
 "use client";
 // Booking: service → barber → time → confirm.
-// Links from the home page pre-fill choices (?service=Haircut&barber=2), and a
-// cancelled Stripe checkout returns to the confirm step with everything kept.
+// Links from the home page pre-fill choices (?service=Haircut&barber=2). The
+// shop takes cash and Cash App in person; with ONLINE_PAYMENTS on, the confirm
+// step also offers a Stripe deposit, and a cancelled checkout comes back here
+// with everything kept.
 import Link from "next/link";
 import { Suspense, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import API from "@/lib/api";
+import { ONLINE_PAYMENTS, cashtag } from "@/lib/config";
 import FlowHeader from "@/components/site/FlowHeader";
 import Impression from "@/components/art/Impression";
 import { Calendar, SlotPicker, WorkWeek, makeDayRule } from "@/components/booking/Calendar";
@@ -232,6 +235,8 @@ function BookContent() {
     return Math.min(base + extra, parseFloat(price || 0) || base + extra);
   }, [slots.deposit, strikes, price]);
   const remaining = Math.max(0, (parseFloat(price) || 0) - deposit);
+  const tag = cashtag(barber?.cashapp_tag);
+  const online = ONLINE_PAYMENTS && pay === "online";
 
   const grouped = useMemo(() => {
     const g = {};
@@ -242,7 +247,7 @@ function BookContent() {
   }, [services]);
 
   const confirmUrl = (extra) =>
-    `/booking-confirmed?service=${encodeURIComponent(service.name)}&barber=${encodeURIComponent(barber.name)}&date=${date}&time=${encodeURIComponent(to24Hour(time))}&price=${price}${extra}`;
+    `/booking-confirmed?service=${encodeURIComponent(service.name)}&barber=${encodeURIComponent(barber.name)}&date=${date}&time=${encodeURIComponent(to24Hour(time))}&price=${price}${tag ? `&cashapp=${encodeURIComponent(tag)}` : ""}${extra}`;
 
   const bookInShop = async () => {
     setSubmitting(true);
@@ -507,6 +512,20 @@ function BookContent() {
                 <dt>Length</dt>
                 <dd>{service.duration_minutes} min</dd>
               </div>
+              {!ONLINE_PAYMENTS && (
+                <div className="sum-row">
+                  <dt>Paying</dt>
+                  <dd>
+                    At the shop, cash or Cash App
+                    {tag && (
+                      <>
+                        {" "}
+                        to <span className="nowrap">{tag}</span>
+                      </>
+                    )}
+                  </dd>
+                </div>
+              )}
               <div className="sum-row sum-total">
                 <dt>Price</dt>
                 <dd className="price" style={{ fontSize: "1.3rem" }}>
@@ -530,52 +549,56 @@ function BookContent() {
               />
             </div>
 
-            <fieldset className={s.payment}>
-              <legend className="label mb-3">How do you want to pay?</legend>
-              <div
-                className="stack"
-                style={{ "--stack": "10px" }}
-                role="radiogroup"
-                aria-label="How to pay"
-                onKeyDown={(e) => arrowSelect(e, PAY_OPTIONS, pay, setPay)}
-              >
-                <button
-                  type="button"
-                  role="radio"
-                  aria-checked={pay === "shop"}
-                  tabIndex={rovingIndex("shop", pay, PAY_OPTIONS)}
-                  className="choice"
-                  onClick={() => setPay("shop")}
+            {ONLINE_PAYMENTS && (
+              <fieldset className={s.payment}>
+                <legend className="label mb-3">How do you want to pay?</legend>
+                <div
+                  className="stack"
+                  style={{ "--stack": "10px" }}
+                  role="radiogroup"
+                  aria-label="How to pay"
+                  onKeyDown={(e) => arrowSelect(e, PAY_OPTIONS, pay, setPay)}
                 >
-                  <span className="radio-dot" aria-hidden="true" />
-                  <span className="grow">
-                    <span className="h4">Pay at the shop</span>
-                    <span className="muted small">Pay the full {money(price)} in the chair, cash or card.</span>
-                  </span>
-                </button>
-                <button
-                  type="button"
-                  role="radio"
-                  aria-checked={pay === "online"}
-                  tabIndex={rovingIndex("online", pay, PAY_OPTIONS)}
-                  className="choice"
-                  onClick={() => setPay("online")}
-                >
-                  <span className="radio-dot" aria-hidden="true" />
-                  <span className="grow">
-                    <span className="h4">Hold it with a {money(deposit)} deposit</span>
-                    <span className="muted small">
-                      Pay {money(deposit)} now by card through Stripe. The other {money(remaining)} is due in the chair.
+                  <button
+                    type="button"
+                    role="radio"
+                    aria-checked={pay === "shop"}
+                    tabIndex={rovingIndex("shop", pay, PAY_OPTIONS)}
+                    className="choice"
+                    onClick={() => setPay("shop")}
+                  >
+                    <span className="radio-dot" aria-hidden="true" />
+                    <span className="grow">
+                      <span className="h4">Pay at the shop</span>
+                      <span className="muted small">Pay the full {money(price)} in the chair, cash or Cash App.</span>
                     </span>
-                  </span>
-                </button>
-              </div>
-            </fieldset>
+                  </button>
+                  <button
+                    type="button"
+                    role="radio"
+                    aria-checked={pay === "online"}
+                    tabIndex={rovingIndex("online", pay, PAY_OPTIONS)}
+                    className="choice"
+                    onClick={() => setPay("online")}
+                  >
+                    <span className="radio-dot" aria-hidden="true" />
+                    <span className="grow">
+                      <span className="h4">Hold it with a {money(deposit)} deposit</span>
+                      <span className="muted small">
+                        Pay {money(deposit)} now by card through Stripe. The other {money(remaining)} is due in the
+                        chair.
+                      </span>
+                    </span>
+                  </button>
+                </div>
+              </fieldset>
+            )}
 
             {strikes > 0 && (
               <Notice tone="warn" className="mt-4">
                 You have {strikes} missed-appointment strike{strikes === 1 ? "" : "s"} on your account
-                {strikes > 1 ? ", so your deposit is a little higher" : ""}. Arriving on time clears the way.
+                {ONLINE_PAYMENTS && strikes > 1 ? ", so your deposit is a little higher" : ""}. If you can&apos;t make
+                it, cancel from My appointments or call the shop so the chair goes to someone else.
               </Notice>
             )}
             {error && (
@@ -588,11 +611,11 @@ function BookContent() {
               <button
                 className="btn btn-primary btn-lg btn-block"
                 disabled={submitting}
-                onClick={() => (pay === "online" ? bookWithDeposit() : bookInShop())}
+                onClick={() => (online ? bookWithDeposit() : bookInShop())}
               >
                 {submitting ? (
-                  <Spinner label={pay === "online" ? "Opening secure checkout" : "Booking"} />
-                ) : pay === "online" ? (
+                  <Spinner label={online ? "Opening secure checkout" : "Booking"} />
+                ) : online ? (
                   `Pay ${money(deposit)} and book`
                 ) : (
                   `Book ${fmtDate(date)} at ${fmtTime(time)}`
@@ -600,7 +623,7 @@ function BookContent() {
               </button>
               <p className="small faint center mt-3">
                 Need to change plans later? Reschedule or cancel from My appointments.{" "}
-                {pay === "online" && (
+                {online && (
                   <>
                     Deposits are non-refundable.{" "}
                     <Link className="link" href="/terms">

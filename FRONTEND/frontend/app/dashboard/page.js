@@ -26,6 +26,7 @@ import {
 import { normalizePhone } from "@/components/auth/AuthParts";
 import { Collapse, Present } from "@/components/ui/motion";
 import { SHOP } from "@/lib/shop";
+import { ONLINE_PAYMENTS, cashtag } from "@/lib/config";
 import { apptDate, fmtDate, fmtTime, parseDate, timeUntil, to24Hour } from "@/lib/time";
 
 const STATUS = {
@@ -63,7 +64,8 @@ function payLine(a) {
     return `${money(a.deposit_amount || 10)} deposit paid${rest > 0 ? `, ${money(rest)} due in the chair` : ""}`;
   }
   if (a.payment_method === "online") return "Deposit not paid yet";
-  return `${money(a.service_price)} at the shop`;
+  const tag = cashtag(a.barber_cashapp);
+  return `${money(a.service_price)} at the shop, cash or Cash App${tag ? ` to ${tag}` : ""}`;
 }
 
 function ApptRow({ a, onCancel, onReschedule, onReview }) {
@@ -141,8 +143,8 @@ function CancelDialog({ appt, open, onClose, onConfirm, busy }) {
       </p>
       {late ? (
         <Notice tone="warn" className="mt-4">
-          It&apos;s less than 2 hours away. Cancelling now can add a strike, which raises future deposits. Calling the
-          shop at{" "}
+          It&apos;s less than 2 hours away. Cancelling now can add a strike to your account
+          {ONLINE_PAYMENTS ? ", which raises future deposits" : ""}. Calling the shop at{" "}
           <a className="link" href={`tel:${SHOP.phone}`}>
             {SHOP.phoneDisplay}
           </a>{" "}
@@ -367,10 +369,12 @@ function AccountTab({ user, strike, visits, spent, toast }) {
             <dt>Strikes</dt>
             <dd>{strike?.strike_count ?? 0}</dd>
           </div>
-          <div>
-            <dt>Next deposit</dt>
-            <dd>{money(strike?.deposit_fee || 10)}</dd>
-          </div>
+          {ONLINE_PAYMENTS && (
+            <div>
+              <dt>Next deposit</dt>
+              <dd>{money(strike?.deposit_fee || 10)}</dd>
+            </div>
+          )}
         </dl>
       </section>
 
@@ -587,6 +591,7 @@ function DashboardContent() {
 
   const addToCal = useCallback((a) => {
     const params = new URLSearchParams({ service: a.service_name, barber: a.barber_name, date: a.date, time: a.time });
+    if (cashtag(a.barber_cashapp)) params.set("cashapp", cashtag(a.barber_cashapp));
     window.open(
       `/booking-confirmed?${params}&payment=${a.payment_method === "online" ? "deposit" : "shop"}&price=${a.service_price}`,
       "_self",
@@ -689,7 +694,9 @@ function DashboardContent() {
               <strong>
                 {strike.strike_count} strike{strike.strike_count === 1 ? "" : "s"} on your account.
               </strong>{" "}
-              Your next online deposit is {money(strike.deposit_fee)}. Showing up on time keeps it from climbing.{" "}
+              {ONLINE_PAYMENTS
+                ? `Your next online deposit is ${money(strike.deposit_fee)}. Showing up on time keeps it from climbing.`
+                : "If you can't make it, cancel here or call the shop so the chair goes to someone else."}{" "}
               <Link className="link" href="/terms#payments">
                 How strikes work
               </Link>

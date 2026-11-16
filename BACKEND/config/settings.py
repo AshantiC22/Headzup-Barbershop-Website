@@ -161,6 +161,12 @@ STRIPE_CONNECT_CLIENT_ID = os.environ.get("STRIPE_CONNECT_CLIENT_ID", "")
 STRIPE_WEBHOOK_SECRET    = os.environ.get("STRIPE_WEBHOOK_SECRET", "")
 STRIPE_PUBLISHABLE_KEY = os.environ.get("STRIPE_PUBLISHABLE_KEY", "")
 
+# Card payments through Stripe. The shop takes cash and Cash App only for now,
+# so checkout is refused unless this is "on". The Stripe code stays in place:
+# set ONLINE_PAYMENTS=on here and NEXT_PUBLIC_ONLINE_PAYMENTS=on on the
+# frontend to bring deposits back.
+ONLINE_PAYMENTS = os.environ.get("ONLINE_PAYMENTS", "off").strip().lower() == "on"
+
 FRONTEND_URL = os.environ.get("FRONTEND_URL", "https://headzupp.com")
 BACKEND_URL  = os.environ.get("BACKEND_URL",  "https://api.headzupp.com")
 

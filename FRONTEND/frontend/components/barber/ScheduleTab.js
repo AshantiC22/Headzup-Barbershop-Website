@@ -2,6 +2,7 @@
 // The barber's day: who's in the chair and when, with every action one tap away.
 import { useCallback, useEffect, useState } from "react";
 import API from "@/lib/api";
+import { ONLINE_PAYMENTS } from "@/lib/config";
 import {
   IconChevronDown,
   IconChevronLeft,
@@ -205,7 +206,9 @@ export default function ScheduleTab({ toast, onSummary }) {
       if (kind === "noshow") {
         const r = await API.post(`barber/appointments/${appt.id}/strike/`, { reason: "no_show" });
         setList((p) => p.map((a) => (a.id === appt.id ? { ...a, status: "no_show" } : a)));
-        toast(`Strike added.${r.data?.next_deposit ? ` Their next deposit is $${r.data.next_deposit}.` : ""}`);
+        toast(
+          `Strike added.${ONLINE_PAYMENTS && r.data?.next_deposit ? ` Their next deposit is $${r.data.next_deposit}.` : ""}`,
+        );
       }
       if (kind === "clear") {
         const active = list.filter((a) => !CLOSED.includes(a.status));
@@ -275,14 +278,29 @@ export default function ScheduleTab({ toast, onSummary }) {
           <span className="stat-n">{summary.total || 0}</span>
           <span className="stat-l">Booked</span>
         </div>
-        <div className="stat">
-          <span className="stat-n">{summary.paid_online || 0}</span>
-          <span className="stat-l">Paid online</span>
-        </div>
-        <div className="stat">
-          <span className="stat-n">{summary.pay_in_shop || 0}</span>
-          <span className="stat-l">Paying at the shop</span>
-        </div>
+        {ONLINE_PAYMENTS ? (
+          <>
+            <div className="stat">
+              <span className="stat-n">{summary.paid_online || 0}</span>
+              <span className="stat-l">Paid online</span>
+            </div>
+            <div className="stat">
+              <span className="stat-n">{summary.pay_in_shop || 0}</span>
+              <span className="stat-l">Paying at the shop</span>
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="stat">
+              <span className="stat-n">{summary.completed || 0}</span>
+              <span className="stat-l">Done</span>
+            </div>
+            <div className="stat">
+              <span className="stat-n">{money(summary.to_collect || 0)}</span>
+              <span className="stat-l">To collect</span>
+            </div>
+          </>
+        )}
       </div>
 
       {loading ? (
@@ -371,7 +389,10 @@ export default function ScheduleTab({ toast, onSummary }) {
           </p>
         )}
         {ask?.kind === "noshow" && a && (
-          <Notice tone="warn">{a.client} gets a strike, which raises their next online deposit.</Notice>
+          <Notice tone="warn">
+            {a.client} gets a strike{ONLINE_PAYMENTS ? ", which raises their next online deposit" : " on their account"}
+            .
+          </Notice>
         )}
         {ask?.kind === "clear" && (
           <Notice tone="bad">

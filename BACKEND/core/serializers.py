@@ -44,11 +44,12 @@ class AppointmentSerializer(serializers.ModelSerializer):
     barber_name      = serializers.CharField(source="barber.name",              read_only=True)
     barber_id        = serializers.IntegerField(source="barber.id",             read_only=True)
     service_id       = serializers.IntegerField(source="service.id",            read_only=True)
+    barber_cashapp   = serializers.CharField(source="barber.cashapp_tag",       read_only=True)
 
     class Meta:
         model  = Appointment
         fields = "__all__"
-        read_only_fields = ["user", "service_name", "service_price", "service_duration", "barber_name", "barber_id", "service_id"]
+        read_only_fields = ["user", "service_name", "service_price", "service_duration", "barber_name", "barber_id", "service_id", "barber_cashapp"]
 
 
 class RegisterSerializer(serializers.Serializer):

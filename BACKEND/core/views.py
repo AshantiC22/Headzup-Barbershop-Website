@@ -2674,6 +2674,11 @@ class DepositCheckoutView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
+        if not getattr(settings, "ONLINE_PAYMENTS", False):
+            return Response({
+                "error": "The shop takes cash or Cash App in person. Book with pay at the shop.",
+                "pay_in_shop": True,
+            }, status=400)
         service_id   = request.data.get("service")
         barber_id    = request.data.get("barber")
         date         = request.data.get("date")
@@ -3436,6 +3441,11 @@ class CreateCheckoutSessionView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
+        if not getattr(settings, "ONLINE_PAYMENTS", False):
+            return Response({
+                "error": "The shop takes cash or Cash App in person. Book with pay at the shop.",
+                "pay_in_shop": True,
+            }, status=400)
         service_id   = request.data.get("service")
         barber_id    = request.data.get("barber")
         date         = request.data.get("date")
@@ -4078,13 +4088,27 @@ class BarberScheduleOwnView(APIView):
             "barber_notes":     appt.barber_notes,
             "client_notes":     appt.client_notes,
             "is_walk_in":       appt.is_walk_in,
+            "deposit_paid":     appt.deposit_paid,
+            "deposit_amount":   str(appt.deposit_amount),
         } for appt in queryset]
 
         total   = queryset.count()
         revenue = sum(float(a["service_price"]) for a in data if a["payment_method"] == "online" and a["service_price"])
+        # What's still to be paid in the chair: open bookings, less any deposit.
+        to_collect = sum(
+            float(a["service_price"] or 0) - (float(a["deposit_amount"]) if a["deposit_paid"] else 0)
+            for a in data if a["status"] not in ("completed", "cancelled", "no_show")
+        )
         return Response({
             "appointments": data,
-            "summary": {"total": total, "paid_online": queryset.filter(payment_method="online").count(), "pay_in_shop": queryset.filter(payment_method="shop").count(), "online_revenue": f"{revenue:.2f}"},
+            "summary": {
+                "total": total,
+                "completed": sum(1 for a in data if a["status"] == "completed"),
+                "to_collect": f"{max(to_collect, 0):.2f}",
+                "paid_online": queryset.filter(payment_method="online").count(),
+                "pay_in_shop": queryset.filter(payment_method="shop").count(),
+                "online_revenue": f"{revenue:.2f}",
+            },
             "barber_name": barber.name,
         })
 

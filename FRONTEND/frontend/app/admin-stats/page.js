@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import API from "@/lib/api";
+import { ONLINE_PAYMENTS } from "@/lib/config";
 import AppHeader from "@/components/site/AppHeader";
 import { IconStar, Notice, Skeleton } from "@/components/ui/Feedback";
 
@@ -62,7 +63,9 @@ export default function AdminStatsPage() {
       </AppHeader>
       <main id="main" className="wrap dash" style={{ maxWidth: 1180 }}>
         <h1 className="h1">The whole shop</h1>
-        <p className="lede mt-2">Every barber&apos;s book, added up. Revenue here counts online deposits only.</p>
+        <p className="lede mt-2">
+          Every barber&apos;s book, added up.{ONLINE_PAYMENTS ? " Revenue here counts online deposits only." : ""}
+        </p>
         {error && (
           <Notice tone="bad" className="mt-5">
             {error}
@@ -94,18 +97,20 @@ export default function AdminStatsPage() {
                   </div>
                 ))}
               </div>
-              <div className="stat-row is-3">
-                {[
-                  ["Deposits this week", o.week_revenue],
-                  ["Deposits, 30 days", o.month_revenue],
-                  ["Deposits all time", o.total_revenue],
-                ].map(([l, v]) => (
-                  <div key={l} className="stat">
-                    <span className="stat-n">{money(v)}</span>
-                    <span className="stat-l">{l}</span>
-                  </div>
-                ))}
-              </div>
+              {ONLINE_PAYMENTS && (
+                <div className="stat-row is-3">
+                  {[
+                    ["Deposits this week", o.week_revenue],
+                    ["Deposits, 30 days", o.month_revenue],
+                    ["Deposits all time", o.total_revenue],
+                  ].map(([l, v]) => (
+                    <div key={l} className="stat">
+                      <span className="stat-n">{money(v)}</span>
+                      <span className="stat-l">{l}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
 
               {data.barber_stats?.length > 0 && (
                 <section className="panel panel-pad">
@@ -117,7 +122,7 @@ export default function AdminStatsPage() {
                           <th scope="col">Barber</th>
                           <th scope="col">30 days</th>
                           <th scope="col">All time</th>
-                          <th scope="col">Deposits</th>
+                          {ONLINE_PAYMENTS && <th scope="col">Deposits</th>}
                           <th scope="col">Rating</th>
                           <th scope="col">No-shows</th>
                         </tr>
@@ -128,7 +133,7 @@ export default function AdminStatsPage() {
                             <th scope="row">{b.name}</th>
                             <td>{b.this_month}</td>
                             <td>{b.total}</td>
-                            <td>{money(b.revenue)}</td>
+                            {ONLINE_PAYMENTS && <td>{money(b.revenue)}</td>}
                             <td>
                               {b.reviews ? (
                                 <span className="row" style={{ gap: 4 }}>

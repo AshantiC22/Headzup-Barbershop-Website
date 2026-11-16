@@ -296,3 +296,45 @@ class StaffOnlyEndpoints(TestCase):
         for period in ("week", "month", "year"):
             res = api.get(f"/api/barber/payments/?period={period}")
             self.assertEqual(res.status_code, 200, res.content[:200])
+
+
+class CashOnly(TestCase):
+    """With ONLINE_PAYMENTS off (the default) nobody can start a card checkout,
+    and barbers see what's left to collect in person."""
+
+    def setUp(self):
+        from rest_framework.test import APIClient
+
+        self.client_user = User.objects.create_user(username="client", password="pw-123456")
+        self.barber_user = User.objects.create_user(username="barber", password="pw-123456", is_staff=True)
+        self.barber = Barber.objects.create(name="Marcus Bell", user=self.barber_user, cashapp_tag="$MarcusCuts")
+        self.service = Service.objects.create(name="Haircut", price="30.00")
+        self.api = APIClient()
+
+    def test_card_checkout_is_refused(self):
+        self.api.force_authenticate(self.client_user)
+        body = {"service": self.service.id, "barber": self.barber.id, "date": "2026-11-20", "time": "10:00"}
+        with mock.patch("core.views.stripe.checkout.Session.create") as create:
+            for path in ("/api/deposit/checkout/", "/api/create-checkout-session/"):
+                res = self.api.post(path, body, format="json")
+                self.assertEqual(res.status_code, 400, path)
+                self.assertTrue(res.json()["pay_in_shop"])
+            create.assert_not_called()
+
+    def test_appointments_carry_the_barbers_cash_app(self):
+        Appointment.objects.create(user=self.client_user, barber=self.barber, service=self.service, date="2026-11-20", time="10:00")
+        self.api.force_authenticate(self.client_user)
+        appts = self.api.get("/api/appointments/").json()
+        appts = appts.get("results", appts) if isinstance(appts, dict) else appts
+        self.assertEqual(appts[0]["barber_cashapp"], "$MarcusCuts")
+
+    def test_schedule_summary_counts_what_is_left_to_collect(self):
+        for t, status_, paid in (("09:00", "completed", False), ("10:00", "confirmed", False), ("11:00", "confirmed", True), ("12:00", "cancelled", False)):
+            Appointment.objects.create(
+                user=self.client_user, barber=self.barber, service=self.service, date="2026-11-20", time=t,
+                status=status_, deposit_paid=paid, deposit_amount="10.00" if paid else "0.00",
+            )
+        self.api.force_authenticate(self.barber_user)
+        summary = self.api.get("/api/barber/schedule/?date=2026-11-20").json()["summary"]
+        self.assertEqual(summary["completed"], 1)
+        self.assertEqual(summary["to_collect"], "50.00")  # 30 + (30 - 10 deposit)

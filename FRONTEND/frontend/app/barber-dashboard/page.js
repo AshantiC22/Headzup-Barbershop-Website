@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Suspense, useCallback, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import API from "@/lib/api";
+import { ONLINE_PAYMENTS } from "@/lib/config";
 import { todayStr } from "@/lib/time";
 import { useAlerts } from "@/components/Alerts";
 import { ThemeToggle } from "@/components/ThemeProvider";
@@ -41,7 +42,7 @@ const TABS = [
   { id: "reports", label: "Reports", Icon: IconChart },
   { id: "stripe", label: "Getting paid", Icon: IconCard },
   { id: "profile", label: "Profile", Icon: IconUser },
-];
+].filter((t) => ONLINE_PAYMENTS || !["payments", "stripe"].includes(t.id)); // card tabs only when Stripe is on
 const ALIASES = { availability: "hours", newsletter: "news", walk: "walkin" };
 const money = (n) => {
   const v = parseFloat(n || 0);
@@ -187,14 +188,29 @@ function Studio() {
                 <dt>Booked today</dt>
                 <dd>{today.total ?? "–"}</dd>
               </div>
-              <div>
-                <dt>Paid online</dt>
-                <dd>{today.paid_online ?? "–"}</dd>
-              </div>
-              <div>
-                <dt>Online revenue</dt>
-                <dd>{today.online_revenue != null ? money(today.online_revenue) : "–"}</dd>
-              </div>
+              {ONLINE_PAYMENTS ? (
+                <>
+                  <div>
+                    <dt>Paid online</dt>
+                    <dd>{today.paid_online ?? "–"}</dd>
+                  </div>
+                  <div>
+                    <dt>Online revenue</dt>
+                    <dd>{today.online_revenue != null ? money(today.online_revenue) : "–"}</dd>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div>
+                    <dt>Done</dt>
+                    <dd>{today.completed ?? "–"}</dd>
+                  </div>
+                  <div>
+                    <dt>To collect</dt>
+                    <dd>{today.to_collect != null ? money(today.to_collect) : "–"}</dd>
+                  </div>
+                </>
+              )}
             </dl>
           </div>
           <nav className="side-nav" aria-label="Dashboard sections">
@@ -230,9 +246,9 @@ function Studio() {
           {tab === "reviews" && <ReviewsTab toast={toast} onSeen={onReviewsSeen} />}
           {tab === "hours" && <HoursTab toast={toast} />}
           {tab === "news" && <NewsTab toast={toast} />}
-          {tab === "payments" && <PaymentsTab goStripe={() => go("stripe")} />}
+          {ONLINE_PAYMENTS && tab === "payments" && <PaymentsTab goStripe={() => go("stripe")} />}
           {tab === "reports" && <ReportsTab />}
-          {tab === "stripe" && <StripeTab toast={toast} />}
+          {ONLINE_PAYMENTS && tab === "stripe" && <StripeTab toast={toast} />}
           {tab === "profile" && <ProfileTab barber={barber} setBarber={setBarber} toast={toast} />}
         </main>
       </div>

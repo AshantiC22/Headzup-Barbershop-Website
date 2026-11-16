@@ -1,12 +1,14 @@
 "use client";
-// Where both booking paths land: pay-at-shop goes straight here, and Stripe's
-// deposit flow comes back here through the API's deposit-success redirect.
+// Where every booking lands. Pay-at-shop bookings come straight here; when card
+// deposits are on, Stripe's flow comes back through the API's deposit-success
+// redirect.
 import Link from "next/link";
 import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { AuthShell } from "@/components/auth/AuthParts";
 import { IconCalendar, IconPin, Notice, Skeleton } from "@/components/ui/Feedback";
 import { ADDRESS_LINE, SHOP } from "@/lib/shop";
+import { cashAppLink, cashtag } from "@/lib/config";
 import { fmtDate, fmtTime, to24Hour } from "@/lib/time";
 
 const money = (n) => {
@@ -77,6 +79,7 @@ function ConfirmedContent() {
   const remaining = p.get("remaining");
   const price = p.get("price");
   const failed = p.get("error") === "true";
+  const tag = cashtag(p.get("cashapp"));
   const [stamp, setStamp] = useState(false);
   useEffect(() => {
     const t = setTimeout(() => setStamp(true), 250);
@@ -167,6 +170,23 @@ function ConfirmedContent() {
               <dt>Due in the chair</dt>
               <dd className="price" style={{ fontSize: "1.25rem" }}>
                 {money(remaining)}
+              </dd>
+            </div>
+          )}
+          {!paidOnline && (
+            <div className="sum-row">
+              <dt>Paying</dt>
+              <dd>
+                Cash or Cash App
+                {tag && (
+                  <>
+                    {" "}
+                    to{" "}
+                    <a className="link nowrap" href={cashAppLink(tag, price)} target="_blank" rel="noopener noreferrer">
+                      {tag}
+                    </a>
+                  </>
+                )}
               </dd>
             </div>
           )}
