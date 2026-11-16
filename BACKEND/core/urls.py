@@ -31,6 +31,7 @@ from core.views import (
     ClientStrikeStatusView,
     DepositCheckoutView,
     DepositSuccessView,
+    StripeWebhookView,
     IssueStrikeView,
     BarberClientStrikesView,
     # Barber dashboard
@@ -111,6 +112,7 @@ urlpatterns = [
     path("client/update-phone/",                UpdatePhoneView.as_view(),            name="update_phone"),
     path("deposit/checkout/",                   DepositCheckoutView.as_view(),       name="deposit_checkout"),
     path("deposit-success/",                    DepositSuccessView.as_view(),        name="deposit_success"),
+    path("stripe/webhook/",                     StripeWebhookView.as_view(),         name="stripe_webhook"),
     path("barber/appointments/<int:pk>/strike/",IssueStrikeView.as_view(),           name="issue_strike"),
     path("barber/client-strikes/",              BarberClientStrikesView.as_view(),   name="barber_client_strikes"),
 

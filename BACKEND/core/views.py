@@ -2762,6 +2762,7 @@ class DepositCheckoutView(APIView):
                 cancel_url=f"{FRONTEND_URL}/book?deposit_canceled=true",
                 customer_email=request.user.email or None,
                 metadata={
+                    "kind":           "deposit",
                     "user_id":        str(request.user.id),
                     "service_id":     str(service_id),
                     "barber_id":      str(barber_id),
@@ -2789,8 +2790,128 @@ class DepositCheckoutView(APIView):
             return Response({"error": str(e)}, status=400)
 
 
+def _notify_barber_of_deposit(appt, metadata):
+    """Push and text the barber that a deposit came in."""
+    try:
+        dep_amt = metadata.get("deposit_amount", "10.00")
+        dep_net = float(dep_amt) - 0.59  # approx after Stripe fee
+        svc_name = metadata.get("service_name", appt.service.name)
+        client = f"{appt.user.first_name or ''} {appt.user.last_name or ''}".strip() or appt.user.username
+        when_d = appt.date.strftime("%a %b %d").replace(" 0", " ")
+        when_t = appt.time.strftime("%I:%M %p").lstrip("0")
+        if appt.barber and appt.barber.user:
+            send_push_notification(
+                appt.barber.user,
+                title="💰 Deposit Received",
+                body=f"${dep_amt} deposit from {client} for {svc_name} on {when_d}",
+                notif_type="deposit_received",
+                url="/barber-dashboard",
+            )
+        phone = _get_barber_phone(appt.barber)
+        if phone:
+            _twilio_send(phone,
+                f"💰 HEADZ UP: Deposit received!\n"
+                f"Client: {client}\n"
+                f"Service: {svc_name}\n"
+                f"Amount: ${dep_amt} (≈${dep_net:.2f} after fees)\n"
+                f"When: {when_d} at {when_t}"
+            )
+    except Exception as e:
+        logger.error(f"Deposit barber notify failed: {e}")
+
+
+class SlotTaken(Exception):
+    """The paid-for slot was booked by someone else before the payment landed."""
+
+
+def book_paid_checkout(session):
+    """
+    Book the appointment a paid Checkout Session is for, and send the
+    confirmations. Both the redirect back from Stripe (DepositSuccessView,
+    PaymentSuccessView) and the webhook call this, in either order and
+    possibly at the same moment, so it has to be safe to run twice:
+    whoever creates the appointment sends the messages; the other finds it
+    and does nothing.
+
+    Returns (appointment, outcome): outcome is "created", "marked_paid" (an
+    existing booking whose deposit wasn't recorded) or "already_paid".
+    Returns (None, "unpaid") if the session isn't paid. Raises SlotTaken if
+    another client holds the slot.
+    """
+    if session.get("payment_status") != "paid":
+        return None, "unpaid"
+
+    metadata = session.get("metadata") or {}
+    session_id = session.get("id", "")
+    is_deposit = metadata.get("kind") == "deposit" or "deposit_amount" in metadata
+    user = User.objects.get(id=metadata["user_id"])
+    service = Service.objects.get(id=metadata["service_id"])
+    barber = Barber.objects.get(id=metadata["barber_id"])
+    deposit = Decimal(metadata.get("deposit_amount", "10.00")) if is_deposit else Decimal("0")
+
+    defaults = {
+        "payment_method": "online",
+        "client_notes": metadata.get("client_notes", ""),
+        "status": "confirmed",
+    }
+    if is_deposit:
+        defaults.update({"deposit_amount": deposit, "deposit_paid": True, "deposit_session_id": session_id})
+
+    try:
+        appt, created = Appointment.objects.get_or_create(
+            user=user, service=service, barber=barber,
+            date=metadata["date"], time=metadata["time"],
+            defaults=defaults,
+        )
+    except IntegrityError as e:
+        # unique (barber, date, time): someone else has this slot
+        raise SlotTaken(f"{barber.name} {metadata['date']} {metadata['time']} (session {session_id})") from e
+
+    outcome = "created" if created else "already_paid"
+    if not created and is_deposit:
+        # Mark it paid exactly once, even if the webhook and the redirect race.
+        marked = Appointment.objects.filter(pk=appt.pk, deposit_paid=False).update(
+            deposit_paid=True, deposit_session_id=session_id, deposit_amount=deposit,
+        )
+        if marked:
+            outcome = "marked_paid"
+
+    if outcome == "already_paid":
+        return appt, outcome
+
+    appt = Appointment.objects.select_related("user", "barber", "barber__user", "service").get(pk=appt.pk)
+    if outcome == "created":
+        send_booking_confirmation(appt)
+        try:
+            sms_booking_confirmation(appt)
+        except Exception as e:
+            logger.error(f"Booking SMS failed: {e}")
+    if is_deposit:
+        send_deposit_paid_email(appt)
+        sms_deposit_paid(appt)
+        if outcome == "created":
+            _notify_barber_of_deposit(appt, metadata)
+    return appt, outcome
+
+
+def _confirmed_redirect(metadata, payment):
+    # Encode everything: a service called "Haircut & Shave" would otherwise
+    # split the query string at the "&".
+    params = {
+        "service": metadata.get("service_name", ""),
+        "barber":  metadata.get("barber_name", ""),
+        "date":    metadata.get("date", ""),
+        "time":    metadata.get("time", ""),
+        "payment": payment,
+    }
+    if payment == "deposit":
+        params["deposit"] = metadata.get("deposit_amount", "10.00")
+        params["remaining"] = metadata.get("remaining", "0.00")
+    return redirect(f"{FRONTEND_URL}/booking-confirmed?{urllib.parse.urlencode(params)}")
+
+
 class DepositSuccessView(APIView):
-    """GET — called by Stripe after deposit paid. Books appointment, marks deposit paid."""
+    """GET — Stripe sends the client here after paying a deposit."""
     permission_classes = [AllowAny]
 
     def get(self, request):
@@ -2799,95 +2920,60 @@ class DepositSuccessView(APIView):
             return redirect(f"{FRONTEND_URL}/book")
 
         try:
-            session  = stripe.checkout.Session.retrieve(session_id)
-            metadata = session.metadata
-            user     = User.objects.get(id=metadata["user_id"])
-            service  = Service.objects.get(id=metadata["service_id"])
-            barber   = Barber.objects.get(id=metadata["barber_id"])
-
-            appt, created = Appointment.objects.get_or_create(
-                user=user, service=service, barber=barber,
-                date=metadata["date"], time=metadata["time"],
-                defaults={
-                    "payment_method":     "online",
-                    "client_notes":       metadata.get("client_notes", ""),
-                    "deposit_amount":     Decimal(metadata.get("deposit_amount", "10.00")),
-                    "deposit_paid":       True,
-                    "deposit_session_id": session_id,
-                    "status":             "confirmed",
-                },
-            )
-            # An existing booking whose deposit wasn't recorded yet (paid twice, or
-            # the webhook got there first without marking it).
-            newly_paid = not created and not appt.deposit_paid
-            if newly_paid:
-                appt.deposit_paid       = True
-                appt.deposit_session_id = session_id
-                appt.deposit_amount     = Decimal(metadata.get("deposit_amount", "10.00"))
-                appt.save(update_fields=["deposit_paid", "deposit_session_id", "deposit_amount"])
-
-            if created:
-                appt_full = Appointment.objects.select_related(
-                    "user", "barber", "barber__user", "service"
-                ).get(pk=appt.pk)
-                send_booking_confirmation(appt_full)
-                send_deposit_paid_email(appt_full)
-                sms_booking_confirmation(appt_full)
-                sms_deposit_paid(appt_full)
-                # ── Notify barber that deposit was received ──────────────────
-                try:
-                    _dep_amt  = metadata.get("deposit_amount", "10.00")
-                    _dep_net  = float(_dep_amt) - 0.59  # approx after Stripe fee
-                    _svc_name = metadata.get("service_name", appt_full.service.name)
-                    _clt_name = (appt_full.user.first_name or "") +                                 (" " + appt_full.user.last_name if appt_full.user.last_name else "")
-                    _clt_name = _clt_name.strip() or appt_full.user.username
-                    _appt_dt  = appt_full.date.strftime("%a %b %d").replace(" 0", " ")
-                    _appt_tm  = appt_full.time.strftime("%I:%M %p").lstrip("0")
-                    # Push to barber
-                    if appt_full.barber and appt_full.barber.user:
-                        send_push_notification(
-                            appt_full.barber.user,
-                            title="💰 Deposit Received",
-                            body=f"${_dep_amt} deposit from {_clt_name} for {_svc_name} on {_appt_dt}",
-                            notif_type="deposit_received",
-                            url="/barber-dashboard"
-                        )
-                    # SMS to barber
-                    _barber_phone = _get_barber_phone(appt_full.barber)
-                    if _barber_phone:
-                        _twilio_send(_barber_phone,
-                            f"💰 HEADZ UP: Deposit received!\n"
-                            f"Client: {_clt_name}\n"
-                            f"Service: {_svc_name}\n"
-                            f"Amount: ${_dep_amt} (≈${_dep_net:.2f} after fees)\n"
-                            f"When: {_appt_dt} at {_appt_tm}"
-                        )
-                except Exception as _ne:
-                    import logging
-                    logging.getLogger(__name__).error(f"Deposit barber notify failed: {_ne}")
-            elif newly_paid:
-                appt_full = Appointment.objects.select_related(
-                    "user", "barber", "barber__user", "service"
-                ).get(pk=appt.pk)
-                send_deposit_paid_email(appt_full)
-                sms_deposit_paid(appt_full)
-
-            # Encode everything: a service called "Haircut & Shave" would
-            # otherwise split the query string at the "&".
-            query = urllib.parse.urlencode({
-                "service":   metadata.get("service_name", ""),
-                "barber":    metadata.get("barber_name", ""),
-                "date":      metadata.get("date", ""),
-                "time":      metadata.get("time", ""),
-                "deposit":   metadata.get("deposit_amount", "10.00"),
-                "remaining": metadata.get("remaining", "0.00"),
-                "payment":   "deposit",
-            })
-            return redirect(f"{FRONTEND_URL}/booking-confirmed?{query}")
-        except Exception as e:
-            import logging
-            logging.getLogger(__name__).error(f"DepositSuccessView error: {e}")
+            session = stripe.checkout.Session.retrieve(session_id)
+            appt, outcome = book_paid_checkout(session)
+            if outcome == "unpaid":
+                return redirect(f"{FRONTEND_URL}/book?deposit_canceled=true")
+            return _confirmed_redirect(session.metadata, "deposit")
+        except SlotTaken as e:
+            logger.error(f"Deposit paid but slot taken: {e}")
             return redirect(f"{FRONTEND_URL}/booking-confirmed?payment=deposit&error=true")
+        except Exception as e:
+            logger.error(f"DepositSuccessView error: {e}")
+            return redirect(f"{FRONTEND_URL}/booking-confirmed?payment=deposit&error=true")
+
+
+class StripeWebhookView(APIView):
+    """
+    POST /api/stripe/webhook/ — Stripe tells us a checkout was paid.
+
+    The redirect back from Stripe only happens if the client's browser makes
+    it back; close the tab after paying and that booking never existed. This
+    books it either way. Every event must carry a valid signature for
+    STRIPE_WEBHOOK_SECRET; without the secret nothing is processed.
+    """
+    permission_classes = [AllowAny]
+    authentication_classes = []
+    throttle_classes = []
+
+    HANDLED = ("checkout.session.completed", "checkout.session.async_payment_succeeded")
+
+    def post(self, request):
+        secret = getattr(settings, "STRIPE_WEBHOOK_SECRET", "").strip()
+        if not secret:
+            logger.error("Stripe webhook called but STRIPE_WEBHOOK_SECRET is not set; ignoring it")
+            return Response({"error": "Webhook not configured"}, status=503)
+        try:
+            event = stripe.Webhook.construct_event(
+                request.body, request.META.get("HTTP_STRIPE_SIGNATURE", ""), secret,
+            )
+        except (ValueError, stripe.SignatureVerificationError):
+            return Response({"error": "Bad signature"}, status=400)
+
+        if event["type"] not in self.HANDLED:
+            return Response({"received": True})
+
+        session = event["data"]["object"]
+        try:
+            appt, outcome = book_paid_checkout(session)
+            logger.info(f"Stripe webhook {event['type']} {session.get('id')}: {outcome}")
+        except SlotTaken as e:
+            # Retrying won't free the slot, so answer 200 and leave it to a person.
+            logger.error(f"Paid checkout but slot taken, needs a refund or a new time: {e}")
+        except (User.DoesNotExist, Service.DoesNotExist, Barber.DoesNotExist, KeyError) as e:
+            logger.error(f"Stripe webhook {session.get('id')}: can't book from its metadata ({e!r})")
+        # Anything else raises, Stripe gets a 500 and retries later.
+        return Response({"received": True})
 
 
 def send_strike_email(user, profile, reason, appt):
@@ -3425,6 +3511,7 @@ class CreateCheckoutSessionView(APIView):
                 cancel_url=f"{FRONTEND_URL}/book?canceled=true",
                 customer_email=request.user.email or None,
                 metadata={
+                    "kind":         "full",
                     "user_id":      str(request.user.id),
                     "service_id":   str(service_id),
                     "barber_id":    str(barber_id),
@@ -3448,6 +3535,7 @@ class CreateCheckoutSessionView(APIView):
 
 
 class PaymentSuccessView(APIView):
+    """GET — Stripe sends the client here after paying in full online."""
     permission_classes = [AllowAny]
 
     def get(self, request):
@@ -3456,40 +3544,13 @@ class PaymentSuccessView(APIView):
             return redirect(f"{FRONTEND_URL}/booking-confirmed?payment=online")
 
         try:
-            session  = stripe.checkout.Session.retrieve(session_id)
-            metadata = session.metadata
-            user     = User.objects.get(id=metadata.get("user_id"))
-            service  = Service.objects.get(id=metadata.get("service_id"))
-            barber   = Barber.objects.get(id=metadata.get("barber_id"))
-
-            appt, created = Appointment.objects.get_or_create(
-                user=user, service=service, barber=barber,
-                date=metadata.get("date"), time=metadata.get("time"),
-                defaults={
-                    "payment_method": "online",
-                    "client_notes":   metadata.get("client_notes", ""),
-                    "status":         "confirmed",
-                },
-            )
-            if created:
-                appt_full = Appointment.objects.select_related(
-                    "user", "barber", "barber__user", "service"
-                ).get(pk=appt.pk)
-                send_booking_confirmation(appt_full)
-                try: sms_booking_confirmation(appt_full)
-                except Exception: pass
-
-            return redirect(
-                f"{FRONTEND_URL}/booking-confirmed"
-                f"?service={metadata.get('service_name','')}"
-                f"&barber={metadata.get('barber_name','')}"
-                f"&date={metadata.get('date','')}"
-                f"&time={metadata.get('time','')}"
-                f"&payment=online"
-            )
+            session = stripe.checkout.Session.retrieve(session_id)
+            appt, outcome = book_paid_checkout(session)
+            if outcome == "unpaid":
+                return redirect(f"{FRONTEND_URL}/book?canceled=true")
+            return _confirmed_redirect(session.metadata, "online")
         except Exception as e:
-            import logging
-            logging.getLogger(__name__).error(f"PaymentSuccessView error: {e}")
+            logger.error(f"PaymentSuccessView error: {e}")
             return redirect(f"{FRONTEND_URL}/booking-confirmed?payment=online&error=true")
 
 

@@ -1,5 +1,4 @@
 from datetime import date, time
-from types import SimpleNamespace
 from unittest import mock
 from urllib.parse import parse_qs, urlparse
 
@@ -26,29 +25,73 @@ class PasswordResetRoutesRemoved(TestCase):
         self.assertEqual(res.status_code, 404)
 
 
-@override_settings(FRONTEND_URL="https://headzupp.com")
-class DepositSuccessRedirect(TestCase):
+NOTIFIERS = (
+    "send_booking_confirmation", "send_deposit_paid_email", "sms_booking_confirmation",
+    "sms_deposit_paid", "send_push_notification", "_twilio_send",
+)
+WEBHOOK_SECRET = "whsec_test_secret"
+
+
+class PaidCheckoutBase(TestCase):
+    """A paid deposit checkout for one slot, and helpers to deliver it by
+    redirect or by signed webhook with the notifiers stubbed out."""
+
     def setUp(self):
+        import stripe
+
+        self.stripe = stripe
         self.user = User.objects.create_user(username="client", password="pw-123456")
         self.service = Service.objects.create(name="Haircut & Shave", price="35.00")
         self.barber = Barber.objects.create(name="Marcus Bell")
-        self.session = SimpleNamespace(metadata={
-            "user_id": str(self.user.id), "service_id": str(self.service.id), "barber_id": str(self.barber.id),
-            "date": "2026-11-20", "time": "10:00", "deposit_amount": "10.00", "remaining": "25.00",
-            "service_name": "Haircut & Shave", "barber_name": "Marcus Bell",
-        })
+        self.session_data = {
+            "id": "cs_test_1",
+            "object": "checkout.session",
+            "payment_status": "paid",
+            "metadata": {
+                "kind": "deposit", "user_id": str(self.user.id), "service_id": str(self.service.id),
+                "barber_id": str(self.barber.id), "date": "2026-11-20", "time": "10:00",
+                "deposit_amount": "10.00", "remaining": "25.00",
+                "service_name": "Haircut & Shave", "barber_name": "Marcus Bell",
+            },
+        }
+        patcher = mock.patch.multiple("core.views", **{name: mock.DEFAULT for name in NOTIFIERS})
+        self.notifiers = patcher.start()
+        self.addCleanup(patcher.stop)
 
-    def _get(self):
-        quiet = {name: mock.DEFAULT for name in (
-            "send_booking_confirmation", "send_deposit_paid_email", "sms_booking_confirmation",
-            "sms_deposit_paid", "send_push_notification", "_twilio_send",
-        )}
-        with mock.patch("core.views.stripe.checkout.Session.retrieve", return_value=self.session), \
-             mock.patch.multiple("core.views", **quiet):
+    def session(self, **changes):
+        return self.stripe.checkout.Session.construct_from({**self.session_data, **changes}, "sk_test")
+
+    def redirect(self, **changes):
+        with mock.patch("core.views.stripe.checkout.Session.retrieve", return_value=self.session(**changes)):
             return self.client.get("/api/deposit-success/?session_id=cs_test_1")
 
+    def webhook(self, event_type="checkout.session.completed", secret=WEBHOOK_SECRET, sign_with=None, **changes):
+        import hashlib
+        import hmac
+        import json
+        import time as clock
+
+        payload = json.dumps({
+            "id": "evt_1", "object": "event", "type": event_type,
+            "data": {"object": {**self.session_data, **changes}},
+        })
+        stamp = int(clock.time())
+        key = (sign_with or secret).encode()
+        sig = hmac.new(key, f"{stamp}.{payload}".encode(), hashlib.sha256).hexdigest()
+        with override_settings(STRIPE_WEBHOOK_SECRET=secret):
+            return self.client.post(
+                "/api/stripe/webhook/", payload, content_type="application/json",
+                HTTP_STRIPE_SIGNATURE=f"t={stamp},v1={sig}",
+            )
+
+    def confirmations_sent(self):
+        return self.notifiers["send_booking_confirmation"].call_count
+
+
+@override_settings(FRONTEND_URL="https://headzupp.com")
+class DepositRedirect(PaidCheckoutBase):
     def test_service_name_with_ampersand_survives_the_redirect(self):
-        res = self._get()
+        res = self.redirect()
         self.assertEqual(res.status_code, 302)
         query = parse_qs(urlparse(res["Location"]).query)
         self.assertEqual(query["service"], ["Haircut & Shave"])
@@ -56,11 +99,88 @@ class DepositSuccessRedirect(TestCase):
         self.assertEqual(query["payment"], ["deposit"])
 
     def test_books_the_appointment_with_the_deposit_paid(self):
-        self._get()
+        self.redirect()
         appt = Appointment.objects.get(user=self.user)
         self.assertTrue(appt.deposit_paid)
+        self.assertEqual(appt.deposit_session_id, "cs_test_1")
         self.assertEqual(appt.date, date(2026, 11, 20))
         self.assertEqual(appt.time, time(10, 0))
+        self.assertEqual(self.confirmations_sent(), 1)
+
+    def test_an_unpaid_session_books_nothing(self):
+        # A client could start checkout, copy the session id from Stripe's URL
+        # and cancel; the redirect used to book it as paid anyway.
+        res = self.redirect(payment_status="unpaid")
+        self.assertIn("/book?deposit_canceled=true", res["Location"])
+        self.assertFalse(Appointment.objects.exists())
+
+
+class StripeWebhook(PaidCheckoutBase):
+    def test_books_a_paid_checkout_when_the_client_never_comes_back(self):
+        res = self.webhook()
+        self.assertEqual(res.status_code, 200)
+        appt = Appointment.objects.get(user=self.user)
+        self.assertTrue(appt.deposit_paid)
+        self.assertEqual(appt.payment_method, "online")
+        self.assertEqual(self.confirmations_sent(), 1)
+        self.notifiers["send_deposit_paid_email"].assert_called_once()
+
+    def test_webhook_then_redirect_books_and_notifies_once(self):
+        self.webhook()
+        res = self.redirect()
+        self.assertIn("/booking-confirmed?", res["Location"])
+        self.assertNotIn("error", res["Location"])
+        self.assertEqual(Appointment.objects.count(), 1)
+        self.assertEqual(self.confirmations_sent(), 1)
+        self.assertEqual(self.notifiers["send_deposit_paid_email"].call_count, 1)
+
+    def test_redirect_then_webhook_books_and_notifies_once(self):
+        self.redirect()
+        self.assertEqual(self.webhook().status_code, 200)
+        self.assertEqual(Appointment.objects.count(), 1)
+        self.assertEqual(self.confirmations_sent(), 1)
+
+    def test_stripe_retrying_the_same_event_is_harmless(self):
+        self.webhook()
+        self.webhook()
+        self.assertEqual(Appointment.objects.count(), 1)
+        self.assertEqual(self.confirmations_sent(), 1)
+
+    def test_records_the_deposit_on_an_existing_unpaid_booking(self):
+        Appointment.objects.create(
+            user=self.user, service=self.service, barber=self.barber,
+            date="2026-11-20", time="10:00", payment_method="shop",
+        )
+        self.webhook()
+        appt = Appointment.objects.get(user=self.user)
+        self.assertTrue(appt.deposit_paid)
+        self.assertEqual(self.confirmations_sent(), 0)  # booking already confirmed earlier
+        self.notifiers["send_deposit_paid_email"].assert_called_once()
+
+    def test_wrong_signature_is_refused(self):
+        res = self.webhook(sign_with="whsec_someone_else")
+        self.assertEqual(res.status_code, 400)
+        self.assertFalse(Appointment.objects.exists())
+
+    def test_nothing_is_processed_without_a_configured_secret(self):
+        res = self.webhook(secret="", sign_with="anything")
+        self.assertEqual(res.status_code, 503)
+        self.assertFalse(Appointment.objects.exists())
+
+    def test_unpaid_sessions_and_other_events_are_ignored(self):
+        self.assertEqual(self.webhook(payment_status="unpaid").status_code, 200)
+        self.assertEqual(self.webhook(event_type="checkout.session.expired").status_code, 200)
+        self.assertFalse(Appointment.objects.exists())
+
+    def test_a_slot_taken_by_someone_else_is_logged_not_retried(self):
+        other = User.objects.create_user(username="other", password="pw-123456")
+        Appointment.objects.create(user=other, service=self.service, barber=self.barber, date="2026-11-20", time="10:00")
+        with self.assertLogs("core.views", level="ERROR") as logs:
+            res = self.webhook()
+        self.assertEqual(res.status_code, 200)
+        self.assertIn("slot taken", logs.output[0])
+        self.assertEqual(Appointment.objects.get().user, other)
+        self.assertEqual(self.confirmations_sent(), 0)
 
 
 class MakeAdmin(TestCase):
