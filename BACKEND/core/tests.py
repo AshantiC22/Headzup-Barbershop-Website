@@ -338,3 +338,161 @@ class CashOnly(TestCase):
         summary = self.api.get("/api/barber/schedule/?date=2026-11-20").json()["summary"]
         self.assertEqual(summary["completed"], 1)
         self.assertEqual(summary["to_collect"], "50.00")  # 30 + (30 - 10 deposit)
+
+
+def _next_weekday(weekday):
+    """The next date (after today) that falls on `weekday`, 0 = Monday."""
+    from datetime import timedelta
+
+    d = date.today() + timedelta(days=1)
+    while d.weekday() != weekday:
+        d += timedelta(days=1)
+    return d
+
+
+class ShopHoursEndpoint(TestCase):
+    """Barbers set the shop's week from the dashboard; everyone can read it;
+    booking never offers a time outside it."""
+
+    def setUp(self):
+        from rest_framework.test import APIClient
+
+        self.client_user = User.objects.create_user(username="client", password="pw-123456")
+        self.barber_user = User.objects.create_user(username="jay", password="pw-123456")
+        self.barber = Barber.objects.create(name="Mr. Jay", user=self.barber_user)
+        self.service = Service.objects.create(name="Haircut", price="30.00", duration_minutes=30)
+        self.api = APIClient()
+
+    def week(self, **changes):
+        days = [
+            {"day_of_week": d, "is_open": d != 6, "open_time": "09:00", "close_time": "16:00" if d == 5 else "18:00"}
+            for d in range(7)
+        ]
+        for d, values in changes.items():
+            days[int(d[1:])].update(values)
+        return {"days": days}
+
+    def test_starts_with_the_hours_the_site_always_showed(self):
+        res = self.api.get("/api/shop/hours/")
+        self.assertEqual(res.status_code, 200)
+        body = res.json()
+        self.assertEqual(len(body["days"]), 7)
+        self.assertEqual(body["summary"], "Mon–Fri 9 AM–6 PM · Sat 9 AM–4 PM · Closed Sun")
+        self.assertIsNone(body["updated_by"])
+
+    def test_only_barbers_can_change_them(self):
+        self.assertIn(self.api.put("/api/shop/hours/", self.week(), format="json").status_code, (401, 403))
+        self.api.force_authenticate(self.client_user)
+        self.assertEqual(self.api.put("/api/shop/hours/", self.week(), format="json").status_code, 403)
+
+    def test_a_barber_saves_the_week(self):
+        self.api.force_authenticate(self.barber_user)
+        res = self.api.put(
+            "/api/shop/hours/",
+            self.week(d0={"is_open": False}, d5={"open_time": "10:00", "close_time": "14:00"}),
+            format="json",
+        )
+        self.assertEqual(res.status_code, 200, res.content)
+        body = self.api.get("/api/shop/hours/").json()
+        self.assertFalse(body["days"][0]["is_open"])
+        self.assertEqual((body["days"][5]["open_time"], body["days"][5]["close_time"]), ("10:00", "14:00"))
+        self.assertEqual(body["updated_by"], "Mr. Jay")
+        self.assertEqual(body["summary"], "Closed Mon · Tue–Fri 9 AM–6 PM · Sat 10 AM–2 PM · Closed Sun")
+
+    def test_bad_weeks_are_refused_with_a_reason(self):
+        self.api.force_authenticate(self.barber_user)
+        cases = [
+            ({"days": self.week()["days"][:6]}, "seven"),
+            (self.week(d2={"open_time": "18:00", "close_time": "09:00"}), "Wednesday closes before it opens"),
+            (self.week(d1={"open_time": "nine"}), "Tuesday needs an opening"),
+            (self.week(d4={"is_open": "yes"}), "Friday"),
+            ({"days": [dict(self.week()["days"][0])] * 7}, "once"),
+            ({"days": [dict(d, is_open=False) for d in self.week()["days"]]}, "at least one day"),
+        ]
+        for body, reason in cases:
+            res = self.api.put("/api/shop/hours/", body, format="json")
+            self.assertEqual(res.status_code, 400, reason)
+            self.assertIn(reason, res.json()["error"])
+
+    def test_no_times_on_a_day_the_shop_is_closed(self):
+        self.api.force_authenticate(self.barber_user)
+        self.api.put("/api/shop/hours/", self.week(d0={"is_open": False}), format="json")
+        monday = _next_weekday(0)
+        res = self.api.get(f"/api/available-slots/?barber={self.barber.id}&date={monday}")
+        self.assertEqual(res.json()["available_slots"], [])
+        self.assertIn("closed on Mondays", res.json()["message"])
+        days = self.api.get(f"/api/barbers/{self.barber.id}/working-days/").json()["all_days"]
+        self.assertFalse(days[0]["is_working"])
+        self.assertTrue(days[1]["is_working"])
+
+    def test_a_barbers_day_is_cut_to_the_shops_hours(self):
+        from core.models import BarberAvailability
+
+        BarberAvailability.objects.create(
+            barber=self.barber, day_of_week=5, start_time=time(8), end_time=time(19), is_working=True
+        )
+        self.api.force_authenticate(self.barber_user)
+        self.api.put("/api/shop/hours/", self.week(d5={"open_time": "10:00", "close_time": "12:00"}), format="json")
+        saturday = _next_weekday(5)
+        slots = self.api.get(
+            f"/api/available-slots/?barber={self.barber.id}&date={saturday}&service={self.service.id}"
+        ).json()["available_slots"]
+        self.assertEqual(slots, ["10:00:00", "10:30:00", "11:00:00", "11:30:00"])
+
+    def test_booking_outside_shop_hours_is_refused(self):
+        self.api.force_authenticate(self.barber_user)
+        self.api.put("/api/shop/hours/", self.week(d5={"open_time": "10:00", "close_time": "12:00"}), format="json")
+        self.api.force_authenticate(self.client_user)
+        saturday = _next_weekday(5)
+        body = {"service": self.service.id, "barber": self.barber.id, "date": str(saturday), "payment_method": "shop"}
+        with mock.patch.multiple("core.views", **{n: mock.DEFAULT for n in NOTIFIERS}):
+            late = self.api.post("/api/appointments/", dict(body, time="11:45"), format="json")
+            self.assertEqual(late.status_code, 400)
+            self.assertIn("outside shop hours", str(late.content))
+            ok = self.api.post("/api/appointments/", dict(body, time="11:30"), format="json")
+            self.assertEqual(ok.status_code, 201, ok.content)
+
+
+class ErrorShape(TestCase):
+    """A refused booking is a 400 with the reason in "error", not a 500."""
+
+    def test_a_taken_slot_says_so(self):
+        from rest_framework.test import APIClient
+
+        user = User.objects.create_user(username="client", password="pw-123456")
+        barber = Barber.objects.create(name="Jarvis", user=User.objects.create_user(username="jarvis", password="pw-123456"))
+        service = Service.objects.create(name="Haircut", price="30.00")
+        tuesday = _next_weekday(1)
+        Appointment.objects.create(user=user, barber=barber, service=service, date=tuesday, time="10:00")
+        api = APIClient()
+        api.force_authenticate(user)
+        body = {"service": service.id, "barber": barber.id, "date": str(tuesday), "time": "10:00", "payment_method": "shop"}
+        with mock.patch.multiple("core.views", **{n: mock.DEFAULT for n in NOTIFIERS}):
+            res = api.post("/api/appointments/", body, format="json")
+        self.assertEqual(res.status_code, 400)
+        self.assertIn("already booked", res.json()["error"])
+
+    def test_a_cancelled_slot_can_be_booked_again(self):
+        from rest_framework.test import APIClient
+
+        user = User.objects.create_user(username="client", password="pw-123456")
+        barber = Barber.objects.create(name="Jarvis", user=User.objects.create_user(username="jarvis", password="pw-123456"))
+        service = Service.objects.create(name="Haircut", price="30.00")
+        tuesday = _next_weekday(1)
+        Appointment.objects.create(user=user, barber=barber, service=service, date=tuesday, time="10:00", status="cancelled")
+        api = APIClient()
+        api.force_authenticate(user)
+        body = {"service": service.id, "barber": barber.id, "date": str(tuesday), "time": "10:00", "payment_method": "shop"}
+        with mock.patch.multiple("core.views", **{n: mock.DEFAULT for n in NOTIFIERS}):
+            res = api.post("/api/appointments/", body, format="json")
+        self.assertEqual(res.status_code, 201, res.content)
+
+    def test_field_errors_keep_their_fields(self):
+        from rest_framework.test import APIClient
+
+        api = APIClient()
+        api.force_authenticate(User.objects.create_user(username="client", password="pw-123456"))
+        res = api.post("/api/appointments/", {}, format="json")
+        self.assertEqual(res.status_code, 400)
+        self.assertIsInstance(res.json()["error"], str)
+        self.assertIn("fields", res.json())

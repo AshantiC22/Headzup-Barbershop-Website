@@ -8,7 +8,7 @@ from .models import (
     UserProfile, Barber, Service, Appointment,
     BarberAvailability, BarberTimeOff,
     PushSubscription, Review, WaitlistEntry,
-    BarberClient, RescheduleRequest, NewsletterPost,
+    BarberClient, RescheduleRequest, NewsletterPost, ShopHours,
 )
 
 # ── Inline UserProfile on the User page ──────────────────────────────────────
@@ -811,3 +811,10 @@ class NewsletterPostAdmin(HeadzUpAdminMixin, admin.ModelAdmin):
     @admin.display(description="Active")
     def active_display(self, obj):
         return bool_badge(obj.active, "Live", "Hidden")
+
+
+@admin.register(ShopHours)
+class ShopHoursAdmin(admin.ModelAdmin):
+    list_display  = ("day_of_week", "is_open", "open_time", "close_time", "updated_by", "updated_at")
+    list_editable = ("is_open", "open_time", "close_time")
+    ordering      = ("day_of_week",)

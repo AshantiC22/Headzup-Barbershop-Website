@@ -11,7 +11,8 @@ from django.conf import settings
 from django.db import IntegrityError
 from django.shortcuts import redirect
 from rest_framework import viewsets
-from .models import Appointment, Barber, BarberAvailability, BarberTimeOff, Service, UserProfile, PushSubscription, Review, WaitlistEntry, BarberClient, RescheduleRequest, NewsletterPost, BarberServicePrice
+from .models import Appointment, Barber, BarberAvailability, BarberTimeOff, Service, UserProfile, PushSubscription, Review, WaitlistEntry, BarberClient, RescheduleRequest, NewsletterPost, BarberServicePrice, ShopHours
+from .shop_hours import DAY_NAMES, closed_message, describe_week, get_week, hours_on, outside_hours
 from .serializers import AppointmentSerializer, BarberSerializer, ServiceSerializer, UserProfileSerializer, RegisterSerializer
 from rest_framework.permissions import IsAuthenticated, AllowAny, IsAdminUser, IsAuthenticatedOrReadOnly
 from rest_framework.response import Response
@@ -1026,7 +1027,7 @@ def send_welcome_email(user):
         <tr><td style="padding:24px 0 0;">
           <p style="font-size:12px;color:#52525b;margin:0;line-height:1.7;">
             📍 2509 W 4th St, Hattiesburg, MS 39401<br>
-            Mon–Fri 9AM–6PM &middot; Sat 9AM–4PM &middot; Closed Sundays
+            {describe_week().replace('·', '&middot;')}
           </p>
         </td></tr>
         <tr><td style="border-top:1px solid rgba(255,255,255,0.06);padding-top:20px;margin-top:20px;">
@@ -1041,7 +1042,7 @@ def send_welcome_email(user):
                 f"Your account is ready. Book your first appointment at:\n"
                 f"{FRONTEND_URL}/book\n\n"
                 f"📍 2509 W 4th St, Hattiesburg, MS 39401\n"
-                f"Mon–Fri 9AM–6PM · Sat 9AM–4PM · Closed Sundays\n\n"
+                f"{describe_week()}\n\n"
                 f"— HEADZ UP Barbershop"
             )
             _sendgrid_send(user.email, subject, plain, html)
@@ -2219,12 +2220,14 @@ class AppointmentViewSet(viewsets.ModelViewSet):
 
         if date < date_type.today():
             raise serializers.ValidationError("Cannot book appointments in the past.")
-        if date.weekday() == 6:
-            raise serializers.ValidationError("We are closed on Sundays.")
+        service = serializer.validated_data.get("service")
+        hours_problem = outside_hours(date, time, getattr(service, "duration_minutes", None) or 30)
+        if hours_problem:
+            raise serializers.ValidationError(hours_problem)
         # Block slots already taken (exclude cancelled)
         if Appointment.objects.filter(
             barber_id=barber_id, date=date, time=time
-        ).exclude(status="cancelled").exists():
+        ).exclude(status__in=["cancelled", "no_show"]).exists():
             raise serializers.ValidationError("That time slot is already booked. Please choose another.")
         try:
             # Pay-in-shop → pending_shop (barber must confirm arrival, auto-cancels if no-show)
@@ -2246,9 +2249,18 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         time       = serializer.validated_data.get("time", instance.time)
         new_status = serializer.validated_data.get("status", instance.status)
         was_cancelled_before = instance.status == "cancelled"
-        conflict   = Appointment.objects.filter(barber_id=barber_id, date=date, time=time).exclude(pk=instance.pk)
+        conflict   = (
+            Appointment.objects.filter(barber_id=barber_id, date=date, time=time)
+            .exclude(pk=instance.pk)
+            .exclude(status__in=["cancelled", "no_show"])
+        )
         if conflict.exists():
             raise serializers.ValidationError("That time slot is already booked. Please choose another.")
+        if (date, time) != (instance.date, instance.time):
+            service = serializer.validated_data.get("service", instance.service)
+            hours_problem = outside_hours(date, time, getattr(service, "duration_minutes", None) or 30)
+            if hours_problem:
+                raise serializers.ValidationError(hours_problem)
         try:
             serializer.save()
             # If client just cancelled — notify barber + confirm to client
@@ -2690,6 +2702,17 @@ class DepositCheckoutView(APIView):
             barber  = Barber.objects.get(id=barber_id)
         except (Service.DoesNotExist, Barber.DoesNotExist) as e:
             return Response({"error": str(e)}, status=404)
+
+        try:
+            hours_problem = outside_hours(
+                date_type.fromisoformat(str(date)),
+                datetime.strptime(str(time)[:5], "%H:%M").time(),
+                service.duration_minutes or 30,
+            )
+        except ValueError:
+            return Response({"error": "Pick a date and time."}, status=400)
+        if hours_problem:
+            return Response({"error": hours_problem}, status=400)
 
         # Get client's current deposit fee — base from barber's settings
         profile, _ = UserProfile.objects.get_or_create(
@@ -3653,6 +3676,91 @@ class AdminAppointmentUpdateView(APIView):
 
 
 # ── Available slots ───────────────────────────────────────────────────────────
+def _parse_hhmm(value):
+    try:
+        return datetime.strptime(str(value)[:5], "%H:%M").time()
+    except (TypeError, ValueError):
+        return None
+
+
+def _shop_hours_payload():
+    week = get_week()
+    last = ShopHours.objects.select_related("updated_by").order_by("-updated_at").first()
+    return {
+        "days": [
+            {
+                "day_of_week": d,
+                "day_name":    DAY_NAMES[d],
+                "is_open":     week[d][0],
+                "open_time":   week[d][1].strftime("%H:%M"),
+                "close_time":  week[d][2].strftime("%H:%M"),
+            }
+            for d in range(7)
+        ],
+        "summary":    describe_week(week),
+        "updated_at": last.updated_at.isoformat() if last and last.updated_by_id else None,
+        "updated_by": last.updated_by.name if last and last.updated_by_id else None,
+    }
+
+
+class ShopHoursView(APIView):
+    """
+    GET shop/hours/  Public: the shop's week, Monday (0) to Sunday (6).
+    PUT shop/hours/  Barbers: replace the whole week in one go.
+        {"days": [{"day_of_week": 0, "is_open": true, "open_time": "09:00", "close_time": "18:00"}, …]}
+    Booking only offers times inside these hours, whatever a barber's own
+    schedule says.
+    """
+    permission_classes = [IsAuthenticatedOrReadOnly]
+
+    def get(self, request):
+        return Response(_shop_hours_payload())
+
+    def put(self, request):
+        barber = get_barber_for_user(request.user)
+        if not barber:
+            return Response({"error": "Only barbers can change the shop's hours."}, status=403)
+
+        days = request.data.get("days")
+        if not isinstance(days, list) or len(days) != 7:
+            return Response({"error": "Send all seven days."}, status=400)
+
+        cleaned = {}
+        for item in days:
+            if not isinstance(item, dict):
+                return Response({"error": "Send all seven days."}, status=400)
+            try:
+                day = int(item.get("day_of_week"))
+            except (TypeError, ValueError):
+                day = -1
+            if day not in range(7) or day in cleaned:
+                return Response({"error": "Send each day of the week once, Monday (0) to Sunday (6)."}, status=400)
+            is_open = item.get("is_open")
+            if not isinstance(is_open, bool):
+                return Response({"error": f"Say whether the shop is open on {DAY_NAMES[day]}."}, status=400)
+            opens, closes = _parse_hhmm(item.get("open_time")), _parse_hhmm(item.get("close_time"))
+            if is_open:
+                if not opens or not closes:
+                    return Response({"error": f"{DAY_NAMES[day]} needs an opening and a closing time."}, status=400)
+                if opens >= closes:
+                    return Response({"error": f"{DAY_NAMES[day]} closes before it opens."}, status=400)
+            cleaned[day] = (is_open, opens or datetime.strptime("09:00", "%H:%M").time(),
+                            closes or datetime.strptime("18:00", "%H:%M").time())
+
+        if not any(v[0] for v in cleaned.values()):
+            return Response({"error": "The shop has to be open at least one day. For time away, block days off instead."}, status=400)
+
+        from django.db import transaction
+        with transaction.atomic():
+            for day, (is_open, opens, closes) in cleaned.items():
+                ShopHours.objects.update_or_create(
+                    day_of_week=day,
+                    defaults={"is_open": is_open, "open_time": opens, "close_time": closes, "updated_by": barber},
+                )
+        logger.info("Shop hours changed by %s: %s", barber.name, describe_week())
+        return Response(_shop_hours_payload())
+
+
 class BarberWorkingDaysView(APIView):
     """
     GET barbers/<pk>/working-days/
@@ -3668,6 +3776,7 @@ class BarberWorkingDaysView(APIView):
         # Get all availability rows for this barber
         avail_qs  = BarberAvailability.objects.filter(barber_id=pk)
         avail_map = {a.day_of_week: a for a in avail_qs}
+        shop_week = get_week()
 
         has_any_schedule = len(avail_map) > 0
 
@@ -3676,7 +3785,12 @@ class BarberWorkingDaysView(APIView):
         all_days = []
         for dow in range(7):
             a = avail_map.get(dow)
-            if a:
+            if not shop_week[dow][0]:
+                all_days.append({
+                    "day_of_week": dow, "is_working": False,
+                    "start_time": None, "end_time": None, "shop_closed": True,
+                })
+            elif a:
                 all_days.append({
                     "day_of_week": dow,
                     "is_working":  a.is_working,
@@ -3740,9 +3854,12 @@ class AvailableSlotsView(APIView):
         if appt_date < today_central:
             return Response({"error": "Cannot book past dates"}, status=400)
 
-        # Reject Sunday
-        if appt_date.weekday() == 6:
-            return Response({"booked_slots": [], "available_slots": [], "time_off": True, "message": "Closed on Sundays."})
+        # The shop's own hours come first: nothing on a closed day, and no
+        # barber's hours reach outside them.
+        shop_week = get_week()
+        shop_closed = closed_message(appt_date, shop_week)
+        if shop_closed:
+            return Response({"booked_slots": [], "available_slots": [], "time_off": True, "message": shop_closed})
 
         # Reject time-off dates
         # Make sure barber exists and is active
@@ -3769,6 +3886,9 @@ class AvailableSlotsView(APIView):
             # Default hours if no availability set
             work_start = datetime.strptime("09:00", "%H:%M").time()
             work_end   = datetime.strptime("18:00", "%H:%M").time()
+        _, shop_open, shop_close = hours_on(appt_date, shop_week)
+        work_start = max(work_start, shop_open)
+        work_end   = min(work_end, shop_close)
 
         # Get service duration
         duration = 30

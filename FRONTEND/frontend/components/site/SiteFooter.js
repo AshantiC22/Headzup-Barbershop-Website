@@ -2,12 +2,12 @@
 import Link from "next/link";
 import { useSyncExternalStore } from "react";
 import { ThemeToggle } from "@/components/ThemeProvider";
-import { ADDRESS_LINE, HOURS, SHOP } from "@/lib/shop";
+import { useShopHours } from "@/components/ShopHours";
+import { WEEK_ORDER } from "@/lib/hours";
+import { ADDRESS_LINE, SHOP } from "@/lib/shop";
 import { fmtTime, shopStatus } from "@/lib/time";
 import { ShopSign } from "./SiteNav";
 
-// Monday first, the way people read a week.
-const WEEK = [1, 2, 3, 4, 5, 6, 0];
 const noSubscription = () => () => {};
 const shopDay = () => shopStatus().today;
 
@@ -15,10 +15,11 @@ export function HoursList({ compact = false }) {
   // Today in shop time. Unknown on the server, so nothing is highlighted
   // until the page hydrates.
   const today = useSyncExternalStore(noSubscription, shopDay, () => null);
+  const { hours } = useShopHours();
   return (
     <dl className={`hours ${compact ? "hours-compact" : ""}`}>
-      {WEEK.map((d) => {
-        const h = HOURS[d];
+      {WEEK_ORDER.map((d) => {
+        const h = hours[d];
         return (
           <div key={d} className={`spread ${today === d ? "is-today" : ""}`}>
             <dt>

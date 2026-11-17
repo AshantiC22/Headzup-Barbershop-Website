@@ -9,6 +9,7 @@ import SiteNav from "@/components/site/SiteNav";
 import SiteFooter, { HoursList } from "@/components/site/SiteFooter";
 import Wordmark from "@/components/site/Wordmark";
 import NextChair, { dayWord, useShopBook } from "@/components/site/NextChair";
+import { useShopHours } from "@/components/ShopHours";
 import { IconExternal, IconPhone, IconPin, IconRefresh, Skeleton } from "@/components/ui/Feedback";
 import { ONLINE_PAYMENTS } from "@/lib/config";
 import { bookingHref } from "@/lib/nextChair";
@@ -20,13 +21,14 @@ const photoOk = (url) => !!url && (url.startsWith("data:") || url.startsWith("ht
 const firstName = (name = "") => name.trim().split(/\s+/)[0] || name;
 
 function useShopStatus() {
+  const { hours } = useShopHours();
   const [status, setStatus] = useState(null);
   useEffect(() => {
-    const tick = () => setStatus(shopStatus());
+    const tick = () => setStatus(shopStatus(hours));
     tick();
     const id = setInterval(tick, 60_000);
     return () => clearInterval(id);
-  }, []);
+  }, [hours]);
   return status;
 }
 

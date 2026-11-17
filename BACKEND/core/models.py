@@ -92,6 +92,29 @@ class Barber(models.Model):
         return self.name
 
 
+class ShopHours(models.Model):
+    """When the shop is open, one row per weekday (0 = Monday, like
+    BarberAvailability). Barbers edit this from their dashboard; the public
+    site shows it, and booking only offers times inside it."""
+    day_of_week = models.IntegerField(choices=DAYS_OF_WEEK, unique=True)
+    is_open     = models.BooleanField(default=True)
+    open_time   = models.TimeField()
+    close_time  = models.TimeField()
+    updated_at  = models.DateTimeField(auto_now=True)
+    updated_by  = models.ForeignKey(
+        Barber, on_delete=models.SET_NULL, null=True, blank=True, related_name="+",
+    )
+
+    class Meta:
+        ordering = ["day_of_week"]
+        verbose_name_plural = "shop hours"
+
+    def __str__(self):
+        if not self.is_open:
+            return f"{self.get_day_of_week_display()}: closed"
+        return f"{self.get_day_of_week_display()}: {self.open_time:%H:%M}–{self.close_time:%H:%M}"
+
+
 class BarberAvailability(models.Model):
     barber      = models.ForeignKey(Barber, on_delete=models.CASCADE, related_name="availability")
     day_of_week = models.IntegerField(choices=DAYS_OF_WEEK)
@@ -159,7 +182,16 @@ class Appointment(models.Model):
                                             help_text="True if cancelled within 2 hours of appointment")
 
     class Meta:
-        unique_together = ("barber", "date", "time")
+        # One live booking per barber per slot. Cancelled and no-show
+        # appointments don't hold the slot, so it can be booked again (the
+        # slot list already offers it).
+        constraints = [
+            models.UniqueConstraint(
+                fields=["barber", "date", "time"],
+                condition=~models.Q(status__in=["cancelled", "no_show"]),
+                name="one_live_booking_per_slot",
+            ),
+        ]
 
     def __str__(self):
         return f"{self.user.username} - {self.barber.name} {self.date} {self.time}"

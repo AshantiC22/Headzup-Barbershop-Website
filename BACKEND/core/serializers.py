@@ -50,6 +50,9 @@ class AppointmentSerializer(serializers.ModelSerializer):
         model  = Appointment
         fields = "__all__"
         read_only_fields = ["user", "service_name", "service_price", "service_duration", "barber_name", "barber_id", "service_id", "barber_cashapp"]
+        # The views check for a taken slot themselves (with a message a client
+        # can read) and the database constraint catches races.
+        validators = []
 
 
 class RegisterSerializer(serializers.Serializer):

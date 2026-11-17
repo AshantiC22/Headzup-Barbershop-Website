@@ -87,6 +87,25 @@ The booking page keeps everything picked in `sessionStorage`, so a refresh
 lands on the same step with the same choices. A draft is only restored when
 the address matches the one it was saved from; a new link starts fresh.
 
+## Shop hours
+
+Nothing in the frontend hard-codes the hours. Barbers set the shop's week in
+the dashboard (Hours tab, "Shop hours"), which saves the whole week at once to
+`PUT /api/shop/hours/`. `GET /api/shop/hours/` is public.
+
+- `app/layout.tsx` fetches the week on the server (cached five minutes) so the
+  first HTML and the search-engine data already have it.
+- `components/ShopHours.js` holds it for the page, asks the API once more in
+  the browser, and takes a freshly saved week from the dashboard so the
+  footer and home page update without a reload. Read it with
+  `useShopHours()`; pass `hours` to `shopStatus(hours)`.
+- `lib/hours.js` converts between the API's Monday-first days and `getDay()`
+  order. `DEFAULT_HOURS` there is only what shows if the API can't be reached.
+
+The API enforces the hours too: no open times on a day the shop is closed,
+each barber's own hours are cut to the shop's, and a booking outside them is
+refused with the reason.
+
 ## Motion
 
 Durations and easings are tokens in `globals.css` (`--dur-1/2/3`, `--ease`,

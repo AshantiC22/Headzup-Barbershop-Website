@@ -21,6 +21,7 @@ const CACHE_TTL = {
   "barber/clients/": 15_000,
   "barber/reports/": 30_000,
   "newsletter/manage/": 20_000,
+  "shop/hours/": 60_000,
 };
 
 function getCacheKey(url, params) {
@@ -117,6 +118,7 @@ const PUBLIC_URLS = [
   "barbers/",
   "services/",
   "available-slots/",
+  "shop/hours/",
   "push/subscribe/",
   "push/vapid-key/",
 ];

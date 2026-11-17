@@ -18,16 +18,8 @@ export const SHOP = {
 
 export const ADDRESS_LINE = `${SHOP.street}, ${SHOP.city}, ${SHOP.region} ${SHOP.zip}`;
 
-// Day index follows JS getDay(): 0 = Sunday … 6 = Saturday. Times are 24h, Central.
-export const HOURS = [
-  { day: 0, label: "Sunday", open: null, close: null },
-  { day: 1, label: "Monday", open: "09:00", close: "18:00" },
-  { day: 2, label: "Tuesday", open: "09:00", close: "18:00" },
-  { day: 3, label: "Wednesday", open: "09:00", close: "18:00" },
-  { day: 4, label: "Thursday", open: "09:00", close: "18:00" },
-  { day: 5, label: "Friday", open: "09:00", close: "18:00" },
-  { day: 6, label: "Saturday", open: "09:00", close: "16:00" },
-];
+// Hours aren't here: barbers set them from the dashboard. See lib/hours.js
+// and components/ShopHours.js.
 
 // Fallback menu for the public pages (the API's service list needs a login).
 // Descriptions are matched to live services by name on the booking page too.

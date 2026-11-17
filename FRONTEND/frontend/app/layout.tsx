@@ -2,7 +2,9 @@ import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
 import "./globals.css";
 import ClientProviders from "@/components/ClientProviders";
-import { HOURS, SHOP } from "@/lib/shop";
+import { API_ROOT } from "@/lib/config";
+import { DEFAULT_HOURS, fromApi } from "@/lib/hours";
+import { SHOP } from "@/lib/shop";
 
 // Fonts are preloaded and get a metric-matched fallback, so headlines don't
 // jump when the real face arrives. Files and their license are in app/fonts.
@@ -79,17 +81,37 @@ export const metadata: Metadata = {
 // visitor never chose and their device is set to dark.
 const THEME_SCRIPT = `(function(){var r=document.documentElement,t='light';try{var s=localStorage.getItem('headzup_theme');if(s==='dark'||s==='light')t=s;else if(matchMedia('(prefers-color-scheme: dark)').matches)t='dark';}catch(e){}r.setAttribute('data-theme',t);r.style.colorScheme=t;})();`;
 
+type Day = { day: number; label: string; open: string | null; close: string | null };
+
+// The week the barbers set in their dashboard. Fetched here so the first HTML
+// already shows it; refreshed every five minutes, and if the API doesn't
+// answer within a couple of seconds the page goes out with the fallback week
+// and the browser fetches the real one.
+async function getShopHours(): Promise<unknown> {
+  try {
+    const res = await fetch(`${API_ROOT}/api/shop/hours/`, {
+      next: { revalidate: 300 },
+      signal: AbortSignal.timeout(2500),
+    });
+    return res.ok ? await res.json() : null;
+  } catch {
+    return null;
+  }
+}
+
 // Opening hours for search engines, grouped so days with the same hours share a row.
-const openingHours = Object.values(
-  HOURS.filter((h) => h.open).reduce<
-    Record<string, { "@type": string; dayOfWeek: string[]; opens: string; closes: string }>
-  >((rows, h) => {
-    const key = `${h.open}-${h.close}`;
-    rows[key] ??= { "@type": "OpeningHoursSpecification", dayOfWeek: [], opens: h.open!, closes: h.close! };
-    rows[key].dayOfWeek.push(h.label);
-    return rows;
-  }, {}),
-);
+function openingHours(hours: Day[]) {
+  return Object.values(
+    hours
+      .filter((h) => h.open)
+      .reduce<Record<string, { "@type": string; dayOfWeek: string[]; opens: string; closes: string }>>((rows, h) => {
+        const key = `${h.open}-${h.close}`;
+        rows[key] ??= { "@type": "OpeningHoursSpecification", dayOfWeek: [], opens: h.open!, closes: h.close! };
+        rows[key].dayOfWeek.push(h.label);
+        return rows;
+      }, {}),
+  );
+}
 
 const LOCAL_BUSINESS = {
   "@context": "https://schema.org",
@@ -108,12 +130,14 @@ const LOCAL_BUSINESS = {
     addressCountry: "US",
   },
   hasMap: SHOP.mapsLink,
-  openingHoursSpecification: openingHours,
   priceRange: "$$",
   image: `${SITE_URL}/og-image.jpg`,
 };
 
-export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+  const shopHours = await getShopHours();
+  const week: Day[] = fromApi(shopHours) || DEFAULT_HOURS;
+  const business = { ...LOCAL_BUSINESS, openingHoursSpecification: openingHours(week) };
   return (
     <html
       lang="en"
@@ -125,13 +149,13 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
       <head>
         <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
         <link rel="preconnect" href="https://api.headzupp.com" crossOrigin="anonymous" />
-        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(LOCAL_BUSINESS) }} />
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(business) }} />
       </head>
       <body>
         <a className="skip-link" href="#main">
           Skip to content
         </a>
-        <ClientProviders>{children}</ClientProviders>
+        <ClientProviders shopHours={shopHours}>{children}</ClientProviders>
       </body>
     </html>
   );

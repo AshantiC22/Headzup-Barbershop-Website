@@ -1,14 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { BOOKSY, HOURS, REVIEWS, SERVICES, SERVICE_GROUPS, describeService, groupForService } from "@/lib/shop";
+import { BOOKSY, REVIEWS, SERVICES, SERVICE_GROUPS, describeService, groupForService } from "@/lib/shop";
 import { safeNext } from "@/lib/auth";
 
 describe("shop facts", () => {
-  it("has a row for every weekday, indexed like Date#getDay", () => {
-    expect(HOURS).toHaveLength(7);
-    HOURS.forEach((h, i) => expect(h.day).toBe(i));
-    HOURS.filter((h) => h.open).forEach((h) => expect(h.open < h.close).toBe(true));
-  });
-
   it("puts every service in a group that exists", () => {
     const groups = new Set(SERVICE_GROUPS.map((g) => g.id));
     SERVICES.forEach((s) => expect(groups.has(s.group)).toBe(true));

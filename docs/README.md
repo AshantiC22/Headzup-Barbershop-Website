@@ -29,6 +29,7 @@ architecture to deployment.
 - **Notifications:** email, SMS and push across all 14 booking triggers
 - **PWA:** installable on iOS and Android, works offline
 - **Role-based dashboards:** separate client and barber portals with their own permissions
+- **Shop hours from the dashboard:** barbers set the week; the site, search data and booking all follow it
 - **Strikes and deposits:** fees escalate automatically for no-shows and late cancellations
 - **Client management:** VIP flags, notes, booking history and strike tracking
 - **Mass messaging:** email and SMS blasts to all clients
