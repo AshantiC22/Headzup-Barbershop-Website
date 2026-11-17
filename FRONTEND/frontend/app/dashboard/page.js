@@ -10,6 +10,7 @@ import { arrowSelect } from "@/components/ui/roving";
 import { useAlerts } from "@/components/Alerts";
 import { ThemeToggle } from "@/components/ThemeProvider";
 import AppHeader from "@/components/site/AppHeader";
+import InstallApp from "@/components/InstallApp";
 import { Calendar, SlotPicker, WorkWeek, makeDayRule } from "@/components/booking/Calendar";
 import StarRating from "@/components/ui/StarRating";
 import {
@@ -461,6 +462,7 @@ function AccountTab({ user, strike, visits, spent, toast }) {
           </Link>
         </div>
       </section>
+      <InstallApp who="client" />
     </div>
   );
 }

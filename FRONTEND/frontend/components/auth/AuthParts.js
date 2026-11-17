@@ -13,7 +13,7 @@ export function AuthShell({ children }) {
     <div className="fade-page">
       <div className="fade-edge fade-page-edge" aria-hidden="true" />
       <div className="auth-wrap">
-        <header className="auth-top">
+        <header className="auth-top band">
           <ShopSign />
           <Link href="/" className="btn btn-quiet btn-sm auth-home">
             <IconArrowLeft size={16} /> Home

@@ -6,10 +6,13 @@
 // so it needs a reload. Doing that while they're mid-booking would throw away
 // their form, so the reload waits until the tab is in the background.
 import { useEffect } from "react";
+import { catchInstallPrompt } from "@/lib/install";
 
 const CHECK_EVERY_MS = 30 * 60 * 1000;
 
 export default function ServiceWorker() {
+  useEffect(() => catchInstallPrompt(), []);
+
   useEffect(() => {
     if (!("serviceWorker" in navigator) || process.env.NODE_ENV !== "production") return;
 

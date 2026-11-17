@@ -106,6 +106,22 @@ The API enforces the hours too: no open times on a day the shop is closed,
 each barber's own hours are cut to the shop's, and a booking outside them is
 refused with the reason.
 
+## On a phone, and as an app
+
+The site installs to the home screen (`public/site.webmanifest`, `public/sw.js`)
+and runs full screen from there.
+
+- `lib/install.js` catches Chrome's install prompt at startup (it only fires
+  once) and `components/InstallApp.js` turns it into an "Install the app"
+  button. On iPhone, where Safari has no prompt, the card explains Share → Add
+  to Home Screen. It shows in the client Account tab and the barber Profile
+  tab, and hides once the app is installed.
+- The barber dashboard puts its sections in a sidebar on desktop, a strip under
+  the header on tablets, and a bottom tab bar on phones (Schedule, Walk-in,
+  Clients, Reschedules, More), where a thumb can reach them.
+- There's no hover on a touch screen, so pressing a button shows the same
+  yellow glint along the cut that hovering does.
+
 ## Motion
 
 Durations and easings are tokens in `globals.css` (`--dur-1/2/3`, `--ease`,
