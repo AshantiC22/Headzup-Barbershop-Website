@@ -116,7 +116,7 @@ export default function BarberLoginPage() {
 
   if (mode === "forgot") {
     return (
-      <AuthShell seed={11}>
+      <AuthShell>
         <RecoveryFlow
           onBack={() => switchMode("login")}
           onDone={(u) => {
@@ -130,7 +130,7 @@ export default function BarberLoginPage() {
   }
 
   return (
-    <AuthShell seed={11}>
+    <AuthShell>
       <Segmented
         label="Barber account"
         value={mode}

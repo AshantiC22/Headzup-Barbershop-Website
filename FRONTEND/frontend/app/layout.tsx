@@ -6,28 +6,24 @@ import { HOURS, SHOP } from "@/lib/shop";
 
 // Fonts are preloaded and get a metric-matched fallback, so headlines don't
 // jump when the real face arrives. Files and their license are in app/fonts.
+//   Anybody: one variable family with a width axis, from 50% condensed to 150%
+//   wide. The wordmark fades through both axes letter by letter.
+//   Atkinson Hyperlegible Next: drawn for readers with low vision; the shop
+//   cuts kids and seniors, so the reading text has to work for both.
 const display = localFont({
-  src: "./fonts/grenze-gotisch-latin-wght-normal.woff2",
+  src: "./fonts/anybody-latin-wdth-normal.woff2",
   weight: "100 900",
   variable: "--ff-display",
-  adjustFontFallback: "Times New Roman",
-});
-const lore = localFont({
-  src: [
-    { path: "./fonts/grenze-latin-400-normal.woff2", weight: "400", style: "normal" },
-    { path: "./fonts/grenze-latin-400-italic.woff2", weight: "400", style: "italic" },
-    { path: "./fonts/grenze-latin-600-normal.woff2", weight: "600", style: "normal" },
-  ],
-  variable: "--ff-lore",
-  adjustFontFallback: "Times New Roman",
-  preload: false,
-});
-const ui = localFont({
-  src: "./fonts/archivo-latin-wdth-normal.woff2",
-  weight: "100 900",
-  variable: "--ff-ui",
   adjustFontFallback: "Arial",
-  declarations: [{ prop: "font-stretch", value: "62% 125%" }],
+  declarations: [{ prop: "font-stretch", value: "50% 150%" }],
+});
+const body = localFont({
+  src: [
+    { path: "./fonts/atkinson-hyperlegible-next-latin-wght-normal.woff2", weight: "200 800", style: "normal" },
+    { path: "./fonts/atkinson-hyperlegible-next-latin-wght-italic.woff2", weight: "200 800", style: "italic" },
+  ],
+  variable: "--ff-body",
+  adjustFontFallback: "Arial",
 });
 
 const SITE_URL = "https://headzupp.com";
@@ -39,7 +35,10 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
-  themeColor: "#1A1D1C",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#F1F2EE" },
+    { media: "(prefers-color-scheme: dark)", color: "#121518" },
+  ],
 };
 
 export const metadata: Metadata = {
@@ -59,7 +58,7 @@ export const metadata: Metadata = {
         url: "/og-image.jpg",
         width: 1200,
         height: 630,
-        alt: "A night street in fog with a lit barber pole standing under a large moon",
+        alt: "HEADZ UP Barbershop, 2509 West 4th Street, Hattiesburg",
       },
     ],
   },
@@ -76,8 +75,9 @@ export const metadata: Metadata = {
   },
 };
 
-// Runs before first paint. Lamplight is the default; Daylight only if chosen.
-const THEME_SCRIPT = `(function(){var r=document.documentElement,t='dark';try{if(localStorage.getItem('headzup_theme')==='light')t='light';}catch(e){}r.setAttribute('data-theme',t);r.style.colorScheme=t;})();`;
+// Runs before first paint. Day is the default; Night if chosen, or if the
+// visitor never chose and their device is set to dark.
+const THEME_SCRIPT = `(function(){var r=document.documentElement,t='light';try{var s=localStorage.getItem('headzup_theme');if(s==='dark'||s==='light')t=s;else if(matchMedia('(prefers-color-scheme: dark)').matches)t='dark';}catch(e){}r.setAttribute('data-theme',t);r.style.colorScheme=t;})();`;
 
 // Opening hours for search engines, grouped so days with the same hours share a row.
 const openingHours = Object.values(
@@ -117,9 +117,9 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
   return (
     <html
       lang="en"
-      data-theme="dark"
+      data-theme="light"
       data-scroll-behavior="smooth"
-      className={`${display.variable} ${lore.variable} ${ui.variable}`}
+      className={`${display.variable} ${body.variable}`}
       suppressHydrationWarning
     >
       <head>

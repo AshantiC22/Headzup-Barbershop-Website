@@ -35,63 +35,66 @@ export function HoursList({ compact = false }) {
 
 export default function SiteFooter({ showTheme = false, showHours = true }) {
   return (
-    <footer className="footer">
-      <div className="wrap">
-        <div className={`footer-grid ${showHours ? "" : "footer-grid-2"}`}>
-          <div className="stack" style={{ "--stack": "16px" }}>
-            <ShopSign />
-            <p className="muted footer-blurb">
-              Fades, lineups, beard work and hot shaves on West 4th Street. Walk-ins welcome when the chair is free.
-            </p>
-            <p>
-              <a href={SHOP.mapsLink} target="_blank" rel="noopener noreferrer">
-                {ADDRESS_LINE}
-              </a>
-              <br />
-              <a href={`tel:${SHOP.phone}`}>{SHOP.phoneDisplay}</a>
-            </p>
-          </div>
-          {showHours && (
-            <div>
-              <h2 className="h4 mb-4">Hours</h2>
-              <HoursList compact />
+    <>
+      <div className="fade-edge is-up footer-fade" aria-hidden="true" />
+      <footer className="footer">
+        <div className="wrap">
+          <div className={`footer-grid ${showHours ? "" : "footer-grid-2"}`}>
+            <div className="stack" style={{ "--stack": "16px" }}>
+              <ShopSign />
+              <p className="muted footer-blurb">
+                Fades, lineups, beard work and hot shaves on West 4th Street. Book online or call the shop.
+              </p>
+              <p>
+                <a href={SHOP.mapsLink} target="_blank" rel="noopener noreferrer">
+                  {ADDRESS_LINE}
+                </a>
+                <br />
+                <a href={`tel:${SHOP.phone}`}>{SHOP.phoneDisplay}</a>
+              </p>
             </div>
-          )}
-          <div>
-            <h2 className="h4 mb-4">Around the shop</h2>
-            <ul className="footer-list">
-              <li>
-                <Link href="/book">Book a cut</Link>
-              </li>
-              <li>
-                <Link href="/gallery">Recent work</Link>
-              </li>
-              <li>
-                <Link href="/newsletter">News and deals</Link>
-              </li>
-              <li>
-                <Link href="/waitlist">Join a waitlist</Link>
-              </li>
-              <li>
-                <Link href="/dashboard">My appointments</Link>
-              </li>
-              <li>
-                <Link href="/barber-login">Barber sign-in</Link>
-              </li>
-              <li>
-                <Link href="/sms-optin">Text message settings</Link>
-              </li>
-              <li>
-                <Link href="/terms">Terms and privacy</Link>
-              </li>
-            </ul>
+            {showHours && (
+              <div>
+                <h2 className="h4 mb-4">Hours</h2>
+                <HoursList compact />
+              </div>
+            )}
+            <div>
+              <h2 className="h4 mb-4">Around the shop</h2>
+              <ul className="footer-list">
+                <li>
+                  <Link href="/book">Book a cut</Link>
+                </li>
+                <li>
+                  <Link href="/gallery">Recent work</Link>
+                </li>
+                <li>
+                  <Link href="/newsletter">News and deals</Link>
+                </li>
+                <li>
+                  <Link href="/waitlist">Join a waitlist</Link>
+                </li>
+                <li>
+                  <Link href="/dashboard">My appointments</Link>
+                </li>
+                <li>
+                  <Link href="/barber-login">Barber sign-in</Link>
+                </li>
+                <li>
+                  <Link href="/sms-optin">Text message settings</Link>
+                </li>
+                <li>
+                  <Link href="/terms">Terms and privacy</Link>
+                </li>
+              </ul>
+            </div>
+          </div>
+          <div className="footer-base">
+            <p className="small faint">© {new Date().getFullYear()} HEADZ UP Barbershop, Hattiesburg, Mississippi</p>
+            {showTheme && <ThemeToggle />}
           </div>
         </div>
-        <div className="footer-base">
-          <p className="small faint">© {new Date().getFullYear()} HEADZ UP Barbershop, Hattiesburg, Mississippi</p>
-          {showTheme && <ThemeToggle />}
-        </div>
-      </div>
-    </footer>
+      </footer>
+    </>
   );
 }

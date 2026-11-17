@@ -26,6 +26,7 @@ import {
   IconUsers,
   IconWalk,
   IconWallet,
+  LoadFailed,
   Skeleton,
   useToasts,
 } from "@/components/ui/Feedback";
@@ -76,6 +77,8 @@ function Studio() {
   const [barber, setBarber] = useState(null);
   const [services, setServices] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [failed, setFailed] = useState(false);
+  const [attempt, setAttempt] = useState(0);
   const [today, setToday] = useState({});
   const [badges, setBadges] = useState({ reviews: 0, reschedules: 0 });
   const initial = ALIASES[params.get("tab")] || params.get("tab");
@@ -120,11 +123,12 @@ function Studio() {
           .catch(() => {});
       } catch (e) {
         if (e?.response?.status === 401 || e?.response?.status === 403) router.replace("/barber-login");
+        else setFailed(true);
       } finally {
         setLoading(false);
       }
     })();
-  }, [router]);
+  }, [router, attempt]);
 
   // A review push arriving while the dashboard is open bumps the badge.
   useEffect(() => {
@@ -159,6 +163,23 @@ function Studio() {
   }, []);
 
   if (loading) return <StudioLoading />;
+  if (failed) {
+    return (
+      <>
+        <AppHeader title="Barber dashboard" signOutTo="/barber-login" />
+        <main id="main" className="wrap page-pad-app">
+          <LoadFailed
+            what="Your dashboard"
+            onRetry={() => {
+              setFailed(false);
+              setLoading(true);
+              setAttempt((n) => n + 1);
+            }}
+          />
+        </main>
+      </>
+    );
+  }
 
   const first = barber?.name?.split(" ")[0] || "there";
   const badgeFor = (id) => (id === "reviews" ? badges.reviews : id === "reschedules" ? badges.reschedules : 0);

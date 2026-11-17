@@ -1,5 +1,5 @@
 "use client";
-// Five painted stars. Arrow keys work; it's a real radio group.
+// Five stars. Arrow keys work; it's a real radio group.
 import { useState } from "react";
 import { IconStar } from "./Feedback";
 import { arrowSelect, rovingIndex } from "./roving";

@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import API from "@/lib/api";
 import { ONLINE_PAYMENTS } from "@/lib/config";
-import Impression from "@/components/art/Impression";
 import { IconCamera, IconTrash, Modal, Skeleton, Spinner } from "@/components/ui/Feedback";
 import { fmtDate, fmtTime, todayStr } from "@/lib/time";
 
@@ -299,7 +298,7 @@ const CATS = [
 
 export function NewsTab({ toast }) {
   const [posts, setPosts] = useState(null);
-  const [f, setF] = useState({ emoji: "✂️", title: "", body: "", category: "general", pinned: false });
+  const [f, setF] = useState({ title: "", body: "", category: "general", pinned: false });
   const [busy, setBusy] = useState(false);
   const [del, setDel] = useState(null);
   const load = () =>
@@ -315,9 +314,10 @@ export function NewsTab({ toast }) {
     if (!f.title.trim() || !f.body.trim()) return toast("Give it a title and a message.", "bad");
     setBusy(true);
     try {
-      await API.post("newsletter/manage/", f);
+      // emoji: the API still has the field (and defaults it to scissors); posts no longer show one
+      await API.post("newsletter/manage/", { ...f, emoji: "" });
       toast("Published. Clients with alerts on get a notification.");
-      setF({ emoji: "✂️", title: "", body: "", category: "general", pinned: false });
+      setF({ title: "", body: "", category: "general", pinned: false });
       load();
     } catch {
       toast("It didn't publish.", "bad");
@@ -345,32 +345,17 @@ export function NewsTab({ toast }) {
         </div>
       </div>
       <form className="panel panel-pad w-l" onSubmit={publish}>
-        <div className="form-grid news-form">
-          <div className="field">
-            <label className="label" htmlFor="n-emoji">
-              Icon
-            </label>
-            <input
-              id="n-emoji"
-              className="input"
-              maxLength={2}
-              value={f.emoji}
-              onChange={(e) => setF((p) => ({ ...p, emoji: e.target.value }))}
-              style={{ textAlign: "center", fontSize: 22 }}
-            />
-          </div>
-          <div className="field">
-            <label className="label" htmlFor="n-title">
-              Title
-            </label>
-            <input
-              id="n-title"
-              className="input"
-              value={f.title}
-              onChange={(e) => setF((p) => ({ ...p, title: e.target.value }))}
-              placeholder="Thanksgiving hours"
-            />
-          </div>
+        <div className="field">
+          <label className="label" htmlFor="n-title">
+            Title
+          </label>
+          <input
+            id="n-title"
+            className="input"
+            value={f.title}
+            onChange={(e) => setF((p) => ({ ...p, title: e.target.value }))}
+            placeholder="Thanksgiving hours"
+          />
         </div>
         <div className="field">
           <label className="label" htmlFor="n-body">
@@ -424,9 +409,7 @@ export function NewsTab({ toast }) {
             <li key={p.id} className="placard">
               <div className="spread" style={{ alignItems: "flex-start" }}>
                 <div>
-                  <p className="placard-title">
-                    {p.emoji} {p.title}
-                  </p>
+                  <p className="placard-title">{p.title}</p>
                   <p className="small faint">
                     {p.created_at}
                     {p.pinned ? ", pinned" : ""}
@@ -496,16 +479,11 @@ export function ProfileTab({ barber, setBarber, toast }) {
       </div>
       <div className="setup-grid">
         <section className="panel panel-pad" style={{ textAlign: "center" }}>
-          <div className="frame frame-arch profile-arch">
+          <div className="frame profile-arch">
             <div className="frame-inner">
               {photo ? (
-                <Impression
-                  key={photo.slice(0, 64)}
-                  src={photo}
-                  alt={`${barber?.name}'s portrait`}
-                  seed={(barber?.id || 1) * 13}
-                  className="fill"
-                />
+                // eslint-disable-next-line @next/next/no-img-element -- a data: URL or the API's photo
+                <img src={photo} alt={`${barber?.name}'s portrait`} className="fill cover" />
               ) : (
                 <div className="monogram-sm" aria-hidden="true">
                   {barber?.name?.charAt(0)}
@@ -514,7 +492,7 @@ export function ProfileTab({ barber, setBarber, toast }) {
             </div>
           </div>
           <p className="h3 mt-5">{barber?.name}</p>
-          <p className="small muted mt-1">Clients see your photo as an oil sketch, like this.</p>
+          <p className="small muted mt-1">Clients see this photo on the home page and when they book.</p>
           <div className="row-wrap mt-4" style={{ justifyContent: "center" }}>
             <label className="btn btn-ghost btn-sm">
               <IconCamera size={16} /> {barber?.photo_url ? "Change photo" : "Add a photo"}

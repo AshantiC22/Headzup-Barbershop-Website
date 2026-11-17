@@ -121,7 +121,16 @@ function ConfirmedContent() {
   return (
     <>
       <div className={`confirm-stamp ${stamp ? "is-on" : ""}`} aria-hidden="true">
-        <span className="seal-mark">H</span>
+        <svg className="seal-mark" viewBox="0 0 32 32" width="40" height="40">
+          <path
+            d="M7 16.5l6 6L25.5 10"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="4"
+            strokeLinecap="square"
+            strokeLinejoin="miter"
+          />
+        </svg>
       </div>
       <h1 className="h1 mt-4">You&apos;re booked.</h1>
       <p className="lede mt-3">
@@ -226,10 +235,10 @@ function ConfirmedContent() {
 }
 
 export default function BookingConfirmedPage() {
-  // The shell (painted sky, sign, card) prerenders; only the part that reads
+  // The shell (fade, sign, card) prerenders; only the part that reads
   // the query string waits for the browser.
   return (
-    <AuthShell seed={21}>
+    <AuthShell>
       <Suspense fallback={<ConfirmedLoading />}>
         <ConfirmedContent />
       </Suspense>

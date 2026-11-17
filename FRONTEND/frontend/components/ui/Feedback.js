@@ -2,6 +2,7 @@
 // Small shared pieces of feedback UI: toasts, modals, notices, skeletons.
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
+import { SHOP } from "@/lib/shop";
 import { EXIT_MS, useHeld, usePresence } from "./motion";
 
 const noSubscribe = () => () => {};
@@ -146,6 +147,26 @@ export function Notice({ tone = "info", children, className = "", style }) {
 
 export function Skeleton({ h = 18, w = "100%", className = "", style }) {
   return <div className={`wet ${className}`} style={{ height: h, width: w, ...style }} aria-hidden="true" />;
+}
+
+/** A page's main data didn't load: say so plainly, offer a retry and the phone. */
+export function LoadFailed({ what, onRetry, className = "" }) {
+  return (
+    <div className={`placard w-m ${className}`} role="alert">
+      <p className="placard-title">{what} didn&apos;t load.</p>
+      <p className="mt-2">
+        Check your connection and try again. If it keeps happening, call the shop at {SHOP.phoneDisplay}.
+      </p>
+      <div className="row-wrap mt-4">
+        <button type="button" className="btn btn-primary" onClick={onRetry}>
+          <IconRefresh size={16} /> Try again
+        </button>
+        <a className="btn btn-ghost" href={`tel:${SHOP.phone}`}>
+          <IconPhone size={16} /> Call
+        </a>
+      </div>
+    </div>
+  );
 }
 
 export function Spinner({ label }) {
