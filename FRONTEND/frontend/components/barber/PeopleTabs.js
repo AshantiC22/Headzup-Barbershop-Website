@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import API from "@/lib/api";
 import { IconArrowRight, IconPlus, IconStar, Modal, Skeleton, Spinner } from "@/components/ui/Feedback";
 import { Collapse, Present } from "@/components/ui/motion";
-import { fmtTime, todayStr } from "@/lib/time";
+import { fmtDate, fmtTime, todayStr } from "@/lib/time";
 
 // Walk-in
 const EMPTY_WALKIN = () => ({
@@ -533,7 +533,7 @@ export function ClientsTab({ toast }) {
                   </span>
                   <span className="small muted">
                     {c.total_visits} visit{c.total_visits === 1 ? "" : "s"}
-                    {c.last_visit ? `, last ${c.last_visit}` : ""}
+                    {c.last_visit ? `, last ${fmtDate(String(c.last_visit).slice(0, 10), "month-day")}` : ""}
                   </span>
                 </span>
               </button>

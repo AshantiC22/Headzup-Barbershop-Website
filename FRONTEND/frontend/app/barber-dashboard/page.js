@@ -1,6 +1,8 @@
 "use client";
 // The barber's studio. Each tab is its own component under components/barber/.
 // The current tab lives in the URL (?tab=clients) so a refresh keeps your place.
+// Desktop gets a sidebar, tablets a strip of tabs under the header, and phones
+// a tab bar along the bottom (thumb reach) with the rest under More.
 import Link from "next/link";
 import { Suspense, useCallback, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -20,6 +22,7 @@ import {
   IconChart,
   IconClock,
   IconMegaphone,
+  IconMore,
   IconStar,
   IconSwap,
   IconUser,
@@ -27,6 +30,7 @@ import {
   IconWalk,
   IconWallet,
   LoadFailed,
+  Modal,
   Skeleton,
   useToasts,
 } from "@/components/ui/Feedback";
@@ -45,6 +49,8 @@ const TABS = [
   { id: "profile", label: "Profile", Icon: IconUser },
 ].filter((t) => ONLINE_PAYMENTS || !["payments", "stripe"].includes(t.id)); // card tabs only when Stripe is on
 const ALIASES = { availability: "hours", newsletter: "news", walk: "walkin" };
+// On a phone's bottom bar; everything else sits under More.
+const BAR = ["schedule", "walkin", "clients", "reschedules"];
 const money = (n) => {
   const v = parseFloat(n || 0);
   return `$${v.toFixed(v % 1 ? 2 : 0)}`;
@@ -81,6 +87,7 @@ function Studio() {
   const [attempt, setAttempt] = useState(0);
   const [today, setToday] = useState({});
   const [badges, setBadges] = useState({ reviews: 0, reschedules: 0 });
+  const [moreOpen, setMoreOpen] = useState(false);
   const initial = ALIASES[params.get("tab")] || params.get("tab");
   const [tab, setTab] = useState(TABS.some((t) => t.id === initial) ? initial : "schedule");
 
@@ -273,7 +280,83 @@ function Studio() {
           {tab === "profile" && <ProfileTab barber={barber} setBarber={setBarber} toast={toast} />}
         </main>
       </div>
+      <TabBar tab={tab} go={go} badgeFor={badgeFor} moreOpen={moreOpen} setMoreOpen={setMoreOpen} />
       {toastHost}
+    </>
+  );
+}
+
+function TabBar({ tab, go, badgeFor, moreOpen, setMoreOpen }) {
+  const bar = TABS.filter((t) => BAR.includes(t.id));
+  const more = TABS.filter((t) => !BAR.includes(t.id));
+  const inMore = more.find((t) => t.id === tab);
+  const moreBadge = more.reduce((n, t) => n + badgeFor(t.id), 0);
+  const badge = (n) =>
+    n > 0 ? (
+      <span className="tabbar-badge" aria-label={`${n} new`}>
+        {n > 9 ? "9+" : n}
+      </span>
+    ) : null;
+  return (
+    <>
+      <nav className="studio-tabbar" aria-label="Dashboard sections">
+        {bar.map(({ id, label, Icon }) => (
+          <button
+            key={id}
+            type="button"
+            className={`tabbar-btn ${tab === id ? "is-on" : ""}`}
+            aria-current={tab === id ? "page" : undefined}
+            onClick={() => go(id)}
+          >
+            <span className="tabbar-icon">
+              <Icon size={22} />
+              {badge(badgeFor(id))}
+            </span>
+            <span className="tabbar-label">{label}</span>
+          </button>
+        ))}
+        <button
+          type="button"
+          className={`tabbar-btn ${inMore ? "is-on" : ""}`}
+          aria-haspopup="dialog"
+          aria-expanded={moreOpen}
+          aria-current={inMore ? "page" : undefined}
+          onClick={() => setMoreOpen(true)}
+        >
+          <span className="tabbar-icon">
+            {inMore ? <inMore.Icon size={22} /> : <IconMore size={22} />}
+            {badge(moreBadge)}
+          </span>
+          <span className="tabbar-label">{inMore ? inMore.label : "More"}</span>
+        </button>
+      </nav>
+      <Modal open={moreOpen} onClose={() => setMoreOpen(false)} title="More">
+        <nav className="more-grid" aria-label="More sections">
+          {more.map(({ id, label, Icon }) => (
+            <button
+              key={id}
+              type="button"
+              className={`more-link ${tab === id ? "is-on" : ""}`}
+              aria-current={tab === id ? "page" : undefined}
+              onClick={() => {
+                setMoreOpen(false);
+                go(id);
+              }}
+            >
+              <Icon size={22} />
+              <span>{label}</span>
+              {badge(badgeFor(id))}
+            </button>
+          ))}
+          <Link href="/admin-stats" className="more-link" onClick={() => setMoreOpen(false)}>
+            <IconChart size={22} />
+            <span>Whole shop</span>
+          </Link>
+        </nav>
+        <div className="mt-5">
+          <ThemeToggle />
+        </div>
+      </Modal>
     </>
   );
 }

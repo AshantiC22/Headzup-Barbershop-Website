@@ -383,6 +383,14 @@ export const IconExternal = (p) => (
     <path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5" />
   </I>
 );
+export const IconMore = (p) => (
+  <I {...p}>
+    <rect x="4" y="4" width="6.5" height="6.5" />
+    <rect x="13.5" y="4" width="6.5" height="6.5" />
+    <rect x="4" y="13.5" width="6.5" height="6.5" />
+    <path d="M13.5 13.5H20V20H13.5Z" />
+  </I>
+);
 export const IconSettings = (p) => (
   <I {...p}>
     <circle cx="12" cy="12" r="3" />

@@ -211,8 +211,8 @@ function ConfirmedContent() {
       </div>
 
       <Notice tone="info" className="mt-5">
-        {ADDRESS_LINE}. Get there five minutes early; your chair is held for 15 minutes past your time. A confirmation
-        text is on its way.
+        {ADDRESS_LINE}. Get there five minutes early; your chair is held for 15 minutes past your time. Add it to your
+        calendar so you don&apos;t have to remember.
       </Notice>
 
       <div className="stack mt-6" style={{ "--stack": "10px" }}>

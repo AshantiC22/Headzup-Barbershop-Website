@@ -24,6 +24,10 @@
   .topRow {
     grid-template-columns: minmax(0, 1fr);
   }
+  /* on a tablet the chair would stretch the whole width; keep it a card */
+  .topRow > :global(.chair) {
+    max-width: 560px;
+  }
 }
 .intro {
   max-width: 34em;

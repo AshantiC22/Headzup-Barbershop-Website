@@ -627,6 +627,17 @@ ul.stack {
 .btn:active {
   transform: translateY(1px);
 }
+/* No hover on a phone, so the press itself shows the lineup glint. */
+@media (hover: none) {
+  .btn:active::after {
+    opacity: 1;
+    transform: none;
+    transition-duration: 60ms;
+  }
+  .btn:active {
+    --c: calc(var(--cut) + 4px);
+  }
+}
 .btn[disabled],
 .btn[aria-disabled="true"] {
   opacity: 0.45;
@@ -1596,7 +1607,16 @@ input[type="time"].input {
 .footer-grid-2 {
   grid-template-columns: 1.4fr 1fr;
 }
-@media (max-width: 760px) {
+/* Tablet: the shop's details across the top, hours and links side by side under it */
+@media (max-width: 1020px) {
+  .footer-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+  .footer-grid > :first-child {
+    grid-column: 1 / -1;
+  }
+}
+@media (max-width: 600px) {
   .footer-grid,
   .footer-grid-2 {
     grid-template-columns: 1fr;
@@ -1630,6 +1650,7 @@ input[type="time"].input {
   color: var(--ink);
 }
 .hours dd {
+  white-space: nowrap;
   font-family: var(--font-display);
   font-weight: 640;
   font-stretch: 92%;
@@ -2008,13 +2029,12 @@ a.board-row {
 .auth-top {
   width: 100%;
   max-width: 470px;
+  min-height: 44px;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: clamp(20px, 6vh, 56px);
-}
-.auth-home {
-  background: var(--bg);
+  margin-bottom: clamp(28px, 6vh, 56px);
+  background: none;
 }
 .auth-card {
   width: 100%;
@@ -2156,20 +2176,32 @@ a.board-row {
   margin-inline: auto;
 }
 
-/* Auth, 404 and offline: a plain page with the fade hanging from the top edge. */
+/* Auth, 404 and offline: a solid band across the top (the logo and the way
+   home sit on it) that fades out into the page, like the menu on home. */
 .fade-page {
+  --fp-band: calc(env(safe-area-inset-top) + 80px);
   position: relative;
   min-height: 100vh;
   min-height: 100dvh;
   isolation: isolate;
 }
-.fade-page-edge {
+.fade-page::before {
+  content: "";
   position: absolute;
   top: 0;
   left: 0;
   right: 0;
+  height: var(--fp-band);
+  background: var(--band);
   z-index: -1;
-  height: clamp(110px, 18vw, 220px);
+}
+.fade-page-edge {
+  position: absolute;
+  top: calc(var(--fp-band) - 1px);
+  left: 0;
+  right: 0;
+  z-index: -1;
+  height: clamp(70px, 11vw, 140px);
 }
 
 /* A plain page under the app header */
@@ -2491,6 +2523,149 @@ a.board-row {
     display: none;
   }
 }
+/* Install the app */
+.install-card {
+  border-top: 5px solid var(--ink);
+}
+.install-steps {
+  display: grid;
+  gap: 6px;
+  padding-left: 1.3em;
+  color: var(--ink-2);
+}
+.install-steps li::marker {
+  font-family: var(--font-display);
+  font-weight: 800;
+  color: var(--ink);
+}
+.install-share {
+  display: inline-block;
+  vertical-align: -3px;
+  margin-left: 2px;
+}
+
+/* Phones: a tab bar along the bottom, where a thumb reaches. */
+.studio-tabbar {
+  display: none;
+}
+@media (max-width: 720px) {
+  .studio-strip {
+    display: none !important;
+  }
+  .studio {
+    padding-bottom: calc(110px + env(safe-area-inset-bottom));
+  }
+  .studio-tabbar {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 60;
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    padding: 4px 4px calc(4px + env(safe-area-inset-bottom));
+    background: var(--band);
+    color: var(--on-band-2);
+  }
+  /* toasts sit above the bar instead of on it */
+  body:has(.studio-tabbar) .toast-host {
+    bottom: calc(84px + env(safe-area-inset-bottom));
+  }
+}
+.tabbar-btn {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  gap: 3px;
+  min-height: 58px;
+  padding: 6px 2px 4px;
+  color: inherit;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-stretch: 76%;
+  font-size: 0.76rem;
+  line-height: 1.1;
+  transition: color var(--dur-2);
+}
+.tabbar-btn.is-on {
+  color: var(--on-band);
+}
+/* the current tab gets the yellow edge, like the day you picked */
+.tabbar-btn.is-on::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 26%;
+  right: 26%;
+  height: 3px;
+  background: var(--signal);
+}
+.tabbar-btn:active {
+  background: color-mix(in srgb, var(--on-band) 12%, transparent);
+}
+.tabbar-btn:focus-visible {
+  outline-color: var(--signal);
+  outline-offset: -3px;
+}
+.tabbar-label {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.tabbar-icon {
+  position: relative;
+  display: grid;
+}
+.tabbar-badge {
+  position: absolute;
+  top: -6px;
+  left: calc(100% - 6px);
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  display: grid;
+  place-items: center;
+  background: var(--signal);
+  color: var(--on-signal);
+  font-size: 0.7rem;
+  font-weight: 800;
+  font-stretch: 90%;
+  font-variant-numeric: tabular-nums;
+}
+.more-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 8px;
+}
+.more-link {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 56px;
+  padding: 0 14px;
+  background: var(--surface);
+  color: var(--ink);
+  font-family: var(--font-display);
+  font-weight: 720;
+  font-stretch: 86%;
+  text-decoration: none;
+  clip-path: polygon(0 0, calc(100% - var(--cut-sm)) 0, 100% var(--cut-sm), 100% 100%, 0 100%);
+}
+.more-link.is-on {
+  background: var(--ink);
+  color: var(--bg);
+}
+.more-link:active {
+  background: var(--surface-2);
+}
+.more-link .tabbar-badge {
+  position: static;
+  margin-left: auto;
+}
+
 .strip-btn {
   flex-shrink: 0;
   display: inline-flex;
@@ -2507,7 +2682,7 @@ a.board-row {
 .strip-btn.is-on {
   background: var(--surface-2);
   color: var(--ink);
-  border-color: var(--brass);
+  border-color: var(--ink);
 }
 .side-card {
   padding: 18px;
@@ -2609,7 +2784,7 @@ a.side-link {
 .appt.is-faded {
   background: transparent;
   box-shadow: none;
-  border-style: dashed;
+  border: 1.5px dashed var(--line-2);
 }
 .sched-row.is-closed .sched-time span {
   color: var(--ink-2);
@@ -2749,6 +2924,18 @@ a.side-link {
   display: grid;
   gap: 4px;
   margin-top: 14px;
+}
+.day-list {
+  container-type: inline-size;
+}
+@container (max-width: 470px) {
+  .day-list .day-row {
+    grid-template-columns: auto 1fr;
+  }
+  .day-list .day-row > :last-child {
+    grid-column: 1 / -1;
+    padding-bottom: 10px;
+  }
 }
 .day-row {
   display: grid;

@@ -4,6 +4,7 @@
 import { useEffect, useMemo, useState } from "react";
 import API from "@/lib/api";
 import { ONLINE_PAYMENTS } from "@/lib/config";
+import InstallApp from "@/components/InstallApp";
 import { useShopHours } from "@/components/ShopHours";
 import { IconCamera, IconTrash, LoadFailed, Modal, Skeleton, Spinner } from "@/components/ui/Feedback";
 import { WEEK_ORDER, fromApi, toApi, weekProblem } from "@/lib/hours";
@@ -758,6 +759,7 @@ export function ProfileTab({ barber, setBarber, toast }) {
           </form>
         </div>
       </div>
+      <InstallApp who="barber" className="mt-4" />
     </div>
   );
 }

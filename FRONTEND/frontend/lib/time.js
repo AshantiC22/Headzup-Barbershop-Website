@@ -69,7 +69,9 @@ export function fmtDate(dateStr, style = "short") {
         ? { weekday: "long", month: "long", day: "numeric", year: "numeric" }
         : style === "day"
           ? { weekday: "short" }
-          : { weekday: "short", month: "short", day: "numeric" };
+          : style === "month-day"
+            ? { month: "short", day: "numeric" }
+            : { weekday: "short", month: "short", day: "numeric" };
   return d.toLocaleDateString("en-US", opts);
 }
 

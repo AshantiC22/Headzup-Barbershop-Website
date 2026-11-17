@@ -120,7 +120,7 @@ export default function SiteNav({ overlay = false }) {
 
       {sheet && (
         <div
-          className="menu-sheet"
+          className="menu-sheet band"
           id="site-menu"
           role="dialog"
           aria-modal="true"
