@@ -1,18 +1,19 @@
 "use client";
 // Booking: service → barber → time → confirm.
-// Links from the home page pre-fill choices (?service=Haircut&barber=2). The
-// shop takes cash and Cash App in person; with ONLINE_PAYMENTS on, the confirm
-// step also offers a Stripe deposit, and a cancelled checkout comes back here
-// with everything kept.
+// Links pre-fill choices: ?service=Haircut&barber=2 from the menu and barber
+// cards, and ?barber=2&date=2026-11-17&time=14:30 from the next open chair,
+// which holds the time while you pick a service. Everything picked is kept in
+// sessionStorage, so a refresh (or a cancelled checkout) lands back where you
+// were. The shop takes cash and Cash App in person; with ONLINE_PAYMENTS on,
+// the confirm step also offers a Stripe deposit.
 import Link from "next/link";
 import { Suspense, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import API from "@/lib/api";
 import { ONLINE_PAYMENTS, cashtag } from "@/lib/config";
 import FlowHeader from "@/components/site/FlowHeader";
-import Impression from "@/components/art/Impression";
 import { Calendar, SlotPicker, WorkWeek, makeDayRule } from "@/components/booking/Calendar";
-import { IconArrowLeft, Notice, Skeleton, Spinner } from "@/components/ui/Feedback";
+import { IconArrowLeft, IconRefresh, Notice, Skeleton, Spinner } from "@/components/ui/Feedback";
 import { arrowSelect, rovingIndex } from "@/components/ui/roving";
 import { SERVICE_GROUPS, describeService, groupForService } from "@/lib/shop";
 import { fmtDate, fmtTime, to24Hour } from "@/lib/time";
@@ -21,6 +22,20 @@ import s from "./book.module.css";
 const PAY_OPTIONS = ["shop", "online"];
 const STEPS = ["Service", "Barber", "Time", "Confirm"];
 const DRAFT_KEY = "hu_booking_draft";
+const DRAFT_TTL_MS = 30 * 60_000;
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+const TIME_RE = /^\d{1,2}:\d{2}(:\d{2})?$/;
+
+function readDraft() {
+  try {
+    const d = JSON.parse(sessionStorage.getItem(DRAFT_KEY) || "null");
+    if (!d || typeof d !== "object") return null;
+    if (d.savedAt && Date.now() - d.savedAt > DRAFT_TTL_MS) return null;
+    return d;
+  } catch {
+    return null;
+  }
+}
 const money = (n) => `$${Number(n || 0).toFixed(Number(n) % 1 ? 2 : 0)}`;
 const photoOk = (u) => !!u && (u.startsWith("data:") || u.startsWith("https://"));
 
@@ -101,8 +116,18 @@ function BookContent() {
   const [notes, setNotes] = useState("");
   const [pay, setPay] = useState("shop");
 
-  const [days, setDays] = useState({ all: [], off: [], loading: false });
-  const [slots, setSlots] = useState({ list: [], loading: false, price: null, deposit: null, message: "" });
+  const [days, setDays] = useState({ all: [], off: [], loading: false, failed: false });
+  const [slots, setSlots] = useState({
+    list: [],
+    loading: false,
+    price: null,
+    deposit: null,
+    message: "",
+    failed: false,
+  });
+  const [daysTry, setDaysTry] = useState(0);
+  const [slotsTry, setSlotsTry] = useState(0);
+  const [restored, setRestored] = useState(false);
 
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
@@ -134,18 +159,23 @@ function BookContent() {
         setBarbers(barList);
         if (st) setStrike(st.data);
 
-        // Pre-fill from links (?service=Haircut&barber=2) or a cancelled checkout.
-        let draft = null;
-        if (params.get("deposit_canceled")) {
-          try {
-            draft = JSON.parse(sessionStorage.getItem(DRAFT_KEY) || "null");
-          } catch {}
+        // Pre-fill. A draft saved from this same address is a refresh, so it
+        // wins; a different address is a new link, so the link wins.
+        const here = params.toString();
+        const saved = readDraft();
+        const canceled = !!params.get("deposit_canceled");
+        const draft = saved && (canceled || saved.from === here) ? saved : null;
+        if (canceled) {
           setNotice(
             "Checkout was cancelled, so nothing was charged and the spot isn't held yet. Pick how you'd like to pay and try again.",
           );
         }
         const wantSvc = draft?.serviceId ?? params.get("service");
         const wantBar = draft?.barberId ?? params.get("barber");
+        const urlDate = DATE_RE.test(params.get("date") || "") ? params.get("date") : "";
+        const urlTime = TIME_RE.test(params.get("time") || "") ? to24Hour(params.get("time")) : "";
+        const wantDate = draft ? draft.date || "" : urlDate;
+        const wantTime = draft ? draft.time || "" : urlDate ? urlTime : "";
         const svcHit =
           wantSvc != null
             ? svcList.find(
@@ -155,23 +185,24 @@ function BookContent() {
         const barHit = wantBar != null ? barList.find((b) => String(b.id) === String(wantBar)) : null;
         if (svcHit) setService(svcHit);
         if (barHit) setBarber(barHit);
-        if (draft?.date) setDate(draft.date);
-        if (draft?.time) setTime(draft.time);
+        if (barHit && wantDate) setDate(wantDate);
+        if (barHit && wantDate && wantTime) setTime(wantTime);
         if (draft?.notes) setNotes(draft.notes);
-        if (draft?.date && draft?.time && svcHit && barHit) {
-          setStep(4);
-          setMaxStep(4);
-          setPay("online");
-        } else if (svcHit && barHit) {
-          setStep(3);
-          setMaxStep(3);
-        } else if (svcHit) {
-          setStep(2);
-          setMaxStep(2);
-        } else if (barHit) {
-          setStep(1);
-          setMaxStep(1);
+
+        let to = 1;
+        if (svcHit && barHit && wantDate && wantTime) to = 4;
+        else if (svcHit && barHit) to = 3;
+        else if (svcHit) to = 2;
+        if (draft?.step && draft.step < to) to = Math.max(1, draft.step);
+        setStep(to);
+        setMaxStep(Math.max(to, Math.min(draft?.maxStep || 1, svcHit && barHit && wantDate && wantTime ? 4 : to)));
+        if (to === 4 && canceled) setPay("online");
+        if (!svcHit && barHit && wantDate && wantTime && !draft) {
+          setNotice(
+            `Holding ${fmtTime(wantTime)} ${fmtDate(wantDate, "long")} with ${barHit.name.split(" ")[0]}. Pick a service and it goes straight to the last step.`,
+          );
         }
+        setRestored(true);
       })
       .catch(() => {
         setLoadError("The booking list didn't load. Check your connection and try again.");
@@ -183,10 +214,12 @@ function BookContent() {
   // Barber chosen: working days + their price for this service
   useEffect(() => {
     if (!barber) return;
-    setDays((d) => ({ ...d, loading: true }));
+    setDays((d) => ({ ...d, loading: true, failed: false }));
     API.get(`barbers/${barber.id}/working-days/`)
-      .then((r) => setDays({ all: r.data.all_days || [], off: r.data.time_off_dates || [], loading: false }))
-      .catch(() => setDays({ all: [], off: [], loading: false }));
+      .then((r) =>
+        setDays({ all: r.data.all_days || [], off: r.data.time_off_dates || [], loading: false, failed: false }),
+      )
+      .catch(() => setDays({ all: [], off: [], loading: false, failed: true }));
     if (service) {
       API.get(`services/?barber=${barber.id}`)
         .then((r) => {
@@ -197,12 +230,12 @@ function BookContent() {
         .catch(() => {});
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- only when the barber changes, not when the price lookup updates service
-  }, [barber?.id]);
+  }, [barber?.id, daysTry]);
 
   // Date chosen: open slots
   useEffect(() => {
     if (!date || !barber || !service) return;
-    setSlots((x) => ({ ...x, loading: true, list: [], message: "" }));
+    setSlots((x) => ({ ...x, loading: true, list: [], message: "", failed: false }));
     API.get(`available-slots/?barber=${barber.id}&date=${date}&service=${service.id}`)
       .then((r) => {
         const list = r.data.available_slots || [];
@@ -212,6 +245,7 @@ function BookContent() {
           price: r.data.service_price ?? null,
           deposit: r.data.barber_deposit ?? null,
           message: r.data.message || "",
+          failed: false,
         });
         setTime((t) => (list.includes(t) ? t : ""));
       })
@@ -221,10 +255,40 @@ function BookContent() {
           loading: false,
           price: null,
           deposit: null,
-          message: "Times didn't load. Try the day again.",
+          message: "Times didn't load.",
+          failed: true,
         }),
       );
-  }, [date, barber, service]);
+  }, [date, barber, service, slotsTry]);
+
+  // A held time that's gone by the time we check (someone took it, or the
+  // service picked runs longer): back to the time step to choose another.
+  useEffect(() => {
+    if (step !== 4 || slots.loading || slots.failed || !date || time) return;
+    setStep(3);
+    setNotice("That time isn't open anymore. Pick another one below.");
+  }, [step, slots.loading, slots.failed, date, time]);
+
+  // Keep what's been picked, so a refresh doesn't start over.
+  useEffect(() => {
+    if (!restored) return;
+    try {
+      sessionStorage.setItem(
+        DRAFT_KEY,
+        JSON.stringify({
+          from: params.toString(),
+          serviceId: service?.id ?? null,
+          barberId: barber?.id ?? null,
+          date,
+          time,
+          notes,
+          step,
+          maxStep,
+          savedAt: Date.now(),
+        }),
+      );
+    } catch {}
+  }, [restored, params, service?.id, barber?.id, date, time, notes, step, maxStep]);
 
   const dayRule = useMemo(() => makeDayRule(days.all, days.off), [days]);
   const price = slots.price ?? service?.price;
@@ -286,7 +350,17 @@ function BookContent() {
       try {
         sessionStorage.setItem(
           DRAFT_KEY,
-          JSON.stringify({ serviceId: service.id, barberId: barber.id, date, time, notes }),
+          JSON.stringify({
+            from: "",
+            serviceId: service.id,
+            barberId: barber.id,
+            date,
+            time,
+            notes,
+            step: 4,
+            maxStep: 4,
+            savedAt: Date.now(),
+          }),
         );
       } catch {}
       const r = await API.post("deposit/checkout/", {
@@ -362,7 +436,8 @@ function BookContent() {
                     className={`board-row ${service?.id === x.id ? "is-selected" : ""}`}
                     onClick={() => {
                       setService(x);
-                      go(2);
+                      if (notice.startsWith("Holding")) setNotice("");
+                      go(barber ? (date && time ? 4 : 3) : 2);
                     }}
                   >
                     <span className="board-name">{x.name}</span>
@@ -402,10 +477,11 @@ function BookContent() {
                       go(3);
                     }}
                   >
-                    <span className={`frame frame-arch ${s.miniArch}`}>
+                    <span className={`frame ${s.miniArch}`}>
                       <span className="frame-inner">
                         {photo ? (
-                          <Impression src={photo} alt="" seed={b.id * 13} className={s.miniImg} />
+                          // eslint-disable-next-line @next/next/no-img-element -- barber photos come from the API, any host
+                          <img src={photo} alt="" loading="lazy" decoding="async" className={s.miniImg} />
                         ) : (
                           <span className={s.miniMono} aria-hidden="true">
                             {b.name.charAt(0)}
@@ -438,6 +514,14 @@ function BookContent() {
             <div className={`panel panel-pad ${s.calPanel}`}>
               {days.loading ? (
                 <Skeleton h={300} />
+              ) : days.failed ? (
+                <div>
+                  <p className="h4">{barber?.name.split(" ")[0]}&apos;s days didn&apos;t load.</p>
+                  <p className="muted mt-2">Check your connection and try again, or call the shop to book.</p>
+                  <button type="button" className="btn btn-ghost mt-4" onClick={() => setDaysTry((n) => n + 1)}>
+                    <IconRefresh size={16} /> Try again
+                  </button>
+                </div>
               ) : (
                 <>
                   <Calendar
@@ -464,7 +548,15 @@ function BookContent() {
                       ? `${slots.list.length} open time${slots.list.length === 1 ? "" : "s"}`
                       : slots.message || "No open times that day."}
                 </p>
-                {!slots.loading && slots.list.length === 0 ? (
+                {!slots.loading && slots.failed ? (
+                  <Notice tone="bad">
+                    Check your connection, then{" "}
+                    <button type="button" className="link" onClick={() => setSlotsTry((n) => n + 1)}>
+                      load {fmtDate(date)} again
+                    </button>
+                    .
+                  </Notice>
+                ) : !slots.loading && slots.list.length === 0 ? (
                   <Notice tone="info">
                     Try another day, or{" "}
                     <Link className="link" href={`/waitlist?barber=${barber.id}&date=${date}&service=${service.id}`}>
@@ -610,7 +702,7 @@ function BookContent() {
             <div className="action-bar">
               <button
                 className="btn btn-primary btn-lg btn-block"
-                disabled={submitting}
+                disabled={submitting || slots.loading || !time}
                 onClick={() => (online ? bookWithDeposit() : bookInShop())}
               >
                 {submitting ? (

@@ -4,16 +4,15 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import API from "@/lib/api";
 import { arrowSelect, rovingIndex } from "@/components/ui/roving";
-import PaintedSky from "@/components/art/PaintedSky";
 import { ShopSign } from "@/components/site/SiteNav";
 import { IconArrowLeft, IconEye, Notice, Spinner } from "@/components/ui/Feedback";
 import { SHOP } from "@/lib/shop";
 
-export function AuthShell({ children, seed = 3 }) {
+export function AuthShell({ children }) {
   return (
-    <div className="sky-page">
-      <PaintedSky seed={seed} />
-      <div className="sky-content auth-wrap">
+    <div className="fade-page">
+      <div className="fade-edge fade-page-edge" aria-hidden="true" />
+      <div className="auth-wrap">
         <header className="auth-top">
           <ShopSign />
           <Link href="/" className="btn btn-quiet btn-sm auth-home">

@@ -75,10 +75,10 @@ function Inner() {
 }
 
 export default function ReschedulePage() {
-  // The shell (painted sky, sign, card) prerenders; only the part that reads
+  // The shell (fade, sign, card) prerenders; only the part that reads
   // the query string waits for the browser.
   return (
-    <AuthShell seed={17}>
+    <AuthShell>
       <Suspense fallback={<Checking />}>
         <Inner />
       </Suspense>

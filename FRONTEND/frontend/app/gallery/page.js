@@ -1,23 +1,17 @@
 "use client";
-// The wall: every photo in an iron frame, shown first as an oil sketch.
-// Open one and the photograph comes through, with its plate and a way to book.
+// Recent work: the shop's own photos, sharp, in the lineup-corner frame.
+// Open one for the full photo, its caption and a way to book.
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import Impression from "@/components/art/Impression";
 import SiteNav from "@/components/site/SiteNav";
 import SiteFooter from "@/components/site/SiteFooter";
 import { IconChevronLeft, IconChevronRight, IconClose, Portal } from "@/components/ui/Feedback";
-import { arrowSelect, rovingIndex } from "@/components/ui/roving";
 import { Present } from "@/components/ui/motion";
 import { GALLERY, GALLERY_FILTERS } from "@/lib/shop";
 import s from "./gallery.module.css";
 
-const VIEWS = ["photo", "paint"];
-const CROPS = ["3 / 4", "1 / 1", "4 / 5", "3 / 4", "4 / 3", "4 / 5"];
-
 function Lightbox({ items, index, open, onClose, onMove }) {
   const piece = items[index];
-  const [view, setView] = useState("photo");
   const touch = useRef(null);
   const closeRef = useRef(null);
 
@@ -61,59 +55,33 @@ function Lightbox({ items, index, open, onClose, onMove }) {
         }}
       >
         <div className={s.lbTop}>
-          <div
-            className="hu-theme-switch"
-            role="radiogroup"
-            aria-label="How to show this piece"
-            onKeyDown={(e) => {
-              e.stopPropagation();
-              arrowSelect(e, VIEWS, view, setView);
-            }}
-          >
-            {VIEWS.map((v) => (
-              <button
-                key={v}
-                type="button"
-                role="radio"
-                aria-checked={view === v}
-                tabIndex={rovingIndex(v, view, VIEWS)}
-                className={view === v ? "is-on" : ""}
-                onClick={() => setView(v)}
-              >
-                {v === "photo" ? "Photograph" : "Oil sketch"}
-              </button>
-            ))}
-          </div>
+          <p className={s.lbCount}>
+            {index + 1} of {items.length}
+          </p>
           <button ref={closeRef} className={`icon-btn ${s.lbClose}`} onClick={onClose} aria-label="Close">
             <IconClose size={24} />
           </button>
         </div>
 
         <div className={s.lbStage}>
-          <button className={`icon-btn ${s.lbNav}`} onClick={() => onMove(-1)} aria-label="Previous piece">
+          <button className={`icon-btn ${s.lbNav}`} onClick={() => onMove(-1)} aria-label="Previous photo">
             <IconChevronLeft size={28} />
           </button>
           <div className={`frame ${s.lbFrame}`}>
             <div className="frame-inner">
-              {view === "photo" ? (
-                <picture key={piece.id}>
-                  <source srcSet={piece.webp} type="image/webp" />
-                  <img src={piece.src} alt={`${piece.title}: ${piece.medium}`} className={s.lbImg} />
-                </picture>
-              ) : (
-                <Impression
-                  key={`p${piece.id}`}
+              <picture key={piece.id}>
+                <source srcSet={piece.webp} type="image/webp" />
+                <img
                   src={piece.src}
-                  alt={`${piece.title}, painted`}
-                  seed={piece.id * 7}
-                  detail={1.4}
+                  alt={`${piece.title}: ${piece.medium}`}
+                  width={piece.w}
+                  height={piece.h}
                   className={s.lbImg}
-                  priority
                 />
-              )}
+              </picture>
             </div>
           </div>
-          <button className={`icon-btn ${s.lbNav}`} onClick={() => onMove(1)} aria-label="Next piece">
+          <button className={`icon-btn ${s.lbNav}`} onClick={() => onMove(1)} aria-label="Next photo">
             <IconChevronRight size={28} />
           </button>
         </div>
@@ -121,14 +89,9 @@ function Lightbox({ items, index, open, onClose, onMove }) {
         <div className={`placard ${s.lbPlacard}`}>
           <p className="placard-title">{piece.title}</p>
           <p className="placard-medium">{piece.medium}. Headz Up, Hattiesburg.</p>
-          <div className="row-wrap mt-3">
-            <Link href="/book" className="btn btn-primary btn-sm">
-              Book a cut
-            </Link>
-            <span className="small faint">
-              {index + 1} of {items.length}
-            </span>
-          </div>
+          <Link href="/book" className="btn btn-primary btn-sm mt-3">
+            Book a cut
+          </Link>
         </div>
       </div>
     </Portal>
@@ -170,8 +133,7 @@ export default function GalleryPage() {
           <header className={s.head}>
             <h1 className="h1">Recent work</h1>
             <p className="lede">
-              Every piece here walked out of the shop on West 4th. They hang as oil sketches first; open one to see the
-              photograph.
+              Every cut here walked out of the shop on West 4th Street. Tap a photo to see it full size.
             </p>
             <div className="pills" role="group" aria-label="Filter the work">
               {GALLERY_FILTERS.map((f) => (
@@ -184,7 +146,7 @@ export default function GalleryPage() {
 
           {items.length === 0 ? (
             <div className="panel panel-pad w-m">
-              <p className="h4">Nothing hung under that label yet.</p>
+              <p className="h4">No photos under that label yet.</p>
               <button className="btn btn-ghost mt-4" onClick={() => setFilter("all")}>
                 Show everything
               </button>
@@ -194,27 +156,27 @@ export default function GalleryPage() {
               {items.map((g, i) => (
                 <li key={g.id} className={s.piece}>
                   <button className={s.pieceBtn} onClick={() => setOpen(i)} aria-label={`Open ${g.title}`}>
-                    <div
-                      className="frame"
-                      style={{ transform: `rotate(${[-0.8, 0.6, -0.3, 0.9, -0.5, 0.4][i % 6]}deg)` }}
-                    >
-                      <div className="frame-inner">
-                        <Impression
-                          src={g.src}
-                          alt={`${g.title}: ${g.medium}`}
-                          seed={g.id * 7}
-                          detail={1.2}
-                          reveal="hover"
-                          imgStyle={{ aspectRatio: CROPS[g.id % CROPS.length] }}
-                          className={s.pieceImg}
-                        />
-                      </div>
-                    </div>
+                    <span className={`frame ${s.pieceFrame}`}>
+                      <span className="frame-inner">
+                        <picture>
+                          <source srcSet={g.webp} type="image/webp" />
+                          <img
+                            src={g.src}
+                            alt={`${g.title}: ${g.medium}`}
+                            width={g.w}
+                            height={g.h}
+                            loading={i < 3 ? "eager" : "lazy"}
+                            decoding="async"
+                            className={s.pieceImg}
+                          />
+                        </picture>
+                      </span>
+                    </span>
                   </button>
-                  <div className={`placard ${s.piecePlacard}`}>
-                    <p className="placard-title">{g.title}</p>
-                    <p className="placard-medium">{g.medium}</p>
-                  </div>
+                  <p className={s.caption}>
+                    <span className={s.captionTitle}>{g.title}</span>
+                    <span className="small muted">{g.medium}</span>
+                  </p>
                 </li>
               ))}
             </ul>
@@ -222,7 +184,7 @@ export default function GalleryPage() {
 
           <section className={`panel panel-pad ${s.cta}`} aria-label="Book">
             <div>
-              <h2 className="h3">Want to hang on this wall?</h2>
+              <h2 className="h3">Want your cut up here?</h2>
               <p className="muted mt-2">Book your chair and ask your barber for a photo on the way out.</p>
             </div>
             <Link href="/book" className="btn btn-primary btn-lg">

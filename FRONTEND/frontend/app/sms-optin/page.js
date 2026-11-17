@@ -42,7 +42,7 @@ export default function SMSOptInPage() {
 
   if (done) {
     return (
-      <AuthShell seed={9}>
+      <AuthShell>
         <h1 className="h1">You&apos;re on the list.</h1>
         <p className="lede mt-3">
           Confirmations, reminders and updates will text to that number. Reply STOP any time to unsubscribe.
@@ -55,7 +55,7 @@ export default function SMSOptInPage() {
   }
 
   return (
-    <AuthShell seed={9}>
+    <AuthShell>
       <form onSubmit={submit} noValidate>
         <h1 className="h2">Text message updates</h1>
         <p className="muted mt-3 mb-4">

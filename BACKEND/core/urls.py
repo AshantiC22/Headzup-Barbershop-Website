@@ -16,6 +16,7 @@ from core.views import (
     ChangePasswordView,
     BarberWorkingDaysView,
     AvailableSlotsView,
+    ShopHoursView,
     HeadzUpTokenView,
     # Account recovery
     SetSecurityQuestionView,
@@ -117,6 +118,7 @@ urlpatterns = [
     path("barber/client-strikes/",              BarberClientStrikesView.as_view(),   name="barber_client_strikes"),
 
     # Booking
+    path("shop/hours/",                   ShopHoursView.as_view(),           name="shop_hours"),
     path("available-slots/",              AvailableSlotsView.as_view(),      name="available_slots"),
     path("barbers/<int:pk>/working-days/", BarberWorkingDaysView.as_view(),   name="barber_working_days"),
 

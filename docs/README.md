@@ -29,23 +29,24 @@ architecture to deployment.
 - **Notifications:** email, SMS and push across all 14 booking triggers
 - **PWA:** installable on iOS and Android, works offline
 - **Role-based dashboards:** separate client and barber portals with their own permissions
+- **Shop hours from the dashboard:** barbers set the week; the site, search data and booking all follow it
 - **Strikes and deposits:** fees escalate automatically for no-shows and late cancellations
 - **Client management:** VIP flags, notes, booking history and strike tracking
 - **Mass messaging:** email and SMS blasts to all clients
 - **News feed:** barber posts that push to every client
 - **A2P 10DLC compliance:** registered SMS campaign with US carriers
-- **Lamplight design:** a gothic night-street look painted live in canvas; the barber pole on the home page is lit only while the shop is open
+- **The Fade design:** built from the haircut. Sections fade into each other like a skin fade, every button and photo has a lineup corner, and the home page opens on the next open chair across every barber's book, bookable in one tap
 - **CI/CD:** automated deploys through GitHub Actions
 
 ## Screenshots
 
-| Lamplight | Daylight, on a phone |
+| Day | Night, on a phone |
 | --- | --- |
-| ![Home page at night: a lit barber pole on a foggy street under a big moon](screenshots/home-lamplight.jpg) | ![Home page in the Daylight theme on a phone](screenshots/home-daylight-phone.jpg) |
+| ![Home page: the faded HEADZ UP wordmark and the next open chair with a yellow button to take it](screenshots/home-day.jpg) | ![Home page at Night on a phone](screenshots/home-night-phone.jpg) |
 
-![Services shown as a rack of barber tools with prices](screenshots/services-lamplight.jpg)
+![The menu on a dark band that fades into the page like a skin fade](screenshots/menu-day.jpg)
 
-![Barber dashboard](screenshots/barber-dashboard-lamplight.jpg)
+![Barber dashboard](screenshots/barber-dashboard.jpg)
 
 ## Local setup
 

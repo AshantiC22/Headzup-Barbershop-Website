@@ -18,16 +18,8 @@ export const SHOP = {
 
 export const ADDRESS_LINE = `${SHOP.street}, ${SHOP.city}, ${SHOP.region} ${SHOP.zip}`;
 
-// Day index follows JS getDay(): 0 = Sunday … 6 = Saturday. Times are 24h, Central.
-export const HOURS = [
-  { day: 0, label: "Sunday", open: null, close: null },
-  { day: 1, label: "Monday", open: "09:00", close: "18:00" },
-  { day: 2, label: "Tuesday", open: "09:00", close: "18:00" },
-  { day: 3, label: "Wednesday", open: "09:00", close: "18:00" },
-  { day: 4, label: "Thursday", open: "09:00", close: "18:00" },
-  { day: 5, label: "Friday", open: "09:00", close: "18:00" },
-  { day: 6, label: "Saturday", open: "09:00", close: "16:00" },
-];
+// Hours aren't here: barbers set them from the dashboard. See lib/hours.js
+// and components/ShopHours.js.
 
 // Fallback menu for the public pages (the API's service list needs a login).
 // Descriptions are matched to live services by name on the booking page too.
@@ -77,27 +69,31 @@ export function groupForService(name = "") {
   return "cuts";
 }
 
+// Word for word from the shop's Booksy page, with the service and barber each
+// client booked. Only first names, the way Booksy shows them.
+export const BOOKSY = {
+  url: "https://booksy.com/en-us/615064_headz-up-barber-shop_barber-shop_134782_hattiesburg",
+  rating: "5.0",
+  count: 158,
+};
+
 export const REVIEWS = [
   {
-    quote: "This man is an amazing barber with great energy. Most importantly the cuts are fire.",
-    name: "Ronnie E.",
-    city: "Hattiesburg",
+    quote:
+      "This man is an amazing barber with great energy and a great personality. Most importantly the cuts are fire!! Go book with him.",
+    name: "Ronnie",
+    service: "Haircut & Shave",
+    barber: "Jarvis",
   },
   {
-    quote: "Best fade in Hattiesburg, hands down. I drive 40 minutes just to sit in that chair.",
-    name: "Marcus T.",
-    city: "Laurel",
+    quote: "Great atmosphere, very professional, great with kids! 10/10 all around",
+    name: "Dionne",
+    service: "Kids Cutz",
+    barber: "Mr. Jay",
   },
-  {
-    quote: "Came in first time, walked out looking like a new man. The lineup was immaculate.",
-    name: "DeShawn K.",
-    city: "Hattiesburg",
-  },
-  {
-    quote: "My son has been going here since he was 3. Fantastic with kids and the cut is always right.",
-    name: "Tanya W.",
-    city: "Hattiesburg",
-  },
+  { quote: "Great atmosphere and a 10/10 cut", name: "Dorian", service: "Haircut", barber: "Mr. Jay" },
+  { quote: "My son loves his hair cut", name: "Dunn", service: "Kids Cutz", barber: "Jarvis" },
+  { quote: "Great atmosphere and professional staff!", name: "Shameka", service: "Line", barber: "Mr. Jay" },
 ];
 
 // Shop photos, already rotated upright and sized for phones.

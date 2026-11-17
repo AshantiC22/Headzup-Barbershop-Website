@@ -2,7 +2,8 @@
 // Every date string in the API is a plain "YYYY-MM-DD" (shop-local), and every
 // time is "HH:MM" or "HH:MM:SS". Nothing here goes through UTC: toISOString()
 // turns this evening into tomorrow anywhere west of Greenwich.
-import { HOURS, SHOP } from "./shop";
+import { DEFAULT_HOURS } from "./hours";
+import { SHOP } from "./shop";
 
 const pad = (n) => String(n).padStart(2, "0");
 
@@ -121,10 +122,12 @@ function shopNowParts() {
 }
 
 /**
- * Returns { open, label, detail, today } for the shop right now.
- * label is short ("Open now"), detail says what's next ("until 6:00 PM").
+ * Returns { open, label, detail, today } for the shop right now, given the
+ * week (from useShopHours(); getDay() order). label is short ("Open now"),
+ * detail says what's next ("until 6:00 PM").
  */
-export function shopStatus() {
+export function shopStatus(hours = DEFAULT_HOURS) {
+  const HOURS = hours?.length === 7 ? hours : DEFAULT_HOURS;
   const { day, minutes } = shopNowParts();
   const today = HOURS[day];
   if (today.open && minutes >= toMinutes(today.open) && minutes < toMinutes(today.close)) {

@@ -28,7 +28,7 @@ function Content() {
 
   const a = state.appt;
   return (
-    <AuthShell seed={21}>
+    <AuthShell>
       <h1 className="h1">Payment received.</h1>
       {state.loading ? (
         <div className="mt-5">

@@ -66,7 +66,7 @@ export default function NewsletterPage() {
         )}
 
         <div className="news-board">
-          {loading && [0, 1, 2].map((i) => <Skeleton key={i} h={210} />)}
+          {loading && [0, 1].map((i) => <Skeleton key={i} h={240} />)}
           {!loading && failed && <Notice tone="bad">News didn&apos;t load. Refresh to try again.</Notice>}
           {!loading && !failed && shown.length === 0 && (
             <div className="panel panel-pad">
@@ -74,22 +74,15 @@ export default function NewsletterPage() {
               <p className="muted mt-2">Deals and hours changes show up here first.</p>
             </div>
           )}
-          {shown.map((p, i) => {
+          {shown.map((p) => {
             const cat = p.category || "general";
             return (
-              <article
-                key={p.id}
-                className={`news-post ${p.pinned ? "is-pinned" : ""}`}
-                style={{ transform: `rotate(${[-0.5, 0.4, -0.2, 0.6][i % 4]}deg)` }}
-              >
+              <article key={p.id} className={`news-post ${p.pinned ? "is-pinned" : ""}`}>
                 <div className="row-wrap mb-3" style={{ gap: 8 }}>
                   {p.pinned && <span className="chip chip-warn">Pinned</span>}
                   <span className={`chip ${CATS[cat]?.chip || "chip-quiet"} chip-plain`}>{single[cat] || "News"}</span>
                 </div>
-                <h2 className="h3">
-                  {p.emoji && <span aria-hidden="true">{p.emoji} </span>}
-                  {p.title}
-                </h2>
+                <h2 className="h3">{p.title}</h2>
                 <p className="mt-3 pre-line">{p.body}</p>
                 <p className="small faint mt-4">
                   {p.barber_name ? `Posted by ${p.barber_name}` : "Posted by the shop"}

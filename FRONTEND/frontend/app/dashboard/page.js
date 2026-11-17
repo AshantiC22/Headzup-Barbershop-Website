@@ -17,6 +17,7 @@ import {
   IconCalendar,
   IconChevronDown,
   IconPin,
+  LoadFailed,
   Modal,
   Notice,
   Skeleton,
@@ -488,6 +489,8 @@ function DashboardContent() {
   const [appts, setAppts] = useState([]);
   const [strike, setStrike] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [failed, setFailed] = useState(false);
+  const [attempt, setAttempt] = useState(0);
   const [tab, setTab] = useState("upcoming");
   const [cancelling, setCancelling] = useState(null);
   const [cancelBusy, setCancelBusy] = useState(false);
@@ -522,11 +525,12 @@ function DashboardContent() {
           .catch(() => {});
       } catch (e) {
         if (e?.response?.status === 401) router.replace("/login?next=/dashboard");
+        else setFailed(true);
       } finally {
         setLoading(false);
       }
     })();
-  }, [router]);
+  }, [router, attempt]);
 
   // Still "coming up" until an hour after the start time.
   const upcoming = useMemo(() => {
@@ -599,6 +603,23 @@ function DashboardContent() {
   }, []);
 
   if (loading) return <DashboardLoading />;
+  if (failed) {
+    return (
+      <>
+        <AppHeader title="My appointments" />
+        <main id="main" className="wrap dash" style={{ maxWidth: 960 }}>
+          <LoadFailed
+            what="Your appointments"
+            onRetry={() => {
+              setFailed(false);
+              setLoading(true);
+              setAttempt((n) => n + 1);
+            }}
+          />
+        </main>
+      </>
+    );
+  }
 
   const name = user?.user || user?.username || "there";
   const tabs = [

@@ -1,7 +1,6 @@
 "use client";
 // Served by the service worker when there's no connection.
 import { useEffect } from "react";
-import PaintedSky from "@/components/art/PaintedSky";
 import { ShopSign } from "@/components/site/SiteNav";
 import { SHOP } from "@/lib/shop";
 
@@ -12,11 +11,11 @@ export default function OfflinePage() {
     return () => window.removeEventListener("online", back);
   }, []);
   return (
-    <div className="sky-page">
-      <PaintedSky seed={88} />
-      <main id="main" className="sky-content nf-wrap">
+    <div className="fade-page">
+      <div className="fade-edge fade-page-edge" aria-hidden="true" />
+      <main id="main" className="nf-wrap">
         <ShopSign />
-        <div className="panel panel-pad mt-8" style={{ maxWidth: 440, textAlign: "center" }}>
+        <div className="panel panel-pad mt-8 nf-card">
           <h1 className="h2">You&apos;re offline.</h1>
           <p className="muted mt-3">
             The shop&apos;s book needs a connection. This page reloads by itself when you&apos;re back online.

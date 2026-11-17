@@ -1,14 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { HOURS, SERVICES, SERVICE_GROUPS, describeService, groupForService } from "@/lib/shop";
+import { BOOKSY, REVIEWS, SERVICES, SERVICE_GROUPS, describeService, groupForService } from "@/lib/shop";
 import { safeNext } from "@/lib/auth";
 
 describe("shop facts", () => {
-  it("has a row for every weekday, indexed like Date#getDay", () => {
-    expect(HOURS).toHaveLength(7);
-    HOURS.forEach((h, i) => expect(h.day).toBe(i));
-    HOURS.filter((h) => h.open).forEach((h) => expect(h.open < h.close).toBe(true));
-  });
-
   it("puts every service in a group that exists", () => {
     const groups = new Set(SERVICE_GROUPS.map((g) => g.id));
     SERVICES.forEach((s) => expect(groups.has(s.group)).toBe(true));
@@ -41,16 +35,15 @@ describe("safeNext", () => {
   });
 });
 
-describe("tool icons", () => {
-  it("gives every service one or two tools that exist, and crosses the shaves with a razor", async () => {
-    const { toolsForService } = await import("@/components/art/ToolIcons");
-    const known = new Set(["clippers", "razor", "shears", "trimmer", "comb", "brush"]);
-    for (const s of SERVICES) {
-      const tools = toolsForService(s.name);
-      expect(tools.length).toBeGreaterThanOrEqual(1);
-      expect(tools.length).toBeLessThanOrEqual(2);
-      tools.forEach((t) => expect(known.has(t)).toBe(true));
-      if (/shave/i.test(s.name)) expect(tools).toContain("razor");
+describe("reviews", () => {
+  it("are attributed to a client, a service and a barber, and link back to the source", () => {
+    expect(BOOKSY.url).toMatch(/^https:\/\/booksy\.com\//);
+    expect(REVIEWS.length).toBeGreaterThan(0);
+    for (const r of REVIEWS) {
+      expect(r.quote.trim()).not.toBe("");
+      expect(r.name.trim()).not.toBe("");
+      expect(r.service.trim()).not.toBe("");
+      expect(r.barber.trim()).not.toBe("");
     }
   });
 });

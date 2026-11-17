@@ -146,10 +146,10 @@ function ReviewContent() {
 }
 
 export default function ReviewPage() {
-  // The shell (painted sky, sign, card) prerenders; only the part that reads
+  // The shell (fade, sign, card) prerenders; only the part that reads
   // the query string waits for the browser.
   return (
-    <AuthShell seed={5}>
+    <AuthShell>
       <Suspense fallback={<ReviewLoading />}>
         <ReviewContent />
       </Suspense>

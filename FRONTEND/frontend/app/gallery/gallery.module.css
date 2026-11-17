@@ -11,40 +11,48 @@
 
 .wall {
   list-style: none;
-  columns: 3 260px;
-  column-gap: clamp(20px, 3vw, 40px);
+  display: grid;
+  gap: clamp(24px, 3vw, 36px) clamp(16px, 2.4vw, 28px);
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 250px), 1fr));
 }
 .piece {
-  break-inside: avoid;
-  margin-bottom: clamp(28px, 4vw, 44px);
   display: grid;
-  gap: 12px;
+  gap: 10px;
+  align-content: start;
 }
 .pieceBtn {
   display: block;
   width: 100%;
   text-align: left;
-  border-radius: 2px;
-  transition:
-    transform var(--dur-3) var(--ease),
-    filter var(--dur-3);
 }
-@media (hover: hover) {
-  .pieceBtn:hover {
-    transform: translateY(-3px);
-    filter: drop-shadow(0 0 24px color-mix(in srgb, var(--flame) 18%, transparent));
-  }
+.pieceFrame {
+  display: block;
+  aspect-ratio: 3 / 4;
+}
+.pieceFrame > :global(.frame-inner) {
+  display: block;
+  height: 100%;
 }
 .pieceImg {
   width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 600ms var(--ease);
 }
-.pieceImg img {
-  aspect-ratio: inherit;
+@media (hover: hover) {
+  .pieceBtn:hover .pieceImg {
+    transform: scale(1.03);
+  }
 }
-.piecePlacard {
-  width: fit-content;
-  max-width: 100%;
-  padding: 9px 20px 8px;
+.caption {
+  display: grid;
+}
+.captionTitle {
+  font-family: var(--font-display);
+  font-weight: 760;
+  font-stretch: 86%;
+  font-size: 1.08rem;
+  line-height: 1.2;
 }
 
 .cta {
@@ -65,15 +73,13 @@
   grid-template-rows: auto 1fr auto;
   gap: 16px;
   padding: calc(env(safe-area-inset-top) + 14px) var(--gutter) calc(env(safe-area-inset-bottom) + 18px);
-  background:
-    radial-gradient(ellipse 70% 60% at 50% 45%, color-mix(in srgb, var(--flame) 7%, transparent), transparent 70%),
-    var(--bg-2);
+  background: var(--bg);
   animation: fade-in var(--dur-2) ease backwards;
 }
 .lightbox[data-state="closing"] {
   animation: fade-out var(--dur-2) var(--ease-in) both;
 }
-/* Stepping between pieces: the new one comes up out of the dark. */
+/* Stepping between photos: the new one fades in over the old. */
 .lbFrame :global(.frame-inner) > * {
   animation: fade-in var(--dur-3) var(--ease) backwards;
 }
@@ -85,6 +91,12 @@
 }
 .lbClose {
   flex-shrink: 0;
+}
+.lbCount {
+  font-family: var(--font-display);
+  font-weight: 720;
+  font-stretch: 88%;
+  color: var(--ink-2);
 }
 .lbStage {
   display: flex;
@@ -104,11 +116,6 @@
   display: block;
   width: min(78vw, calc((100dvh - 270px) * 0.75), 640px);
   aspect-ratio: 3 / 4;
-  object-fit: cover;
-}
-.lbImg img {
-  width: 100%;
-  height: 100%;
   object-fit: cover;
 }
 .lbNav {

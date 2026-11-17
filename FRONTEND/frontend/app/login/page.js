@@ -291,7 +291,7 @@ function LoginContent() {
 }
 
 export default function LoginPage() {
-  // The shell (painted sky, sign, card) prerenders; only the part that reads
+  // The shell (fade, sign, card) prerenders; only the part that reads
   // the query string waits for the browser.
   return (
     <AuthShell>

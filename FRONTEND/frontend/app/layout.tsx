@@ -2,32 +2,30 @@ import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
 import "./globals.css";
 import ClientProviders from "@/components/ClientProviders";
-import { HOURS, SHOP } from "@/lib/shop";
+import { API_ROOT } from "@/lib/config";
+import { DEFAULT_HOURS, fromApi } from "@/lib/hours";
+import { SHOP } from "@/lib/shop";
 
 // Fonts are preloaded and get a metric-matched fallback, so headlines don't
 // jump when the real face arrives. Files and their license are in app/fonts.
+//   Anybody: one variable family with a width axis, from 50% condensed to 150%
+//   wide. The wordmark fades through both axes letter by letter.
+//   Atkinson Hyperlegible Next: drawn for readers with low vision; the shop
+//   cuts kids and seniors, so the reading text has to work for both.
 const display = localFont({
-  src: "./fonts/grenze-gotisch-latin-wght-normal.woff2",
+  src: "./fonts/anybody-latin-wdth-normal.woff2",
   weight: "100 900",
   variable: "--ff-display",
-  adjustFontFallback: "Times New Roman",
-});
-const lore = localFont({
-  src: [
-    { path: "./fonts/grenze-latin-400-normal.woff2", weight: "400", style: "normal" },
-    { path: "./fonts/grenze-latin-400-italic.woff2", weight: "400", style: "italic" },
-    { path: "./fonts/grenze-latin-600-normal.woff2", weight: "600", style: "normal" },
-  ],
-  variable: "--ff-lore",
-  adjustFontFallback: "Times New Roman",
-  preload: false,
-});
-const ui = localFont({
-  src: "./fonts/archivo-latin-wdth-normal.woff2",
-  weight: "100 900",
-  variable: "--ff-ui",
   adjustFontFallback: "Arial",
-  declarations: [{ prop: "font-stretch", value: "62% 125%" }],
+  declarations: [{ prop: "font-stretch", value: "50% 150%" }],
+});
+const body = localFont({
+  src: [
+    { path: "./fonts/atkinson-hyperlegible-next-latin-wght-normal.woff2", weight: "200 800", style: "normal" },
+    { path: "./fonts/atkinson-hyperlegible-next-latin-wght-italic.woff2", weight: "200 800", style: "italic" },
+  ],
+  variable: "--ff-body",
+  adjustFontFallback: "Arial",
 });
 
 const SITE_URL = "https://headzupp.com";
@@ -39,7 +37,10 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
-  themeColor: "#1A1D1C",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#F1F2EE" },
+    { media: "(prefers-color-scheme: dark)", color: "#121518" },
+  ],
 };
 
 export const metadata: Metadata = {
@@ -59,7 +60,7 @@ export const metadata: Metadata = {
         url: "/og-image.jpg",
         width: 1200,
         height: 630,
-        alt: "A night street in fog with a lit barber pole standing under a large moon",
+        alt: "HEADZ UP Barbershop, 2509 West 4th Street, Hattiesburg",
       },
     ],
   },
@@ -76,20 +77,41 @@ export const metadata: Metadata = {
   },
 };
 
-// Runs before first paint. Lamplight is the default; Daylight only if chosen.
-const THEME_SCRIPT = `(function(){var r=document.documentElement,t='dark';try{if(localStorage.getItem('headzup_theme')==='light')t='light';}catch(e){}r.setAttribute('data-theme',t);r.style.colorScheme=t;})();`;
+// Runs before first paint. Day is the default; Night if chosen, or if the
+// visitor never chose and their device is set to dark.
+const THEME_SCRIPT = `(function(){var r=document.documentElement,t='light';try{var s=localStorage.getItem('headzup_theme');if(s==='dark'||s==='light')t=s;else if(matchMedia('(prefers-color-scheme: dark)').matches)t='dark';}catch(e){}r.setAttribute('data-theme',t);r.style.colorScheme=t;})();`;
+
+type Day = { day: number; label: string; open: string | null; close: string | null };
+
+// The week the barbers set in their dashboard. Fetched here so the first HTML
+// already shows it; refreshed every five minutes, and if the API doesn't
+// answer within a couple of seconds the page goes out with the fallback week
+// and the browser fetches the real one.
+async function getShopHours(): Promise<unknown> {
+  try {
+    const res = await fetch(`${API_ROOT}/api/shop/hours/`, {
+      next: { revalidate: 300 },
+      signal: AbortSignal.timeout(2500),
+    });
+    return res.ok ? await res.json() : null;
+  } catch {
+    return null;
+  }
+}
 
 // Opening hours for search engines, grouped so days with the same hours share a row.
-const openingHours = Object.values(
-  HOURS.filter((h) => h.open).reduce<
-    Record<string, { "@type": string; dayOfWeek: string[]; opens: string; closes: string }>
-  >((rows, h) => {
-    const key = `${h.open}-${h.close}`;
-    rows[key] ??= { "@type": "OpeningHoursSpecification", dayOfWeek: [], opens: h.open!, closes: h.close! };
-    rows[key].dayOfWeek.push(h.label);
-    return rows;
-  }, {}),
-);
+function openingHours(hours: Day[]) {
+  return Object.values(
+    hours
+      .filter((h) => h.open)
+      .reduce<Record<string, { "@type": string; dayOfWeek: string[]; opens: string; closes: string }>>((rows, h) => {
+        const key = `${h.open}-${h.close}`;
+        rows[key] ??= { "@type": "OpeningHoursSpecification", dayOfWeek: [], opens: h.open!, closes: h.close! };
+        rows[key].dayOfWeek.push(h.label);
+        return rows;
+      }, {}),
+  );
+}
 
 const LOCAL_BUSINESS = {
   "@context": "https://schema.org",
@@ -108,30 +130,32 @@ const LOCAL_BUSINESS = {
     addressCountry: "US",
   },
   hasMap: SHOP.mapsLink,
-  openingHoursSpecification: openingHours,
   priceRange: "$$",
   image: `${SITE_URL}/og-image.jpg`,
 };
 
-export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+  const shopHours = await getShopHours();
+  const week: Day[] = fromApi(shopHours) || DEFAULT_HOURS;
+  const business = { ...LOCAL_BUSINESS, openingHoursSpecification: openingHours(week) };
   return (
     <html
       lang="en"
-      data-theme="dark"
+      data-theme="light"
       data-scroll-behavior="smooth"
-      className={`${display.variable} ${lore.variable} ${ui.variable}`}
+      className={`${display.variable} ${body.variable}`}
       suppressHydrationWarning
     >
       <head>
         <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
         <link rel="preconnect" href="https://api.headzupp.com" crossOrigin="anonymous" />
-        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(LOCAL_BUSINESS) }} />
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(business) }} />
       </head>
       <body>
         <a className="skip-link" href="#main">
           Skip to content
         </a>
-        <ClientProviders>{children}</ClientProviders>
+        <ClientProviders shopHours={shopHours}>{children}</ClientProviders>
       </body>
     </html>
   );

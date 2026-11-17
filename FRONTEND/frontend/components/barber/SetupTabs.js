@@ -1,10 +1,12 @@
 "use client";
-// Hours and booking rules, news posts, and the barber's own profile.
-import { useEffect, useState } from "react";
+// Shop hours, the barber's own hours and booking rules, news posts, and the
+// barber's own profile.
+import { useEffect, useMemo, useState } from "react";
 import API from "@/lib/api";
 import { ONLINE_PAYMENTS } from "@/lib/config";
-import Impression from "@/components/art/Impression";
-import { IconCamera, IconTrash, Modal, Skeleton, Spinner } from "@/components/ui/Feedback";
+import { useShopHours } from "@/components/ShopHours";
+import { IconCamera, IconTrash, LoadFailed, Modal, Skeleton, Spinner } from "@/components/ui/Feedback";
+import { WEEK_ORDER, fromApi, toApi, weekProblem } from "@/lib/hours";
 import { fmtDate, fmtTime, todayStr } from "@/lib/time";
 
 const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
@@ -53,6 +55,181 @@ function DayRow({ i, info, onSave }) {
         <span className="faint">Off</span>
       )}
     </li>
+  );
+}
+
+const rowsFrom = (hours) =>
+  WEEK_ORDER.map((d) => ({
+    day: d,
+    label: hours[d].label,
+    isOpen: !!hours[d].open,
+    open: hours[d].open || "09:00",
+    close: hours[d].close || "18:00",
+  }));
+const changedOn = (iso) => {
+  try {
+    return new Intl.DateTimeFormat("en-US", { timeZone: "America/Chicago", month: "short", day: "numeric" }).format(
+      new Date(iso),
+    );
+  } catch {
+    return "";
+  }
+};
+const sameRows = (a, b) =>
+  a.every((r, i) => r.isOpen === b[i].isOpen && (!r.isOpen || (r.open === b[i].open && r.close === b[i].close)));
+
+/**
+ * The shop's week: what the site shows in the footer and on the home page,
+ * and the outer limit for every barber's bookings. Saved as one week, so the
+ * site never shows half an edit.
+ */
+function ShopHoursPanel({ toast }) {
+  const { apply, meta } = useShopHours();
+  const [saved, setSaved] = useState(null); // rows as the server has them
+  const [rows, setRows] = useState(null);
+  const [failed, setFailed] = useState(false);
+  const [attempt, setAttempt] = useState(0);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    let gone = false;
+    API.get("shop/hours/", { _noCache: true })
+      .then((r) => {
+        if (gone) return;
+        const week = fromApi(r.data);
+        if (!week) return setFailed(true);
+        apply(r.data);
+        const fresh = rowsFrom(week);
+        setSaved(fresh);
+        setRows(fresh);
+        setFailed(false);
+      })
+      .catch(() => !gone && setFailed(true));
+    return () => {
+      gone = true;
+    };
+  }, [apply, attempt]);
+
+  const problem = useMemo(() => (rows ? weekProblem(rows) : ""), [rows]);
+  const dirty = rows && saved && !sameRows(rows, saved);
+  const set = (i, patch) => {
+    setError("");
+    setRows((p) => p.map((r, k) => (k === i ? { ...r, ...patch } : r)));
+  };
+
+  const save = async (e) => {
+    e.preventDefault();
+    if (problem) return setError(problem);
+    setSaving(true);
+    setError("");
+    try {
+      const r = await API.put("shop/hours/", toApi(rows));
+      API.invalidate("shop/hours", "available-slots", "working-days");
+      apply(r.data);
+      setSaved(rows);
+      toast("Shop hours saved. The site shows them now.");
+    } catch (err) {
+      setError(err?.response?.data?.error || "The hours didn't save. Check your connection and try again.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <form className="panel panel-pad span-all" onSubmit={save} aria-labelledby="shop-hours-title">
+      <div className="spread">
+        <div>
+          <h2 id="shop-hours-title" className="h4">
+            Shop hours
+          </h2>
+          <p className="small muted mt-1">
+            What clients see on the site. Nobody can book outside these, whatever their own hours say.
+          </p>
+        </div>
+      </div>
+      {failed ? (
+        <LoadFailed what="The shop's hours" onRetry={() => setAttempt((n) => n + 1)} className="mt-4" />
+      ) : !rows ? (
+        <ul className="day-list mt-3" aria-busy="true">
+          {WEEK_ORDER.map((d) => (
+            <li key={d} className="day-row">
+              <Skeleton h={30} w={52} />
+              <Skeleton h={18} w={80} />
+              <Skeleton h={40} w={236} style={{ maxWidth: "100%" }} />
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <>
+          <ul className="day-list mt-3">
+            {rows.map((r, i) => (
+              <li key={r.day} className="day-row">
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={r.isOpen}
+                  className="switch"
+                  aria-label={`Shop open on ${r.label}`}
+                  onClick={() => set(i, { isOpen: !r.isOpen })}
+                />
+                <span className="day-name">{r.label}</span>
+                {r.isOpen ? (
+                  <span className="row" style={{ gap: 8 }}>
+                    <input
+                      type="time"
+                      step="900"
+                      className="input input-sm"
+                      aria-label={`${r.label} opens`}
+                      value={r.open}
+                      onChange={(e) => set(i, { open: e.target.value })}
+                    />
+                    <span className="faint">to</span>
+                    <input
+                      type="time"
+                      step="900"
+                      className="input input-sm"
+                      aria-label={`${r.label} closes`}
+                      value={r.close}
+                      onChange={(e) => set(i, { close: e.target.value })}
+                    />
+                  </span>
+                ) : (
+                  <span className="faint">Closed</span>
+                )}
+              </li>
+            ))}
+          </ul>
+          {(error || (dirty && problem)) && (
+            <p className="field-error mt-3" role="alert">
+              {error || problem}
+            </p>
+          )}
+          <div className="row-wrap mt-4">
+            <button className="btn btn-primary" disabled={!dirty || saving || !!problem}>
+              {saving ? <Spinner label="Saving" /> : "Save shop hours"}
+            </button>
+            {dirty && !saving && (
+              <button
+                type="button"
+                className="btn btn-quiet"
+                onClick={() => {
+                  setRows(saved);
+                  setError("");
+                }}
+              >
+                Undo changes
+              </button>
+            )}
+            {meta && !dirty && (
+              <span className="small faint">
+                Last changed by {meta.by}, {changedOn(meta.at)}
+              </span>
+            )}
+          </div>
+        </>
+      )}
+    </form>
   );
 }
 
@@ -139,13 +316,17 @@ export function HoursTab({ toast }) {
       <div className="tab-head">
         <div>
           <h1 className="h2">Hours and booking rules</h1>
-          <p className="muted">Clients can only book the days and times you set here.</p>
+          <p className="muted">The shop&apos;s hours, your own hours inside them, and days you&apos;re off.</p>
         </div>
       </div>
       <div className="setup-grid">
+        <ShopHoursPanel toast={toast} />
         <section className="panel panel-pad">
-          <h2 className="h4">Weekly hours</h2>
-          <p className="small muted mt-1">Changes save when you leave a field. The shop is closed Sundays.</p>
+          <h2 className="h4">Your hours</h2>
+          <p className="small muted mt-1">
+            When you take bookings. Changes save when you leave a field. Times outside the shop&apos;s hours aren&apos;t
+            offered.
+          </p>
           {!avail ? (
             <ul className="day-list" aria-busy="true">
               {DAYS.map((d) => (
@@ -299,7 +480,7 @@ const CATS = [
 
 export function NewsTab({ toast }) {
   const [posts, setPosts] = useState(null);
-  const [f, setF] = useState({ emoji: "✂️", title: "", body: "", category: "general", pinned: false });
+  const [f, setF] = useState({ title: "", body: "", category: "general", pinned: false });
   const [busy, setBusy] = useState(false);
   const [del, setDel] = useState(null);
   const load = () =>
@@ -315,9 +496,10 @@ export function NewsTab({ toast }) {
     if (!f.title.trim() || !f.body.trim()) return toast("Give it a title and a message.", "bad");
     setBusy(true);
     try {
-      await API.post("newsletter/manage/", f);
+      // emoji: the API still has the field (and defaults it to scissors); posts no longer show one
+      await API.post("newsletter/manage/", { ...f, emoji: "" });
       toast("Published. Clients with alerts on get a notification.");
-      setF({ emoji: "✂️", title: "", body: "", category: "general", pinned: false });
+      setF({ title: "", body: "", category: "general", pinned: false });
       load();
     } catch {
       toast("It didn't publish.", "bad");
@@ -345,32 +527,17 @@ export function NewsTab({ toast }) {
         </div>
       </div>
       <form className="panel panel-pad w-l" onSubmit={publish}>
-        <div className="form-grid news-form">
-          <div className="field">
-            <label className="label" htmlFor="n-emoji">
-              Icon
-            </label>
-            <input
-              id="n-emoji"
-              className="input"
-              maxLength={2}
-              value={f.emoji}
-              onChange={(e) => setF((p) => ({ ...p, emoji: e.target.value }))}
-              style={{ textAlign: "center", fontSize: 22 }}
-            />
-          </div>
-          <div className="field">
-            <label className="label" htmlFor="n-title">
-              Title
-            </label>
-            <input
-              id="n-title"
-              className="input"
-              value={f.title}
-              onChange={(e) => setF((p) => ({ ...p, title: e.target.value }))}
-              placeholder="Thanksgiving hours"
-            />
-          </div>
+        <div className="field">
+          <label className="label" htmlFor="n-title">
+            Title
+          </label>
+          <input
+            id="n-title"
+            className="input"
+            value={f.title}
+            onChange={(e) => setF((p) => ({ ...p, title: e.target.value }))}
+            placeholder="Thanksgiving hours"
+          />
         </div>
         <div className="field">
           <label className="label" htmlFor="n-body">
@@ -424,9 +591,7 @@ export function NewsTab({ toast }) {
             <li key={p.id} className="placard">
               <div className="spread" style={{ alignItems: "flex-start" }}>
                 <div>
-                  <p className="placard-title">
-                    {p.emoji} {p.title}
-                  </p>
+                  <p className="placard-title">{p.title}</p>
                   <p className="small faint">
                     {p.created_at}
                     {p.pinned ? ", pinned" : ""}
@@ -496,16 +661,11 @@ export function ProfileTab({ barber, setBarber, toast }) {
       </div>
       <div className="setup-grid">
         <section className="panel panel-pad" style={{ textAlign: "center" }}>
-          <div className="frame frame-arch profile-arch">
+          <div className="frame profile-arch">
             <div className="frame-inner">
               {photo ? (
-                <Impression
-                  key={photo.slice(0, 64)}
-                  src={photo}
-                  alt={`${barber?.name}'s portrait`}
-                  seed={(barber?.id || 1) * 13}
-                  className="fill"
-                />
+                // eslint-disable-next-line @next/next/no-img-element -- a data: URL or the API's photo
+                <img src={photo} alt={`${barber?.name}'s portrait`} className="fill cover" />
               ) : (
                 <div className="monogram-sm" aria-hidden="true">
                   {barber?.name?.charAt(0)}
@@ -514,7 +674,7 @@ export function ProfileTab({ barber, setBarber, toast }) {
             </div>
           </div>
           <p className="h3 mt-5">{barber?.name}</p>
-          <p className="small muted mt-1">Clients see your photo as an oil sketch, like this.</p>
+          <p className="small muted mt-1">Clients see this photo on the home page and when they book.</p>
           <div className="row-wrap mt-4" style={{ justifyContent: "center" }}>
             <label className="btn btn-ghost btn-sm">
               <IconCamera size={16} /> {barber?.photo_url ? "Change photo" : "Add a photo"}
